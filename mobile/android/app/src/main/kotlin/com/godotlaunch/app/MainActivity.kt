@@ -1,0 +1,5 @@
+package com.godotlaunch.app
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
