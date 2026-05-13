@@ -1,122 +1,58 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+import ProductDetail from './pages/ProductDetail';
+import Community from './pages/Community';
+import DevPortal from './pages/DevPortal';
+import DashboardComponent from './components/DevPortal/Dashboard';
+import MyGames from './pages/MyGames';
+import Analytics from './pages/Analytics';
+import Library from './pages/Library';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Admin from './pages/Admin';
+import AdminFinance from './pages/AdminFinance';
+import AdminModeration from './pages/AdminModeration';
+import AdminLogs from './pages/AdminLogs';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <Router>
+      <div className="bg-surface-dim text-on-surface min-h-screen flex flex-col relative overflow-x-hidden dark">
+        {/* Ambient Blurred Background */}
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1605806616949-1e87b487bc2a?q=80&w=3270&auto=format&fit=crop')] bg-cover bg-center opacity-20 blur-3xl saturate-200"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-surface-dim/80 via-surface-dim/95 to-surface-dim"></div>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
+        
+        <Header />
+        
+        <div className="relative z-10">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/community" element={<Community />} />
+            <Route path="/dev-portal" element={<DevPortal />}>
+              <Route index element={<DashboardComponent />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="games" element={<MyGames />} />
+            </Route>
+            <Route path="/library" element={<Library />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/finance" element={<AdminFinance />} />
+            <Route path="/admin/moderation" element={<AdminModeration />} />
+            <Route path="/admin/logs" element={<AdminLogs />} />
+          </Routes>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <Footer />
+      </div>
+    </Router>
+  );
 }
 
-export default App
+export default App;
