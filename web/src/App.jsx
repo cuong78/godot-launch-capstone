@@ -42,24 +42,27 @@ function App() {
               <WishlistDropdown />
 
               <div className="relative z-10">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
-                <Route path="/community" element={<Community />} />
-                <Route path="/dev-portal" element={<DevPortal />}>
-                  <Route index element={<DashboardComponent />} />
-                  <Route path="analytics" element={<Analytics />} />
-                  <Route path="games" element={<MyGames />} />
-                </Route>
-                <Route path="/library" element={<Library />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/admin/finance" element={<AdminFinance />} />
-                <Route path="/admin/moderation" element={<AdminModeration />} />
-                <Route path="/admin/logs" element={<AdminLogs />} />
-              </Routes>
-            </div>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/product/:id" element={<ProductDetail />} />
+                  <Route path="/community" element={<Community />} />
+                  <Route path="/dev-portal" element={<DevPortal />}>
+                    <Route index element={<DashboardComponent />} />
+                    <Route path="analytics" element={<Analytics />} />
+                    <Route path="games" element={<MyGames />} />
+                  </Route>
+                  <Route path="/library" element={<Library />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin/finance" element={<AdminFinance />} />
+                  <Route
+                    path="/admin/moderation"
+                    element={<AdminModeration />}
+                  />
+                  <Route path="/admin/logs" element={<AdminLogs />} />
+                </Routes>
+              </div>
 
               <Footer />
             </div>

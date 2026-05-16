@@ -15,9 +15,28 @@ import { useWishlist } from "../hooks/useWishlist";
 export default function Header() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
-  const { unreadCount, setIsNotificationOpen } = useNotification();
-  const { cartCount, setIsCartOpen } = useCart();
-  const { wishlistCount, setIsWishlistOpen } = useWishlist();
+  const { unreadCount, setIsNotificationOpen, isNotificationOpen } =
+    useNotification();
+  const { cartCount, setIsCartOpen, isCartOpen } = useCart();
+  const { wishlistCount, setIsWishlistOpen, isWishlistOpen } = useWishlist();
+
+  const handleCartClick = () => {
+    setIsNotificationOpen(false);
+    setIsWishlistOpen(false);
+    setIsCartOpen(true);
+  };
+
+  const handleNotificationClick = () => {
+    setIsCartOpen(false);
+    setIsWishlistOpen(false);
+    setIsNotificationOpen(true);
+  };
+
+  const handleWishlistClick = () => {
+    setIsCartOpen(false);
+    setIsNotificationOpen(false);
+    setIsWishlistOpen(true);
+  };
 
   return (
     <nav className="bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-[0_0_15px_rgba(0,242,255,0.15)] docked full-width top-0 z-50 fixed w-full">
@@ -138,7 +157,7 @@ export default function Header() {
             {isAdmin ? (
               <>
                 <button
-                  onClick={() => setIsNotificationOpen(true)}
+                  onClick={handleNotificationClick}
                   className="relative hover:text-primary-fixed-dim transition-all duration-300 text-on-surface-variant/70"
                 >
                   <Bell className="w-5 h-5" />
@@ -158,7 +177,7 @@ export default function Header() {
             ) : (
               <>
                 <button
-                  onClick={() => setIsCartOpen(true)}
+                  onClick={handleCartClick}
                   className="relative hover:text-primary-fixed-dim transition-all duration-300 active:scale-95"
                 >
                   <ShoppingCart className="w-6 h-6" />
@@ -169,7 +188,7 @@ export default function Header() {
                   )}
                 </button>
                 <button
-                  onClick={() => setIsNotificationOpen(true)}
+                  onClick={handleNotificationClick}
                   className="relative hover:text-primary-fixed-dim transition-all duration-300 active:scale-95"
                 >
                   <Bell className="w-6 h-6" />
@@ -181,13 +200,13 @@ export default function Header() {
                 </button>
               </>
             )}
-            <button 
-              onClick={() => setIsWishlistOpen(true)}
+            <button
+              onClick={handleWishlistClick}
               className="relative hover:text-secondary transition-all duration-300 active:scale-95"
             >
-              <Heart className="w-6 h-6" fill={wishlistCount > 0 ? "currentColor" : "none"} />
+              <Heart className="w-6 h-6" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-2 -right-2 w-5 h-5 bg-secondary text-surface-container-lowest text-xs font-bold rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(209,188,255,0.6)]">
+                <span className="absolute -top-2 -right-2 w-5 h-5 bg-error text-on-error text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-[0_0_8px_rgba(229,57,57,0.6)]">
                   {wishlistCount > 99 ? "99+" : wishlistCount}
                 </span>
               )}

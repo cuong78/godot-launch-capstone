@@ -1,13 +1,13 @@
-import React, { useContext } from 'react';
-import { X, Heart, Trash2 } from 'lucide-react';
-import { WishlistContext } from '../context/WishlistContext';
-import { Link } from 'react-router-dom';
+import React, { useContext } from "react";
+import { X, Heart, Trash2 } from "lucide-react";
+import { WishlistContext } from "../context/WishlistContext";
+import { Link } from "react-router-dom";
 
 const formatDate = (date) => {
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 };
 
@@ -35,7 +35,7 @@ export default function WishlistDropdown() {
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-white/10 bg-surface-container-lowest">
           <div className="flex items-center gap-2">
-            <Heart className="w-5 h-5 text-secondary" fill="currentColor" />
+            <Heart className="w-5 h-5 text-secondary" />
             <h2 className="font-display-sm text-headline-sm uppercase tracking-widest text-secondary">
               Wishlist
             </h2>
@@ -91,7 +91,9 @@ export default function WishlistDropdown() {
                     </Link>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-label-sm text-on-surface-variant/70">
-                        {item.type === 'FREE' ? 'FREE' : `$${item.price?.toFixed(2)}`}
+                        {item.type === "FREE"
+                          ? "FREE"
+                          : `$${item.price?.toFixed(2)}`}
                       </p>
                     </div>
                     <p className="text-label-xs text-on-surface-variant/50 mt-1">
