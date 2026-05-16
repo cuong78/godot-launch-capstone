@@ -1,6 +1,6 @@
-import React, { useContext } from 'react';
-import { X, Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
-import { CartContext } from '../context/CartContext';
+import React, { useContext } from "react";
+import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { CartContext } from "../context/CartContext";
 
 export default function CartDropdown() {
   const {
@@ -113,7 +113,9 @@ export default function CartDropdown() {
           <div className="border-t border-white/10 px-4 py-4 flex flex-col gap-4 bg-surface-container-lowest">
             {/* Total */}
             <div className="flex justify-between items-center">
-              <span className="font-label-md text-on-surface-variant">Total:</span>
+              <span className="font-label-md text-on-surface-variant">
+                Total:
+              </span>
               <span className="font-display-sm text-headline-sm text-surface-tint">
                 ${cartTotal.toFixed(2)}
               </span>

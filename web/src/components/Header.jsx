@@ -5,16 +5,19 @@ import {
   Search,
   SquareTerminal,
   Settings,
+  Heart,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useNotification } from "../hooks/useNotification";
 import { useCart } from "../hooks/useCart";
+import { useWishlist } from "../hooks/useWishlist";
 
 export default function Header() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
   const { unreadCount, setIsNotificationOpen } = useNotification();
   const { cartCount, setIsCartOpen } = useCart();
+  const { wishlistCount, setIsWishlistOpen } = useWishlist();
 
   return (
     <nav className="bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-[0_0_15px_rgba(0,242,255,0.15)] docked full-width top-0 z-50 fixed w-full">
@@ -154,7 +157,7 @@ export default function Header() {
               </>
             ) : (
               <>
-                <button 
+                <button
                   onClick={() => setIsCartOpen(true)}
                   className="relative hover:text-primary-fixed-dim transition-all duration-300 active:scale-95"
                 >
@@ -178,6 +181,17 @@ export default function Header() {
                 </button>
               </>
             )}
+            <button 
+              onClick={() => setIsWishlistOpen(true)}
+              className="relative hover:text-secondary transition-all duration-300 active:scale-95"
+            >
+              <Heart className="w-6 h-6" fill={wishlistCount > 0 ? "currentColor" : "none"} />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 w-5 h-5 bg-secondary text-surface-container-lowest text-xs font-bold rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(209,188,255,0.6)]">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
+            </button>
             <Link
               to="/login"
               className="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-white/10 block hover:border-surface-tint transition-all cursor-pointer flex-shrink-0"
