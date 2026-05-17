@@ -11,6 +11,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useNotification } from "../hooks/useNotification";
 import { useCart } from "../hooks/useCart";
 import { useWishlist } from "../hooks/useWishlist";
+import { useLanguage } from "../hooks/useLanguage";
 
 export default function Header() {
   const location = useLocation();
@@ -19,6 +20,7 @@ export default function Header() {
     useNotification();
   const { cartCount, setIsCartOpen, isCartOpen } = useCart();
   const { wishlistCount, setIsWishlistOpen, isWishlistOpen } = useWishlist();
+  const { language, setLanguage, languageNames, t } = useLanguage();
 
   const handleCartClick = () => {
     setIsNotificationOpen(false);
@@ -53,7 +55,7 @@ export default function Header() {
             <Search className="absolute left-3 text-on-surface-variant/70 w-4 h-4 text-sm" />
             <input
               className="bg-surface-container-low border border-outline-variant/50 text-on-surface focus:border-primary-container focus:outline-none focus:ring-1 focus:ring-primary-container focus:shadow-[0_0_15px_rgba(0,242,255,0.3)] rounded py-1.5 pl-9 pr-4 font-label-sm text-label-sm w-48 lg:w-64 transition-all placeholder:text-on-surface-variant/50"
-              placeholder="Query DB..."
+              placeholder={t('queryDB')}
               type="text"
             />
           </div>
@@ -69,7 +71,7 @@ export default function Header() {
                   : "text-on-surface-variant/70 hover:text-on-surface transition-all duration-300"
               }
             >
-              Moderation
+              {t('moderation')}
             </Link>
             <Link
               to="/admin/finance"
@@ -79,7 +81,7 @@ export default function Header() {
                   : "text-on-surface-variant/70 hover:text-on-surface transition-all duration-300"
               }
             >
-              Finance
+              {t('finance')}
             </Link>
             <Link
               to="/admin"
@@ -89,7 +91,7 @@ export default function Header() {
                   : "text-on-surface-variant/70 hover:text-on-surface transition-all duration-300"
               }
             >
-              Users
+              {t('users')}
             </Link>
             <Link
               to="/admin/logs"
@@ -99,50 +101,46 @@ export default function Header() {
                   : "text-on-surface-variant/70 hover:text-on-surface transition-all duration-300"
               }
             >
-              Logs
+              {t('logs')}
             </Link>
           </div>
         ) : (
           <div className="hidden md:flex gap-8 items-center font-label-sm text-label-sm">
             <Link
               to="/"
-              className={`transition-all duration-300 ease-in-out active:scale-95 ${
-                location.pathname === "/"
+              className={`transition-all duration-300 ease-in-out active:scale-95 ${location.pathname === "/"
                   ? "text-surface-tint font-bold border-b-2 border-surface-tint pb-1 hover:text-primary-fixed-dim"
                   : "text-on-surface-variant font-medium hover:text-primary-fixed-dim"
-              }`}
+                }`}
             >
-              Store
+              {t('store')}
             </Link>
             <Link
               to="/library"
-              className={`transition-all duration-300 ease-in-out active:scale-95 ${
-                location.pathname === "/library"
+              className={`transition-all duration-300 ease-in-out active:scale-95 ${location.pathname === "/library"
                   ? "text-surface-tint font-bold border-b-2 border-surface-tint pb-1 hover:text-primary-fixed-dim"
                   : "text-on-surface-variant font-medium hover:text-primary-fixed-dim"
-              }`}
+                }`}
             >
-              Library
+              {t('library')}
             </Link>
             <Link
               to="/community"
-              className={`transition-all duration-300 ease-in-out active:scale-95 ${
-                location.pathname === "/community"
+              className={`transition-all duration-300 ease-in-out active:scale-95 ${location.pathname === "/community"
                   ? "text-surface-tint font-bold border-b-2 border-surface-tint pb-1 hover:text-primary-fixed-dim"
                   : "text-on-surface-variant font-medium hover:text-primary-fixed-dim"
-              }`}
+                }`}
             >
-              Community
+              {t('community')}
             </Link>
             <Link
               to="/dev-portal"
-              className={`transition-all duration-300 ease-in-out active:scale-95 ${
-                location.pathname.startsWith("/dev-portal")
+              className={`transition-all duration-300 ease-in-out active:scale-95 ${location.pathname.startsWith("/dev-portal")
                   ? "text-surface-tint font-bold border-b-2 border-surface-tint pb-1 hover:text-primary-fixed-dim"
                   : "text-on-surface-variant font-medium hover:text-primary-fixed-dim"
-              }`}
+                }`}
             >
-              Dev Portal
+              {t('devPortal')}
             </Link>
           </div>
         )}
@@ -150,9 +148,22 @@ export default function Header() {
         <div className="flex items-center gap-6">
           {!isAdmin && (
             <button className="hidden md:block font-label-sm text-label-sm text-surface-tint border border-surface-tint/50 px-4 py-2 rounded uppercase tracking-widest hover:bg-surface-tint/10 transition-colors">
-              Support Dev
+              {t('supportDev')}
             </button>
           )}
+          <div className="hidden sm:flex items-center">
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="bg-surface-container-lowest border border-outline-variant/50 text-on-surface text-xs uppercase tracking-widest px-3 py-2 rounded-lg transition-all focus:outline-none focus:ring-1 focus:ring-primary-container"
+            >
+              {Object.entries(languageNames).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-center gap-4 text-surface-tint">
             {isAdmin ? (
               <>
@@ -213,7 +224,7 @@ export default function Header() {
             </button>
             <Link
               to="/login"
-              className="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-white/10 block hover:border-surface-tint transition-all cursor-pointer flex-shrink-0"
+              className="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-white/10 block hover:border-surface-tint transition-all cursor-pointer shrink-0"
             >
               <img
                 alt="User profile"

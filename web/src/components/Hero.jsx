@@ -1,34 +1,33 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function Hero() {
+  const { t } = useLanguage();
   const featured = [
     {
       id: "neon-drifter",
-      title: "Neon Drifter",
-      description:
-        "Experience high-speed atmospheric racing through the cyberpunk ruins of Neo-Kobe. Physics-defying drifts and synthwave beats await in this critically acclaimed Godot masterpiece.",
-      engine: "GODOT ENGINE",
+      title: t('neonDrifterTitle'),
+      description: t('neonDrifterDescription'),
+      engine: t('godotEngine'),
       price: "$14.99",
       image:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuC_XjYQg-9zJrGRyB-kOfcBFsHgykYpXlgCSBeykisnHw2sU1M1iUoxyAMLsNtJife6656pATKniS_lcz_I3bfNlX3gjfsyBBJ4w_4BpEcnkoEGg2FwoAQxR68E_JQ_C7zogbQlJpFVb5c_m7A9LHhwN_TtGmJon-iLEQ1-3ECRpRn7UzRAJdiT1wz-mU6Y2jiM2X5ik3QJAV7tBilOATStPhf5iuwsb1oOUlwc2KxYBWiDTqYhprQHaF3GUplB6OhavGnJzzjeqsF_",
     },
     {
       id: "student-quest",
-      title: "Student Quest",
-      description:
-        "Embark on an epic adventure through magical academies and enchanted dungeons. Build friendships, master spells, and uncover the secrets of the mystical realm in this indie RPG.",
-      engine: "GODOT ENGINE",
+      title: t('studentQuestTitle'),
+      description: t('studentQuestDescription'),
+      engine: t('godotEngine'),
       price: "$9.99",
       image:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuBGSTmdKVD8x-sX6SV8dVZvUaJocOtHq_zHG8i35o3FPWY_HLxgkFef_0HfMTJgmchlmYmHHamVleqqsYlT0VrQNhz0jeaoxEc586i7aBpVURplL8p6kmsLl-pzOEVlonfzirjP7l6RrA6ro3jQfbkJ1LyR3Hx6n_CCWoJbxsB9AN_4Gv0kMIFEs3W8-KdbQqWXgdZ4bmcHfE-qrDilzHmXFQCUzOzzFLmvu9YDXzhQkCmEpMo-Mfe58AYT7S1G0puOfNgTstKmODsn",
     },
     {
       id: "void-protocol",
-      title: "Void Protocol",
-      description:
-        "A mind-bending puzzle platformer where reality shifts at your command. Navigate through impossible geometry and uncover the truth hidden in the void in this FREE indie masterpiece.",
-      engine: "GODOT ENGINE",
-      price: "FREE",
+      title: t('voidProtocolTitle'),
+      description: t('voidProtocolDescription'),
+      engine: t('godotEngine'),
+      price: t('free'),
       image:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuD9zbZtPP21KviTY1bLBjP_wwbpX7B5D0eDLybU0jcg6gaVIOhEHozug16y-zhl0mQc-6S0AcCMU0cD_vzDLXBMcK5j9CDXspgM3y2S2RvyD2gC96c9beIPyRI_X7KPSixsVRwpvHVAJTfNPegkZOzGApNo6wGNJy9u7UNT3hzH-lwLFSlPuBpgZuFcZoNx8-yoiEnJhSTHMltDqQOO6d-6rBFE2IWHM6vWeh0o7FyW9QAbkwq1wXFQAoNWWB2Chv2kgIJtRfydyKiL",
     },
@@ -118,7 +117,7 @@ export default function Hero() {
       <div className="relative z-20 p-8 md:p-12 w-full md:w-2/3 pointer-events-none">
         <div className="flex gap-2 mb-4">
           <span className="font-label-sm text-label-sm text-surface-container-lowest bg-surface-tint px-2 py-1 rounded shadow-[0_0_10px_rgba(0,242,255,0.3)]">
-            FEATURED
+            {t('featuredLabel')}
           </span>
           <span className="font-label-sm text-label-sm text-secondary bg-surface-container-highest px-2 py-1 rounded border border-white/10">
             {current.engine}
@@ -139,11 +138,11 @@ export default function Hero() {
             >
               play_arrow
             </span>
-            <span className="relative z-10">PLAY NOW - {current.price}</span>
+            <span className="relative z-10">{t('playNow')} - {current.price}</span>
           </button>
           <button className="bg-surface-container-highest/50 backdrop-blur border border-secondary text-secondary font-label-sm text-label-sm px-6 py-3 rounded-lg hover:bg-secondary/10 hover:shadow-[0_0_15px_rgba(209,188,255,0.3)] transition-all duration-300 active:scale-95 flex items-center gap-2 pointer-events-auto">
             <span className="material-symbols-outlined">favorite</span>
-            SUPPORT DEVELOPER
+            {t('supportDeveloper')}
           </button>
         </div>
       </div>
@@ -153,13 +152,11 @@ export default function Hero() {
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={`${
-              index === currentIndex ? "w-8" : "w-4"
-            } h-1 rounded transition-all duration-300 ${
-              index === currentIndex
+            className={`${index === currentIndex ? "w-8" : "w-4"
+              } h-1 rounded transition-all duration-300 ${index === currentIndex
                 ? "bg-surface-tint shadow-[0_0_10px_rgba(0,242,255,0.5)]"
                 : "bg-white/20 hover:bg-white/50"
-            }`}
+              }`}
           ></button>
         ))}
       </div>

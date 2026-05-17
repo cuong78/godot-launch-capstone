@@ -1,18 +1,20 @@
 import React from 'react';
 import { MessageSquare, Bug, Code, Headset } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
 
 export default function Sidebar() {
+    const { t } = useLanguage();
     return (
         <aside className="col-span-1 md:col-span-3 flex flex-col gap-6">
             <div className="bg-surface-container/40 backdrop-blur-md rounded-xl border border-white/5 p-6 neon-border">
-                <h2 className="font-headline-md text-headline-md text-surface-tint mb-6 tracking-wide">Discussion Forums</h2>
+                <h2 className="font-headline-md text-headline-md text-surface-tint mb-6 tracking-wide"> {t('discussionForums')}</h2>
                 <ul className="flex flex-col gap-4">
                     <li className="flex items-start justify-between group cursor-pointer">
                         <div className="flex gap-3">
                             <MessageSquare className="text-on-surface-variant group-hover:text-surface-tint transition-colors" size={20} />
                             <div>
-                                <span className="font-body-md text-body-md text-on-surface group-hover:text-surface-tint transition-colors block">General Discussions</span>
-                                <span className="font-label-sm text-label-sm text-on-surface-variant mt-1 block">12.4k Posts</span>
+                                <span className="font-body-md text-body-md text-on-surface group-hover:text-surface-tint transition-colors block"> {t('generalDiscussions')}</span>
+                                <span className="font-label-sm text-label-sm text-on-surface-variant mt-1 block"> {t('postCount', { count: '12.4k' })}</span>
                             </div>
                         </div>
                         <div className="flex -space-x-2">
@@ -23,8 +25,8 @@ export default function Sidebar() {
                         <div className="flex gap-3">
                             <Bug className="text-on-surface-variant group-hover:text-secondary transition-colors" size={20} />
                             <div>
-                                <span className="font-body-md text-body-md text-on-surface group-hover:text-secondary transition-colors block">Cyber Bloom Feedback</span>
-                                <span className="font-label-sm text-label-sm text-on-surface-variant mt-1 block">842 Posts</span>
+                                <span className="font-body-md text-body-md text-on-surface group-hover:text-secondary transition-colors block"> {t('cyberBloomFeedback')}</span>
+                                <span className="font-label-sm text-label-sm text-on-surface-variant mt-1 block"> {t('postCount', { count: '842' })}</span>
                             </div>
                         </div>
                     </li>
@@ -32,8 +34,8 @@ export default function Sidebar() {
                         <div className="flex gap-3">
                             <Code className="text-on-surface-variant group-hover:text-surface-tint transition-colors" size={20} />
                             <div>
-                                <span className="font-body-md text-body-md text-on-surface group-hover:text-surface-tint transition-colors block">void Protocol Modding</span>
-                                <span className="font-label-sm text-label-sm text-on-surface-variant mt-1 block">3.1k Posts</span>
+                                <span className="font-body-md text-body-md text-on-surface group-hover:text-surface-tint transition-colors block"> {t('voidProtocolModding')}</span>
+                                <span className="font-label-sm text-label-sm text-on-surface-variant mt-1 block"> {t('postCount', { count: '3.1k' })}</span>
                             </div>
                         </div>
                     </li>
@@ -41,8 +43,8 @@ export default function Sidebar() {
                         <div className="flex gap-3">
                             <Headset className="text-on-surface-variant group-hover:text-primary-fixed-dim transition-colors" size={20} />
                             <div>
-                                <span className="font-body-md text-body-md text-on-surface group-hover:text-primary-fixed-dim transition-colors block">Help &amp; Support</span>
-                                <span className="font-label-sm text-label-sm text-on-surface-variant mt-1 block">5.2k Posts</span>
+                                <span className="font-body-md text-body-md text-on-surface group-hover:text-primary-fixed-dim transition-colors block"> {t('helpAndSupport')}</span>
+                                <span className="font-label-sm text-label-sm text-on-surface-variant mt-1 block"> {t('postCount', { count: '5.2k' })}  </span>
                             </div>
                         </div>
                     </li>

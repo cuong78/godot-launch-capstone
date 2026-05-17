@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../../hooks/useLanguage';
 import {
   Award,
   Cloud,
@@ -12,6 +13,8 @@ import {
 } from "lucide-react";
 
 export default function MainContent() {
+  const { t } = useLanguage();
+
   return (
     <div className="flex-grow flex flex-col overflow-y-auto relative scroll-smooth h-full">
       {/* Hero Header Section */}
@@ -31,10 +34,10 @@ export default function MainContent() {
             {/* Technical Badges */}
             <div className="flex gap-2">
               <span className="bg-[#121418] border border-outline-variant/50 text-on-surface-variant font-label-sm text-[10px] px-2 py-1 rounded tracking-wider uppercase">
-                Action / Racing
+                {t('actionRacingGenre')}
               </span>
               <span className="bg-[#121418] border border-outline-variant/50 text-on-surface-variant font-label-sm text-[10px] px-2 py-1 rounded tracking-wider uppercase flex items-center gap-1">
-                <Cloud className="w-3 h-3" /> Cloud Synced
+                <Cloud className="w-3 h-3" /> {t('cloudSynced')}
               </span>
             </div>
             <h1 className="font-display-lg text-display-lg text-white font-extrabold drop-shadow-[0_0_10px_rgba(0,242,255,0.5)]">
@@ -45,11 +48,11 @@ export default function MainContent() {
           <div className="flex gap-4 items-center">
             <button className="bg-transparent border border-primary-container text-primary-container font-label-sm text-label-sm px-6 py-3 rounded uppercase tracking-widest hover:bg-primary-container/10 transition-colors shadow-[0_0_15px_rgba(0,242,255,0.1)] flex items-center gap-2">
               <Download className="w-4 h-4" />
-              Update (1.2GB)
+              {t('updateLabel')} (1.2GB)
             </button>
             <button className="bg-primary-container text-[#0A0C10] font-headline-md text-[20px] font-bold px-10 py-3 rounded uppercase tracking-widest hover:bg-primary-fixed hover:shadow-[0_0_20px_rgba(0,242,255,0.4)] transition-all btn-scanline flex items-center gap-2">
               <Play className="w-6 h-6 fill-current" />
-              Play
+              {t('playLabel')}
             </button>
           </div>
         </div>
@@ -58,28 +61,28 @@ export default function MainContent() {
       <div className="bg-surface-container-low/80 border-y border-outline-variant/20 px-8 py-3 flex gap-8 items-center z-10 backdrop-blur-md">
         <div className="flex flex-col">
           <span className="font-label-sm text-[10px] text-outline tracking-wider uppercase mb-1">
-            Total Playtime
+            {t('totalPlaytime')}
           </span>
           <span className="font-label-sm text-sm text-primary-container">
-            14h 22m
+            {t('playtimeValue')}
           </span>
         </div>
         <div className="w-px h-6 bg-outline-variant/30"></div>
         <div className="flex flex-col">
           <span className="font-label-sm text-[10px] text-outline tracking-wider uppercase mb-1">
-            Last Played
+            {t('lastPlayed')}
           </span>
           <span className="font-label-sm text-sm text-on-surface">
-            Yesterday
+            {t('yesterday')}
           </span>
         </div>
         <div className="w-px h-6 bg-outline-variant/30"></div>
         <div className="flex flex-col">
           <span className="font-label-sm text-[10px] text-outline tracking-wider uppercase mb-1">
-            Version
+            {t('versionLabel')}
           </span>
           <span className="font-label-sm text-sm text-on-surface">
-            v2.1.4_stable
+            {t('currentVersion')}
           </span>
         </div>
         <div className="ml-auto">
@@ -94,16 +97,16 @@ export default function MainContent() {
         {/* Contextual Tabs */}
         <div className="flex gap-8 border-b border-outline-variant/20 mb-8 pb-px">
           <button className="font-label-sm text-label-sm text-primary-container border-b-2 border-primary-container pb-3 px-2 uppercase tracking-widest shadow-[0_4px_10px_-4px_rgba(0,242,255,0.3)]">
-            Overview
+            {t('overview')}
           </button>
           <button className="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface pb-3 px-2 uppercase tracking-widest transition-colors">
-            Updates
+            {t('updates')}
           </button>
           <button className="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface pb-3 px-2 uppercase tracking-widest transition-colors">
-            Activity
+            {t('activity')}
           </button>
           <button className="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface pb-3 px-2 uppercase tracking-widest transition-colors flex items-center gap-2">
-            Achievements
+            {t('achievements')}
             <span className="bg-surface-container-highest text-on-surface text-[10px] px-1.5 py-0.5 rounded">
               24
             </span>
@@ -119,32 +122,27 @@ export default function MainContent() {
               <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-primary-container/10 to-transparent pointer-events-none"></div>
               <h2 className="font-headline-md text-[18px] text-white font-bold flex items-center gap-2">
                 <span className="w-1 h-4 bg-primary-container rounded-sm shadow-[0_0_8px_rgba(0,242,255,0.5)]"></span>
-                ABOUT THIS ARCHIVE
+                {t('aboutThisArchive')}
               </h2>
               <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-                Dive into the hyper-kinetic world of Neon Drifter. Master the
-                art of gravity-defying maneuvers across procedurally generated
-                synthwave landscapes. Uncover the secrets of the Void Grid while
-                outrunning rogue security protocols. The latest update
-                introduces the 'Cyber Bloom' expansion, adding 5 new sectors and
-                experimental propulsion mechanics.
+                {t('archiveDescription')}
               </p>
               <div className="flex gap-2 mt-2">
                 <span className="bg-surface-container-high text-on-surface font-label-sm text-[11px] px-3 py-1 rounded border border-outline-variant/30">
-                  Singleplayer
+                  {t('singleplayer')}
                 </span>
                 <span className="bg-surface-container-high text-on-surface font-label-sm text-[11px] px-3 py-1 rounded border border-outline-variant/30">
-                  Controller Support
+                  {t('controllerSupport')}
                 </span>
                 <span className="bg-surface-container-high text-on-surface font-label-sm text-[11px] px-3 py-1 rounded border border-outline-variant/30">
-                  Workshop
+                  {t('workshop')}
                 </span>
               </div>
             </div>
             {/* Recent Activity Feed */}
             <div>
               <h3 className="font-label-sm text-[12px] text-outline uppercase tracking-widest mb-4 mt-8 px-1">
-                Recent Activity
+                {t('recentActivity')}
               </h3>
               <div className="space-y-3">
                 {/* Activity Item 1 */}
@@ -155,14 +153,14 @@ export default function MainContent() {
                   <div className="flex flex-col justify-center">
                     <div className="flex items-baseline gap-2">
                       <span className="font-body-md text-sm text-on-surface font-medium">
-                        Achievement Unlocked:{" "}
+                        {t('achievementUnlocked')} {" "}
                         <span className="text-secondary font-bold">
-                          Grid Walker
+                          {t('gridWalker')}
                         </span>
                       </span>
                     </div>
                     <span className="font-label-sm text-[10px] text-on-surface-variant mt-1">
-                      Yesterday at 22:45 UTC
+                      {t('yesterdayAtTime')}
                     </span>
                   </div>
                 </div>
@@ -174,7 +172,7 @@ export default function MainContent() {
                   <div className="flex flex-col justify-center w-full">
                     <div className="flex items-baseline gap-2 mb-2">
                       <span className="font-body-md text-sm text-on-surface font-medium">
-                        You captured 3 new screenshots
+                        {t('youCapturedScreenshots')}
                       </span>
                     </div>
                     <div className="flex gap-2 h-16 w-full">
@@ -206,7 +204,7 @@ export default function MainContent() {
               <div className="absolute -top-10 -right-10 w-32 h-32 bg-secondary/10 rounded-full blur-2xl pointer-events-none"></div>
               <div className="flex justify-between items-end mb-4 relative z-10">
                 <h3 className="font-headline-md text-[16px] text-white font-bold">
-                  Achievements
+                  {t('achievements')}
                 </h3>
                 <span className="font-label-sm text-[12px] text-secondary tracking-widest">
                   24/40
@@ -235,11 +233,11 @@ export default function MainContent() {
             {/* Developer Info Panel */}
             <div className="bg-surface-container-low/40 border border-outline-variant/20 p-5 rounded-xl space-y-4">
               <h3 className="font-label-sm text-[12px] text-outline uppercase tracking-widest border-b border-outline-variant/20 pb-2">
-                Archive Metadata
+                {t('archiveMetadata')}
               </h3>
               <div className="flex justify-between items-center">
                 <span className="font-body-md text-sm text-on-surface-variant">
-                  Developer
+                  {t('developerLabel')}
                 </span>
                 <span className="font-label-sm text-[11px] text-primary hover:text-primary-container cursor-pointer transition-colors">
                   Synapse Studios
@@ -247,7 +245,7 @@ export default function MainContent() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-body-md text-sm text-on-surface-variant">
-                  Publisher
+                  {t('publisherLabel')}
                 </span>
                 <span className="font-label-sm text-[11px] text-primary hover:text-primary-container cursor-pointer transition-colors">
                   INDIE_CORE Originals
@@ -255,7 +253,7 @@ export default function MainContent() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-body-md text-sm text-on-surface-variant">
-                  Release Date
+                  {t('releaseDate')}
                 </span>
                 <span className="font-label-sm text-[11px] text-on-surface">
                   Oct 24, 2042
@@ -263,7 +261,7 @@ export default function MainContent() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-body-md text-sm text-on-surface-variant">
-                  Disk Usage
+                  {t('diskUsage')}
                 </span>
                 <span className="font-label-sm text-[11px] text-on-surface">
                   14.2 GB

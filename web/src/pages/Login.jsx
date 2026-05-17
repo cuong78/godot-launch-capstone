@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { User, Lock, Check, Code, Cloud } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [username, setUsername] = useState('');
 
   const handleLogin = (e) => {
@@ -27,13 +29,13 @@ export default function Login() {
         <div className="space-y-8 relative z-20">
           <header className="text-center space-y-2">
             <h1 className="font-headline-lg text-headline-lg text-primary-container uppercase tracking-tighter drop-shadow-[0_0_10px_rgba(0,242,255,0.5)]">
-              LOGIN
+              {t('login')}
             </h1>
             <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-[0.2em]">
-              Authorized Access Only
+              {t('authorizedAccessOnly')}
             </p>
           </header>
-          
+
           <form className="space-y-6" onSubmit={handleLogin}>
             <div className="space-y-4">
               <div className="group">
@@ -43,7 +45,7 @@ export default function Login() {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Username"
+                    placeholder={t('username')}
                     className="w-full bg-surface-container-lowest border border-outline-variant/50 focus:border-primary-container focus:ring-1 focus:ring-primary-container py-4 pl-12 pr-4 text-on-surface font-body-md placeholder:text-on-surface-variant/40 rounded-lg transition-all outline-none shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]"
                   />
                 </div>
@@ -53,7 +55,7 @@ export default function Login() {
                   <Lock className="absolute left-4 w-5 h-5 text-primary-container/70 group-focus-within:text-primary-container transition-colors" />
                   <input
                     type="password"
-                    placeholder="Password"
+                    placeholder={t('password')}
                     className="w-full bg-surface-container-lowest border border-outline-variant/50 focus:border-primary-container focus:ring-1 focus:ring-primary-container py-4 pl-12 pr-4 text-on-surface font-body-md placeholder:text-on-surface-variant/40 rounded-lg transition-all outline-none shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]"
                   />
                 </div>
@@ -70,11 +72,11 @@ export default function Login() {
                   <Check className="absolute pointer-events-none w-3 h-3 text-on-primary hidden peer-checked:block" strokeWidth={3} />
                 </div>
                 <span className="group-hover:text-primary-container transition-colors uppercase">
-                  Remember Me
+                  {t('rememberMe')}
                 </span>
               </label>
               <a href="#" className="hover:text-primary-container transition-colors uppercase tracking-wider">
-                Forgot Password?
+                {t('forgotPassword')}
               </a>
             </div>
 
@@ -83,34 +85,34 @@ export default function Login() {
               className="w-full py-4 bg-primary-container text-on-primary-fixed font-headline-md text-headline-md uppercase tracking-widest rounded-lg hover:shadow-[0_0_20px_rgba(0,242,255,0.6)] active:scale-[0.98] transition-all relative overflow-hidden group cursor-pointer"
             >
               <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.1)_50%,transparent_50%)] bg-[length:100%_4px] pointer-events-none opacity-20"></div>
-              LOGIN
+              {t('login')}
             </button>
           </form>
 
-            <div className="flex justify-center gap-6">
-              <button
-                type="button"
-                title="Sign in with GitHub"
-                className="p-3 bg-surface-container-high/40 border border-outline-variant/30 rounded-lg hover:border-secondary transition-all group cursor-pointer flex items-center justify-center"
-              >
-                <Code className="w-5 h-5 text-on-surface-variant group-hover:text-secondary transition-colors" />
-              </button>
-              <button
-                type="button"
-                title="Sign in with Cloud"
-                className="p-3 bg-surface-container-high/40 border border-outline-variant/30 rounded-lg hover:border-secondary transition-all group cursor-pointer flex items-center justify-center"
-              >
-                <Cloud className="w-5 h-5 text-on-surface-variant group-hover:text-secondary transition-colors" />
-              </button>
-            </div>
-            <p className="text-center font-label-sm text-label-sm text-on-surface-variant/50 mt-6">
-              NO IDENTITY CORE FOUND?{' '}
-              <Link to="/register" className="text-secondary hover:text-primary-container transition-colors tracking-widest uppercase">
-                REGISTER
-              </Link>
-            </p>
+          <div className="flex justify-center gap-6">
+            <button
+              type="button"
+              title="Sign in with GitHub"
+              className="p-3 bg-surface-container-high/40 border border-outline-variant/30 rounded-lg hover:border-secondary transition-all group cursor-pointer flex items-center justify-center"
+            >
+              <Code className="w-5 h-5 text-on-surface-variant group-hover:text-secondary transition-colors" />
+            </button>
+            <button
+              type="button"
+              title="Sign in with Cloud"
+              className="p-3 bg-surface-container-high/40 border border-outline-variant/30 rounded-lg hover:border-secondary transition-all group cursor-pointer flex items-center justify-center"
+            >
+              <Cloud className="w-5 h-5 text-on-surface-variant group-hover:text-secondary transition-colors" />
+            </button>
           </div>
+          <p className="text-center font-label-sm text-label-sm text-on-surface-variant/50 mt-6">
+            {t('noIdentityCore')}{' '}
+            <Link to="/register" className="text-secondary hover:text-primary-container transition-colors tracking-widest uppercase">
+              {t('register')}
+            </Link>
+          </p>
         </div>
+      </div>
     </main>
   );
 }
