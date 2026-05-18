@@ -1,0 +1,79 @@
+package com.godotlaunch.backend.entity;
+
+import com.godotlaunch.backend.entity.enums.GameStatus;
+import com.godotlaunch.backend.entity.enums.PublishingType;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+@Entity
+@Table(name = "games")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Game {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "creator_id", nullable = false)
+    private User creator;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "thumbnail_url", columnDefinition = "TEXT")
+    private String thumbnailUrl;
+
+    @Column(name = "file_url", columnDefinition = "TEXT")
+    private String fileUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "game_status_enum")
+    private GameStatus status = GameStatus.draft;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "publishing_type", columnDefinition = "publishing_type_enum")
+    private PublishingType publishingType;
+
+    @Column(name = "price_proposed", precision = 15, scale = 2)
+    private BigDecimal priceProposed;
+
+    @Column(name = "download_price", precision = 15, scale = 2)
+    private BigDecimal downloadPrice;
+
+    @Column(name = "community_available", nullable = false)
+    private boolean communityAvailable = false;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "game_tags",
+        joinColumns = @JoinColumn(name = "game_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private Set<Tag> tags = new HashSet<>();
+
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
+    private Instant updatedAt;
+}

@@ -1,0 +1,15 @@
+package com.godotlaunch.backend.repository;
+
+import com.godotlaunch.backend.entity.GamePurchase;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface GamePurchaseRepository extends JpaRepository<GamePurchase, UUID> {
+    List<GamePurchase> findByBuyerId(UUID buyerId);
+    List<GamePurchase> findByGameId(UUID gameId);
+    boolean existsByBuyerIdAndGameId(UUID buyerId, UUID gameId);
+}
