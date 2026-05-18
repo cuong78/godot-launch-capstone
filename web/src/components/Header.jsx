@@ -7,7 +7,7 @@ import {
   Settings,
   Heart,
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useNotification } from "../hooks/useNotification";
 import { useCart } from "../hooks/useCart";
 import { useWishlist } from "../hooks/useWishlist";
@@ -15,12 +15,48 @@ import { useLanguage } from "../hooks/useLanguage";
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdmin = location.pathname.startsWith("/admin");
   const { unreadCount, setIsNotificationOpen, isNotificationOpen } =
     useNotification();
   const { cartCount, setIsCartOpen, isCartOpen } = useCart();
   const { wishlistCount, setIsWishlistOpen, isWishlistOpen } = useWishlist();
   const { language, setLanguage, languageNames, t } = useLanguage();
+
+  const [currentUser, setCurrentUser] = React.useState(() => {
+    try {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const userStr = localStorage.getItem("user");
+        setCurrentUser(userStr ? JSON.parse(userStr) : null);
+      } catch (e) {
+        setCurrentUser(null);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setCurrentUser(null);
+    setIsProfileDropdownOpen(false);
+    window.dispatchEvent(new Event("storage"));
+    navigate("/login");
+  };
 
   const handleCartClick = () => {
     setIsNotificationOpen(false);
@@ -222,20 +258,77 @@ export default function Header() {
                 </span>
               )}
             </button>
-            <Link
-              to="/login"
-              className="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-white/10 block hover:border-surface-tint transition-all cursor-pointer shrink-0"
-            >
-              <img
-                alt="User profile"
-                className="w-full h-full object-cover"
-                src={
-                  isAdmin
-                    ? "https://lh3.googleusercontent.com/aida-public/AB6AXuCa1cAURjwqpEFrc2Tu_jVVbf55otNZTIZ2kSxnLml55ukqSwTyS5xRwkw0OUHPx7UcdWjOOjVeenxKDMBnpQzIle6iXJV5B3UmaUzAG1tenx-Cb5XEimErcZSMg42qNoMjE3n1QOn3IOtZ3HEUxeTD4_RO09qARz9QOn6brVk0Z9AgnNJqd4lp1sF9Uskb2-QN7t7nkjEQ_dbzG9bVOtZcfwQ9lWrRRuj1pRmt6yCbE3L59UzqrgGbXeqGfEPLHZGuya3hsCxL0MrU"
-                    : "https://lh3.googleusercontent.com/aida-public/AB6AXuCbd2dT12ZtEf7c-mfxRSvXg2Fn5K64gg5sl24X3AEZbXN2TEtuJ-f9FVI9IsIMgSdHtbmj1OY4EPIU47YJ-SLFnn5lQSkmidlsoIpjrqCodm2AC9tU1s7RpJllR68lvcUXuBkngh5ml8HABcGICSnTBzCosIeDlx9BpKN5f8O_NiKTU0z7lS9JDulDJIDbsGMrPZHrU94xoSmGCwJ9JJjxHO5GQuAtq1Gd70ks3iGCg-JDCsC34-owmdY3jaOPqSurwOuvF_ZAWqyV"
-                }
-              />
-            </Link>
+            {currentUser ? (
+              <div className="relative">
+                <button
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-white/10 block hover:border-surface-tint transition-all cursor-pointer shrink-0 focus:outline-none focus:ring-1 focus:ring-primary-container"
+                >
+                  <img
+                    alt="User profile"
+                    className="w-full h-full object-cover"
+                    src={
+                      currentUser.avatarUrl ||
+                      (currentUser.roleName.toLowerCase() === 'admin'
+                        ? "https://lh3.googleusercontent.com/aida-public/AB6AXuCa1cAURjwqpEFrc2Tu_jVVbf55otNZTIZ2kSxnLml55ukqSwTyS5xRwkw0OUHPx7UcdWjOOjVeenxKDMBnpQzIle6iXJV5B3UmaUzAG1tenx-Cb5XEimErcZSMg42qNoMjE3n1QOn3IOtZ3HEUxeTD4_RO09qARz9QOn6brVk0Z9AgnNJqd4lp1sF9Uskb2-QN7t7nkjEQ_dbzG9bVOtZcfwQ9lWrRRuj1pRmt6yCbE3L59UzqrgGbXeqGfEPLHZGuya3hsCxL0MrU"
+                        : "https://lh3.googleusercontent.com/aida-public/AB6AXuCbd2dT12ZtEf7c-mfxRSvXg2Fn5K64gg5sl24X3AEZbXN2TEtuJ-f9FVI9IsIMgSdHtbmj1OY4EPIU47YJ-SLFnn5lQSkmidlsoIpjrqCodm2AC9tU1s7RpJllR68lvcUXuBkngh5ml8HABcGICSnTBzCosIeDlx9BpKN5f8O_NiKTU0z7lS9JDulDJIDbsGMrPZHrU94xoSmGCwJ9JJjxHO5GQuAtq1Gd70ks3iGCg-JDCsC34-owmdY3jaOPqSurwOuvF_ZAWqyV")
+                    }
+                  />
+                </button>
+
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-56 rounded-lg bg-surface-container-lowest/95 backdrop-blur-xl border border-white/10 p-4 shadow-[0_4px_25px_rgba(0,0,0,0.5)] z-50 flex flex-col gap-3 font-mono text-[10px] text-on-surface">
+                    <div className="border-b border-white/10 pb-2">
+                      <p className="font-bold text-xs text-primary-container truncate">{currentUser.fullName || currentUser.username}</p>
+                      <p className="text-[9px] text-on-surface-variant/70 uppercase tracking-widest mt-0.5">@{currentUser.username}</p>
+                      <span className={`inline-block mt-2 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                        currentUser.roleName.toLowerCase() === 'admin' 
+                          ? 'bg-error/15 text-error border border-error/30' 
+                          : currentUser.roleName.toLowerCase() === 'developer'
+                          ? 'bg-primary-container/15 text-primary-container border border-primary-container/30'
+                          : 'bg-secondary/15 text-secondary border border-secondary/30'
+                      }`}>
+                        {currentUser.roleName}
+                      </span>
+                    </div>
+                    
+                    {currentUser.roleName.toLowerCase() === 'developer' && (
+                      <Link 
+                        to="/dev-portal" 
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="hover:text-primary-container hover:bg-white/5 p-2 rounded transition-all uppercase tracking-wider text-left block"
+                      >
+                        {t('devPortal')}
+                      </Link>
+                    )}
+                    
+                    {currentUser.roleName.toLowerCase() === 'admin' && (
+                      <Link 
+                        to="/admin" 
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="hover:text-primary-container hover:bg-white/5 p-2 rounded transition-all uppercase tracking-wider text-left block"
+                      >
+                        Glitch Admin
+                      </Link>
+                    )}
+
+                    <button
+                      onClick={handleLogout}
+                      className="w-full py-2 bg-error/20 hover:bg-error/30 border border-error/30 text-error rounded transition-all uppercase tracking-wider font-bold cursor-pointer text-center"
+                    >
+                      {t('logout')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="font-label-sm text-label-sm text-surface-tint border border-surface-tint/50 px-4 py-1.5 rounded uppercase tracking-widest hover:bg-surface-tint/10 transition-all duration-300 font-mono"
+              >
+                {t('login')}
+              </Link>
+            )}
           </div>
         </div>
       </div>

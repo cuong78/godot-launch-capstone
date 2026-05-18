@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Lock, Check, Code, Cloud } from 'lucide-react';
+import { User, Lock, Check, Code, Cloud, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -7,13 +7,52 @@ export default function Login() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (username === 'admin') {
-      navigate('/admin');
-    } else {
-      navigate('/');
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          usernameOrEmail: username,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Đăng nhập thất bại!');
+      }
+
+      // Save token and user details to localStorage
+      localStorage.setItem('token', data.data.token);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
+      window.dispatchEvent(new Event('storage'));
+
+      // Redirect depending on user role
+      const role = data.data.user.roleName.toLowerCase();
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'developer') {
+        navigate('/dev-portal');
+      } else {
+        navigate('/');
+      }
+    } catch (err) {
+      setError(err.message || 'Lỗi kết nối tới máy chủ!');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -37,6 +76,13 @@ export default function Login() {
           </header>
 
           <form className="space-y-6" onSubmit={handleLogin}>
+            
+            {error && (
+              <div className="p-3 bg-error-container/20 border border-error/50 text-error text-label-sm rounded-lg text-center font-mono uppercase tracking-wide">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-4">
               <div className="group">
                 <div className="relative flex items-center">
@@ -46,18 +92,34 @@ export default function Login() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder={t('username')}
+                    disabled={loading}
+                    autoComplete="off"
+                    required
                     className="w-full bg-surface-container-lowest border border-outline-variant/50 focus:border-primary-container focus:ring-1 focus:ring-primary-container py-4 pl-12 pr-4 text-on-surface font-body-md placeholder:text-on-surface-variant/40 rounded-lg transition-all outline-none shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]"
                   />
                 </div>
               </div>
+
               <div className="group">
-                <div className="relative flex items-center">
-                  <Lock className="absolute left-4 w-5 h-5 text-primary-container/70 group-focus-within:text-primary-container transition-colors" />
+                <div className="relative flex items-center bg-surface-container-lowest border border-outline-variant/50 focus-within:border-primary-container focus-within:ring-1 focus-within:ring-primary-container rounded-lg transition-all shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+                  <Lock className="w-5 h-5 text-primary-container/70 group-focus-within:text-primary-container transition-colors ml-4 mr-3 shrink-0" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder={t('password')}
-                    className="w-full bg-surface-container-lowest border border-outline-variant/50 focus:border-primary-container focus:ring-1 focus:ring-primary-container py-4 pl-12 pr-4 text-on-surface font-body-md placeholder:text-on-surface-variant/40 rounded-lg transition-all outline-none shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]"
+                    disabled={loading}
+                    autoComplete="new-password"
+                    required
+                    className="w-full bg-transparent border-none focus:outline-none focus:ring-0 py-4 pr-10 text-on-surface font-body-md placeholder:text-on-surface-variant/40"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 p-1 text-outline-variant hover:text-primary-container transition-colors focus:outline-none cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
             </div>
@@ -82,10 +144,11 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full py-4 bg-primary-container text-on-primary-fixed font-headline-md text-headline-md uppercase tracking-widest rounded-lg hover:shadow-[0_0_20px_rgba(0,242,255,0.6)] active:scale-[0.98] transition-all relative overflow-hidden group cursor-pointer"
+              disabled={loading}
+              className="w-full py-4 bg-primary-container text-on-primary-fixed font-headline-md text-headline-md uppercase tracking-widest rounded-lg hover:shadow-[0_0_20px_rgba(0,242,255,0.6)] active:scale-[0.98] transition-all relative overflow-hidden group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.1)_50%,transparent_50%)] bg-[length:100%_4px] pointer-events-none opacity-20"></div>
-              {t('login')}
+              {loading ? 'ĐANG ĐĂNG NHẬP...' : t('login')}
             </button>
           </form>
 

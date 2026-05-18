@@ -29,6 +29,8 @@ export const translations = {
     alreadySynchronized: "ALREADY SYNCHRONIZED?",
     enterOperativeHandle: "Enter operative handle...",
     usernamePlaceholder: "Enter operative handle...",
+    fullName: "Full Name",
+    fullNamePlaceholder: "Enter your full name...",
     directLinkPlaceholder: "direct_link@indie_core.net",
     emailPlaceholder: "direct_link@indie_core.net",
     confirm: "CONFIRM",
@@ -170,6 +172,7 @@ export const translations = {
     published: "Published",
     // Other
     addToWishlist: "Add to Wishlist",
+    logout: "Log Out",
   },
 
   vi: {
@@ -202,6 +205,8 @@ export const translations = {
     alreadySynchronized: "ĐÃ ĐỒNG BỘ CHƯA?",
     enterOperativeHandle: "Nhập tên tài khoản...",
     usernamePlaceholder: "Nhập tên tài khoản...",
+    fullName: "Họ và tên",
+    fullNamePlaceholder: "Nhập họ và tên của bạn...",
     directLinkPlaceholder: "direct_link@indie_core.net",
     emailPlaceholder: "direct_link@indie_core.net",
     confirm: "XÁC NHẬN",
@@ -328,6 +333,7 @@ export const translations = {
 
     // Other
     addToWishlist: "Thêm vào danh sách yêu thích",
+    logout: "Đăng xuất",
   },
 
   ja: {
@@ -360,6 +366,8 @@ export const translations = {
     alreadySynchronized: "すでに同期済みですか?",
     enterOperativeHandle: "操作ハンドルを入力...",
     usernamePlaceholder: "操作ハンドルを入力...",
+    fullName: "フルネーム",
+    fullNamePlaceholder: "フルネームを入力...",
     directLinkPlaceholder: "direct_link@indie_core.net",
     emailPlaceholder: "direct_link@indie_core.net",
     confirm: "確認",
@@ -486,5 +494,6 @@ export const translations = {
 
     // Other
     addToWishlist: "ウィッシュリストに追加",
+    logout: "ログアウト",
   },
 };

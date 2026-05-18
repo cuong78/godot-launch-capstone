@@ -6,6 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="33275470-931d-4ccf-8b3e-1200a6f57305" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/repository/PublishingGuideRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/repository/PublishingGuideRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/AuthServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/AuthServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/Header.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Header.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/i18n/translations.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/i18n/translations.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/pages/DevPortal.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/pages/DevPortal.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/pages/Login.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/pages/Login.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/pages/Register.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/pages/Register.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/vite.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/vite.config.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -105,7 +113,7 @@
       <workItem from="1778823871724" duration="2289000" />
       <workItem from="1778837466839" duration="423000" />
       <workItem from="1779095866060" duration="4759000" />
-      <workItem from="1779111305402" duration="327000" />
+      <workItem from="1779111305402" duration="3768000" />
     </task>
     <servers />
   </component>
