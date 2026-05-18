@@ -1,11 +1,18 @@
-import React from 'react';
-import { User, AtSign } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, AtSign, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLanguage } from '../hooks/useLanguage';
 
 export default function Register() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleRegister = (e) => {
     e.preventDefault();
@@ -43,7 +50,10 @@ export default function Register() {
               <User className="w-5 h-5 text-outline-variant mx-3 group-focus-within:text-primary-container transition-colors" />
               <input
                 type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 placeholder={t('usernamePlaceholder')}
+                autoComplete="off"
                 className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-on-surface font-body-md py-3 placeholder:text-outline-variant/40"
               />
             </div>
@@ -57,7 +67,10 @@ export default function Register() {
               <AtSign className="w-5 h-5 text-outline-variant mx-3 group-focus-within:text-primary-container transition-colors" />
               <input
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('emailPlaceholder')}
+                autoComplete="off"
                 className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-on-surface font-body-md py-3 placeholder:text-outline-variant/40"
               />
             </div>
@@ -70,10 +83,20 @@ export default function Register() {
               </label>
               <div className="flex items-center bg-surface-container-lowest border border-outline-variant/40 rounded-lg p-0.5 transition-all duration-300 focus-within:border-primary-container focus-within:ring-1 focus-within:ring-primary-container shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="********"
-                  className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-on-surface font-body-md py-3 px-4 placeholder:text-outline-variant/40"
+                  autoComplete="new-password"
+                  className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-on-surface font-body-md py-3 pl-4 pr-10 placeholder:text-outline-variant/40"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="p-2 text-outline-variant hover:text-primary-container transition-colors focus:outline-none mr-1 cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
             <div className="space-y-1.5 group">
@@ -82,10 +105,20 @@ export default function Register() {
               </label>
               <div className="flex items-center bg-surface-container-lowest border border-outline-variant/40 rounded-lg p-0.5 transition-all duration-300 focus-within:border-primary-container focus-within:ring-1 focus-within:ring-primary-container shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
                 <input
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="********"
-                  className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-on-surface font-body-md py-3 px-4 placeholder:text-outline-variant/40"
+                  autoComplete="new-password"
+                  className="w-full bg-transparent border-none focus:outline-none focus:ring-0 text-on-surface font-body-md py-3 pl-4 pr-10 placeholder:text-outline-variant/40"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="p-2 text-outline-variant hover:text-primary-container transition-colors focus:outline-none mr-1 cursor-pointer"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
           </div>
