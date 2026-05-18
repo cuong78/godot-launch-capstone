@@ -26,6 +26,9 @@ public class User {
     private Role role;
 
     @Column(nullable = false, unique = true, columnDefinition = "citext")
+    private String username;
+
+    @Column(nullable = false, unique = true, columnDefinition = "citext")
     private String email;
 
     @Column(name = "password_hash", nullable = false, length = 255)

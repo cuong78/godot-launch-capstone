@@ -7,8 +7,8 @@
     <list default="true" id="33275470-931d-4ccf-8b3e-1200a6f57305" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/web/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/entity/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/entity/User.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/repository/UserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/repository/UserRepository.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,7 +107,7 @@
       <workItem from="1778687385161" duration="374000" />
       <workItem from="1778823871724" duration="2289000" />
       <workItem from="1778837466839" duration="423000" />
-      <workItem from="1779095866060" duration="3468000" />
+      <workItem from="1779095866060" duration="4460000" />
     </task>
     <servers />
   </component>
