@@ -3,7 +3,6 @@ package com.godotlaunch.backend.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
-import java.time.Instant;
 import java.util.Map;
 
 @Getter
@@ -18,9 +17,6 @@ public class ApiResponse<T> {
     private String message;
     private T data;
     private Map<String, String> errors;
-    private String errorCode;
-    @Builder.Default
-    private long timestamp = Instant.now().toEpochMilli();
 
     public static <T> ApiResponse<T> success(T data, String message) {
         return ApiResponse.<T>builder()
@@ -31,11 +27,10 @@ public class ApiResponse<T> {
             .build();
     }
 
-    public static <T> ApiResponse<T> error(int status, String errorCode, String message) {
+    public static <T> ApiResponse<T> error(int status, String message) {
         return ApiResponse.<T>builder()
             .success(false)
             .status(status)
-            .errorCode(errorCode)
             .message(message)
             .build();
     }
@@ -49,3 +44,5 @@ public class ApiResponse<T> {
             .build();
     }
 }
+
+

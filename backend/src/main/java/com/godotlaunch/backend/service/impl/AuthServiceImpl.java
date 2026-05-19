@@ -83,6 +83,9 @@ public class AuthServiceImpl implements AuthService {
         if ("banned".equalsIgnoreCase(user.getStatus())) {
             throw new AppException(ErrorCode.USER_BANNED);
         }
+        if ("deleted".equalsIgnoreCase(user.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS);
+        }
 
         // 4. Generate token
         String token = jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName());
