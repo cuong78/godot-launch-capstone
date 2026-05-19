@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException ex) {
         ErrorCode errorCode = ex.getErrorCode();
-        log.warn("Application business exception occurred: [{} - {}]", errorCode.getCode(), ex.getMessage());
+        log.warn("Application business exception occurred: [{} - {}]", errorCode.name(), ex.getMessage());
         
         ApiResponse<Void> response = ApiResponse.error(
                 errorCode.getHttpStatus().value(),
