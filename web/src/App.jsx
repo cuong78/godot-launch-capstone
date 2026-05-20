@@ -15,6 +15,7 @@ import DevPortal from "./pages/DevPortal";
 import DashboardComponent from "./components/DevPortal/Dashboard";
 import MyGames from "./pages/MyGames";
 import Analytics from "./pages/Analytics";
+import DevGuides from "./pages/DevGuides";
 import Library from "./pages/Library";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -22,6 +23,7 @@ import Admin from "./pages/Admin";
 import AdminFinance from "./pages/AdminFinance";
 import AdminModeration from "./pages/AdminModeration";
 import AdminLogs from "./pages/AdminLogs";
+import AdminGuides from "./pages/AdminGuides";
 
 function App() {
   return (
@@ -50,6 +52,7 @@ function App() {
                     <Route index element={<DashboardComponent />} />
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="games" element={<MyGames />} />
+                    <Route path="guides" element={<DevGuides />} />
                   </Route>
                   <Route path="/library" element={<Library />} />
                   <Route path="/login" element={<Login />} />
@@ -61,6 +64,7 @@ function App() {
                     element={<AdminModeration />}
                   />
                   <Route path="/admin/logs" element={<AdminLogs />} />
+                  <Route path="/admin/guides" element={<AdminGuides />} />
                 </Routes>
               </div>
 

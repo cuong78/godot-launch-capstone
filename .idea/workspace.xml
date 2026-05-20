@@ -7,7 +7,11 @@
     <list default="true" id="33275470-931d-4ccf-8b3e-1200a6f57305" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/constant/ErrorCode.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/constant/ErrorCode.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/exception/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/exception/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/controller/PublishingGuideController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/controller/PublishingGuideController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/PublishingGuideService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/PublishingGuideService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/PublishingGuideServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/PublishingGuideServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/App.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/Header.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Header.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -109,7 +113,8 @@
       <workItem from="1779095866060" duration="4759000" />
       <workItem from="1779111305402" duration="3799000" />
       <workItem from="1779160517230" duration="2747000" />
-      <workItem from="1779183739027" duration="3305000" />
+      <workItem from="1779183739027" duration="4457000" />
+      <workItem from="1779281464785" duration="4742000" />
     </task>
     <servers />
   </component>

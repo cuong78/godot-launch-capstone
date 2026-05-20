@@ -14,7 +14,7 @@ public interface PublishingGuideService {
     
     PublishingGuideResponse getGuideById(UUID id);
     
-    PublishingGuideResponse createGuide(PublishingGuideRequest request, String currentUsername);
+    PublishingGuideResponse createGuide(PublishingGuideRequest request, String email);
     
     PublishingGuideResponse updateGuide(UUID id, PublishingGuideRequest request);
     

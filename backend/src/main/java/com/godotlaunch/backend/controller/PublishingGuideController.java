@@ -45,8 +45,8 @@ public class PublishingGuideController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PublishingGuideResponse> createGuide(
             @Valid @RequestBody PublishingGuideRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        PublishingGuideResponse response = publishingGuideService.createGuide(request, userDetails.getUsername());
+            @AuthenticationPrincipal String email) {
+        PublishingGuideResponse response = publishingGuideService.createGuide(request, email);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 

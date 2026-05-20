@@ -98,40 +98,35 @@ export default function Header() {
   return (
     <>
       <nav className="bg-surface-dim/75 backdrop-blur-xl border-b border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.4)] top-0 z-50 fixed w-full transition-all duration-300">
-        <div className={`h-[2px] w-full bg-gradient-to-r ${
-          isAdmin 
-            ? "from-error/45 via-error to-error/45" 
+        <div className={`h-[2px] w-full bg-gradient-to-r ${isAdmin
+            ? "from-error/45 via-error to-error/45"
             : "from-surface-tint/25 via-surface-tint to-surface-tint/25"
-        } opacity-80`} />
+          } opacity-80`} />
 
         <div className="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-3.5 max-w-container-max mx-auto relative">
-          
+
           <Link
             to={isAdmin ? "/admin" : "/"}
             className="flex items-center gap-2.5 group select-none shrink-0"
           >
             <div className="relative flex items-center justify-center">
-              <span className={`w-2 h-2 rounded-full ${
-                isAdmin 
-                  ? "bg-error animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]" 
+              <span className={`w-2 h-2 rounded-full ${isAdmin
+                  ? "bg-error animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]"
                   : "bg-surface-tint animate-ping shadow-[0_0_10px_rgba(0,219,231,0.8)]"
-              }`} />
-              <span className={`w-2 h-2 rounded-full absolute ${
-                isAdmin ? "bg-error/60" : "bg-surface-tint/60"
-              }`} />
+                }`} />
+              <span className={`w-2 h-2 rounded-full absolute ${isAdmin ? "bg-error/60" : "bg-surface-tint/60"
+                }`} />
             </div>
-            
+
             <div className="flex flex-col">
-              <span className={`font-mono text-[8px] tracking-[0.2em] uppercase leading-none font-bold ${
-                isAdmin ? "text-error/80" : "text-surface-tint/80"
-              }`}>
+              <span className={`font-mono text-[8px] tracking-[0.2em] uppercase leading-none font-bold ${isAdmin ? "text-error/80" : "text-surface-tint/80"
+                }`}>
                 {isAdmin ? "SYS_ADMIN" : "SYS_ONLINE"}
               </span>
-              <span className={`font-display-lg text-lg md:text-xl uppercase tracking-wider font-extrabold transition-all duration-300 leading-tight ${
-                isAdmin 
-                  ? "text-error drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]" 
+              <span className={`font-display-lg text-lg md:text-xl uppercase tracking-wider font-extrabold transition-all duration-300 leading-tight ${isAdmin
+                  ? "text-error drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]"
                   : "text-transparent bg-clip-text bg-gradient-to-r from-surface-tint via-primary-fixed to-secondary-fixed group-hover:drop-shadow-[0_0_8px_rgba(0,219,231,0.4)]"
-              }`}>
+                }`}>
                 {isAdmin ? "GLITCH_ADMIN" : "INDIE_CORE"}
               </span>
             </div>
@@ -153,91 +148,93 @@ export default function Header() {
               <div className="flex items-center bg-surface-container-lowest/60 border border-white/5 rounded-full p-1 gap-0.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
                 <Link
                   to="/admin/moderation"
-                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
-                    location.pathname === "/admin/moderation"
+                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${location.pathname === "/admin/moderation"
                       ? "text-error bg-error/10 border border-error/20 shadow-[0_0_10px_rgba(239,68,68,0.15)] font-bold"
                       : "text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <Gavel className="w-3.5 h-3.5" />
                   {t('moderation')}
                 </Link>
                 <Link
                   to="/admin/finance"
-                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
-                    location.pathname === "/admin/finance"
+                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${location.pathname === "/admin/finance"
                       ? "text-error bg-error/10 border border-error/20 shadow-[0_0_10px_rgba(239,68,68,0.15)] font-bold"
                       : "text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <DollarSign className="w-3.5 h-3.5" />
                   {t('finance')}
                 </Link>
                 <Link
                   to="/admin"
-                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
-                    location.pathname === "/admin"
+                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${location.pathname === "/admin"
                       ? "text-error bg-error/10 border border-error/20 shadow-[0_0_10px_rgba(239,68,68,0.15)] font-bold"
                       : "text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <Users className="w-3.5 h-3.5" />
                   {t('users')}
                 </Link>
                 <Link
                   to="/admin/logs"
-                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
-                    location.pathname === "/admin/logs"
+                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${location.pathname === "/admin/logs"
                       ? "text-error bg-error/10 border border-error/20 shadow-[0_0_10px_rgba(239,68,68,0.15)] font-bold"
                       : "text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <ClipboardList className="w-3.5 h-3.5" />
                   {t('logs')}
+                </Link>
+                <Link
+                  to="/admin/guides"
+                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${location.pathname === "/admin/guides"
+                      ? "text-error bg-error/10 border border-error/20 shadow-[0_0_10px_rgba(239,68,68,0.15)] font-bold"
+                      : "text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border border-transparent"
+                    }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Guides
                 </Link>
               </div>
             ) : (
               <div className="flex items-center bg-surface-container-lowest/60 border border-white/5 rounded-full p-1 gap-0.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
                 <Link
                   to="/"
-                  className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full font-mono text-[10.5px] uppercase tracking-wider transition-all duration-300 active:scale-95 ${
-                    location.pathname === "/"
+                  className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full font-mono text-[10.5px] uppercase tracking-wider transition-all duration-300 active:scale-95 ${location.pathname === "/"
                       ? "text-surface-tint bg-surface-tint/10 border border-surface-tint/20 shadow-[0_0_12px_rgba(0,242,255,0.15)] font-bold"
                       : "text-on-surface-variant/80 hover:text-on-surface hover:bg-white/5 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <Compass className="w-3.5 h-3.5" />
                   {t('store')}
                 </Link>
                 <Link
                   to="/library"
-                  className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full font-mono text-[10.5px] uppercase tracking-wider transition-all duration-300 active:scale-95 ${
-                    location.pathname === "/library"
+                  className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full font-mono text-[10.5px] uppercase tracking-wider transition-all duration-300 active:scale-95 ${location.pathname === "/library"
                       ? "text-surface-tint bg-surface-tint/10 border border-surface-tint/20 shadow-[0_0_12px_rgba(0,242,255,0.15)] font-bold"
                       : "text-on-surface-variant/80 hover:text-on-surface hover:bg-white/5 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <BookOpen className="w-3.5 h-3.5" />
                   {t('library')}
                 </Link>
                 <Link
                   to="/community"
-                  className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full font-mono text-[10.5px] uppercase tracking-wider transition-all duration-300 active:scale-95 ${
-                    location.pathname === "/community"
+                  className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full font-mono text-[10.5px] uppercase tracking-wider transition-all duration-300 active:scale-95 ${location.pathname === "/community"
                       ? "text-surface-tint bg-surface-tint/10 border border-surface-tint/20 shadow-[0_0_12px_rgba(0,242,255,0.15)] font-bold"
                       : "text-on-surface-variant/80 hover:text-on-surface hover:bg-white/5 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <Users className="w-3.5 h-3.5" />
                   {t('community')}
                 </Link>
                 <Link
                   to="/dev-portal"
-                  className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full font-mono text-[10.5px] uppercase tracking-wider transition-all duration-300 active:scale-95 ${
-                    location.pathname.startsWith("/dev-portal")
+                  className={`flex items-center gap-1.5 px-5 py-1.5 rounded-full font-mono text-[10.5px] uppercase tracking-wider transition-all duration-300 active:scale-95 ${location.pathname.startsWith("/dev-portal")
                       ? "text-surface-tint bg-surface-tint/10 border border-surface-tint/20 shadow-[0_0_12px_rgba(0,242,255,0.15)] font-bold"
                       : "text-on-surface-variant/80 hover:text-on-surface hover:bg-white/5 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <Terminal className="w-3.5 h-3.5" />
                   {t('devPortal')}
@@ -284,13 +281,13 @@ export default function Header() {
                       </span>
                     )}
                   </button>
-                  <button 
+                  <button
                     className="p-2 text-on-surface-variant/70 hover:text-error hover:bg-white/5 rounded-full transition-all duration-300 hidden sm:block active:scale-90 cursor-pointer"
                     title="Console"
                   >
                     <SquareTerminal className="w-4 h-4" />
                   </button>
-                  <button 
+                  <button
                     className="p-2 text-on-surface-variant/70 hover:text-error hover:bg-white/5 rounded-full transition-all duration-300 hidden sm:block active:scale-90 cursor-pointer"
                     title="System Settings"
                   >
@@ -310,7 +307,7 @@ export default function Header() {
                       </span>
                     )}
                   </button>
-                  
+
                   <button
                     onClick={handleNotificationClick}
                     className="relative p-2 text-on-surface-variant/75 hover:text-surface-tint hover:bg-white/5 rounded-full transition-all duration-300 active:scale-90 cursor-pointer"
@@ -344,11 +341,10 @@ export default function Header() {
               <div className="relative shrink-0 flex items-center gap-2">
                 <button
                   onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className={`w-9 h-9 rounded-full overflow-hidden border p-0.5 block transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-container ${
-                    isProfileDropdownOpen 
-                      ? "border-surface-tint shadow-[0_0_12px_rgba(0,242,255,0.4)]" 
+                  className={`w-9 h-9 rounded-full overflow-hidden border p-0.5 block transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-container ${isProfileDropdownOpen
+                      ? "border-surface-tint shadow-[0_0_12px_rgba(0,242,255,0.4)]"
                       : "border-white/10 hover:border-surface-tint/60"
-                  }`}
+                    }`}
                 >
                   <img
                     alt="User profile"
@@ -370,24 +366,23 @@ export default function Header() {
                         <p className="font-bold text-xs text-primary-container truncate">{currentUser.fullName || currentUser.username}</p>
                       </div>
                       <p className="text-[8.5px] text-on-surface-variant/60 uppercase tracking-widest mt-1">@{currentUser.username}</p>
-                      
+
                       <div className="mt-2.5 flex items-center justify-between">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border ${
-                          currentUser.roleName.toLowerCase() === 'admin' 
-                            ? 'bg-error/10 text-error border-error/20 shadow-[0_0_8px_rgba(239,68,68,0.1)]' 
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border ${currentUser.roleName.toLowerCase() === 'admin'
+                            ? 'bg-error/10 text-error border-error/20 shadow-[0_0_8px_rgba(239,68,68,0.1)]'
                             : currentUser.roleName.toLowerCase() === 'developer'
-                            ? 'bg-primary-container/10 text-primary-container border-primary-container/20 shadow-[0_0_8px_rgba(0,242,255,0.1)]'
-                            : 'bg-secondary/10 text-secondary border-secondary/20'
-                        }`}>
+                              ? 'bg-primary-container/10 text-primary-container border-primary-container/20 shadow-[0_0_8px_rgba(0,242,255,0.1)]'
+                              : 'bg-secondary/10 text-secondary border-secondary/20'
+                          }`}>
                           {currentUser.roleName}
                         </span>
                         <span className="text-[7.5px] text-on-surface-variant/40">NODE_ID_{currentUser.id ? currentUser.id.substring(0, 6) : "LOCAL"}</span>
                       </div>
                     </div>
-                    
+
                     {currentUser.roleName.toLowerCase() === 'developer' && (
-                      <Link 
-                        to="/dev-portal" 
+                      <Link
+                        to="/dev-portal"
                         onClick={() => setIsProfileDropdownOpen(false)}
                         className="hover:text-primary-container hover:bg-white/5 p-2 rounded-lg transition-all uppercase tracking-wider text-left block flex items-center gap-2"
                       >
@@ -395,10 +390,10 @@ export default function Header() {
                         {t('devPortal')}
                       </Link>
                     )}
-                    
+
                     {currentUser.roleName.toLowerCase() === 'admin' && (
-                      <Link 
-                        to="/admin" 
+                      <Link
+                        to="/admin"
                         onClick={() => setIsProfileDropdownOpen(false)}
                         className="hover:text-error hover:bg-white/5 p-2 rounded-lg transition-all uppercase tracking-wider text-left block flex items-center gap-2"
                       >
@@ -455,91 +450,93 @@ export default function Header() {
               <>
                 <Link
                   to="/admin/moderation"
-                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${
-                    location.pathname === "/admin/moderation"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/admin/moderation"
                       ? "text-error bg-error/10 border border-error/20"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <Gavel className="w-5 h-5 text-error" />
                   {t('moderation')}
                 </Link>
                 <Link
                   to="/admin/finance"
-                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${
-                    location.pathname === "/admin/finance"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/admin/finance"
                       ? "text-error bg-error/10 border border-error/20"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <DollarSign className="w-5 h-5 text-error" />
                   {t('finance')}
                 </Link>
                 <Link
                   to="/admin"
-                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${
-                    location.pathname === "/admin"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/admin"
                       ? "text-error bg-error/10 border border-error/20"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <Users className="w-5 h-5 text-error" />
                   {t('users')}
                 </Link>
                 <Link
                   to="/admin/logs"
-                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${
-                    location.pathname === "/admin/logs"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/admin/logs"
                       ? "text-error bg-error/10 border border-error/20"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <ClipboardList className="w-5 h-5 text-error" />
                   {t('logs')}
+                </Link>
+                <Link
+                  to="/admin/guides"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/admin/guides"
+                      ? "text-error bg-error/10 border border-error/20"
+                      : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+                    }`}
+                >
+                  <BookOpen className="w-5 h-5 text-error" />
+                  Guides
                 </Link>
               </>
             ) : (
               <>
                 <Link
                   to="/"
-                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${
-                    location.pathname === "/"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/"
                       ? "text-surface-tint bg-surface-tint/10 border border-surface-tint/20 shadow-[0_0_12px_rgba(0,242,255,0.15)]"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <Compass className="w-5 h-5 text-surface-tint" />
                   {t('store')}
                 </Link>
                 <Link
                   to="/library"
-                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${
-                    location.pathname === "/library"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/library"
                       ? "text-surface-tint bg-surface-tint/10 border border-surface-tint/20 shadow-[0_0_12px_rgba(0,242,255,0.15)]"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <BookOpen className="w-5 h-5 text-surface-tint" />
                   {t('library')}
                 </Link>
                 <Link
                   to="/community"
-                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${
-                    location.pathname === "/community"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/community"
                       ? "text-surface-tint bg-surface-tint/10 border border-surface-tint/20 shadow-[0_0_12px_rgba(0,242,255,0.15)]"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <Users className="w-5 h-5 text-surface-tint" />
                   {t('community')}
                 </Link>
                 <Link
                   to="/dev-portal"
-                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${
-                    location.pathname.startsWith("/dev-portal")
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname.startsWith("/dev-portal")
                       ? "text-surface-tint bg-surface-tint/10 border border-surface-tint/20 shadow-[0_0_12px_rgba(0,242,255,0.15)]"
                       : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <Terminal className="w-5 h-5 text-surface-tint" />
                   {t('devPortal')}

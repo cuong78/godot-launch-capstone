@@ -4,6 +4,8 @@ import com.godotlaunch.backend.dto.request.PublishingGuideRequest;
 import com.godotlaunch.backend.dto.response.PublishingGuideResponse;
 import com.godotlaunch.backend.entity.PublishingGuide;
 import com.godotlaunch.backend.entity.User;
+import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.repository.PublishingGuideRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.PublishingGuideService;
@@ -39,19 +41,19 @@ public class PublishingGuideServiceImpl implements PublishingGuideService {
     @Override
     public PublishingGuideResponse getGuideById(UUID id) {
         PublishingGuide guide = publishingGuideRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Guide not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.GUIDE_NOT_FOUND));
         return mapToResponse(guide);
     }
 
     @Override
     @Transactional
-    public PublishingGuideResponse createGuide(PublishingGuideRequest request, String currentUsername) {
+    public PublishingGuideResponse createGuide(PublishingGuideRequest request, String email) {
         if (publishingGuideRepository.existsByStepOrder(request.getStepOrder())) {
-            throw new RuntimeException("Step order already exists");
+            throw new AppException(ErrorCode.DUPLICATE_STEP_ORDER);
         }
 
-        User adminUser = userRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new RuntimeException("Admin user not found"));
+        User adminUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         PublishingGuide guide = new PublishingGuide();
         guide.setStepOrder(request.getStepOrder());
@@ -70,11 +72,11 @@ public class PublishingGuideServiceImpl implements PublishingGuideService {
     @Transactional
     public PublishingGuideResponse updateGuide(UUID id, PublishingGuideRequest request) {
         PublishingGuide guide = publishingGuideRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Guide not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.GUIDE_NOT_FOUND));
 
         if (!guide.getStepOrder().equals(request.getStepOrder()) && 
             publishingGuideRepository.existsByStepOrder(request.getStepOrder())) {
-            throw new RuntimeException("Step order already exists");
+            throw new AppException(ErrorCode.DUPLICATE_STEP_ORDER);
         }
 
         guide.setStepOrder(request.getStepOrder());
@@ -92,7 +94,7 @@ public class PublishingGuideServiceImpl implements PublishingGuideService {
     @Transactional
     public void deleteGuide(UUID id) {
         if (!publishingGuideRepository.existsById(id)) {
-            throw new RuntimeException("Guide not found");
+            throw new AppException(ErrorCode.GUIDE_NOT_FOUND);
         }
         publishingGuideRepository.deleteById(id);
     }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, LineChart, Gamepad2, Archive, Settings, Upload } from "lucide-react";
+import { LayoutDashboard, LineChart, Gamepad2, Archive, Settings, Upload, BookOpen } from "lucide-react";
 import { useLanguage } from '../../hooks/useLanguage';
 
 export default function SideNavBar() {
@@ -54,6 +54,16 @@ export default function SideNavBar() {
         >
           <Gamepad2 className="w-6 h-6" />
           <span>{t('myGames')}</span>
+        </NavLink>
+        <NavLink
+          to="/dev-portal/guides"
+          className={({ isActive }) => isActive
+            ? "bg-secondary-container/20 text-secondary border-r-4 border-secondary px-4 py-3 font-label-sm text-label-sm flex items-center space-x-3 translate-x-1 duration-200"
+            : "text-on-surface-variant hover:bg-surface-variant/30 px-4 py-3 hover:text-secondary transition-all font-label-sm text-label-sm flex items-center space-x-3"
+          }
+        >
+          <BookOpen className="w-6 h-6" />
+          <span>Publishing Guides</span>
         </NavLink>
         <a className="text-on-surface-variant hover:bg-surface-variant/30 px-4 py-3 hover:text-secondary transition-all font-label-sm text-label-sm flex items-center space-x-3" href="#">
           <Archive className="w-6 h-6" />
