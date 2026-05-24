@@ -6,12 +6,18 @@ import { useLanguage } from '../hooks/useLanguage';
 export default function Footer() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  const isDevPortal = location.pathname.startsWith('/dev-portal');
   const { t } = useLanguage();
+
+  // Hide footer completely in developer portal
+  if (isDevPortal) {
+    return null;
+  }
 
   // Admin Footer (Minimal, Fixed or Absolute style, but here we just render at the bottom)
   if (isAdmin) {
     return (
-      <footer className="bg-surface-container-lowest/90 backdrop-blur-md border-t border-outline-variant/20 flex flex-col sm:flex-row justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-3 z-40 mt-auto">
+      <footer className="bg-surface-container-lowest/90 backdrop-blur-md border-t border-outline-variant/20 flex flex-col sm:flex-row justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-3 z-10 mt-auto">
         <div className="font-label-sm text-label-sm uppercase tracking-widest text-primary-fixed-dim flex items-center gap-2 mb-2 sm:mb-0">
           <Activity className="w-4 h-4 animate-pulse" />
           {t('systemStatusOptimal')}
@@ -33,7 +39,7 @@ export default function Footer() {
 
   // Store / Home Footer (Full)
   return (
-    <footer className="bg-surface-container-lowest border-t border-outline-variant/20 pt-16 pb-8 px-margin-mobile md:px-margin-desktop mt-auto z-40 relative overflow-hidden">
+    <footer className="bg-surface-container-lowest border-t border-outline-variant/20 pt-16 pb-8 px-margin-mobile md:px-margin-desktop mt-auto z-10 relative overflow-hidden">
       {/* Background Glow */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-primary-fixed-dim/5 rounded-full blur-[100px] pointer-events-none -z-10"></div>
 

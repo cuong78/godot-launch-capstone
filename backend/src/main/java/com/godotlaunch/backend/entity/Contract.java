@@ -3,6 +3,8 @@ package com.godotlaunch.backend.entity;
 import com.godotlaunch.backend.entity.enums.ContractStatus;
 import com.godotlaunch.backend.entity.enums.ContractType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -36,6 +38,7 @@ public class Contract {
     private User buyer;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "contract_type", nullable = false, columnDefinition = "contract_type_enum")
     private ContractType contractType;
 
@@ -46,17 +49,48 @@ public class Contract {
     private String pdfUrl;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "contract_status_enum")
     private ContractStatus status = ContractStatus.pending;
 
     @Column(name = "revenue_split")
     private Short revenueSplit;
 
+    @Column(name = "lump_sum_amount", length = 100)
+    private String lumpSumAmount;
+
+    @Column(name = "dispute_resolution_clause", columnDefinition = "TEXT")
+    private String disputeResolutionClause;
+
+    @Column(name = "additional_terms", columnDefinition = "TEXT")
+    private String additionalTerms;
+
+    @Column(name = "buyer_representative", length = 255)
+    private String buyerRepresentative;
+
+    @Column(name = "buyer_position", length = 255)
+    private String buyerPosition;
+
+    @Column(name = "seller_representative", length = 255)
+    private String sellerRepresentative;
+
+    @Column(name = "seller_address", length = 255)
+    private String sellerAddress;
+
+    @Column(name = "seller_tax_code", length = 100)
+    private String sellerTaxCode;
+
     @Column(name = "signed_at_seller")
     private Instant signedAtSeller;
 
     @Column(name = "signed_at_buyer")
     private Instant signedAtBuyer;
+
+    @Column(name = "seller_signature_base64", columnDefinition = "TEXT")
+    private String sellerSignatureBase64;
+
+    @Column(name = "buyer_signature_base64", columnDefinition = "TEXT")
+    private String buyerSignatureBase64;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

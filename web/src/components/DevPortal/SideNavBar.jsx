@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, LineChart, Gamepad2, Archive, Settings, Upload, BookOpen } from "lucide-react";
+import { LayoutDashboard, LineChart, Gamepad2, Archive, Settings, Upload, BookOpen, FileText } from "lucide-react";
 import { useLanguage } from '../../hooks/useLanguage';
 
 export default function SideNavBar() {
   const { t } = useLanguage();
   return (
-    <nav className="bg-surface-container-lowest/90 backdrop-blur-lg fixed left-0 top-0 h-full w-64 z-40 border-r border-white/5 hidden lg:flex flex-col py-8 space-y-4 pt-24">
+    <nav className="bg-surface-container-lowest/90 backdrop-blur-lg fixed left-0 top-0 h-full w-64 z-[45] border-r border-white/5 hidden lg:flex flex-col py-8 space-y-4 pt-24">
       <div className="px-6 mb-8">
         <div className="flex items-center space-x-4">
           <div className="h-12 w-12 rounded-lg bg-surface-variant border border-outline-variant overflow-hidden neon-border-purple">
@@ -64,6 +64,16 @@ export default function SideNavBar() {
         >
           <BookOpen className="w-6 h-6" />
           <span>Publishing Guides</span>
+        </NavLink>
+        <NavLink
+          to="/dev-portal/contracts"
+          className={({ isActive }) => isActive
+            ? "bg-secondary-container/20 text-secondary border-r-4 border-secondary px-4 py-3 font-label-sm text-label-sm flex items-center space-x-3 translate-x-1 duration-200"
+            : "text-on-surface-variant hover:bg-surface-variant/30 px-4 py-3 hover:text-secondary transition-all font-label-sm text-label-sm flex items-center space-x-3"
+          }
+        >
+          <FileText className="w-6 h-6" />
+          <span>Contracts</span>
         </NavLink>
         <a className="text-on-surface-variant hover:bg-surface-variant/30 px-4 py-3 hover:text-secondary transition-all font-label-sm text-label-sm flex items-center space-x-3" href="#">
           <Archive className="w-6 h-6" />

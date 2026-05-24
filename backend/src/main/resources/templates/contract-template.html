@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>HỢP ĐỒNG PHÁT HÀNH PHẦN MỀM / SOFTWARE PUBLISHING AGREEMENT</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2.2cm 2cm 2.2cm 2cm;
+            @bottom-center {
+                content: "Trang / Page " counter(page) " / " counter(pages);
+                font-family: "Times New Roman", serif;
+                font-size: 9pt;
+                color: #555;
+            }
+        }
+        body { 
+            font-family: "Times New Roman", Times, serif; 
+            line-height: 1.5; 
+            color: #111;
+            font-size: 10.5pt;
+            text-align: justify;
+        }
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        .header-table td {
+            vertical-align: top;
+            padding: 0;
+            border: none;
+        }
+        .header-left {
+            text-align: center;
+            font-weight: bold;
+            font-size: 9.5pt;
+            width: 48%;
+        }
+        .header-right {
+            text-align: center;
+            width: 52%;
+        }
+        .national-title-vi {
+            font-weight: bold;
+            font-size: 9.5pt;
+            text-transform: uppercase;
+        }
+        .national-subtitle-vi {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-top: 2px;
+        }
+        .national-title-en {
+            font-size: 8.5pt;
+            font-style: italic;
+            color: #444;
+            margin-top: 2px;
+        }
+        .header-line {
+            border-bottom: 1px solid #000;
+            width: 50%;
+            margin: 6px auto 0 auto;
+        }
+        .contract-code {
+            font-size: 8.5pt;
+            font-family: "Times New Roman", serif;
+            font-weight: normal;
+            margin-top: 10px;
+            text-transform: uppercase;
+        }
+        .title-block { 
+            text-align: center; 
+            margin-top: 20px;
+            margin-bottom: 25px;
+        }
+        .title-vi {
+            font-size: 15pt; 
+            font-weight: bold; 
+            text-transform: uppercase;
+        }
+        .title-en {
+            font-size: 12.5pt; 
+            font-weight: bold; 
+            font-style: italic;
+            text-transform: uppercase;
+            color: #333;
+            margin-top: 4px;
+        }
+        .preamble {
+            margin-bottom: 20px;
+        }
+        .preamble-vi {
+            font-style: normal;
+        }
+        .preamble-en {
+            font-style: italic;
+            color: #333;
+            margin-top: 4px;
+            margin-bottom: 15px;
+        }
+        .section-header {
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 11pt;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+            page-break-after: avoid;
+        }
+        .party-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .party-table td {
+            padding: 3px 0;
+            vertical-align: top;
+        }
+        .party-label {
+            font-weight: bold;
+            width: 25%;
+        }
+        .party-value {
+            width: 75%;
+        }
+        .en-text {
+            font-style: italic;
+            color: #333;
+            margin-top: 2px;
+            display: block;
+        }
+        p {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .highlight {
+            font-weight: bold;
+        }
+        .bullet-list {
+            margin-top: 5px;
+            margin-bottom: 10px;
+            padding-left: 20px;
+        }
+        .signature-section { 
+            margin-top: 45px;
+            page-break-inside: avoid;
+        }
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .signature-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 10px;
+        }
+        .signature-box {
+            border: 1px dashed #bbb;
+            background-color: #fcfcfc;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            min-height: 120px;
+        }
+        .signature-status-valid {
+            color: #0d8a5f;
+            font-family: "Times New Roman", serif;
+            font-style: normal;
+            font-weight: bold;
+            font-size: 9.5pt;
+            border: 2px solid #0d8a5f;
+            display: inline-block;
+            padding: 5px 12px;
+            margin: 15px 0;
+            text-transform: uppercase;
+            transform: rotate(-2deg);
+            border-radius: 4px;
+            background-color: #eafcf6;
+        }
+        .signature-status-pending {
+            color: #9e7102;
+            font-family: "Times New Roman", serif;
+            font-style: normal;
+            font-weight: bold;
+            font-size: 9.5pt;
+            border: 2px dashed #9e7102;
+            display: inline-block;
+            padding: 5px 12px;
+            margin: 15px 0;
+            text-transform: uppercase;
+            border-radius: 4px;
+            background-color: #fffdf5;
+        }
+        .signatory-name {
+            font-weight: bold;
+            font-size: 10.5pt;
+            margin-top: 10px;
+            margin-bottom: 2px;
+        }
+        .signatory-title {
+            font-size: 9pt;
+            color: #444;
+            margin: 0;
+        }
+        .date-badge {
+            font-weight: bold;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Quốc huy và Tên công ty -->
+    <table class="header-table">
+        <tr>
+            <td class="header-left">
+                CÔNG TY CỔ PHẦN GODOT LAUNCH<br/>
+                GODOT LAUNCH JOINT STOCK COMPANY
+                <div class="contract-code">
+                    Số/No: GL-<span th:text="${contractIdShort}"></span>/HĐPH
+                </div>
+            </td>
+            <td class="header-right">
+                <div class="national-title-vi">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                <div class="national-subtitle-vi">Độc lập - Tự do - Hạnh phúc</div>
+                <div class="national-title-en">THE SOCIALIST REPUBLIC OF VIETNAM<br/>Independence - Freedom - Happiness</div>
+                <div class="header-line"></div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Tiêu đề hợp đồng -->
+    <div class="title-block">
+        <div class="title-vi">HỢP ĐỒNG PHÁT HÀNH PHẦN MỀM</div>
+        <div class="title-en">SOFTWARE PUBLISHING AGREEMENT</div>
+    </div>
+    
+    <div class="preamble">
+        <p class="preamble-vi">
+            Hợp đồng Phát hành Phần mềm này ("Hợp đồng") được lập và có hiệu lực kể từ ngày <span class="date-badge" th:text="${date.substring(0, 10)}"></span> ("Ngày Hiệu lực"), bởi và giữa các Bên dưới đây:
+        </p>
+        <p class="preamble-en">
+            This Software Publishing Agreement ("Agreement") is entered into and made effective as of <span class="date-badge" th:text="${date.substring(0, 10)}"></span> ("Effective Date"), by and between:
+        </p>
+    </div>
+
+    <!-- PHẦN 1: THÔNG TIN CÁC BÊN -->
+    <div class="section-header">1. THÔNG TIN CÁC BÊN / CONTRACTING PARTIES</div>
+    
+    <p><strong>BÊN A: BÊN NHẬN PHÁT HÀNH / PARTY A: THE PLATFORM (BUYER)</strong></p>
+    <table class="party-table">
+        <tr>
+            <td class="party-label">Tên công ty / Name:</td>
+            <td class="party-value"><strong>CÔNG TY CỔ PHẦN GODOT LAUNCH</strong> (GODOT LAUNCH JOINT STOCK COMPANY)</td>
+        </tr>
+        <tr>
+            <td class="party-label">Đại diện / Rep by:</td>
+            <td class="party-value"><span th:text="${adminFullName}"></span></td>
+        </tr>
+        <tr>
+            <td class="party-label">Chức vụ / Title:</td>
+            <td class="party-value"><span th:text="${adminPosition}"></span></td>
+        </tr>
+        <tr>
+            <td class="party-label">Email:</td>
+            <td class="party-value"><span th:text="${adminEmail}"></span></td>
+        </tr>
+    </table>
+
+    <p><strong>BÊN B: NHÀ PHÁT TRIỂN / PARTY B: THE DEVELOPER (SELLER)</strong></p>
+    <table class="party-table">
+        <tr>
+            <td class="party-label">Tên / Full Name:</td>
+            <td class="party-value"><strong th:text="${developerFullName}"></strong></td>
+        </tr>
+        <tr>
+            <td class="party-label">Tên tài khoản / User:</td>
+            <td class="party-value"><span th:text="${developerName}"></span></td>
+        </tr>
+        <tr>
+            <td class="party-label">Email:</td>
+            <td class="party-value"><span th:text="${developerEmail}"></span></td>
+        </tr>
+        <tr th:if="${developerAddress != ''}">
+            <td class="party-label">Địa chỉ / Address:</td>
+            <td class="party-value"><span th:text="${developerAddress}"></span></td>
+        </tr>
+        <tr th:if="${developerTaxCode != ''}">
+            <td class="party-label">CCCD / Tax Code:</td>
+            <td class="party-value"><span th:text="${developerTaxCode}"></span></td>
+        </tr>
+    </table>
+    
+    <p class="preamble-vi">Sau đây gọi riêng là "Bên" và gọi chung là "Các Bên".</p>
+    <p class="preamble-en">Hereinafter referred to individually as "Party" and collectively as "Parties".</p>
+
+    <!-- PHẦN 2: ĐỐI TƯỢNG HỢP ĐỒNG -->
+    <div class="section-header">2. ĐỐI TƯỢNG HỢP ĐỒNG / SUBJECT MATTER</div>
+    <p>
+        <strong>2.1 Tiếng Việt:</strong> Bên B cam kết là chủ sở hữu hợp pháp duy nhất, nắm giữ toàn bộ quyền sở hữu trí tuệ đối với sản phẩm trò chơi điện tử tương tác có tiêu đề là <span class="highlight">"<span th:text="${gameTitle}"></span>"</span> (sau đây gọi là "Trò chơi"). Bên B đồng ý cấp quyền phát hành hoặc chuyển nhượng quyền sở hữu Trò chơi cho Bên A để phân phối trên mạng lưới số của Godot Launch.
+    </p>
+    <p class="en-text">
+        <strong>2.1 English:</strong> The Developer represents and warrants that they are the sole and exclusive legal owner of all intellectual property rights in and to the interactive entertainment software product titled <span class="highlight">"<span th:text="${gameTitle}"></span>"</span> (the "Game"). The Developer agrees to grant publishing licenses or transfer full ownership of the Game to the Platform for distribution on the Godot Launch digital network.
+    </p>
+    <p>
+        <strong>2.2 Tiếng Việt:</strong> Mô hình khai thác áp dụng cho Trò chơi theo Hợp đồng này được xác định là: <strong th:text="${contractType == 'co_publishing' ? 'HỢP ĐỒNG ĐỒNG PHÁT HÀNH (CO-PUBLISHING)' : 'HỢP ĐỒNG MUA ĐỨT SỞ HỮU (FULL ACQUISITION)'}"></strong>.
+    </p>
+    <p class="en-text">
+        <strong>2.2 English:</strong> The exploitation model applied to the Game under this Agreement is designated as: <strong style="text-transform: uppercase;" th:text="${contractType.replace('_', ' ')}"></strong>.
+    </p>
+
+    <!-- PHẦN 3: ĐIỀU KHOẢN TÀI CHÍNH -->
+    <div class="section-header">3. ĐIỀU KHOẢN TÀI CHÍNH &amp; KHAI THÁC / FINANCIAL TERMS</div>
+    
+    <!-- CO-PUBLISHING DETAILS -->
+    <div th:if="${contractType == 'co_publishing'}">
+        <p>
+            <strong>3.1 Tiếng Việt (Mô hình Đồng phát hành):</strong> Hai bên thống nhất cùng vận hành và chia sẻ doanh thu thu được từ hoạt động thương mại hóa Trò chơi (sau khi đã trừ các khoản thuế phát sinh và phí cổng thanh toán của bên thứ ba) theo tỷ lệ như sau:
+        </p>
+        <ul class="bullet-list">
+            <li><strong>Tỷ lệ của Bên B (Nhà phát triển):</strong> <span class="highlight" th:text="${revenueSplit}"></span>%</li>
+            <li><strong>Tỷ lệ của Bên A (Nền tảng):</strong> <span class="highlight" th:text="${100 - revenueSplit}"></span>%</li>
+        </ul>
+        <p class="en-text">
+            <strong>3.1 English (Co-Publishing):</strong> The Parties agree to commercially exploit the Game and split the gross revenues generated (net of applicable taxes and third-party payment gateway fees) according to the following ratio: Developer Share: <span th:text="${revenueSplit}"></span>% / Platform Share: <span th:text="${100 - revenueSplit}"></span>%.
+        </p>
+        <p>
+            <strong>3.2 Tiếng Việt (Thanh toán tự động):</strong> Bên A có trách nhiệm tự động quyết toán phần doanh thu được chia của Bên B vào tài khoản ví điện tử Godot Launch của Bên B ngay khi mỗi giao dịch bán Trò chơi hoàn tất thành công.
+        </p>
+        <p class="en-text">
+            <strong>3.2 English (Automated Settlement):</strong> The Platform shall automatically disburse the Developer's revenue share directly to the Developer's registered Godot Launch wallet concurrently upon the successful completion of each transaction.
+        </p>
+    </div>
+
+    <!-- FULL ACQUISITION DETAILS -->
+    <div th:if="${contractType == 'full_acquisition'}">
+        <p>
+            <strong>3.1 Tiếng Việt (Mô hình Mua đứt):</strong> Bên B đồng ý chuyển nhượng vĩnh viễn và không hủy ngang toàn bộ bản quyền, quyền tác giả, mã nguồn, tài nguyên đồ họa/âm thanh và mọi quyền thương mại của Trò chơi sang Bên A kể từ Ngày Hiệu lực.
+        </p>
+        <p class="en-text">
+            <strong>3.1 English (Full Acquisition):</strong> The Developer hereby permanently and irrevocably transfers and assigns all copyrights, source code, graphical/audio assets, and all commercial exploitation rights of the Game to the Platform as of the Effective Date.
+        </p>
+        <p>
+            <strong>3.2 Tiếng Việt (Thanh toán trọn gói):</strong> Bên A sẽ thanh toán một khoản tiền trọn gói duy nhất trị giá <span class="highlight" th:text="${lumpSumAmount != '' ? lumpSumAmount : 'theo thỏa thuận tài chính đã ghi nhận trong hệ thống quản trị của Godot Launch'}"></span> cho Bên B. Sau khi nhận thanh toán, Bên B cam kết không có thêm bất kỳ yêu cầu đòi chia sẻ doanh thu hay bản quyền phát sinh nào đối với Trò chơi.
+        </p>
+        <p class="en-text">
+            <strong>3.2 English (Lump-Sum Payment):</strong> The Platform shall pay a negotiated one-time lump-sum acquisition fee of <span class="highlight" th:text="${lumpSumAmount != '' ? lumpSumAmount : 'as recorded in the Godot Launch administrative system'}"></span> to the Developer. Upon remittance, the Developer waives all rights to future revenue shares, residual royalties, or ownership claims.
+        </p>
+    </div>
+
+    <!-- PHẦN 4: BẢO MẬT VÀ SỞ HỮU TRÍ TUỆ -->
+    <div class="section-header">4. BẢO MẬT &amp; SỞ HỮU TRÍ TUỆ / IPR &amp; CONFIDENTIALITY</div>
+    <p>
+        <strong>4.1 Tiếng Việt (Sở hữu trí tuệ):</strong> Đối với mô hình Đồng phát hành, Bên B giữ nguyên quyền sở hữu trí tuệ đối với Trò chơi; Bên A chỉ được cấp quyền phát hành số. Đối với mô hình Mua đứt, quyền sở hữu trí tuệ thuộc về Bên A hoàn toàn và vĩnh viễn.
+    </p>
+    <p class="en-text">
+        <strong>4.1 English (Intellectual Property):</strong> Under Co-Publishing, the Developer retains full IP ownership of the Game, granting only a digital distribution license to the Platform. Under Full Acquisition, full IP ownership shifts entirely and permanently to the Platform.
+    </p>
+    <p>
+        <strong>4.2 Tiếng Việt (Bảo mật thông tin):</strong> Cả hai Bên cam kết bảo mật tuyệt đối mọi thông tin kỹ thuật, dữ liệu thương mại, mã nguồn của Trò chơi và nội dung thỏa thuận của Hợp đồng này. Không bên nào được tiết lộ cho bên thứ ba khi chưa được sự đồng ý bằng văn bản của bên kia.
+    </p>
+    <p class="en-text">
+        <strong>4.2 English (Confidentiality):</strong> Both Parties commit to strictly keeping all technical data, business details, source code of the Game, and the terms of this Agreement confidential. No Party shall disclose any information to third parties without prior written consent.
+    </p>
+    <p>
+        <strong>4.3 Tiếng Việt (Cam kết an toàn phần mềm):</strong> Bên B bảo đảm Trò chơi không chứa bất kỳ mã độc, virus, phần mềm gián điệp hay bất cứ mã nguồn độc hại nào gây ảnh hưởng tới thiết bị người dùng hoặc máy chủ hệ thống của Bên A.
+    </p>
+    <p class="en-text">
+        <strong>4.3 English (Software Warranty):</strong> The Developer warrants that the Game contains no malicious code, spyware, viruses, or security vulnerabilities that could compromise user devices or the Platform servers.
+    </p>
+
+    <!-- PHẦN 5: HIỆU LỰC VÀ CHẤM DỨT -->
+    <div class="section-header">5. HIỆU LỰC, CHẤM DỨT &amp; PHÂN XỬ / VALIDITY, TERMINATION &amp; DISPUTES</div>
+    <p>
+        <strong>5.1 Tiếng Việt (Hiệu lực &amp; Kỳ hạn):</strong> Hợp đồng này có hiệu lực pháp lý ngay khi cả hai Bên hoàn tất việc ký điện tử thông qua hệ thống Godot Launch và kéo dài cho đến khi một trong hai Bên đơn phương chấm dứt hợp đồng hợp pháp hoặc hoàn tất nghĩa vụ bàn giao.
+    </p>
+    <p class="en-text">
+        <strong>5.1 English (Validity &amp; Duration):</strong> This Agreement becomes legally binding immediately upon the completion of e-signatures by both Parties via the Godot Launch system and shall remain in effect until legally terminated or transfer obligations are fully met.
+    </p>
+    <p>
+        <strong>5.2 Tiếng Việt (Đơn phương chấm dứt):</strong> Một Bên có quyền đơn phương chấm dứt Hợp đồng nếu Bên kia vi phạm nghiêm trọng nghĩa vụ Hợp đồng và không sửa chữa sai phạm trong vòng mười lăm (15) ngày kể từ khi nhận được thông báo bằng văn bản từ Bên bị vi phạm.
+    </p>
+    <p class="en-text">
+        <strong>5.2 English (Unilateral Termination):</strong> Either Party may terminate this Agreement if the other Party commits a material breach and fails to remedy such breach within fifteen (15) days of receiving a written notice of breach.
+    </p>
+    <div th:if="${disputeResolutionClause == ''}">
+        <p>
+            <strong>5.3 Tiếng Việt (Giải quyết tranh chấp):</strong> Hợp đồng này được điều chỉnh bởi luật pháp hoạt động thương mại số. Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết qua thương lượng. Trường hợp thương lượng thất bại, vụ việc sẽ được đưa ra phân xử tại Trung tâm giải quyết tranh chấp kỹ thuật số thuộc hệ thống Godot Launch.
+        </p>
+        <p class="en-text">
+            <strong>5.3 English (Dispute Resolution):</strong> This Agreement shall be governed by digital commerce regulations. Any disputes shall first be resolved through friendly negotiations. If unresolved, disputes will be submitted to the Godot Launch Digital Dispute Resolution Center for binding arbitration.
+        </p>
+    </div>
+    <div th:if="${disputeResolutionClause != ''}">
+        <p>
+            <strong>5.3 Tiếng Việt &amp; English (Giải quyết tranh chấp / Dispute Resolution):</strong><br/>
+            <span th:text="${disputeResolutionClause}"></span>
+        </p>
+    </div>
+
+    <!-- PHẦN 6: ĐIỀU KHOẢN BỔ SUNG / ADDITIONAL TERMS -->
+    <div th:if="${additionalTerms != ''}">
+        <div class="section-header">6. ĐIỀU KHOẢN BỔ SUNG / ADDITIONAL TERMS</div>
+        <p style="white-space: pre-wrap;" th:text="${additionalTerms}"></p>
+    </div>
+
+    <!-- CHỮ KÝ ĐIỆN TỬ -->
+    <div class="signature-section">
+        <p style="text-align: center; font-weight: bold; margin-bottom: 20px;">
+            ĐỂ LÀM BẰNG CHỨNG, các Bên đã đồng ý và thực hiện ký điện tử xác thực Hợp đồng này dưới đây.<br/>
+            IN WITNESS WHEREOF, the Parties have agreed and executed this Agreement via digital e-signatures below.
+        </p>
+        
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <div class="signature-box">
+                        <p style="font-weight: bold; margin: 0 0 10px 0; font-size: 9.5pt;">DEVELOPER (SELLER) / BÊN B</p>
+                        
+                        <!-- Chữ ký chưa có -->
+                        <div th:if="${signedAtSeller == null}">
+                            <div class="signature-status-pending">Chờ ký số / Pending E-Sign</div>
+                            <p class="signatory-name" th:text="${developerFullName}"></p>
+                            <p class="signatory-title" th:text="${developerEmail}"></p>
+                        </div>
+                        
+                        <!-- Chữ ký hợp lệ -->
+                        <div th:if="${signedAtSeller != null}">
+                            <div class="signature-status-valid">ĐÃ KÝ SỐ / SIGNED AND VERIFIED</div>
+                            <div th:if="${sellerSignatureBase64 != null && sellerSignatureBase64 != ''}" style="margin-top: 5px; margin-bottom: 5px; text-align: center;">
+                                <img th:src="${sellerSignatureBase64}" style="max-height: 55px; border-bottom: 1px dashed #bbb; padding: 2px;" />
+                            </div>
+                            <p class="signatory-name" th:text="${developerFullName}"></p>
+                            <p class="signatory-title" th:text="${developerEmail}"></p>
+                            <p class="signatory-title" style="font-size: 8pt; font-family: monospace;" th:text="${signedAtSeller}"></p>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="signature-box">
+                        <p style="font-weight: bold; margin: 0 0 10px 0; font-size: 9.5pt;">GODOT LAUNCH (BUYER) / BÊN A</p>
+                        
+                        <!-- Chữ ký chưa có -->
+                        <div th:if="${signedAtBuyer == null}">
+                            <div class="signature-status-pending">Chờ ký số / Pending E-Sign</div>
+                            <p class="signatory-name" th:text="${adminFullName}"></p>
+                            <p class="signatory-title" th:text="${adminEmail}"></p>
+                        </div>
+                        
+                        <!-- Chữ ký hợp lệ -->
+                        <div th:if="${signedAtBuyer != null}">
+                            <div class="signature-status-valid">ĐÃ KÝ SỐ / SIGNED AND VERIFIED</div>
+                            <div th:if="${buyerSignatureBase64 != null && buyerSignatureBase64 != ''}" style="margin-top: 5px; margin-bottom: 5px; text-align: center;">
+                                <img th:src="${buyerSignatureBase64}" style="max-height: 55px; border-bottom: 1px dashed #bbb; padding: 2px;" />
+                            </div>
+                            <p class="signatory-name" th:text="${adminFullName}"></p>
+                            <p class="signatory-title" th:text="${adminEmail}"></p>
+                            <p class="signatory-title" style="font-size: 8pt; font-family: monospace;" th:text="${signedAtBuyer}"></p>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

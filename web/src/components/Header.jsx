@@ -17,7 +17,8 @@ import {
   ClipboardList,
   ChevronDown,
   LogOut,
-  ShieldAlert
+  ShieldAlert,
+  FileText
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useNotification } from "../hooks/useNotification";
@@ -195,6 +196,16 @@ export default function Header() {
                 >
                   <BookOpen className="w-3.5 h-3.5" />
                   Guides
+                </Link>
+                <Link
+                  to="/admin/contracts"
+                  className={`flex items-center gap-1.5 px-4.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${location.pathname === "/admin/contracts"
+                      ? "text-error bg-error/10 border border-error/20 shadow-[0_0_10px_rgba(239,68,68,0.15)] font-bold"
+                      : "text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 border border-transparent"
+                    }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Contracts
                 </Link>
               </div>
             ) : (
@@ -497,6 +508,16 @@ export default function Header() {
                 >
                   <BookOpen className="w-5 h-5 text-error" />
                   Guides
+                </Link>
+                <Link
+                  to="/admin/contracts"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl font-mono text-xs uppercase tracking-widest ${location.pathname === "/admin/contracts"
+                      ? "text-error bg-error/10 border border-error/20"
+                      : "text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+                    }`}
+                >
+                  <FileText className="w-5 h-5 text-error" />
+                  Contracts
                 </Link>
               </>
             ) : (

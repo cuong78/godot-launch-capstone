@@ -24,6 +24,8 @@ import AdminFinance from "./pages/AdminFinance";
 import AdminModeration from "./pages/AdminModeration";
 import AdminLogs from "./pages/AdminLogs";
 import AdminGuides from "./pages/AdminGuides";
+import MyContracts from "./pages/MyContracts";
+import AdminContracts from "./pages/AdminContracts";
 
 function App() {
   return (
@@ -43,7 +45,7 @@ function App() {
               <CartDropdown />
               <WishlistDropdown />
 
-              <div className="relative z-10">
+              <div className="relative z-20">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/product/:id" element={<ProductDetail />} />
@@ -53,6 +55,7 @@ function App() {
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="games" element={<MyGames />} />
                     <Route path="guides" element={<DevGuides />} />
+                    <Route path="contracts" element={<MyContracts />} />
                   </Route>
                   <Route path="/library" element={<Library />} />
                   <Route path="/login" element={<Login />} />
@@ -65,6 +68,7 @@ function App() {
                   />
                   <Route path="/admin/logs" element={<AdminLogs />} />
                   <Route path="/admin/guides" element={<AdminGuides />} />
+                  <Route path="/admin/contracts" element={<AdminContracts />} />
                 </Routes>
               </div>
 
