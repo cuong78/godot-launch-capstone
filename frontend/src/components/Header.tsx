@@ -1,0 +1,238 @@
+import React from 'react';
+import {
+  Play,
+  Search,
+  X,
+  Sun,
+  Moon,
+  ShoppingCart,
+  ShoppingBag,
+  Trash2,
+  Plus
+} from 'lucide-react';
+import { Button } from './Button';
+import { Asset } from '../types';
+
+interface HeaderProps {
+  currentScreen: 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community';
+  setCurrentScreen: (screen: 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community') => void;
+  darkMode: boolean;
+  setDarkMode: (mode: boolean) => void;
+  searchText: string;
+  setSearchText: (text: string) => void;
+  cart: Asset[];
+  isCartOpen: boolean;
+  setIsCartOpen: (open: boolean) => void;
+  handleRemoveFromCart: (id: string, e: React.MouseEvent) => void;
+  handleCheckout: () => void;
+}
+
+export function Header({
+  currentScreen,
+  setCurrentScreen,
+  darkMode,
+  setDarkMode,
+  searchText,
+  setSearchText,
+  cart,
+  isCartOpen,
+  setIsCartOpen,
+  handleRemoveFromCart,
+  handleCheckout
+}: HeaderProps) {
+  return (
+    <header id="godotlaunch-navbar" className="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 z-40 transition-colors duration-200 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+        
+        {/* Logo & Small Engine version brand tag */}
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setCurrentScreen('explore'); setSearchText(''); }}>
+          <div className="w-9 h-9 rounded-xl bg-amber-400 flex items-center justify-center font-display shadow-[0_3px_0_0_#9a7d00] transition-transform active:scale-95">
+            <Play size={18} className="text-slate-900 fill-slate-900 ml-0.5" />
+          </div>
+          <div>
+            <span className="font-display font-bold text-lg text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5 leading-none">
+              godotlaunch <span className="bg-amber-400/20 text-amber-500 text-[10px] uppercase font-bold py-0.5 px-1.5 rounded border border-amber-500/30 font-mono">v4</span>
+            </span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono tracking-wider">CREATORS MATRIX</span>
+          </div>
+        </div>
+
+        {/* Combined Quick Search input bar */}
+        <div className="hidden md:flex flex-1 max-w-md relative">
+          <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+            <Search size={16} />
+          </span>
+          <input
+            type="text"
+            placeholder="Search scripts, shaders, templates..."
+            value={searchText}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              if (currentScreen !== 'marketplace' && currentScreen !== 'detail') {
+                setCurrentScreen('marketplace');
+              }
+            }}
+            className="w-full pl-9 pr-4 py-2 bg-slate-100/80 dark:bg-slate-950 border border-transparent dark:border-slate-800/60 rounded-lg outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-sm text-slate-800 dark:text-slate-200 transition-studio placeholder-slate-500 dark:placeholder-slate-400"
+          />
+          {searchText && (
+            <button 
+              onClick={() => setSearchText('')}
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-amber-400"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Navigation Items (Responsive on Desktop) */}
+        <nav className="hidden lg:flex items-center gap-1.5">
+          <button
+            onClick={() => { setCurrentScreen('explore'); setSearchText(''); }}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'explore' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+          >
+            Explore
+          </button>
+          <button
+            onClick={() => { setCurrentScreen('marketplace'); }}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'marketplace' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+          >
+            Marketplace
+          </button>
+          <button
+            onClick={() => { setCurrentScreen('community'); }}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'community' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+          >
+            Community
+          </button>
+          <button
+            onClick={() => { setCurrentScreen('path'); }}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'path' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+          >
+            Sell & Acquire
+          </button>
+          <button
+            onClick={() => { setCurrentScreen('dashboard'); }}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'dashboard' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+          >
+            Dashboard
+          </button>
+        </nav>
+
+        {/* Utility Action tools: Dark Mode, Cart Badge dropdown trigger, Publish Button */}
+        <div className="flex items-center gap-2.5">
+          
+          {/* Dark mode custom click toggle */}
+          <button
+            id="theme-toggler"
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-2 text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-amber-400 transition-studio rounded-lg bg-slate-100/80 dark:bg-slate-950 border border-transparent dark:border-slate-850"
+            title="Toggle theme mode"
+          >
+            {darkMode ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+
+          {/* Shopping Cart Trigger */}
+          <div className="relative">
+            <button
+              id="shopping-cart-btn"
+              onClick={() => setIsCartOpen(!isCartOpen)}
+              className="p-2 text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-amber-400 transition-studio rounded-lg bg-slate-100/80 dark:bg-slate-950 border border-transparent dark:border-slate-850 relative"
+              title="View cart items"
+            >
+              <ShoppingCart size={17} />
+              {cart.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-sky-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-bounce">
+                  {cart.length}
+                </span>
+              )}
+            </button>
+
+            {/* Collapsible Cart overlay dropdown list box */}
+            {isCartOpen && (
+              <div className="absolute right-0 mt-2.5 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-xl z-50 p-4 transition-colors duration-200">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2.5">
+                  <span className="font-display font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 animate-pulse">
+                    <ShoppingBag size={15} /> Shopping Cart
+                  </span>
+                  <button onClick={() => setIsCartOpen(false)} className="text-slate-450 hover:text-slate-600 dark:hover:text-white">
+                    <X size={15} />
+                  </button>
+                </div>
+
+                {cart.length > 0 ? (
+                  <div className="space-y-3 my-3 max-h-60 overflow-y-auto">
+                    {cart.map(item => (
+                      <div key={item.id} className="flex items-center justify-between gap-2 border-b border-slate-50 dark:border-slate-855 pb-2">
+                        <div className="flex items-center gap-2">
+                          <img referrerPolicy="no-referrer" src={item.image} alt={item.title} className="w-10 h-10 object-cover rounded border border-slate-100 dark:border-slate-800" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 dark:text-white truncate max-w-[140px]">{item.title}</p>
+                            <p className="text-[10px] text-slate-400">{item.category}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono font-bold dark:text-amber-400">
+                            {item.price === 0 ? 'Free' : `$${item.price.toFixed(2)}`}
+                          </span>
+                          <button
+                            onClick={(e) => handleRemoveFromCart(item.id, e)}
+                            className="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between font-display font-semibold text-xs text-slate-800 dark:text-slate-200 pt-1">
+                      <span>Total Checkout Value:</span>
+                      <span className="text-sm font-mono font-bold text-sky-600 dark:text-amber-400">
+                        ${cart.reduce((sum, item) => sum + item.price, 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleCheckout}
+                      className="w-full mt-2 py-2 px-4 bg-sky-500 hover:bg-sky-400 text-white font-display text-xs font-bold rounded-lg shadow-[0_4px_0_0_#025272] hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none transition-studio text-center"
+                    >
+                      Complete Order & Download
+                    </button>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-slate-400 dark:text-slate-650">
+                    <p className="text-sm">Your cart is empty.</p>
+                    <button
+                      onClick={() => { setCurrentScreen('marketplace'); setIsCartOpen(false); }}
+                      className="text-xs text-amber-500 hover:underline mt-1 font-semibold"
+                    >
+                      Browse Packages
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Launch product custom setup screen button */}
+          <div className="hidden sm:block">
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Plus size={14} />}
+              onClick={() => { setCurrentScreen('upload'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            >
+              Upload File
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Navigation bar strips */}
+      <div className="lg:hidden border-t border-slate-100 dark:border-slate-800 flex justify-around py-1.5 bg-slate-50 dark:bg-slate-900/40 text-xs gap-1 max-w-full overflow-x-auto">
+        <button onClick={() => setCurrentScreen('explore')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'explore' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Explore</button>
+        <button onClick={() => setCurrentScreen('marketplace')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'marketplace' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Marketplace</button>
+        <button onClick={() => setCurrentScreen('community')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'community' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Community</button>
+        <button onClick={() => setCurrentScreen('path')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'path' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Sell & Acquire</button>
+        <button onClick={() => setCurrentScreen('dashboard')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'dashboard' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Dashboard</button>
+      </div>
+    </header>
+  );
+}

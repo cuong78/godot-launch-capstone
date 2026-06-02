@@ -1,0 +1,6 @@
+{
+  "name": "GodotLaunch",
+  "description": "Level Up Your indie game development workflow with premium assets, high-fidelity scripts, and a thriving creator community.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
