@@ -40,6 +40,4 @@ public class GameVersion {
     @Column(name = "released_at", nullable = false, insertable = false, updatable = false)
     private Instant releasedAt;
     
-    @OneToOne(mappedBy = "gameVersion", fetch = FetchType.LAZY, optional = true)
-    private AIReport aiReport;
 }
