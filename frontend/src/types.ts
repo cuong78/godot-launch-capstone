@@ -36,7 +36,8 @@ export interface User {
   username: string;
   email: string;
   avatarUrl: string;
+  role?: 'user' | 'admin';
 }
 
-export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup';
+export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin';
 

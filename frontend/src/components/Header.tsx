@@ -120,6 +120,14 @@ export function Header({
           >
             Dashboard
           </button>
+          {currentUser?.role === 'admin' && (
+            <button
+              onClick={() => { setCurrentScreen('admin'); }}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'admin' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+            >
+              Admin Portal
+            </button>
+          )}
         </nav>
 
         {/* Utility Action tools: Dark Mode, Cart Badge dropdown trigger, Publish Button */}
@@ -294,6 +302,9 @@ export function Header({
         <button onClick={() => setCurrentScreen('community')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'community' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Community</button>
         <button onClick={() => setCurrentScreen('path')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'path' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Sell & Acquire</button>
         <button onClick={() => setCurrentScreen('dashboard')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'dashboard' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Dashboard</button>
+        {currentUser?.role === 'admin' && (
+          <button onClick={() => setCurrentScreen('admin')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'admin' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Admin</button>
+        )}
       </div>
     </header>
   );

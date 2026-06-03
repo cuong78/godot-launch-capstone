@@ -26,10 +26,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     }
     // Simulate user login
     const username = email.split('@')[0];
+    const isAdmin = email.toLowerCase().includes('admin');
     const mockUser: User = {
       username: username.charAt(0).toUpperCase() + username.slice(1),
       email: email,
-      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80` // default premium avatar
+      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`, // default premium avatar
+      role: isAdmin ? 'admin' : 'user'
     };
     setCurrentUser(mockUser);
     setCurrentScreen('explore');
@@ -40,7 +42,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     const mockUser: User = {
       username: `${provider}User`,
       email: `${provider.toLowerCase()}@example.com`,
-      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`
+      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`,
+      role: provider.toLowerCase() === 'github' ? 'admin' : 'user'
     };
     setCurrentUser(mockUser);
     setCurrentScreen('explore');
@@ -156,7 +159,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           </button>
         </div>
 
-        <div className="text-center pt-2">
+        <div className="text-center pt-2 space-y-2">
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Don't have an account?{' '}
             <button
@@ -166,6 +169,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               Start your adventure
             </button>
           </p>
+          <div className="text-[10px] bg-slate-100 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-405 dark:text-slate-500 leading-relaxed font-mono">
+            💡 <span className="font-semibold text-amber-500">Testing Tip:</span> Login with email containing <code className="text-sky-500">"admin"</code> (e.g. <code className="text-sky-500">admin@godotlaunch.com</code>) to unlock the Admin Portal UI.
+          </div>
         </div>
 
       </div>

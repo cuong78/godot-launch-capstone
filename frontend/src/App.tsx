@@ -1,8 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 
 import { Header } from './components/Header';
+import { AdminHeader } from './components/AdminHeader';
 import { Footer } from './components/Footer';
 import { Asset, Project, User, ScreenType } from './types';
+import { Button } from './components/Button';
+import { ShieldAlert } from 'lucide-react';
 
 // Modular Page Components
 import { HomePage } from './page/HomePage';
@@ -14,6 +17,7 @@ import { DashboardPage } from './page/DashboardPage';
 import { CommunityPage } from './page/CommunityPage';
 import { SignInPage } from './page/SignInPage';
 import { SignUpPage } from './page/SignUpPage';
+import { AdminPage } from './page/AdminPage';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
@@ -247,6 +251,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   if (primary === 'community') return { screen: 'community' };
   if (primary === 'signin') return { screen: 'signin' };
   if (primary === 'signup') return { screen: 'signup' };
+  if (primary === 'admin') return { screen: 'admin' };
   if (primary === 'detail') {
     return { screen: 'detail', assetId: segments[1] };
   }
@@ -488,21 +493,31 @@ export default function App() {
       <div className="fixed inset-0 pointer-events-none pixel-grid-overlay z-[2]"></div>
 
       {/* HEADER SECTION */}
-      <Header
-        currentScreen={currentScreen}
-        setCurrentScreen={setCurrentScreen}
-        currentUser={currentUser}
-        setCurrentUser={setCurrentUser}
-        searchText={searchText}
-        setSearchText={setSearchText}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        cart={cart}
-        isCartOpen={isCartOpen}
-        setIsCartOpen={setIsCartOpen}
-        handleRemoveFromCart={handleRemoveFromCart}
-        handleCheckout={handleCheckout}
-      />
+      {currentScreen === 'admin' ? (
+        <AdminHeader
+          setCurrentScreen={setCurrentScreen}
+          currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
+      ) : (
+        <Header
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
+          searchText={searchText}
+          setSearchText={setSearchText}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          cart={cart}
+          isCartOpen={isCartOpen}
+          setIsCartOpen={setIsCartOpen}
+          handleRemoveFromCart={handleRemoveFromCart}
+          handleCheckout={handleCheckout}
+        />
+      )}
 
       {/* PRIMARY VIEWS SWITCHER WITH STUNNING ACCENTUATIONS */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
@@ -603,6 +618,13 @@ export default function App() {
           <SignUpPage
             setCurrentScreen={setCurrentScreen}
             setCurrentUser={setCurrentUser}
+          />
+        )}
+
+        {currentScreen === 'admin' && (
+          <AdminPage
+            setCurrentScreen={setCurrentScreen}
+            currentUser={currentUser}
           />
         )}
 

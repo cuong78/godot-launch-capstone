@@ -25,10 +25,12 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
       return;
     }
     // Simulate user sign up
+    const isAdmin = email.toLowerCase().includes('admin') || username.toLowerCase().includes('admin');
     const mockUser: User = {
       username: username,
       email: email,
-      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80` // default premium avatar
+      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`, // default premium avatar
+      role: isAdmin ? 'admin' : 'user'
     };
     setCurrentUser(mockUser);
     setCurrentScreen('explore');
@@ -39,7 +41,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     const mockUser: User = {
       username: `${provider}User`,
       email: `${provider.toLowerCase()}@example.com`,
-      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`
+      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`,
+      role: 'user'
     };
     setCurrentUser(mockUser);
     setCurrentScreen('explore');
@@ -135,7 +138,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
           </button>
         </div>
 
-        <div className="text-center pt-2">
+        <div className="text-center pt-2 space-y-2">
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Already a member?{' '}
             <button
@@ -145,6 +148,9 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               Sign In
             </button>
           </p>
+          <div className="text-[10px] bg-slate-100 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-405 dark:text-slate-500 leading-relaxed font-mono">
+            💡 <span className="font-semibold text-amber-500">Testing Tip:</span> Register with email/username containing <code className="text-sky-500">"admin"</code> to automatically gain administrator permissions.
+          </div>
         </div>
 
       </div>
