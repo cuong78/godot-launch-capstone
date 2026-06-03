@@ -12,9 +12,7 @@ import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "games")
@@ -68,11 +66,7 @@ public class Game {
     private boolean communityAvailable = false;
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "game_tags",
-        joinColumns = @JoinColumn(name = "game_id"),
-        inverseJoinColumns = @JoinColumn(name = "tag_id")
-    )
+    @JoinTable(name = "game_tags", joinColumns = @JoinColumn(name = "game_id"), inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<Tag> tags = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)

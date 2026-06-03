@@ -25,8 +25,8 @@ public class AIReport {
     private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "game_id", nullable = false, unique = true)
-    private Game game;
+    @JoinColumn(name = "game_version_id", nullable = false, unique = true)
+    private GameVersion gameVersion;
 
     @Column(name = "quality_score")
     private Short qualityScore;
