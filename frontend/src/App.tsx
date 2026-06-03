@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { Asset, Project } from './types';
+import { Asset, Project, User, ScreenType } from './types';
 
 // Modular Page Components
 import { HomePage } from './page/HomePage';
@@ -12,6 +12,8 @@ import { UploadPage } from './page/UploadPage';
 import { PathPage } from './page/PathPage';
 import { DashboardPage } from './page/DashboardPage';
 import { CommunityPage } from './page/CommunityPage';
+import { SignInPage } from './page/SignInPage';
+import { SignUpPage } from './page/SignUpPage';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
@@ -232,8 +234,6 @@ const INITIAL_ASSETS: Asset[] = [
 ];
 
 // Helper functions for mapping URLs to screen states
-type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community';
-
 const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } => {
   const segments = path.split('/').filter(Boolean);
   if (segments.length === 0) {
@@ -245,6 +245,8 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   if (primary === 'path') return { screen: 'path' };
   if (primary === 'dashboard') return { screen: 'dashboard' };
   if (primary === 'community') return { screen: 'community' };
+  if (primary === 'signin') return { screen: 'signin' };
+  if (primary === 'signup') return { screen: 'signup' };
   if (primary === 'detail') {
     return { screen: 'detail', assetId: segments[1] };
   }
@@ -260,6 +262,7 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
 export default function App() {
   const initialRoute = pathToScreen(window.location.pathname);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
   const [searchText, setSearchText] = useState<string>('');
@@ -488,6 +491,8 @@ export default function App() {
       <Header
         currentScreen={currentScreen}
         setCurrentScreen={setCurrentScreen}
+        currentUser={currentUser}
+        setCurrentUser={setCurrentUser}
         searchText={searchText}
         setSearchText={setSearchText}
         darkMode={darkMode}
@@ -584,6 +589,20 @@ export default function App() {
           <CommunityPage
             darkMode={darkMode}
             setCurrentScreen={setCurrentScreen}
+          />
+        )}
+
+        {currentScreen === 'signin' && (
+          <SignInPage
+            setCurrentScreen={setCurrentScreen}
+            setCurrentUser={setCurrentUser}
+          />
+        )}
+
+        {currentScreen === 'signup' && (
+          <SignUpPage
+            setCurrentScreen={setCurrentScreen}
+            setCurrentUser={setCurrentUser}
           />
         )}
 

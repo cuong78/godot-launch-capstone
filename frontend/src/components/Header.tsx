@@ -11,11 +11,13 @@ import {
   Plus
 } from 'lucide-react';
 import { Button } from './Button';
-import { Asset } from '../types';
+import { Asset, User, ScreenType } from '../types';
 
 interface HeaderProps {
-  currentScreen: 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community';
-  setCurrentScreen: (screen: 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community') => void;
+  currentScreen: ScreenType;
+  setCurrentScreen: (screen: ScreenType) => void;
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
   darkMode: boolean;
   setDarkMode: (mode: boolean) => void;
   searchText: string;
@@ -30,6 +32,8 @@ interface HeaderProps {
 export function Header({
   currentScreen,
   setCurrentScreen,
+  currentUser,
+  setCurrentUser,
   darkMode,
   setDarkMode,
   searchText,
@@ -221,6 +225,64 @@ export function Header({
             >
               Upload File
             </Button>
+          </div>
+
+          {/* Authentication Section */}
+          <div className="flex items-center gap-2">
+            {currentUser ? (
+              <div className="relative group flex items-center gap-2">
+                <div className="relative">
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.username}
+                    className="w-8 h-8 rounded-full border-2 border-amber-400 cursor-pointer hover:border-amber-300 transition-colors"
+                  />
+                  {/* Dropdown menu */}
+                  <div className="absolute right-0 mt-2.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-xl p-3 hidden group-hover:block hover:block z-50">
+                    <p className="text-xs font-bold text-slate-850 dark:text-white truncate">{currentUser.username}</p>
+                    <p className="text-[10px] text-slate-450 dark:text-slate-400 truncate mb-2">{currentUser.email}</p>
+                    <div className="border-t border-slate-100 dark:border-slate-800 my-1.5" />
+                    <button
+                      onClick={() => {
+                        setCurrentUser(null);
+                        setCurrentScreen('explore');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="w-full text-left text-xs font-semibold text-rose-500 hover:text-rose-650 dark:hover:text-rose-400 py-1 transition-colors cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setCurrentUser(null);
+                    setCurrentScreen('explore');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="hidden md:inline-block text-xs font-bold text-rose-500 hover:text-rose-600 dark:hover:text-rose-455 cursor-pointer px-2 py-1"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setCurrentScreen('signin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                  Sign In
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => { setCurrentScreen('signup'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                  Sign Up
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

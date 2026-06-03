@@ -32,5 +32,11 @@ export interface Project {
   downloads: string;
 }
 
-export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community';
+export interface User {
+  username: string;
+  email: string;
+  avatarUrl: string;
+}
+
+export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup';
 
