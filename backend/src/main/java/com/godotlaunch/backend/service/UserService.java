@@ -1,16 +1,16 @@
-package com.godotlaunch.backend.service;
-
-import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
-import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
-import com.godotlaunch.backend.dto.response.UserResponse;
-
-import java.util.List;
-import java.util.UUID;
-
-public interface UserService {
-    List<UserResponse> getAllUsers();
-    UserResponse getUserById(UUID id);
-    UserResponse createUser(AdminCreateUserRequest request);
-    UserResponse updateUser(UUID id, AdminUpdateUserRequest request);
-    void deleteUser(UUID id);
-}
+//package com.godotlaunch.backend.service;
+//
+//import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
+//import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
+//import com.godotlaunch.backend.dto.response.UserResponse;
+//
+//import java.util.List;
+//import java.util.UUID;
+//
+//public interface UserService {
+//    List<UserResponse> getAllUsers();
+//    UserResponse getUserById(UUID id);
+//    UserResponse createUser(AdminCreateUserRequest request);
+//    UserResponse updateUser(UUID id, AdminUpdateUserRequest request);
+//    void deleteUser(UUID id);
+//}

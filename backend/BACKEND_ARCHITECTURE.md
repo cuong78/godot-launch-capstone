@@ -87,6 +87,7 @@ public interface GameService {
 ```
 
 ### 📝 Example Service Implementation (`GameServiceImpl.java`)
+
 ```java
 package com.godotlaunch.backend.service.impl;
 
@@ -96,14 +97,13 @@ import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.constant.ErrorCode;
-import com.godotlaunch.backend.repository.GameRepository;
-import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.GameService;
 import com.godotlaunch.backend.service.mapper.GameMapper;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+
 import java.util.UUID;
 
 @Service
@@ -118,7 +118,7 @@ public class GameServiceImpl implements GameService {
     @Transactional
     public GameDetailsResponse uploadGame(UUID developerId, GameUploadRequest request) {
         User creator = userRepository.findById(developerId)
-            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Game game = gameMapper.toEntity(request);
         game.setCreator(creator);
@@ -131,7 +131,7 @@ public class GameServiceImpl implements GameService {
     @Transactional(readOnly = true)
     public GameDetailsResponse getGameDetails(UUID gameId) {
         Game game = gameRepository.findById(gameId)
-            .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
         return gameMapper.toResponse(game);
     }
 }
