@@ -36,23 +36,33 @@ public class MarketplaceItem {
     @Column(name = "item_type", nullable = false, columnDefinition = "item_type_enum")
     private ItemType itemType;
 
-    @Column(nullable = false, length = 200)
+    @Column(name = "title", nullable = false, length = 200)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    @Column(name = "price", nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
 
     @Column(name = "file_url", nullable = false, columnDefinition = "TEXT")
     private String fileUrl;
 
-    @Column(name = "preview_url", columnDefinition = "TEXT")
-    private String previewUrl;
+    @Column(name = "godot_version", length = 20)
+    private String godotVersion;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_game_id")
+    private Game sourceGame;
+
+    @Column(name = "github_repo_url", columnDefinition = "TEXT")
+    private String githubRepoUrl;
+
+    @Column(name = "github_verified_at")
+    private Instant githubVerifiedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "item_status_enum")
+    @Column(name = "status", nullable = false, columnDefinition = "item_status_enum")
     private ItemStatus status = ItemStatus.active;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)

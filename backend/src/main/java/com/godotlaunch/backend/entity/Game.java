@@ -34,10 +34,10 @@ public class Game {
     @JoinColumn(name = "category_id")
     private Category category;
 
-    @Column(nullable = false, length = 200)
+    @Column(name = "title", nullable = false, length = 200)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
@@ -48,7 +48,7 @@ public class Game {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "game_status_enum")
+    @Column(name = "status", nullable = false, columnDefinition = "game_status_enum")
     private GameStatus status = GameStatus.draft;
 
     @Enumerated(EnumType.STRING)
@@ -59,14 +59,16 @@ public class Game {
     @Column(name = "price_proposed", precision = 15, scale = 2)
     private BigDecimal priceProposed;
 
-    @Column(name = "download_price", precision = 15, scale = 2)
-    private BigDecimal downloadPrice;
+    @Column(name = "download_count", nullable = false)
+    private Integer downloadCount = 0;
 
-    @Column(name = "community_available", nullable = false)
-    private boolean communityAvailable = false;
+    @Column(name = "is_source_listed", nullable = false)
+    private boolean isSourceListed = false;
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "game_tags", joinColumns = @JoinColumn(name = "game_id"), inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    @JoinTable(name = "game_tags",
+            joinColumns = @JoinColumn(name = "game_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<Tag> tags = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)

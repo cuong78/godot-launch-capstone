@@ -36,7 +36,7 @@ public class Transaction {
     @JoinColumn(name = "game_id")
     private Game game;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
     @Column(name = "platform_commission", nullable = false, precision = 15, scale = 2)
@@ -46,11 +46,11 @@ public class Transaction {
     private BigDecimal netAmount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "txn_type_enum")
+    @Column(name = "type", nullable = false, columnDefinition = "txn_type_enum")
     private TxnType type;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "txn_status_enum")
+    @Column(name = "status", nullable = false, columnDefinition = "txn_status_enum")
     private TxnStatus status = TxnStatus.pending;
 
     @Column(name = "reference_id", length = 100)

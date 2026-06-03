@@ -13,6 +13,6 @@ public enum AuditTarget {
     withdrawal_request,
     external_publish,
     notification,
-    game_purchase,
+    source_code_purchase,
     community_chat
 }

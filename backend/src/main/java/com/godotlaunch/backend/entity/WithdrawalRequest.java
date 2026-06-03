@@ -34,11 +34,11 @@ public class WithdrawalRequest {
     @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
     @JdbcTypeCode(Types.CHAR)
-    @Column(nullable = false, length = 3)
+    @Column(name = "currency", nullable = false, length = 3)
     private String currency = "USD";
 
     @Column(name = "bank_name", nullable = false, length = 200)
@@ -51,7 +51,7 @@ public class WithdrawalRequest {
     private String accountHolder;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "withdrawal_status_enum")
+    @Column(name = "status", nullable = false, columnDefinition = "withdrawal_status_enum")
     private WithdrawalStatus status = WithdrawalStatus.pending;
 
     @ManyToOne(fetch = FetchType.LAZY)

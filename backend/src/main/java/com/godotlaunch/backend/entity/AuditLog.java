@@ -33,7 +33,7 @@ public class AuditLog {
     private ActorRole actorRole;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "audit_action_enum")
+    @Column(name = "action", nullable = false, columnDefinition = "audit_action_enum")
     private AuditAction action;
 
     @Enumerated(EnumType.STRING)
@@ -49,7 +49,7 @@ public class AuditLog {
     @Column(name = "new_value", columnDefinition = "jsonb")
     private String newValue;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
     @Column(name = "ip_address", columnDefinition = "inet")

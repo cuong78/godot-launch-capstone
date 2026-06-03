@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.entity.enums;
 
-public enum ItemStatus {
-    active,
-    removed
+public enum OrderType {
+    source_code_purchase
 }

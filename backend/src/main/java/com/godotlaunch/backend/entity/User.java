@@ -25,10 +25,7 @@ public class User {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
-    @Column(nullable = false, unique = true, columnDefinition = "citext")
-    private String username;
-
-    @Column(nullable = false, unique = true, columnDefinition = "citext")
+    @Column(name = "email", nullable = false, unique = true, columnDefinition = "citext")
     private String email;
 
     @Column(name = "password_hash", nullable = false, length = 255)
@@ -40,8 +37,20 @@ public class User {
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
-    @Column(nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 20)
     private String status;
+
+    @Column(name = "github_id", unique = true, length = 50)
+    private String githubId;
+
+    @Column(name = "github_username", length = 100)
+    private String githubUsername;
+
+    @Column(name = "github_token_enc", columnDefinition = "TEXT")
+    private String githubTokenEnc;
+
+    @Column(name = "github_linked_at")
+    private Instant githubLinkedAt;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

@@ -39,10 +39,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.DUPLICATE_EMAIL);
         }
 
-        // 3. Validate username uniqueness
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException(ErrorCode.DUPLICATE_USERNAME);
-        }
+
 
         // 4. Fetch role & prevent registering as admin
         String requestedRole = request.getRoleName() != null ? request.getRoleName().trim().toLowerCase() : "player";
@@ -55,7 +52,6 @@ public class AuthServiceImpl implements AuthService {
 
         // 5. Build and save user
         User user = new User();
-        user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName());
@@ -71,7 +67,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         // 1. Fetch user by username or email
-        User user = userRepository.findByUsernameOrEmail(request.getUsernameOrEmail(), request.getUsernameOrEmail())
+        User user = userRepository.findByEmail(request.getUsernameOrEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
         // 2. Verify password
@@ -99,7 +95,7 @@ public class AuthServiceImpl implements AuthService {
     private UserResponse mapToUserResponse(User user) {
         return UserResponse.builder()
             .id(user.getId())
-            .username(user.getUsername())
+            .username(user.getEmail())
             .email(user.getEmail())
             .fullName(user.getFullName())
             .roleName(user.getRole().getName())

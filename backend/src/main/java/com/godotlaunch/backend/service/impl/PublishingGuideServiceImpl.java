@@ -108,7 +108,7 @@ public class PublishingGuideServiceImpl implements PublishingGuideService {
                 .tip(guide.getTip())
                 .videoUrl(guide.getVideoUrl())
                 .isActive(guide.isActive())
-                .createdByUsername(guide.getCreatedBy() != null ? guide.getCreatedBy().getUsername() : null)
+                .createdByUsername(guide.getCreatedBy() != null ? guide.getCreatedBy().getEmail() : null)
                 .createdAt(guide.getCreatedAt())
                 .updatedAt(guide.getUpdatedAt())
                 .build();

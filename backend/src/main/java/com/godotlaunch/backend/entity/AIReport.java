@@ -42,7 +42,7 @@ public class AIReport {
     private Short trendScore;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "ai_rec_enum")
+    @Column(name = "recommendation", nullable = false, columnDefinition = "ai_rec_enum")
     private AIRec recommendation;
 
     @Column(name = "suggested_price", precision = 15, scale = 2)

@@ -1,6 +1,6 @@
 package com.godotlaunch.backend.entity.enums;
 
 public enum ItemType {
-    game,
+    source_code,
     asset
 }

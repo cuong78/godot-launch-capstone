@@ -24,13 +24,13 @@ public class PublishingGuide {
     @Column(name = "step_order", nullable = false, unique = true)
     private Short stepOrder;
 
-    @Column(nullable = false, length = 200)
+    @Column(name = "title", nullable = false, length = 200)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "tip", columnDefinition = "TEXT")
     private String tip;
 
     @Column(name = "video_url", columnDefinition = "TEXT")

@@ -30,7 +30,7 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     @Transactional
     public void addGameToWishlist(String userEmail, UUID gameId) {
-        User user = userRepository.findByUsernameOrEmail(userEmail, userEmail)
+        User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Game game = gameRepository.findById(gameId)
@@ -50,7 +50,7 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     @Transactional
     public void removeGameFromWishlist(String userEmail, UUID gameId) {
-        User user = userRepository.findByUsernameOrEmail(userEmail, userEmail)
+        User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         if (!favoriteRepository.existsByUserIdAndGameId(user.getId(), gameId)) {
@@ -63,7 +63,7 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     @Transactional(readOnly = true)
     public List<GameResponse> getWishlist(String userEmail) {
-        User user = userRepository.findByUsernameOrEmail(userEmail, userEmail)
+        User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         List<Favorite> favorites = favoriteRepository.findByUserId(user.getId());
@@ -76,7 +76,7 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     @Transactional(readOnly = true)
     public boolean isGameWishlisted(String userEmail, UUID gameId) {
-        User user = userRepository.findByUsernameOrEmail(userEmail, userEmail)
+        User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         return favoriteRepository.existsByUserIdAndGameId(user.getId(), gameId);
@@ -88,8 +88,8 @@ public class WishlistServiceImpl implements WishlistService {
                 .title(game.getTitle())
                 .description(game.getDescription())
                 .thumbnailUrl(game.getThumbnailUrl())
-                .downloadPrice(game.getDownloadPrice())
-                .communityAvailable(game.isCommunityAvailable())
+                .downloadPrice(null)
+                .communityAvailable(game.isSourceListed())
                 .status(game.getStatus() != null ? game.getStatus().name() : null)
                 .creatorName(game.getCreator() != null ? game.getCreator().getFullName() : null)
                 .categoryName(game.getCategory() != null ? game.getCategory().getName() : null)

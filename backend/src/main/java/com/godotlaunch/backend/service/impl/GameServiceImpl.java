@@ -124,10 +124,10 @@ public class GameServiceImpl implements GameService {
                 .description(game.getDescription())
                 .thumbnailUrl(game.getThumbnailUrl())
                 .priceProposed(game.getPriceProposed())
-                .downloadPrice(game.getDownloadPrice())
-                .communityAvailable(game.isCommunityAvailable())
+                .downloadPrice(null)
+                .communityAvailable(game.isSourceListed())
                 .status(game.getStatus().name())
-                .creatorName(game.getCreator().getUsername())
+                .creatorName(game.getCreator().getEmail())
                 .categoryName(game.getCategory() != null ? game.getCategory().getName() : null)
                 .build();
     }

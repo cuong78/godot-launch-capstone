@@ -29,11 +29,11 @@ public class Wallet {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    @Column(name = "balance", nullable = false, precision = 15, scale = 2)
     private BigDecimal balance = BigDecimal.ZERO;
 
     @JdbcTypeCode(Types.CHAR)
-    @Column(nullable = false, length = 3)
+    @Column(name = "currency", nullable = false, length = 3)
     private String currency = "USD";
 
     @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)

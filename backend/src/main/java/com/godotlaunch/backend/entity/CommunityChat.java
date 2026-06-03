@@ -33,7 +33,7 @@ public class CommunityChat {
     @JoinColumn(name = "parent_message_id")
     private CommunityChat parentMessage;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "message", nullable = false, columnDefinition = "TEXT")
     private String message;
 
     @Column(name = "is_deleted", nullable = false)

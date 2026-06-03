@@ -25,14 +25,12 @@ public class CartItem {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id")
-    private Game game;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "marketplace_item_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "marketplace_item_id", nullable = false)
     private MarketplaceItem marketplaceItem;
 
     @Column(name = "added_at", nullable = false, insertable = false, updatable = false)
     private Instant addedAt;
+
+
 }

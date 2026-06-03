@@ -28,7 +28,7 @@ public class GameVersion {
     @Column(name = "version_number", nullable = false, length = 50)
     private String versionNumber;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "changelog", columnDefinition = "TEXT")
     private String changelog;
 
     @Column(name = "file_url", nullable = false, columnDefinition = "TEXT")

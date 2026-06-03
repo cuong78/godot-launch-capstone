@@ -52,17 +52,11 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ErrorCode.DUPLICATE_EMAIL);
         }
 
-        // Validate username uniqueness
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException(ErrorCode.DUPLICATE_USERNAME);
-        }
-
         // Fetch and validate role
         Role role = roleRepository.findByName(request.getRoleName().trim().toLowerCase())
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
         User user = new User();
-        user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName());
@@ -117,13 +111,11 @@ public class UserServiceImpl implements UserService {
             return;
         }
 
-        // Soft delete: status = 'deleted' and suffix username/email to free them up
-        String originalUsername = user.getUsername();
+        // Soft delete: status = 'deleted' and suffix email to free it up
         String originalEmail = user.getEmail();
         long timestamp = System.currentTimeMillis();
 
         user.setStatus("deleted");
-        user.setUsername(originalUsername + "_deleted_" + timestamp);
         user.setEmail(originalEmail + "_deleted_" + timestamp);
 
         userRepository.save(user);
@@ -132,7 +124,7 @@ public class UserServiceImpl implements UserService {
     private UserResponse mapToUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())
-                .username(user.getUsername())
+                .username(user.getEmail())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .roleName(user.getRole().getName())

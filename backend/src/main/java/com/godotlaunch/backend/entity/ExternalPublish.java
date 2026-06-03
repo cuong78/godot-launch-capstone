@@ -27,12 +27,16 @@ public class ExternalPublish {
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "game_version_id", nullable = false)
+    private GameVersion gameVersion;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "ext_platform_enum")
+    @Column(name = "platform", nullable = false, columnDefinition = "ext_platform_enum")
     private ExtPlatform platform;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "ext_status_enum")
+    @Column(name = "status", nullable = false, columnDefinition = "ext_status_enum")
     private ExtStatus status = ExtStatus.pending;
 
     @Column(name = "external_app_id", length = 200)
