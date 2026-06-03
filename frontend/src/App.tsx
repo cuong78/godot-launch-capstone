@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -231,10 +231,37 @@ const INITIAL_ASSETS: Asset[] = [
   }
 ];
 
+// Helper functions for mapping URLs to screen states
+type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community';
+
+const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } => {
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length === 0) {
+    return { screen: 'explore' };
+  }
+  const primary = segments[0] as ScreenType;
+  if (primary === 'marketplace') return { screen: 'marketplace' };
+  if (primary === 'upload') return { screen: 'upload' };
+  if (primary === 'path') return { screen: 'path' };
+  if (primary === 'dashboard') return { screen: 'dashboard' };
+  if (primary === 'community') return { screen: 'community' };
+  if (primary === 'detail') {
+    return { screen: 'detail', assetId: segments[1] };
+  }
+  return { screen: 'explore' };
+};
+
+const screenToPath = (screen: ScreenType, assetId?: string): string => {
+  if (screen === 'explore') return '/';
+  if (screen === 'detail' && assetId) return `/detail/${assetId}`;
+  return `/${screen}`;
+};
+
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community'>('explore');
+  const initialRoute = pathToScreen(window.location.pathname);
+  const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
   const [darkMode, setDarkMode] = useState<boolean>(true);
-  const [selectedAssetId, setSelectedAssetId] = useState<string>('cyber_interior');
+  const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
   const [searchText, setSearchText] = useState<string>('');
   
   const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
@@ -262,6 +289,27 @@ export default function App() {
 
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);
+
+  // Sync state changes with URL address bar
+  useEffect(() => {
+    const newPath = screenToPath(currentScreen, currentScreen === 'detail' ? selectedAssetId : undefined);
+    if (window.location.pathname !== newPath) {
+      window.history.pushState(null, '', newPath);
+    }
+  }, [currentScreen, selectedAssetId]);
+
+  // Sync browser Back/Forward buttons navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const { screen, assetId } = pathToScreen(window.location.pathname);
+      setCurrentScreen(screen);
+      if (assetId) {
+        setSelectedAssetId(assetId);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Switch to Detail Screen helper
   const handleViewAssetDetails = (asset: Asset) => {
