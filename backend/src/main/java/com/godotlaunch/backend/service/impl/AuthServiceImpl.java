@@ -42,12 +42,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.DUPLICATE_EMAIL);
         }
 
-        String requestedRole = request.getRoleName() != null ? request.getRoleName().trim().toLowerCase() : "player";
-        if ("admin".equals(requestedRole)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        Role role = roleRepository.findByName(requestedRole)
+        Role role = roleRepository.findByName("player")
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
         User user = new User();

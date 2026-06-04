@@ -24,6 +24,4 @@ public class SignUpRequest {
     @NotBlank(message = "Full name is required.")
     @Size(max = 150, message = "Full name cannot exceed 150 characters.")
     private String fullName;
-
-    private String roleName = "player"; // defaults to "player", can be "developer" or "admin"
 }
