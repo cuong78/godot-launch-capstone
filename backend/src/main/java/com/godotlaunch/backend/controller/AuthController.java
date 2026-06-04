@@ -1,5 +1,7 @@
 package com.godotlaunch.backend.controller;
 
+import com.godotlaunch.backend.dto.request.GitHubLoginRequest;
+import com.godotlaunch.backend.dto.request.GoogleLoginRequest;
 import com.godotlaunch.backend.dto.request.SignInRequest;
 import com.godotlaunch.backend.dto.request.SignUpRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
@@ -33,5 +35,19 @@ public class AuthController {
     public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> signIn(@Valid @RequestBody SignInRequest request) {
         JwtAuthenticationResponse response = authService.signIn(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Login successful."));
+    }
+
+    @PostMapping("/google")
+    @Operation(summary = "Authenticate with Google", description = "Validates Google ID token and returns standard JWT token.")
+    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        JwtAuthenticationResponse response = authService.loginWithGoogle(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Google login successful."));
+    }
+
+    @PostMapping("/github")
+    @Operation(summary = "Authenticate with GitHub", description = "Exchanges GitHub auth code and returns standard JWT token.")
+    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> loginWithGitHub(@Valid @RequestBody GitHubLoginRequest request) {
+        JwtAuthenticationResponse response = authService.loginWithGitHub(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "GitHub login successful."));
     }
 }
