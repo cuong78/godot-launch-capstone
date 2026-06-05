@@ -19,6 +19,9 @@ import { SignInPage } from './page/SignInPage';
 import { SignUpPage } from './page/SignUpPage';
 import { AdminPage } from './page/AdminPage';
 
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { useAuth } from './hooks/useAuth';
+
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
 
@@ -267,7 +270,12 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
 export default function App() {
   const initialRoute = pathToScreen(window.location.pathname);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { currentUser, logout } = useAuth();
+  const setCurrentUser = (user: User | null) => {
+    if (user === null) {
+      logout();
+    }
+  };
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
   const [searchText, setSearchText] = useState<string>('');
@@ -567,22 +575,24 @@ export default function App() {
         )}
 
         {currentScreen === 'upload' && (
-          <UploadPage
-            uploadSuccessMessage={uploadSuccessMessage}
-            newTitle={newTitle}
-            setNewTitle={setNewTitle}
-            newPrice={newPrice}
-            setNewPrice={setNewPrice}
-            newCategory={newCategory}
-            setNewCategory={setNewCategory}
-            newCoverPreset={newCoverPreset}
-            setNewCoverPreset={setNewCoverPreset}
-            newTags={newTags}
-            setNewTags={setNewTags}
-            newDesc={newDesc}
-            setNewDesc={setNewDesc}
-            handleCreateProduct={handleCreateProduct}
-          />
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <UploadPage
+              uploadSuccessMessage={uploadSuccessMessage}
+              newTitle={newTitle}
+              setNewTitle={setNewTitle}
+              newPrice={newPrice}
+              setNewPrice={setNewPrice}
+              newCategory={newCategory}
+              setNewCategory={setNewCategory}
+              newCoverPreset={newCoverPreset}
+              setNewCoverPreset={setNewCoverPreset}
+              newTags={newTags}
+              setNewTags={setNewTags}
+              newDesc={newDesc}
+              setNewDesc={setNewDesc}
+              handleCreateProduct={handleCreateProduct}
+            />
+          </ProtectedRoute>
         )}
 
         {currentScreen === 'path' && (
@@ -592,12 +602,14 @@ export default function App() {
         )}
 
         {currentScreen === 'dashboard' && (
-          <DashboardPage
-            financeStats={financeStats}
-            assets={assets}
-            projectRepositories={projectRepositories}
-            setCurrentScreen={setCurrentScreen}
-          />
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <DashboardPage
+              financeStats={financeStats}
+              assets={assets}
+              projectRepositories={projectRepositories}
+              setCurrentScreen={setCurrentScreen}
+            />
+          </ProtectedRoute>
         )}
 
         {currentScreen === 'community' && (
@@ -622,10 +634,12 @@ export default function App() {
         )}
 
         {currentScreen === 'admin' && (
-          <AdminPage
-            setCurrentScreen={setCurrentScreen}
-            currentUser={currentUser}
-          />
+          <ProtectedRoute setCurrentScreen={setCurrentScreen} requiredRole="admin">
+            <AdminPage
+              setCurrentScreen={setCurrentScreen}
+              currentUser={currentUser}
+            />
+          </ProtectedRoute>
         )}
 
       </main>

@@ -33,11 +33,48 @@ export interface Project {
 }
 
 export interface User {
+  id?: string;
   username: string;
   email: string;
+  fullName?: string;
   avatarUrl: string;
-  role?: 'user' | 'admin';
+  role?: 'user' | 'admin' | 'developer' | 'player';
+  roleName?: string;
+  status?: string;
 }
 
 export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin';
+
+export interface SignUpRequest {
+  email: string;
+  password?: string;
+  confirmPassword?: string;
+  fullName: string;
+}
+
+export interface SignInRequest {
+  email: string;
+  password?: string;
+}
+
+export interface GoogleLoginRequest {
+  idToken: string;
+}
+
+export interface GitHubLoginRequest {
+  code: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  status: number;
+  message: string;
+  data: T;
+  errors?: Record<string, string>;
+}
+
+export interface JwtAuthenticationResponse {
+  token: string;
+  user: User;
+}
 

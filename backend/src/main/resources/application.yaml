@@ -49,7 +49,7 @@ app:
     encryption-key: ${ENCRYPTION_KEY:godot-launch-encrypt-key-12345}
     oauth:
       google:
-        client-id: ${GOOGLE_CLIENT_ID:}
+        client-id: ${GOOGLE_CLIENT_ID:864834022165-0hlg37k3grvs44h1bjsg7hcsk4sumofp.apps.googleusercontent.com}
       github:
         client-id: ${GITHUB_CLIENT_ID:}
         client-secret: ${GITHUB_CLIENT_SECRET:}

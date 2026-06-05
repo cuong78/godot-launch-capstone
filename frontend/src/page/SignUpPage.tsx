@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { UserPlus, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { User } from '../types';
+import { useAuth } from '../hooks/useAuth';
 
 interface SignUpPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -13,41 +14,98 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   setCurrentScreen,
   setCurrentUser
 }) => {
-  const [username, setUsername] = useState('');
+  const { signUp, error: apiError, setError: clearApiError } = useAuth();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [localError, setLocalError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username || !email || !password) {
-      setError('Please fill in all fields.');
-      return;
+  const validateFields = () => {
+    if (!fullName) {
+      setLocalError('Full Name is required.');
+      return false;
     }
-    // Simulate user sign up
-    const isAdmin = email.toLowerCase().includes('admin') || username.toLowerCase().includes('admin');
-    const mockUser: User = {
-      username: username,
-      email: email,
-      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`, // default premium avatar
-      role: isAdmin ? 'admin' : 'user'
-    };
-    setCurrentUser(mockUser);
-    setCurrentScreen('explore');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!email) {
+      setLocalError('Email Address is required.');
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setLocalError('Please enter a valid email address.');
+      return false;
+    }
+    if (!password) {
+      setLocalError('Password is required.');
+      return false;
+    }
+    if (password.length < 6) {
+      setLocalError('Password must be at least 6 characters.');
+      return false;
+    }
+    if (!confirmPassword) {
+      setLocalError('Please confirm your password.');
+      return false;
+    }
+    if (password !== confirmPassword) {
+      setLocalError('Passwords do not match.');
+      return false;
+    }
+    return true;
   };
 
-  const handleOAuthLogin = (provider: string) => {
-    const mockUser: User = {
-      username: `${provider}User`,
-      email: `${provider.toLowerCase()}@example.com`,
-      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`,
-      role: 'user'
-    };
-    setCurrentUser(mockUser);
-    setCurrentScreen('explore');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearApiError(null);
+    setLocalError('');
+    setSuccessMessage('');
+
+    if (!validateFields()) return;
+
+    setLoading(true);
+    try {
+      await signUp({ email, password, confirmPassword, fullName });
+      setSuccessMessage('Account created successfully! Redirecting to sign in...');
+      setTimeout(() => {
+        setCurrentScreen('signin');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 1500);
+    } catch (err: any) {
+      // Error is caught by AuthContext and displayed
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleGoogleLogin = () => {
+    clearApiError(null);
+    setLocalError('');
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1013498846927-91l3g37oee1vdf4qg1n980p7m687a718.apps.googleusercontent.com';
+    const redirectUri = window.location.origin + '/signin';
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth` +
+      `?client_id=${googleClientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=id_token` +
+      `&scope=openid%20email%20profile` +
+      `&nonce=godotlaunch_${Date.now()}`;
+    window.location.href = authUrl;
+  };
+
+  const handleGitHubLogin = () => {
+    clearApiError(null);
+    setLocalError('');
+    const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23ct413eH4t1v1D';
+    const redirectUri = window.location.origin + '/signin';
+    const authUrl = `https://github.com/login/oauth/authorize` +
+      `?client_id=${githubClientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&scope=read:user,user:email`;
+    window.location.href = authUrl;
+  };
+
+  const displayError = localError || apiError;
 
   return (
     <div className="max-w-md mx-auto my-16 animate-fade-in relative z-10">
@@ -61,18 +119,25 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
           <p className="text-xs text-slate-500 dark:text-slate-400">Start your indie gaming adventure today.</p>
         </div>
 
-        {error && (
+        {displayError && (
           <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-red-500 text-xs text-center font-medium">
-            {error}
+            {displayError}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="bg-green-500/10 border border-green-500/20 p-3 rounded-lg text-green-500 text-xs text-center font-medium animate-pulse">
+            {successMessage}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Username"
-            placeholder="PixelPioneer"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            label="Full Name"
+            placeholder="Aria Vance"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            disabled={loading}
             required
           />
 
@@ -82,15 +147,27 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             placeholder="hello@indiedev.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
             required
           />
 
           <Input
             label="Password"
             type="password"
-            placeholder="••••••••"
+            placeholder="•••••••• (Min. 6 chars)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+            required
+          />
+
+          <Input
+            label="Confirm Password"
+            type="password"
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            disabled={loading}
             required
           />
 
@@ -100,8 +177,9 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             type="submit" 
             className="w-full justify-center mt-2 font-display"
             icon={<UserPlus size={16} />}
+            disabled={loading}
           >
-            Create Account
+            {loading ? 'Creating Account...' : 'Create Account'}
           </Button>
         </form>
 
@@ -113,8 +191,10 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
         <div className="grid grid-cols-2 gap-4">
           <button
-            onClick={() => handleOAuthLogin('Google')}
-            className="flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold cursor-pointer active:scale-95 transition-studio"
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold cursor-pointer active:scale-95 transition-studio disabled:opacity-50"
           >
             {/* Google SVG Icon */}
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -127,14 +207,16 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
           </button>
           
           <button
-            onClick={() => handleOAuthLogin('Discord')}
-            className="flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold cursor-pointer active:scale-95 transition-studio"
+            type="button"
+            onClick={handleGitHubLogin}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold cursor-pointer active:scale-95 transition-studio disabled:opacity-50"
           >
-            {/* Discord SVG Icon */}
-            <svg className="w-4 h-4 fill-current" viewBox="0 0 127.14 96.36">
-              <path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,53.22,6.83,77.19,77.19,0,0,0,49.88,0,105.15,105.15,0,0,0,19.44,8.07C3.66,31.58-1.86,54.65.78,77.53A105.73,105.73,0,0,0,32,96.36a77.7,77.7,0,0,0,6.63-10.85,68.43,68.43,0,0,1-10.5-5c.9-.66,1.8-1.34,2.65-2a75.58,75.58,0,0,0,72.56,0c.85.71,1.75,1.39,2.65,2a68.4,68.4,0,0,1-10.5,5,77.7,77.7,0,0,0,6.63,10.85,105.73,105.73,0,0,0,31.22-18.83C129.87,49.7,123.63,26.9,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.41,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z" />
-            </svg>
-            Discord
+            {/* GitHub SVG Icon */}
+            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
+          </svg>
+          GitHub
           </button>
         </div>
 
@@ -142,8 +224,10 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Already a member?{' '}
             <button
+              type="button"
               onClick={() => { setCurrentScreen('signin'); }}
               className="text-amber-500 hover:underline font-bold"
+              disabled={loading}
             >
               Sign In
             </button>
