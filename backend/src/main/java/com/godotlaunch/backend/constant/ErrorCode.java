@@ -27,6 +27,12 @@ public enum ErrorCode {
     GAME_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested game does not exist."),
     WISHLIST_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Game is not in your wishlist."),
     GUIDE_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested publishing guide does not exist."),
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested category does not exist."),
+    
+    // 400 Bad Request additions / Category
+    CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "Category name or slug already exists."),
+    PARENT_CATEGORY_NOT_FOUND(HttpStatus.BAD_REQUEST, "Parent category does not exist."),
+    CATEGORY_PARENT_CYCLE(HttpStatus.BAD_REQUEST, "Category hierarchy cannot contain cycles."),
     
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later.");
