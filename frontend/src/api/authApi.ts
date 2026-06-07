@@ -4,6 +4,8 @@ import {
   SignInRequest, 
   GoogleLoginRequest, 
   GitHubLoginRequest, 
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
   ApiResponse, 
   JwtAuthenticationResponse, 
   User 
@@ -32,6 +34,16 @@ export const authApi = {
 
   getCurrentUser: async (): Promise<ApiResponse<User>> => {
     const response = await api.get<ApiResponse<User>>('/api/v1/users/me');
+    return response.data;
+  },
+
+  forgotPassword: async (data: ForgotPasswordRequest): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>('/api/auth/forgot-password', data);
+    return response.data;
+  },
+
+  resetPassword: async (data: ResetPasswordRequest): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>('/api/auth/reset-password', data);
     return response.data;
   }
 };

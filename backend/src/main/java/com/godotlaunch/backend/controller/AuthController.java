@@ -4,6 +4,8 @@ import com.godotlaunch.backend.dto.request.GitHubLoginRequest;
 import com.godotlaunch.backend.dto.request.GoogleLoginRequest;
 import com.godotlaunch.backend.dto.request.SignInRequest;
 import com.godotlaunch.backend.dto.request.SignUpRequest;
+import com.godotlaunch.backend.dto.request.ForgotPasswordRequest;
+import com.godotlaunch.backend.dto.request.ResetPasswordRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
@@ -49,5 +51,19 @@ public class AuthController {
     public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> loginWithGitHub(@Valid @RequestBody GitHubLoginRequest request) {
         JwtAuthenticationResponse response = authService.loginWithGitHub(request);
         return ResponseEntity.ok(ApiResponse.success(response, "GitHub login successful."));
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request password reset OTP", description = "Checks email registration and sends a 6-digit OTP code to the user's email.")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.requestPasswordReset(request);
+        return ResponseEntity.ok(ApiResponse.success(null, "OTP verification code sent to your email."));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password with OTP", description = "Validates the OTP code and updates the user's password.")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success(null, "Password reset successfully. You can now log in with your new password."));
     }
 }

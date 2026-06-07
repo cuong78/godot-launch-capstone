@@ -5,6 +5,8 @@ import com.godotlaunch.backend.dto.request.GitHubLoginRequest;
 import com.godotlaunch.backend.dto.request.GoogleLoginRequest;
 import com.godotlaunch.backend.dto.request.SignInRequest;
 import com.godotlaunch.backend.dto.request.SignUpRequest;
+import com.godotlaunch.backend.dto.request.ForgotPasswordRequest;
+import com.godotlaunch.backend.dto.request.ResetPasswordRequest;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.entity.Role;
@@ -15,6 +17,8 @@ import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.security.JwtProvider;
 import com.godotlaunch.backend.service.AuthService;
+import com.godotlaunch.backend.service.OtpService;
+import com.godotlaunch.backend.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +50,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProvider jwtProvider;
     private final AuthenticationManager authenticationManager;
     private final EncryptionUtils encryptionUtils;
+    private final OtpService otpService;
+    private final EmailService emailService;
 
     @Value("${app.security.oauth.google.client-id:}")
     private String googleClientId;
@@ -324,6 +330,36 @@ public class AuthServiceImpl implements AuthService {
             log.error("Exception during GitHub Authentication", e);
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
+    }
+
+    @Override
+    public void requestPasswordReset(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        String otp = otpService.generateOtp(user.getEmail());
+        emailService.sendOtpEmail(user.getEmail(), otp);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORDS_DO_NOT_MATCH);
+        }
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        boolean isOtpValid = otpService.validateOtp(user.getEmail(), request.getOtp());
+        if (!isOtpValid) {
+            throw new AppException(ErrorCode.INVALID_OTP);
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        otpService.invalidateOtp(user.getEmail());
     }
 
     private UserResponse mapToUserResponse(User user) {
