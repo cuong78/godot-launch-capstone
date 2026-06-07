@@ -53,6 +53,7 @@ public class AuditLog {
     private String note;
 
     @Column(name = "ip_address", columnDefinition = "inet")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
     private String ipAddress;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
