@@ -5,17 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="33275470-931d-4ccf-8b3e-1200a6f57305" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/AdminHeader.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/AdminHeader.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/Footer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/Footer.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/Header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/Header.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/index.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/page/AdminPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/AdminPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/page/DashboardPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/DashboardPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/page/DetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/DetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/page/HomePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/HomePage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/page/MarketplacePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/MarketplacePage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/CommunityChatServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/CommunityChatServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/CommunityHub.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/CommunityHub.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/types.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
