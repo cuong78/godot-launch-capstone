@@ -46,7 +46,7 @@ export function Header({
 }: HeaderProps) {
   return (
     <header id="godotlaunch-navbar" className="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 z-40 transition-colors duration-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-6">
         
         {/* Logo & Small Engine version brand tag */}
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setCurrentScreen('explore'); setSearchText(''); }}>
@@ -62,7 +62,7 @@ export function Header({
         </div>
 
         {/* Combined Quick Search input bar */}
-        <div className="hidden md:flex flex-1 max-w-md relative">
+        <div className="hidden md:flex flex-1 max-w-md lg:max-w-xl xl:max-w-3xl relative">
           <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
             <Search size={16} />
           </span>
@@ -89,41 +89,41 @@ export function Header({
         </div>
 
         {/* Navigation Items (Responsive on Desktop) */}
-        <nav className="hidden lg:flex items-center gap-1.5">
+        <nav className="hidden lg:flex items-center gap-2 xl:gap-4">
           <button
             onClick={() => { setCurrentScreen('explore'); setSearchText(''); }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'explore' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+            className={`px-2 xl:px-3.5 py-2 text-xs xl:text-sm font-semibold rounded-lg transition-studio ${currentScreen === 'explore' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Explore
           </button>
           <button
             onClick={() => { setCurrentScreen('marketplace'); }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'marketplace' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+            className={`px-2 xl:px-3.5 py-2 text-xs xl:text-sm font-semibold rounded-lg transition-studio ${currentScreen === 'marketplace' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Marketplace
           </button>
           <button
             onClick={() => { setCurrentScreen('community'); }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'community' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+            className={`px-2 xl:px-3.5 py-2 text-xs xl:text-sm font-semibold rounded-lg transition-studio ${currentScreen === 'community' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Community
           </button>
           <button
             onClick={() => { setCurrentScreen('path'); }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'path' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+            className={`px-2 xl:px-3.5 py-2 text-xs xl:text-sm font-semibold rounded-lg transition-studio ${currentScreen === 'path' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Sell & Acquire
           </button>
           <button
             onClick={() => { setCurrentScreen('dashboard'); }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'dashboard' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+            className={`px-2 xl:px-3.5 py-2 text-xs xl:text-sm font-semibold rounded-lg transition-studio ${currentScreen === 'dashboard' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
           >
             Dashboard
           </button>
           {currentUser?.role === 'admin' && (
             <button
               onClick={() => { setCurrentScreen('admin'); }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-studio ${currentScreen === 'admin' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+              className={`px-2 xl:px-3.5 py-2 text-xs xl:text-sm font-semibold rounded-lg transition-studio ${currentScreen === 'admin' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
             >
               Admin Portal
             </button>
@@ -224,7 +224,7 @@ export function Header({
           </div>
 
           {/* Launch product custom setup screen button */}
-          <div className="hidden sm:block">
+          <div className="hidden sm:block lg:hidden xl:block">
             <Button
               variant="primary"
               size="sm"

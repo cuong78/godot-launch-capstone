@@ -83,7 +83,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 placeholder="Input search strings..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-805 rounded-lg outline-none focus:border-sky-500"
+                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-sky-500"
               />
             </div>
           </div>
@@ -198,7 +198,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                       alt={asset.title} 
                       className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" 
                     />
-                    <span className="absolute bottom-2.5 right-2 rounded px-2.5 py-1 text-xs font-bold bg-slate-950/80 backdrop-blur-sm text-amber-400 border border-slate-805 font-mono">
+                    <span className="absolute bottom-2.5 right-2 rounded px-2.5 py-1 text-xs font-bold bg-slate-950/80 backdrop-blur-sm text-amber-400 border border-slate-800 font-mono">
                       {asset.price === 0 ? 'FREE' : `$${asset.price.toFixed(2)}`}
                     </span>
                   </div>

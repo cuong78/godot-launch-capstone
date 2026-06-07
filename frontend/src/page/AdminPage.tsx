@@ -13,11 +13,13 @@ import {
   AlertTriangle,
   RefreshCw,
   Sliders,
-  DollarSign
+  DollarSign,
+  Trash2
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { User } from '../types';
+import { userApi } from '../api/userApi';
 
 interface PendingAsset {
   id: string;
@@ -32,8 +34,9 @@ interface AdminUser {
   id: string;
   username: string;
   email: string;
+  fullName: string;
   role: 'admin' | 'developer' | 'player';
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'inactive' | 'banned';
 }
 
 interface AdminPageProps {
@@ -54,14 +57,47 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     { id: 'p3', title: 'Ambient Retro Synth Chiptunes', author: 'SoundCraft', category: 'Audio & SFX', price: 9.50, date: 'Yesterday' }
   ]);
 
-  // Mock Users state
+  // Mock Users state (initial fallback)
   const [users, setUsers] = useState<AdminUser[]>([
-    { id: 'u1', username: 'Cuong78', email: 'admin@godotlaunch.com', role: 'admin', status: 'active' },
-    { id: 'u2', username: 'NeoArtisans', email: 'neo@artisans.com', role: 'developer', status: 'active' },
-    { id: 'u3', username: 'LofiDev', email: 'lofi@dev.com', role: 'developer', status: 'active' },
-    { id: 'u4', username: 'SlyGamer', email: 'sly@gamer.com', role: 'player', status: 'active' },
-    { id: 'u5', username: 'SpamBot99', email: 'spam@bot.com', role: 'player', status: 'suspended' }
+    { id: 'u1', username: 'Cuong78', email: 'admin@godotlaunch.com', fullName: 'Cuong Admin', role: 'admin', status: 'active' },
+    { id: 'u2', username: 'NeoArtisans', email: 'neo@artisans.com', fullName: 'Neo Artisans', role: 'developer', status: 'active' },
+    { id: 'u3', username: 'LofiDev', email: 'lofi@dev.com', fullName: 'Lofi Dev', role: 'developer', status: 'active' },
+    { id: 'u4', username: 'SlyGamer', email: 'sly@gamer.com', fullName: 'Sly Gamer', role: 'player', status: 'active' },
+    { id: 'u5', username: 'SpamBot99', email: 'spam@bot.com', fullName: 'Spam Bot', role: 'player', status: 'suspended' }
   ]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    setIsLoadingUsers(true);
+    setUsersError(null);
+    try {
+      const response = await userApi.getAllUsers();
+      if (response.success && response.data) {
+        const mappedUsers: AdminUser[] = response.data.map((u: any) => ({
+          id: u.id || '',
+          username: u.username || u.email || '',
+          email: u.email || '',
+          fullName: u.fullName || '',
+          role: (u.roleName?.toLowerCase() as any) || 'player',
+          status: u.status === 'active' ? 'active' : u.status === 'banned' ? 'banned' : 'inactive'
+        }));
+        setUsers(mappedUsers);
+      } else {
+        setUsersError(response.message || 'Failed to load users');
+      }
+    } catch (err: any) {
+      setUsersError(err.response?.data?.message || err.message || 'Failed to fetch users');
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers();
+    }
+  }, [activeTab]);
 
   // Mock settings state
   const [commission, setCommission] = useState(15);
@@ -109,22 +145,82 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     alert(`Asset "${title}" rejected. Creator notification sent.`);
   };
 
-  const handleToggleUserRole = (id: string) => {
-    setUsers(users.map(u => {
-      if (u.id === id) {
-        return { ...u, role: u.role === 'admin' ? 'developer' : u.role === 'developer' ? 'player' : 'admin' };
+  const handleToggleUserRole = async (id: string) => {
+    const userToUpdate = users.find(u => u.id === id);
+    if (!userToUpdate) return;
+
+    const nextRole = userToUpdate.role === 'admin' ? 'developer' : userToUpdate.role === 'developer' ? 'player' : 'admin';
+    
+    try {
+      const response = await userApi.updateUser(id, {
+        fullName: userToUpdate.fullName || userToUpdate.username,
+        roleName: nextRole,
+        status: userToUpdate.status === 'suspended' ? 'banned' : userToUpdate.status === 'active' ? 'active' : 'inactive'
+      });
+      if (response.success) {
+        setUsers(users.map(u => {
+          if (u.id === id) {
+            return {
+              ...u,
+              role: nextRole
+            };
+          }
+          return u;
+        }));
+      } else {
+        alert(response.message || 'Failed to update user role');
       }
-      return u;
-    }));
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Failed to update user role');
+    }
   };
 
-  const handleToggleUserStatus = (id: string) => {
-    setUsers(users.map(u => {
-      if (u.id === id) {
-        return { ...u, status: u.status === 'active' ? 'suspended' : 'active' };
+  const handleToggleUserStatus = async (id: string) => {
+    const userToUpdate = users.find(u => u.id === id);
+    if (!userToUpdate) return;
+
+    const nextStatus = userToUpdate.status === 'active' ? 'banned' : 'active';
+
+    try {
+      const response = await userApi.updateUser(id, {
+        fullName: userToUpdate.fullName || userToUpdate.username,
+        roleName: userToUpdate.role,
+        status: nextStatus
+      });
+      if (response.success) {
+        setUsers(users.map(u => {
+          if (u.id === id) {
+            return {
+              ...u,
+              status: nextStatus === 'active' ? 'active' : 'suspended'
+            };
+          }
+          return u;
+        }));
+      } else {
+        alert(response.message || 'Failed to update user status');
       }
-      return u;
-    }));
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Failed to update user status');
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this user? This will soft-delete their account.")) {
+      return;
+    }
+
+    try {
+      const response = await userApi.deleteUser(id);
+      if (response.success) {
+        setUsers(users.filter(u => u.id !== id));
+        alert("User soft-deleted successfully.");
+      } else {
+        alert(response.message || "Failed to delete user");
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to delete user");
+    }
   };
 
   const handleSaveSettings = (e: React.FormEvent) => {
@@ -305,9 +401,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               </table>
             </div>
           </div>
-        )}
-
-        {/* Tab 2: User Directory */}
+        )}        {/* Tab 2: User Directory */}
         {activeTab === 'users' && (
           <div className="space-y-4">
             <div>
@@ -315,65 +409,82 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400">Modify credentials, adjust user permissions, or suspend access keys</p>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
-                    <th className="p-3">User</th>
-                    <th className="p-3">Email Address</th>
-                    <th className="p-3">Access Level</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
-                  {users.map(u => (
-                    <tr key={u.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
-                      <td className="p-3 font-semibold text-slate-800 dark:text-slate-100">@{u.username}</td>
-                      <td className="p-3 text-slate-600 dark:text-slate-350">{u.email}</td>
-                      <td className="p-3">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
-                          u.role === 'admin' 
-                            ? 'bg-amber-450/10 text-amber-500 border-amber-500/20' 
-                            : u.role === 'developer'
-                            ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
-                            : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
-                        }`}>
-                          {u.role.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className={`inline-flex items-center gap-1 font-bold ${u.status === 'active' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                          {u.status}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleToggleUserRole(u.id)}
-                            className="px-2.5 py-1 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded border border-slate-250 dark:border-slate-800 font-semibold transition-studio cursor-pointer"
-                          >
-                            Toggle Role
-                          </button>
-                          <button
-                            onClick={() => handleToggleUserStatus(u.id)}
-                            className={`p-1 rounded cursor-pointer transition-studio ${
-                              u.status === 'active' 
-                                ? 'bg-rose-50 dark:bg-rose-955/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100' 
-                                : 'bg-emerald-50 dark:bg-emerald-955/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
-                            }`}
-                            title={u.status === 'active' ? 'Suspend Account' : 'Activate Account'}
-                          >
-                            {u.status === 'active' ? <UserMinus size={14} /> : <UserCheck size={14} />}
-                          </button>
-                        </div>
-                      </td>
+            {isLoadingUsers ? (
+              <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
+                <RefreshCw className="animate-spin" size={18} /> Loading platform users...
+              </div>
+            ) : usersError ? (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                Error loading users: {usersError}
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                      <th className="p-3">User</th>
+                      <th className="p-3">Email Address</th>
+                      <th className="p-3">Access Level</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-center">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                    {users.map(u => (
+                      <tr key={u.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
+                        <td className="p-3 font-semibold text-slate-800 dark:text-slate-100">@{u.username}</td>
+                        <td className="p-3 text-slate-600 dark:text-slate-350">{u.email}</td>
+                        <td className="p-3">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                            u.role === 'admin' 
+                              ? 'bg-amber-450/10 text-amber-500 border-amber-500/20' 
+                              : u.role === 'developer'
+                              ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
+                              : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
+                          }`}>
+                            {u.role.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={`inline-flex items-center gap-1 font-bold ${u.status === 'active' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                            {u.status}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleToggleUserRole(u.id)}
+                              className="px-2.5 py-1 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 rounded border border-slate-250 dark:border-slate-800 font-semibold transition-studio cursor-pointer"
+                            >
+                              Toggle Role
+                            </button>
+                            <button
+                              onClick={() => handleToggleUserStatus(u.id)}
+                              className={`p-1 rounded cursor-pointer transition-studio ${
+                                u.status === 'active' 
+                                  ? 'bg-rose-50 dark:bg-rose-955/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100' 
+                                  : 'bg-emerald-50 dark:bg-emerald-955/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
+                              }`}
+                              title={u.status === 'active' ? 'Suspend Account' : 'Activate Account'}
+                            >
+                              {u.status === 'active' ? <UserMinus size={14} /> : <UserCheck size={14} />}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="p-1 rounded cursor-pointer transition-studio bg-rose-50 dark:bg-rose-955/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
+                              title="Delete User"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

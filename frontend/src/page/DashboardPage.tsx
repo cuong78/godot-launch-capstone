@@ -57,7 +57,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="w-full bg-slate-100 dark:bg-slate-950 h-1.5 rounded-full overflow-hidden">
             <div className="bg-sky-500 h-full rounded-full" style={{ width: '68%' }}></div>
           </div>
-          <p className="text-[9px] text-slate-450 dark:text-slate-500 leading-tight">Updates whenever you successfully checkout additional assets</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Updates whenever you successfully checkout additional assets</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
@@ -66,7 +66,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
             <span className="text-2xl font-display font-bold dark:text-white">{financeStats.activePlayers} users</span>
           </div>
-          <p className="text-[9px] text-slate-450 dark:text-slate-500 leading-tight">Synchronized live with Godot Multiplayer sockets</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Synchronized live with Godot Multiplayer sockets</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
@@ -86,7 +86,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span className="text-2xl font-display font-bold dark:text-white">{assets.length} items</span>
             <span className="text-[10px] text-slate-400 font-bold">active status</span>
           </div>
-          <p className="text-[9px] text-slate-450 dark:text-slate-500 leading-tight">Includes native community bundles</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Includes native community bundles</p>
         </div>
 
       </div>
@@ -107,7 +107,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           
           {/* Release Schedule logging checklist */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl space-y-4 shadow-xs">
-            <h3 className="font-display font-bold text-sm text-slate-805 dark:text-white flex items-center gap-1.5 pb-1">
+            <h3 className="font-display font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5 pb-1">
               <Calendar size={15} className="text-amber-500" /> Release Schedule Tracker
             </h3>
 
@@ -118,11 +118,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 { text: 'Compress retro WAV anthology tracks', done: false },
                 { text: 'Test custom tile coordinates mapping grids', done: false }
               ].map((task, idx) => (
-                <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-650 dark:text-slate-350 font-medium">
+                <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-350 font-medium">
                   <div className={`w-4.5 h-4.5 rounded border flex items-center justify-center flex-none ${task.done ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500 font-bold' : 'border-slate-300 dark:border-slate-800'}`}>
                     {task.done && <Check size={11} />}
                   </div>
-                  <span className={task.done ? 'line-through text-slate-405 dark:text-slate-500' : ''}>{task.text}</span>
+                  <span className={task.done ? 'line-through text-slate-400 dark:text-slate-500' : ''}>{task.text}</span>
                 </div>
               ))}
             </div>

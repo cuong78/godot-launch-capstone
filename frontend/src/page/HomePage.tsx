@@ -65,11 +65,12 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </div>
 
-      {/* Reusable Bento Categories Grid */}
       <div className="space-y-4">
-        <div className="border-l-4 border-amber-400 pl-3">
-          <h2 className="font-display font-bold text-xl text-slate-800 dark:text-white">Assets by Core Craft</h2>
-          <p className="text-xs text-slate-500">Fine-tuned modular building blocks</p>
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm">
+          <div className="border-l-4 border-amber-400 pl-3">
+            <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white">Assets by Core Craft</h2>
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Fine-tuned modular building blocks</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -105,10 +106,10 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* Trending Indie Gems Carousel Deck */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm flex items-center justify-between">
           <div className="border-l-4 border-sky-400 pl-3">
-            <h2 className="font-display font-bold text-xl text-slate-800 dark:text-white">Trending Indie Gems</h2>
-            <p className="text-xs text-slate-500">Highest rated assets this week</p>
+            <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white">Trending Indie Gems</h2>
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Highest rated assets this week</p>
           </div>
           <Button 
             variant="ghost" 
@@ -160,7 +161,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-1 text-amber-500">
                     <Star size={13} className="fill-amber-500" />
-                    <span className="font-bold text-slate-705 dark:text-slate-300">{asset.rating.toFixed(1)}</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">{asset.rating.toFixed(1)}</span>
                     <span className="text-[10px] text-slate-400">({asset.reviewedCount})</span>
                   </div>
                   <Button
@@ -185,9 +186,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         
         {/* Noteworthy Assets Rows Column */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="border-l-4 border-emerald-400 pl-3">
-            <h3 className="font-display font-bold text-lg text-slate-800 dark:text-white">New & Noteworthy</h3>
-            <p className="text-xs text-slate-500">Just synchronized with creators repository</p>
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm">
+            <div className="border-l-4 border-emerald-400 pl-3">
+              <h3 className="font-display font-bold text-lg text-slate-900 dark:text-white">New & Noteworthy</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Just synchronized with creators repository</p>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -205,7 +208,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-800" 
                   />
                   <div className="min-w-0">
-                    <h4 className="font-display font-semibold text-xs sm:text-sm text-slate-805 dark:text-white truncate group-hover:text-amber-500 dark:group-hover:text-amber-400">
+                    <h4 className="font-display font-semibold text-xs sm:text-sm text-slate-800 dark:text-white truncate group-hover:text-amber-500 dark:group-hover:text-amber-400">
                       {item.title}
                     </h4>
                     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-400 mt-1">
@@ -229,9 +232,11 @@ export const HomePage: React.FC<HomePageProps> = ({
 
         {/* Developer Logs / Blog Card list inside bento row */}
         <div className="space-y-4">
-          <div className="border-l-4 border-purple-400 pl-3">
-            <h3 className="font-display font-bold text-lg text-slate-800 dark:text-white">From the Dev Logs</h3>
-            <p className="text-xs text-slate-500">Tutorials and industry standards</p>
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm">
+            <div className="border-l-4 border-purple-400 pl-3">
+              <h3 className="font-display font-bold text-lg text-slate-900 dark:text-white">From the Dev Logs</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Tutorials and industry standards</p>
+            </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">

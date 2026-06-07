@@ -128,15 +128,15 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl space-y-1">
                       <span className="text-[10px] text-slate-500 font-mono">TILESETS COUNT</span>
-                      <p className="text-sm font-semibold text-slate-805 dark:text-slate-200">{focusedAsset.details.tilesCount}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{focusedAsset.details.tilesCount}</p>
                     </div>
                     <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl space-y-1">
                       <span className="text-[10px] text-slate-500 font-mono">SPRITES PREFABS</span>
-                      <p className="text-sm font-semibold text-slate-805 dark:text-slate-200">{focusedAsset.details.spritesCount}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{focusedAsset.details.spritesCount}</p>
                     </div>
                     <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl space-y-1">
                       <span className="text-[10px] text-slate-500 font-mono">OBJECT PROPERTIES</span>
-                      <p className="text-sm font-semibold text-slate-805 dark:text-slate-200">{focusedAsset.details.propsCount}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{focusedAsset.details.propsCount}</p>
                     </div>
                   </div>
                 ) : (
@@ -193,11 +193,11 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             <hr className="border-slate-100 dark:border-slate-850/60" />
 
             {/* Metadata and Author profile */}
-            <div className="space-y-3.5 text-xs text-slate-650 dark:text-slate-400">
+            <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-400">
               <div className="flex items-center gap-2.5">
                 <img referrerPolicy="no-referrer" src={focusedAsset.authorAvatar} alt={focusedAsset.author} className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-800" />
                 <div>
-                  <span className="block font-semibold text-slate-800 dark:text-slate-205">{focusedAsset.author}</span>
+                  <span className="block font-semibold text-slate-800 dark:text-slate-200">{focusedAsset.author}</span>
                   <span className="text-[10px] text-slate-400">Verified Marketplace Partner</span>
                 </div>
               </div>
@@ -221,7 +221,9 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 
           {/* Recommended Related Assets suggestions from same category */}
           <div className="space-y-3">
-            <h3 className="font-display font-bold text-sm text-slate-800 dark:text-white pl-1">Other Assets You Might Need</h3>
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm">
+              <h3 className="font-display font-bold text-sm text-slate-900 dark:text-white">Other Assets You Might Need</h3>
+            </div>
             <div className="space-y-3">
               {assets
                 .filter(item => item.id !== focusedAsset.id)
@@ -235,8 +237,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <img referrerPolicy="no-referrer" src={item.image} alt={item.title} className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-800" />
                       <div className="min-w-0">
-                        <h4 className="text-xs font-semibold text-slate-850 dark:text-white truncate">{item.title}</h4>
-                        <p className="text-[10px] text-slate-450 truncate">{item.category}</p>
+                        <h4 className="text-xs font-semibold text-slate-800 dark:text-white truncate">{item.title}</h4>
+                        <p className="text-[10px] text-slate-500 truncate">{item.category}</p>
                       </div>
                     </div>
                     <span className="text-xs font-mono font-bold text-amber-500">${item.price.toFixed(2)}</span>

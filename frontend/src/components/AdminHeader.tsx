@@ -28,7 +28,7 @@ export function AdminHeader({
 }: AdminHeaderProps) {
   return (
     <header id="godotlaunch-admin-navbar" className="sticky top-0 bg-slate-900/95 dark:bg-slate-950/95 text-slate-100 border-b border-slate-800 backdrop-blur-md z-45 transition-colors duration-200 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-6">
         
         {/* Brand Logo with admin suffix */}
         <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setCurrentScreen('explore')}>

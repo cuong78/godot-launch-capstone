@@ -12,11 +12,11 @@ export function Footer({ setCurrentScreen }: FooterProps) {
           <span className="font-display font-bold text-sm tracking-tight text-slate-800 dark:text-white">
             godotlaunch® Open Sandbox Collective
           </span>
-          <p className="text-xs text-slate-450 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Premium scripts and creative high-fidelity asset blocks built for the modern indie engine pipeline.
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-550 dark:text-slate-400 font-mono">
+        <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-600 dark:text-slate-400 font-mono">
           <span className="cursor-pointer hover:text-amber-400 transition-studio" onClick={() => { setCurrentScreen('explore'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Explore Home</span>
           <span className="cursor-pointer hover:text-amber-400 transition-studio" onClick={() => { setCurrentScreen('marketplace'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Marketplace Listing</span>
           <span className="cursor-pointer hover:text-amber-400 transition-studio" onClick={() => { setCurrentScreen('dashboard'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Dev Room stats</span>
