@@ -7,9 +7,14 @@ import com.godotlaunch.backend.dto.request.SignUpRequest;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 
+import com.godotlaunch.backend.dto.request.ForgotPasswordRequest;
+import com.godotlaunch.backend.dto.request.ResetPasswordRequest;
+
 public interface AuthService {
     UserResponse signUp(SignUpRequest request);
     JwtAuthenticationResponse signIn(SignInRequest request);
     JwtAuthenticationResponse loginWithGoogle(GoogleLoginRequest request);
     JwtAuthenticationResponse loginWithGitHub(GitHubLoginRequest request);
+    void requestPasswordReset(ForgotPasswordRequest request);
+    void resetPassword(ResetPasswordRequest request);
 }
