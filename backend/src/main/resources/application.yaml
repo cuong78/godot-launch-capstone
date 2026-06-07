@@ -11,8 +11,9 @@ spring:
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate       # ← đổi lại validate
     show-sql: true
     properties:
       hibernate:
@@ -26,8 +27,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME:godotlaunch@gmail.com}
-    password: ${MAIL_PASSWORD:vjvwjvvectxmlykf}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
