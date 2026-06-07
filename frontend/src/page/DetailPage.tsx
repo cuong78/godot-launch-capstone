@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, Check, Info, Star } from 'lucide-react';
+import { ChevronRight, Check, Info, Star, Film } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Asset } from '../types';
 import { IMAGE_SEED_MAP } from '../../assets/images';
@@ -29,6 +29,29 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   assets,
   handleViewAssetDetails
 }) => {
+  const mediaList = React.useMemo(() => {
+    const list: { type: 'image' | 'video'; url: string }[] = [];
+    if (focusedAsset.image) {
+      list.push({ type: 'image', url: focusedAsset.image });
+    }
+    if (focusedAsset.videoUrl) {
+      list.push({ type: 'video', url: focusedAsset.videoUrl });
+    }
+    if (focusedAsset.screenshots && focusedAsset.screenshots.length > 0) {
+      focusedAsset.screenshots.forEach(url => {
+        list.push({ type: 'image', url });
+      });
+    }
+    
+    // Fallback if no screenshots or video uploaded
+    if (list.length <= 1) {
+      list.push({ type: 'image', url: IMAGE_SEED_MAP.interior });
+      list.push({ type: 'image', url: IMAGE_SEED_MAP.forest });
+      list.push({ type: 'image', url: IMAGE_SEED_MAP.char });
+    }
+    return list;
+  }, [focusedAsset]);
+
   return (
     <div className="space-y-8 animate-fade-in">
       
@@ -48,35 +71,40 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         <div className="lg:col-span-2 space-y-4">
           
           {/* Master picture frame display */}
-          <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950">
-            <img
-              referrerPolicy="no-referrer"
-              src={[
-                focusedAsset.image,
-                IMAGE_SEED_MAP.interior,
-                IMAGE_SEED_MAP.forest,
-                IMAGE_SEED_MAP.char
-              ][selectedThumbIndex]}
-              alt="Active focus frame"
-              className="w-full h-full object-cover transition-all"
-            />
+          <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 flex items-center justify-center">
+            {mediaList[selectedThumbIndex]?.type === 'video' ? (
+              <video
+                src={mediaList[selectedThumbIndex].url}
+                controls
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <img
+                referrerPolicy="no-referrer"
+                src={mediaList[selectedThumbIndex]?.url}
+                alt="Active focus frame"
+                className="w-full h-full object-cover transition-all"
+              />
+            )}
             <div className="absolute inset-0 bg-neutral-900/10 pointer-events-none"></div>
           </div>
 
           {/* Mini index thumbnails */}
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              focusedAsset.image,
-              IMAGE_SEED_MAP.interior,
-              IMAGE_SEED_MAP.forest,
-              IMAGE_SEED_MAP.char
-            ].map((thumbUrl, index) => (
+          <div className="flex gap-3 max-w-full overflow-x-auto py-1">
+            {mediaList.map((item, index) => (
               <div
                 key={index}
                 onClick={() => setSelectedThumbIndex(index)}
-                className={`relative aspect-video rounded-lg overflow-hidden border-2 cursor-pointer transition-studio ${selectedThumbIndex === index ? 'border-amber-400 scale-[1.02]' : 'border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700'}`}
+                className={`relative aspect-video w-24 sm:w-28 rounded-lg overflow-hidden border-2 cursor-pointer transition-studio shrink-0 ${selectedThumbIndex === index ? 'border-amber-400 scale-[1.02]' : 'border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700'}`}
               >
-                <img referrerPolicy="no-referrer" src={thumbUrl} alt="gallery thumbnail indicator" className="w-full h-full object-cover" />
+                {item.type === 'video' ? (
+                  <div className="relative w-full h-full bg-slate-950 flex items-center justify-center">
+                    <Film className="text-slate-400" size={20} />
+                    <span className="absolute bottom-1 right-1 px-1 rounded text-[8px] bg-slate-900 text-white font-mono">VIDEO</span>
+                  </div>
+                ) : (
+                  <img referrerPolicy="no-referrer" src={item.url} alt="gallery thumbnail indicator" className="w-full h-full object-cover" />
+                )}
               </div>
             ))}
           </div>

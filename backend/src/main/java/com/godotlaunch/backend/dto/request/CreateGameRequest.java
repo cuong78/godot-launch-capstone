@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.dto.request;
 
+import com.godotlaunch.backend.entity.enums.PublishingType;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -16,4 +17,6 @@ public class CreateGameRequest {
     private BigDecimal priceProposed;
     
     private UUID categoryId;
+
+    private PublishingType publishingType;
 }

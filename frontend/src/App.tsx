@@ -21,6 +21,7 @@ import { AdminPage } from './page/AdminPage';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
+import { gameApi } from './api/gameApi';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
@@ -295,13 +296,51 @@ export default function App() {
     listedCount: 8
   });
 
-  const [newTitle, setNewTitle] = useState('');
-  const [newPrice, setNewPrice] = useState('');
-  const [newCategory, setNewCategory] = useState<Asset['category']>('Scripts & Plugins');
-  const [newTags, setNewTags] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newCoverPreset, setNewCoverPreset] = useState<keyof typeof IMAGE_SEED_MAP>('drift');
-  const [uploadSuccessMessage, setUploadSuccessMessage] = useState<string | null>(null);
+  const mapGameToAsset = (game: any): Asset => ({
+    id: game.id,
+    title: game.title,
+    price: game.priceProposed || 0,
+    rating: 5.0,
+    reviewedCount: 0,
+    author: game.creatorName || 'Unknown Creator',
+    authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80',
+    category: (game.categoryName || 'Scripts & Plugins') as any,
+    description: game.description || '',
+    image: game.thumbnailUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+    tag: game.publishingType ? `Publishing: ${game.publishingType}` : 'Game',
+    tagList: [game.publishingType || 'Marketplace', game.status || 'Published'],
+    version: '1.0.0',
+    lastUpdated: 'Just now',
+    details: {
+      tilesCount: 'N/A',
+      spritesCount: 'Included',
+      propsCount: 'Editable',
+      featuresList: ['Premium Godot game project', 'Verified clean and safe source code']
+    },
+    screenshots: game.screenshots,
+    videoUrl: game.videoUrl
+  });
+
+  // Fetch published games from backend S3
+  useEffect(() => {
+    const fetchPublishedGames = async () => {
+      try {
+        const res = await gameApi.getAllGames('published');
+        if (res.success && res.data) {
+          const mapped = res.data.map(mapGameToAsset);
+          setAssets(prev => {
+            const filteredPrev = prev.filter(item => !mapped.some(m => m.id === item.id));
+            return [...mapped, ...filteredPrev];
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load published games from backend:", err);
+      }
+    };
+    if (currentScreen === 'marketplace' || currentScreen === 'explore') {
+      fetchPublishedGames();
+    }
+  }, [currentScreen]);
 
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);
@@ -371,60 +410,7 @@ export default function App() {
     alert(`Thank you for your purchase! Simulation completed successfully. Revenue metrics updated in developer's dashboard.`);
   };
 
-  // Submitting products to marketplace dynamically
-  const handleCreateProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle || !newPrice) {
-      alert('Please fill out the Title and Price fields.');
-      return;
-    }
 
-    const priceNum = parseFloat(newPrice);
-    if (isNaN(priceNum)) {
-      alert('Price must be a valid number.');
-      return;
-    }
-
-    const tagArray = newTags.split(',').map(tag => tag.trim()).filter(Boolean);
-
-    const uploadedProduct: Asset = {
-      id: `uploaded_${Date.now()}`,
-      title: newTitle,
-      price: priceNum,
-      rating: 5.0,
-      reviewedCount: 1,
-      author: 'Creator Room (You)',
-      authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80',
-      category: newCategory,
-      description: newDesc || 'No description provided.',
-      image: IMAGE_SEED_MAP[newCoverPreset],
-      tag: tagArray.join(', ') || 'Custom Upload',
-      tagList: tagArray.length > 0 ? tagArray : ['Community', 'Ready to Run'],
-      version: '1.0.0',
-      lastUpdated: 'Just now',
-      details: {
-        tilesCount: 'N/A',
-        spritesCount: 'Included',
-        propsCount: 'Editable parameters',
-        featuresList: ['Ready-built prefab module', 'High efficiency resource asset', 'Optimized configuration']
-      }
-    };
-
-    setAssets([uploadedProduct, ...assets]);
-    setUploadSuccessMessage('Product listed successfully to GodotLaunch Marketplace!');
-    
-    // Clear Form
-    setNewTitle('');
-    setNewPrice('');
-    setNewDesc('');
-    setNewTags('');
-
-    setTimeout(() => {
-      setUploadSuccessMessage(null);
-      setCurrentScreen('marketplace');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 1500);
-  };
 
   // Filter & Sort Logic for Marketplace
   const filteredAssets = useMemo(() => {
@@ -576,22 +562,7 @@ export default function App() {
 
         {currentScreen === 'upload' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
-            <UploadPage
-              uploadSuccessMessage={uploadSuccessMessage}
-              newTitle={newTitle}
-              setNewTitle={setNewTitle}
-              newPrice={newPrice}
-              setNewPrice={setNewPrice}
-              newCategory={newCategory}
-              setNewCategory={setNewCategory}
-              newCoverPreset={newCoverPreset}
-              setNewCoverPreset={setNewCoverPreset}
-              newTags={newTags}
-              setNewTags={setNewTags}
-              newDesc={newDesc}
-              setNewDesc={setNewDesc}
-              handleCreateProduct={handleCreateProduct}
-            />
+            <UploadPage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
 

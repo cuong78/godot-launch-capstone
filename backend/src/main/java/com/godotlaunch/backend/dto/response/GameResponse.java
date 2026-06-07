@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -25,4 +26,7 @@ public class GameResponse {
     private String status;
     private String creatorName;
     private String categoryName;
+    private String publishingType;
+    private List<String> screenshots;
+    private String videoUrl;
 }

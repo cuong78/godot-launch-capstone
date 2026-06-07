@@ -388,9 +388,6 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   Start your adventure
                 </button>
               </p>
-              <div className="text-[10px] bg-slate-100 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-405 dark:text-slate-500 leading-relaxed font-mono">
-                💡 <span className="font-semibold text-amber-500">Testing Tip:</span> Login with email containing <code className="text-sky-500">"admin"</code> (e.g. <code className="text-sky-500">admin@godotlaunch.com</code>) to unlock the Admin Portal UI.
-              </div>
             </div>
           </>
         )}

@@ -18,8 +18,9 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { User } from '../types';
+import { User, GameResponse } from '../types';
 import { userApi } from '../api/userApi';
+import { gameApi } from '../api/gameApi';
 
 interface PendingAsset {
   id: string;
@@ -50,12 +51,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'logs' | 'settings'>('moderation');
   
-  // Mock Moderation state
-  const [pendingAssets, setPendingAssets] = useState<PendingAsset[]>([
-    { id: 'p1', title: 'Cyberpunk Vehicle Rigged 3D', author: 'RacerDev', category: '3D Models', price: 19.99, date: 'Just now' },
-    { id: 'p2', title: 'Medieval Dungeon Pixel Tileset', author: 'AssetGuild', category: '2D Assets', price: 0, date: '2 hours ago' },
-    { id: 'p3', title: 'Ambient Retro Synth Chiptunes', author: 'SoundCraft', category: 'Audio & SFX', price: 9.50, date: 'Yesterday' }
-  ]);
+  // Real Game Moderation state
+  const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
+  const [isLoadingGames, setIsLoadingGames] = useState<boolean>(false);
+  const [gamesError, setGamesError] = useState<string | null>(null);
+
+  const fetchPendingGames = async () => {
+    setIsLoadingGames(true);
+    setGamesError(null);
+    try {
+      const response = await gameApi.getAllGames('pending');
+      if (response.success && response.data) {
+        setPendingGames(response.data);
+      } else {
+        setGamesError(response.message || 'Failed to load pending games');
+      }
+    } catch (err: any) {
+      setGamesError(err.response?.data?.message || err.message || 'Failed to fetch pending games');
+    } finally {
+      setIsLoadingGames(false);
+    }
+  };
 
   // Mock Users state (initial fallback)
   const [users, setUsers] = useState<AdminUser[]>([
@@ -96,6 +112,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
+    } else if (activeTab === 'moderation') {
+      fetchPendingGames();
     }
   }, [activeTab]);
 
@@ -135,14 +153,37 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  const handleApproveAsset = (id: string, title: string) => {
-    setPendingAssets(pendingAssets.filter(a => a.id !== id));
-    alert(`Asset "${title}" approved! It has been listed live in the Marketplace.`);
+  const handleApproveGame = async (id: string, title: string) => {
+    if (!window.confirm(`Are you sure you want to APPROVE and publish "${title}"?`)) {
+      return;
+    }
+    try {
+      const res = await gameApi.approveGame(id);
+      if (res.success) {
+        alert(`Game "${title}" approved & published successfully!`);
+        fetchPendingGames();
+      } else {
+        alert(res.message || 'Failed to approve game');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Failed to approve game');
+    }
   };
 
-  const handleRejectAsset = (id: string, title: string) => {
-    setPendingAssets(pendingAssets.filter(a => a.id !== id));
-    alert(`Asset "${title}" rejected. Creator notification sent.`);
+  const handleRejectGame = async (id: string, title: string) => {
+    const reason = window.prompt(`Enter rejection reason for "${title}":`, "Violated store policies");
+    if (reason === null) return; // cancel
+    try {
+      const res = await gameApi.rejectGame(id, reason || "Violated store policies");
+      if (res.success) {
+        alert(`Game "${title}" rejected. Creator notified.`);
+        fetchPendingGames();
+      } else {
+        alert(res.message || 'Failed to reject game');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Failed to reject game');
+    }
   };
 
   const handleToggleUserRole = async (id: string) => {
@@ -286,8 +327,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <FileCheck size={12} className="text-purple-500" /> Pending Moderation
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">{pendingAssets.length} packages</span>
-            {pendingAssets.length > 0 && (
+            <span className="text-2xl font-display font-bold dark:text-white">{pendingGames.length} packages</span>
+            {pendingGames.length > 0 && (
               <span className="text-[10px] text-amber-500 font-bold font-mono animate-pulse">Action required</span>
             )}
           </div>
@@ -313,7 +354,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           onClick={() => setActiveTab('moderation')}
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'moderation' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
-          <FileCheck size={14} /> Moderation Queue ({pendingAssets.length})
+          <FileCheck size={14} /> Moderation Queue ({pendingGames.length})
         </button>
         <button
           onClick={() => setActiveTab('users')}
@@ -346,60 +387,80 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400">Review, test, and approve community-uploaded packages before they go public</p>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
-                    <th className="p-3">Asset Details</th>
-                    <th className="p-3">Category</th>
-                    <th className="p-3">Price</th>
-                    <th className="p-3">Uploaded</th>
-                    <th className="p-3 text-center">Decisions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
-                  {pendingAssets.length > 0 ? (
-                    pendingAssets.map(asset => (
-                      <tr key={asset.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
-                        <td className="p-3">
-                          <div className="font-semibold text-slate-800 dark:text-slate-100">{asset.title}</div>
-                          <div className="text-[10px] text-slate-450">by @{asset.author}</div>
-                        </td>
-                        <td className="p-3 text-slate-600 dark:text-slate-350">{asset.category}</td>
-                        <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                          {asset.price === 0 ? 'Free' : `$${asset.price.toFixed(2)}`}
-                        </td>
-                        <td className="p-3 text-slate-450">{asset.date}</td>
-                        <td className="p-3">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => handleApproveAsset(asset.id, asset.title)}
-                              className="p-1.5 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                              title="Approve & Publish"
-                            >
-                              <Check size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleRejectAsset(asset.id, asset.title)}
-                              className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                              title="Reject & Notify"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
+            {isLoadingGames ? (
+              <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
+                <RefreshCw className="animate-spin" size={18} /> Loading pending submissions...
+              </div>
+            ) : gamesError ? (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                Error loading submissions: {gamesError}
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                      <th className="p-3">Asset Details</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3">Publishing Type</th>
+                      <th className="p-3">Proposed Price</th>
+                      <th className="p-3 text-center">Decisions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                    {pendingGames.length > 0 ? (
+                      pendingGames.map(game => (
+                        <tr key={game.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
+                          <td className="p-3">
+                            <div className="font-semibold text-slate-800 dark:text-slate-100">{game.title}</div>
+                            <div className="text-[10px] text-slate-450">by {game.creatorName}</div>
+                          </td>
+                          <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Unassigned'}</td>
+                          <td className="p-3">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                              game.publishingType === 'full_acquisition'
+                                ? 'bg-amber-450/10 text-amber-500 border-amber-500/20'
+                                : game.publishingType === 'co_publishing'
+                                ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
+                                : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
+                            }`}>
+                              {game.publishingType ? game.publishingType.toUpperCase() : 'MARKETPLACE_LISTING'}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono font-semibold dark:text-amber-400">
+                            {game.priceProposed === 0 ? 'Free' : `$${game.priceProposed}`}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleApproveGame(game.id, game.title)}
+                                className="p-1.5 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                title="Approve & Publish"
+                              >
+                                <Check size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleRejectGame(game.id, game.title)}
+                                className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                title="Reject & Notify"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                          🎉 Clean slate! No pending submissions to moderate.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
-                        🎉 Clean slate! No pending submissions to moderate.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}        {/* Tab 2: User Directory */}
         {activeTab === 'users' && (

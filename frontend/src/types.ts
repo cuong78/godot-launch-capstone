@@ -20,6 +20,8 @@ export interface Asset {
     propsCount: string;
     featuresList: string[];
   };
+  screenshots?: string[];
+  videoUrl?: string | null;
 }
 
 export interface Project {
@@ -88,5 +90,45 @@ export interface ResetPasswordRequest {
   newPassword?: string;
   confirmPassword?: string;
 }
+
+export interface GameResponse {
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  priceProposed: number;
+  downloadPrice: number | null;
+  communityAvailable: boolean;
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published';
+  creatorName: string;
+  categoryName: string;
+  publishingType: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+  screenshots?: string[];
+  videoUrl?: string | null;
+}
+
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+}
+
+export interface CreateGameRequest {
+  title: string;
+  description?: string;
+  priceProposed?: number;
+  categoryId?: string;
+  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+}
+
+export interface UpdateGameRequest {
+  title?: string;
+  description?: string;
+  priceProposed?: number;
+  categoryId?: string;
+  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+}
+
 
 
