@@ -36,8 +36,7 @@ public class AsyncVirusScanService {
     public void scanAndProcessGame(UUID gameId, String objectKey) {
         log.info("Bắt đầu quy trình kiểm duyệt an toàn bất đồng bộ cho gameId: {}, objectKey: {}", gameId, objectKey);
 
-        Game game = gameRepository.findById(gameId).orElse(null);
-        if (game == null) {
+        if (!gameRepository.existsById(gameId)) {
             log.warn("Không tìm thấy Game với id {} để tiến hành quét bảo mật.", gameId);
             return;
         }
@@ -52,8 +51,7 @@ public class AsyncVirusScanService {
 
             if (!isClean) {
                 log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin tải lên của gameId: {}. Tiến hành xóa tệp và từ chối game.", gameId);
-                game.setStatus(GameStatus.rejected);
-                gameRepository.save(game);
+                updateGameStatus(gameId, GameStatus.rejected);
                 awsS3Service.deleteObject(objectKey);
                 return;
             }
@@ -66,18 +64,12 @@ public class AsyncVirusScanService {
                 SafeZipUnpacker.unzipSafely(inputStream, tempDir);
             }
 
-            // (Có thể bổ sung logic phân tích đạo văn GDScript AST ở đây)
-            log.info("Phân tích cấu trúc file zip gameId: {} thành công. Các tệp tin được trích xuất an toàn tại {}", gameId, tempDir);
-
             // Sạch và hợp lệ -> chuyển trạng thái sang PENDING để Admin duyệt thủ công
-            game.setStatus(GameStatus.pending);
-            gameRepository.save(game);
-            log.info("Cập nhật trạng thái game {} sang PENDING (chờ duyệt).", gameId);
+            updateGameStatus(gameId, GameStatus.pending);
 
         } catch (SecurityException | IllegalStateException e) {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với gameId: {}: {}", gameId, e.getMessage());
-            game.setStatus(GameStatus.rejected);
-            gameRepository.save(game);
+            updateGameStatus(gameId, GameStatus.rejected);
             try {
                 awsS3Service.deleteObject(objectKey);
             } catch (Exception ex) {
@@ -85,14 +77,7 @@ public class AsyncVirusScanService {
             }
         } catch (Exception e) {
             log.error("Lỗi xảy ra trong quá trình quét bảo mật gameId: {}. Chuyển sang chế độ PENDING dự phòng.", gameId, e);
-            // Backup fallback cho môi trường local development khi không kết nối được ClamAV hoặc S3 thực tế
-            try {
-                game.setStatus(GameStatus.pending);
-                gameRepository.save(game);
-                log.info("Đã chuyển trạng thái dự phòng PENDING cho gameId: {} do lỗi hệ thống.", gameId);
-            } catch (Exception ex) {
-                log.error("Không thể ghi nhận trạng thái dự phòng cho gameId: {}", gameId, ex);
-            }
+            updateGameStatus(gameId, GameStatus.pending);
         } finally {
             // Bước 3: Dọn dẹp thư mục tạm thời sau khi xử lý xong
             if (tempDir != null) {
@@ -103,6 +88,18 @@ public class AsyncVirusScanService {
                     log.warn("Không thể dọn dẹp thư mục tạm thời: {}", tempDir, e);
                 }
             }
+        }
+    }
+
+    private void updateGameStatus(UUID gameId, GameStatus status) {
+        try {
+            gameRepository.findById(gameId).ifPresent(game -> {
+                game.setStatus(status);
+                gameRepository.save(game);
+                log.info("Cập nhật trạng thái game {} sang {} thành công.", gameId, status);
+            });
+        } catch (Exception ex) {
+            log.error("Không thể cập nhật trạng thái game {} sang {}", gameId, status, ex);
         }
     }
 

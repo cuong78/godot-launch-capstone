@@ -575,6 +575,7 @@ export default function App() {
         {currentScreen === 'dashboard' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <DashboardPage
+              currentUser={currentUser}
               financeStats={financeStats}
               assets={assets}
               projectRepositories={projectRepositories}

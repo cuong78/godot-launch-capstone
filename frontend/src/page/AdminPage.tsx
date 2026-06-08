@@ -14,7 +14,13 @@ import {
   RefreshCw,
   Sliders,
   DollarSign,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Eye,
+  Video,
+  Image
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -55,6 +61,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
   const [isLoadingGames, setIsLoadingGames] = useState<boolean>(false);
   const [gamesError, setGamesError] = useState<string | null>(null);
+  const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+  const [activeScreenshotUrl, setActiveScreenshotUrl] = useState<string | null>(null);
+  const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
 
   const fetchPendingGames = async () => {
     setIsLoadingGames(true);
@@ -400,6 +409,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                      <th className="p-3 w-10"></th>
                       <th className="p-3">Asset Details</th>
                       <th className="p-3">Category</th>
                       <th className="p-3">Publishing Type</th>
@@ -410,49 +420,182 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
                     {pendingGames.length > 0 ? (
                       pendingGames.map(game => (
-                        <tr key={game.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
-                          <td className="p-3">
-                            <div className="font-semibold text-slate-800 dark:text-slate-100">{game.title}</div>
-                            <div className="text-[10px] text-slate-450">by {game.creatorName}</div>
-                          </td>
-                          <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Unassigned'}</td>
-                          <td className="p-3">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
-                              game.publishingType === 'full_acquisition'
-                                ? 'bg-amber-450/10 text-amber-500 border-amber-500/20'
-                                : game.publishingType === 'co_publishing'
-                                ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
-                                : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
-                            }`}>
-                              {game.publishingType ? game.publishingType.toUpperCase() : 'MARKETPLACE_LISTING'}
-                            </span>
-                          </td>
-                          <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                            {game.priceProposed === 0 ? 'Free' : `$${game.priceProposed}`}
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center justify-center gap-1.5">
+                        <React.Fragment key={game.id}>
+                          <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? 'bg-slate-50/50 dark:bg-slate-950/20' : ''}`}>
+                            <td className="p-3 w-10 text-center">
                               <button
-                                onClick={() => handleApproveGame(game.id, game.title)}
-                                className="p-1.5 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                title="Approve & Publish"
+                                onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
+                                className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
+                                title={expandedGameId === game.id ? "Hide Details" : "Show Details"}
                               >
-                                <Check size={14} />
+                                {expandedGameId === game.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                               </button>
-                              <button
-                                onClick={() => handleRejectGame(game.id, game.title)}
-                                className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                title="Reject & Notify"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="p-3">
+                              <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                {game.title}
+                                <button
+                                  onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
+                                  className="text-slate-400 hover:text-amber-500 transition-colors"
+                                  title="Quick View Content"
+                                >
+                                  <Eye size={12} />
+                                </button>
+                              </div>
+                              <div className="text-[10px] text-slate-450">by {game.creatorName}</div>
+                            </td>
+                            <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Unassigned'}</td>
+                            <td className="p-3">
+                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                                game.publishingType === 'full_acquisition'
+                                  ? 'bg-amber-450/10 text-amber-500 border-amber-500/20'
+                                  : game.publishingType === 'co_publishing'
+                                  ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
+                                  : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
+                              }`}>
+                                {game.publishingType ? game.publishingType.toUpperCase() : 'MARKETPLACE_LISTING'}
+                              </span>
+                            </td>
+                            <td className="p-3 font-mono font-semibold dark:text-amber-400">
+                              {game.priceProposed === 0 ? 'Free' : `$${game.priceProposed}`}
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleApproveGame(game.id, game.title)}
+                                  className="p-1.5 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                  title="Approve & Publish"
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleRejectGame(game.id, game.title)}
+                                  className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                  title="Reject & Notify"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          
+                          {/* Expanded detail sub-row */}
+                          {expandedGameId === game.id && (
+                            <tr>
+                              <td colSpan={6} className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
+                                  {/* Left Column: Thumbnail, Description, ZIP */}
+                                  <div className="space-y-4">
+                                    <div>
+                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
+                                        <Image size={12} /> Thumbnail
+                                      </h4>
+                                      <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
+                                        {game.thumbnailUrl ? (
+                                          <img 
+                                            src={game.thumbnailUrl} 
+                                            alt={game.title} 
+                                            className="object-cover w-full h-full"
+                                          />
+                                        ) : (
+                                          <div className="flex flex-col items-center justify-center text-slate-500">
+                                            <Image size={32} className="mb-2 text-slate-650" />
+                                            <span className="text-[10px] font-mono">NO THUMBNAIL</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="space-y-1.5">
+                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Mô tả chi tiết</h4>
+                                      <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                        {game.description || "Không có mô tả chi tiết từ developer."}
+                                      </p>
+                                    </div>
+                                    
+                                    {game.fileUrl ? (
+                                      <a 
+                                        href={game.fileUrl} 
+                                        download 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98]"
+                                      >
+                                        <Download size={14} /> Download Game Package (ZIP)
+                                      </a>
+                                    ) : (
+                                      <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                                        Không tìm thấy tệp game ZIP để tải về
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Middle & Right Column: Screenshots & Video */}
+                                  <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
+                                    <div className="space-y-2">
+                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                        <Image size={12} className="text-amber-500" /> Ảnh chụp màn hình (Screenshots)
+                                      </h4>
+                                      {game.screenshots && game.screenshots.length > 0 ? (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                          {game.screenshots.map((url, index) => (
+                                            <div 
+                                              key={index} 
+                                              onClick={() => {
+                                                setActiveScreenshotUrl(url);
+                                                setIsOpenLightbox(true);
+                                              }}
+                                              className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-amber-400/50 transition-studio"
+                                            >
+                                              <img 
+                                                src={url} 
+                                                alt={`Screenshot ${index + 1}`} 
+                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                                              />
+                                              <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <Eye size={16} className="text-white" />
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-950/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                          <Image size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
+                                          <span className="text-[10px]">Developer không tải lên screenshot nào</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Video Gameplay */}
+                                    <div className="space-y-2">
+                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                        <Video size={12} className="text-amber-500" /> Video Gameplay Demo
+                                      </h4>
+                                      {game.videoUrl ? (
+                                        <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
+                                          <video 
+                                            src={game.videoUrl} 
+                                            controls 
+                                            className="w-full h-full object-contain"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-950/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                          <Video size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
+                                          <span className="text-[10px]">Developer không tải lên video gameplay nào</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                        <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
                           🎉 Clean slate! No pending submissions to moderate.
                         </td>
                       </tr>
@@ -648,6 +791,31 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         )}
 
       </div>
+
+      {/* Screenshot Lightbox Modal */}
+      {isOpenLightbox && activeScreenshotUrl && (
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setIsOpenLightbox(false)}
+        >
+          <button 
+            className="absolute top-4 right-4 p-2 bg-slate-900 border border-slate-800 text-slate-450 hover:text-white rounded-lg transition-studio active:scale-95 cursor-pointer"
+            onClick={() => setIsOpenLightbox(false)}
+          >
+            <X size={20} />
+          </button>
+          <div 
+            className="relative max-w-4xl max-h-[85vh] rounded-xl overflow-hidden border border-slate-850 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={activeScreenshotUrl} 
+              alt="Enlarged screenshot" 
+              className="w-full h-auto max-h-[85vh] object-contain"
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );

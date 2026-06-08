@@ -121,15 +121,27 @@ public class GameServiceImpl implements GameService {
         return mapToResponse(updatedGame);
     }
 
+    private String getPresignedGetUrl(String rawUrl) {
+        if (rawUrl == null) return null;
+        String objectKey = extractObjectKeyFromUrl(rawUrl);
+        if (objectKey == null) return rawUrl;
+        try {
+            return awsS3Service.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
+        } catch (Exception e) {
+            log.warn("Failed to generate presigned GET URL for objectKey: {}, returning raw URL. Error: {}", objectKey, e.getMessage());
+            return rawUrl;
+        }
+    }
+
     private GameResponse mapToResponse(Game game) {
         List<GameMedia> mediaList = gameMediaRepository.findByGameId(game.getId());
         List<String> screenshots = mediaList.stream()
                 .filter(m -> "image".equalsIgnoreCase(m.getMediaType()))
-                .map(GameMedia::getMediaUrl)
+                .map(m -> getPresignedGetUrl(m.getMediaUrl()))
                 .collect(Collectors.toList());
         String videoUrl = mediaList.stream()
                 .filter(m -> "video".equalsIgnoreCase(m.getMediaType()))
-                .map(GameMedia::getMediaUrl)
+                .map(m -> getPresignedGetUrl(m.getMediaUrl()))
                 .findFirst()
                 .orElse(null);
 
@@ -137,7 +149,7 @@ public class GameServiceImpl implements GameService {
                 .id(game.getId())
                 .title(game.getTitle())
                 .description(game.getDescription())
-                .thumbnailUrl(game.getThumbnailUrl())
+                .thumbnailUrl(getPresignedGetUrl(game.getThumbnailUrl()))
                 .priceProposed(game.getPriceProposed())
                 .downloadPrice(null)
                 .communityAvailable(game.isSourceListed())
@@ -147,8 +159,10 @@ public class GameServiceImpl implements GameService {
                 .publishingType(game.getPublishingType() != null ? game.getPublishingType().name() : null)
                 .screenshots(screenshots)
                 .videoUrl(videoUrl)
+                .fileUrl(getPresignedGetUrl(game.getFileUrl()))
                 .build();
     }
+
 
     @Override
     @Transactional(readOnly = true)

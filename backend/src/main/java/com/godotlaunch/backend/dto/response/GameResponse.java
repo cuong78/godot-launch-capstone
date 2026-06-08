@@ -29,4 +29,5 @@ public class GameResponse {
     private String publishingType;
     private List<String> screenshots;
     private String videoUrl;
+    private String fileUrl;
 }

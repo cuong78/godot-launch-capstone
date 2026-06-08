@@ -6,22 +6,13 @@
   <component name="ChangeListManager">
     <list default="true" id="33275470-931d-4ccf-8b3e-1200a6f57305" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/controller/AdminGameController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/controller/AdminGameController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/controller/GameController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/controller/GameController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/request/CreateGameRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/request/CreateGameRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/request/UpdateGameRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/request/UpdateGameRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/run.log" beforeDir="false" afterPath="$PROJECT_DIR$/backend/run.log" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/response/GameResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/response/GameResponse.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/repository/GameRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/repository/GameRepository.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/AsyncVirusScanService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/AsyncVirusScanService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/AwsS3Service.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/AwsS3Service.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/ClamAVService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/ClamAVService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/GameService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/GameService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/GameServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/GameServiceImpl.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/page/AdminPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/AdminPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/page/DetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/DetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/page/SignInPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/SignInPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/page/UploadPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/UploadPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/page/DashboardPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/DashboardPage.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/types.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -176,7 +167,7 @@
       <workItem from="1780811273756" duration="6850000" />
       <workItem from="1780816648034" duration="2436000" />
       <workItem from="1780820748263" duration="291000" />
-      <workItem from="1780825371040" duration="9051000" />
+      <workItem from="1780825371040" duration="13590000" />
     </task>
     <servers />
   </component>

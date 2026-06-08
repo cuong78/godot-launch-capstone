@@ -105,6 +105,7 @@ export interface GameResponse {
   publishingType: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
   screenshots?: string[];
   videoUrl?: string | null;
+  fileUrl?: string | null;
 }
 
 export interface CategoryResponse {
