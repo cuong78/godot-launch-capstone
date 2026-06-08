@@ -20,8 +20,6 @@ export interface Asset {
     propsCount: string;
     featuresList: string[];
   };
-  screenshots?: string[];
-  videoUrl?: string | null;
 }
 
 export interface Project {
@@ -91,44 +89,79 @@ export interface ResetPasswordRequest {
   confirmPassword?: string;
 }
 
-export interface GameResponse {
+// --- Spring Boot Page Wrapper ---
+export interface Page<T> {
+  content: T[];
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
+
+// --- Community Chat Feature ---
+export type ReactionType = 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry';
+
+export interface UserSummary {
   id: string;
-  title: string;
-  description: string;
-  thumbnailUrl: string;
-  priceProposed: number;
-  downloadPrice: number | null;
-  communityAvailable: boolean;
-  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'published';
-  creatorName: string;
-  categoryName: string;
-  publishingType: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
-  screenshots?: string[];
-  videoUrl?: string | null;
-  fileUrl?: string | null;
+  fullName: string;
+  avatarUrl?: string;
 }
 
-export interface CategoryResponse {
+export interface ChatMediaResponse {
+  url: string;
+  mediaType: 'image' | 'video';
+}
+
+export interface CommunityChatResponse {
   id: string;
-  name: string;
-  slug: string;
-  description?: string;
+  sender: UserSummary;
+  gameId?: string;
+  message: string;
+  reactionCount: number;
+  commentCount: number;
+  shareCount: number;
+  isEdited: boolean;
+  isDeleted: boolean;
+  mediaFiles: ChatMediaResponse[];
+  createdAt: string;
+  updatedAt: string;
+  originalChat?: CommunityChatResponse;
 }
 
-export interface CreateGameRequest {
-  title: string;
-  description?: string;
-  priceProposed?: number;
-  categoryId?: string;
-  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+export interface ChatReactionResponse {
+  id: string;
+  chatId: string;
+  user: UserSummary;
+  reactionType: ReactionType;
+  createdAt: string;
+  isNew: boolean;
 }
 
-export interface UpdateGameRequest {
-  title?: string;
-  description?: string;
-  priceProposed?: number;
-  categoryId?: string;
-  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+export interface CreatePostRequest {
+  message: string;
+  gameId?: string;
+  mediaUrls?: string[];
+}
+
+export interface UpdatePostRequest {
+  message: string;
+}
+
+export interface CreateCommentRequest {
+  message: string;
+  mediaUrls?: string[];
+}
+
+export interface CreateReactionRequest {
+  reactionType: ReactionType;
+}
+
+export interface SharePostRequest {
+  message?: string;
 }
 
 

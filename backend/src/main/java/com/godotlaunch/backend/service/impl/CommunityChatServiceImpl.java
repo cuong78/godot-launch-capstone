@@ -55,6 +55,8 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         post.setShareCount(0);
         post.setEdited(false);
         post.setDeleted(false);
+        post.setCreatedAt(java.time.Instant.now());
+        post.setUpdatedAt(java.time.Instant.now());
 
         post = communityChatRepository.save(post);
 
@@ -67,7 +69,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 mediaEntity.setDisplayOrder((short) i);
 
                 String lowerUrl = url.toLowerCase();
-                if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm")) {
+                if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm") || lowerUrl.startsWith("data:video/")) {
                     mediaEntity.setMediaType(ChatMediaType.video);
                 } else {
                     mediaEntity.setMediaType(ChatMediaType.image);
@@ -110,6 +112,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         post.setMessage(request.getMessage());
         post.setEdited(true);
+        post.setUpdatedAt(java.time.Instant.now());
 
         CommunityChat updated = communityChatRepository.save(post);
         return mapToResponse(updated);
@@ -157,6 +160,8 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         comment.setShareCount(0);
         comment.setEdited(false);
         comment.setDeleted(false);
+        comment.setCreatedAt(java.time.Instant.now());
+        comment.setUpdatedAt(java.time.Instant.now());
 
         comment = communityChatRepository.save(comment);
 
@@ -169,7 +174,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 mediaEntity.setDisplayOrder((short) i);
 
                 String lowerUrl = url.toLowerCase();
-                if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm")) {
+                if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm") || lowerUrl.startsWith("data:video/")) {
                     mediaEntity.setMediaType(ChatMediaType.video);
                 } else {
                     mediaEntity.setMediaType(ChatMediaType.image);
@@ -281,6 +286,8 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         shared.setShareCount(0);
         shared.setEdited(false);
         shared.setDeleted(false);
+        shared.setCreatedAt(java.time.Instant.now());
+        shared.setUpdatedAt(java.time.Instant.now());
 
         shared = communityChatRepository.save(shared);
 
@@ -368,8 +375,8 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 .isEdited(chat.isEdited())
                 .isDeleted(chat.isDeleted())
                 .mediaFiles(mediaFiles)
-                .createdAt(chat.getCreatedAt())
-                .updatedAt(chat.getUpdatedAt())
+                .createdAt(chat.getCreatedAt() != null ? chat.getCreatedAt() : java.time.Instant.now())
+                .updatedAt(chat.getUpdatedAt() != null ? chat.getUpdatedAt() : java.time.Instant.now())
                 .originalChat(originalChatResponse)
                 .build();
     }
