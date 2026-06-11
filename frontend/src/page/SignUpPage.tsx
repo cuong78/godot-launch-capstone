@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { loginWithGitHub } from '../api/authService';
 
 interface SignUpPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -127,15 +128,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   const handleGitHubLogin = () => {
     clearApiError(null);
     setLocalError('');
-    const githubClientId =
-      import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23ct413eH4t1v1D';
-    const redirectUri = window.location.origin + '/signin';
-    const authUrl =
-      `https://github.com/login/oauth/authorize` +
-      `?client_id=${githubClientId}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&scope=read:user,user:email`;
-    window.location.href = authUrl;
+    loginWithGitHub();
   };
 
   const displayError = localError || apiError;

@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { User, SignUpRequest, SignInRequest, GoogleLoginRequest, GitHubLoginRequest } from '../types';
 import { authApi } from '../api/authApi';
 import { tokenStorage } from '../utils/tokenStorage';
+import { isTokenExpired } from '../utils/jwtUtils';
 
 export interface AuthContextType {
   currentUser: User | null;
@@ -11,6 +12,7 @@ export interface AuthContextType {
   signIn: (data: SignInRequest) => Promise<User>;
   loginWithGoogle: (data: GoogleLoginRequest) => Promise<User>;
   loginWithGitHub: (data: GitHubLoginRequest) => Promise<User>;
+  loginWithToken: (token: string) => Promise<User>;
   logout: () => void;
   setError: (error: string | null) => void;
 }
@@ -32,8 +34,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = tokenStorage.getToken();
+      const token = tokenStorage.getToken() || localStorage.getItem("accessToken");
       const storedUser = tokenStorage.getUser();
+      
+      if (token && isTokenExpired(token)) {
+        handleLogout();
+        setLoading(false);
+        return;
+      }
       
       if (token && storedUser) {
         setCurrentUser(storedUser);
@@ -43,6 +51,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const mappedUser = mapBackendUserToFrontendUser(res.data);
             setCurrentUser(mappedUser);
             tokenStorage.setUser(mappedUser);
+            localStorage.setItem("currentUser", JSON.stringify(mappedUser));
           } else {
             handleLogout();
           }
@@ -59,6 +68,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const handleLogout = () => {
     tokenStorage.clear();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("currentUser");
     setCurrentUser(null);
   };
 
@@ -153,6 +164,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const loginWithToken = async (token: string): Promise<User> => {
+    setError(null);
+    setLoading(true);
+    try {
+      tokenStorage.setToken(token);
+      localStorage.setItem("accessToken", token);
+      const response = await authApi.getCurrentUser();
+      if (response.success && response.data) {
+        const mappedUser = mapBackendUserToFrontendUser(response.data);
+        tokenStorage.setUser(mappedUser);
+        localStorage.setItem("currentUser", JSON.stringify(mappedUser));
+        setCurrentUser(mappedUser);
+        return mappedUser;
+      } else {
+        throw new Error(response.message || 'Failed to retrieve profile.');
+      }
+    } catch (err: any) {
+      handleLogout();
+      const errMsg = err.response?.data?.message || err.message || 'Authentication failed.';
+      setError(errMsg);
+      throw new Error(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       currentUser,
@@ -162,6 +199,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signIn,
       loginWithGoogle,
       loginWithGitHub,
+      loginWithToken,
       logout: handleLogout,
       setError
     }}>

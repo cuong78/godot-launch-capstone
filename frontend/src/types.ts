@@ -20,6 +20,8 @@ export interface Asset {
     propsCount: string;
     featuresList: string[];
   };
+  screenshots?: string[];
+  videoUrl?: string;
 }
 
 export interface Project {
@@ -43,7 +45,7 @@ export interface User {
   status?: string;
 }
 
-export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin';
+export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin' | 'auth-callback';
 
 export interface SignUpRequest {
   email: string;
@@ -162,6 +164,50 @@ export interface CreateReactionRequest {
 
 export interface SharePostRequest {
   message?: string;
+}
+
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  parentId?: string;
+  createdAt?: string;
+}
+
+export interface GameResponse {
+  id: string;
+  title: string;
+  description?: string;
+  priceProposed?: number;
+  downloadPrice?: number;
+  communityAvailable?: boolean;
+  publishingType?: string;
+  creatorName?: string;
+  categoryName?: string;
+  thumbnailUrl?: string;
+  screenshots?: string[];
+  videoUrl?: string;
+  fileUrl?: string;
+  status?: string;
+  reasonRejected?: string;
+  createdAt?: string;
+}
+
+export interface CreateGameRequest {
+  title: string;
+  publishingType: string;
+  priceProposed?: number;
+  description?: string;
+  categoryId?: string;
+}
+
+export interface UpdateGameRequest {
+  title?: string;
+  description?: string;
+  priceProposed?: number;
+  categoryId?: string;
+  publishingType?: string;
 }
 
 

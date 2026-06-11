@@ -18,6 +18,7 @@ import { CommunityPage } from './page/CommunityPage';
 import { SignInPage } from './page/SignInPage';
 import { SignUpPage } from './page/SignUpPage';
 import { AdminPage } from './page/AdminPage';
+import { GitHubCallbackPage } from './page/GitHubCallbackPage';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
@@ -247,7 +248,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   if (segments.length === 0) {
     return { screen: 'explore' };
   }
-  const primary = segments[0] as ScreenType;
+  const primary = segments[0];
   if (primary === 'marketplace') return { screen: 'marketplace' };
   if (primary === 'upload') return { screen: 'upload' };
   if (primary === 'path') return { screen: 'path' };
@@ -256,6 +257,9 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   if (primary === 'signin') return { screen: 'signin' };
   if (primary === 'signup') return { screen: 'signup' };
   if (primary === 'admin') return { screen: 'admin' };
+  if (primary === 'auth' && segments[1] === 'callback') {
+    return { screen: 'auth-callback' };
+  }
   if (primary === 'detail') {
     return { screen: 'detail', assetId: segments[1] };
   }
@@ -265,6 +269,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
 const screenToPath = (screen: ScreenType, assetId?: string): string => {
   if (screen === 'explore') return '/';
   if (screen === 'detail' && assetId) return `/detail/${assetId}`;
+  if (screen === 'auth-callback') return '/auth/callback';
   return `/${screen}`;
 };
 
@@ -600,6 +605,13 @@ export default function App() {
 
         {currentScreen === 'signup' && (
           <SignUpPage
+            setCurrentScreen={setCurrentScreen}
+            setCurrentUser={setCurrentUser}
+          />
+        )}
+
+        {currentScreen === 'auth-callback' && (
+          <GitHubCallbackPage
             setCurrentScreen={setCurrentScreen}
             setCurrentUser={setCurrentUser}
           />

@@ -15,6 +15,7 @@ import {
 import { User } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { authApi } from '../api/authApi';
+import { loginWithGitHub } from '../api/authService';
 
 interface SignInPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -37,7 +38,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   setCurrentScreen,
   setCurrentUser
 }) => {
-  const { signIn, loginWithGoogle, loginWithGitHub, error: apiError, setError: clearApiError } = useAuth();
+  const { signIn, loginWithGoogle, error: apiError, setError: clearApiError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [keepSignedIn, setKeepSignedIn] = useState(false);
@@ -55,30 +56,6 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   const [resetSuccessMessage, setResetSuccessMessage] = useState('');
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    if (code) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-      setIsOAuthLoading(true);
-      setOAuthProvider('GitHub');
-      clearApiError(null);
-      setLocalError('');
-
-      loginWithGitHub({ code })
-        .then((user) => {
-          setCurrentUser(user);
-          setCurrentScreen('explore');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        })
-        .catch((err) => {
-          setLocalError(err.message || 'GitHub authentication failed.');
-        })
-        .finally(() => {
-          setIsOAuthLoading(false);
-        });
-      return;
-    }
-
     const hash = window.location.hash;
     if (hash) {
       const hashParams = new URLSearchParams(hash.substring(1));
@@ -250,13 +227,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   const handleGitHubLogin = () => {
     clearApiError(null);
     setLocalError('');
-    const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23ct413eH4t1v1D';
-    const redirectUri = window.location.origin + '/signin';
-    const authUrl = `https://github.com/login/oauth/authorize` +
-      `?client_id=${githubClientId}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&scope=read:user,user:email`;
-    window.location.href = authUrl;
+    setIsOAuthLoading(true);
+    setOAuthProvider('GitHub');
+    loginWithGitHub();
   };
 
   const displayError = localError || apiError;

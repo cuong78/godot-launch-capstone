@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { ScreenType } from '../types';
+import { tokenStorage } from '../utils/tokenStorage';
+import { isTokenExpired } from '../utils/jwtUtils';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,9 +15,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   setCurrentScreen,
   requiredRole
 }) => {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, loading, logout } = useAuth();
 
   useEffect(() => {
+    const token = tokenStorage.getToken() || localStorage.getItem("accessToken");
+    if (token && isTokenExpired(token)) {
+      logout();
+      setCurrentScreen('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (!loading && !currentUser) {
       setCurrentScreen('signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
