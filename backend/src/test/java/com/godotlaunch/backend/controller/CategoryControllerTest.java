@@ -10,7 +10,7 @@ import com.godotlaunch.backend.service.CategoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -27,13 +27,16 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import org.springframework.context.annotation.Import;
+import com.godotlaunch.backend.config.SecurityConfig;
+
 @WebMvcTest(CategoryController.class)
+@Import(SecurityConfig.class)
 public class CategoryControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
     private ObjectMapper objectMapper;
 
     @MockitoBean
@@ -47,7 +50,17 @@ public class CategoryControllerTest {
     private UUID categoryId;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
+        this.objectMapper = new ObjectMapper();
+
+        doAnswer(invocation -> {
+            jakarta.servlet.ServletRequest request = invocation.getArgument(0);
+            jakarta.servlet.ServletResponse response = invocation.getArgument(1);
+            jakarta.servlet.FilterChain chain = invocation.getArgument(2);
+            chain.doFilter(request, response);
+            return null;
+        }).when(jwtAuthenticationFilter).doFilter(any(), any(), any());
+
         categoryId = UUID.randomUUID();
         categoryResponse = CategoryResponse.builder()
                 .id(categoryId)

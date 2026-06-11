@@ -175,6 +175,15 @@ export interface CategoryResponse {
   createdAt?: string;
 }
 
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  parentId?: string;
+  createdAt?: string;
+}
+
 export interface CreateGameRequest {
   title: string;
   description?: string;
