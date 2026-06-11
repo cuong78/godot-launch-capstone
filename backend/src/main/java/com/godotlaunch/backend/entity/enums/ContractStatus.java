@@ -4,5 +4,7 @@ public enum ContractStatus {
     pending,
     signed,
     expired,
-    cancelled
+    cancelled,
+    negotiating,
+    re_issued
 }

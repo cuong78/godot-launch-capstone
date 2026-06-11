@@ -25,6 +25,7 @@ public class GameResponse {
     private boolean communityAvailable;
     private String status;
     private String creatorName;
+    private String creatorFullName;
     private String categoryName;
     private String publishingType;
     private List<String> screenshots;

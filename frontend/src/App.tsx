@@ -278,6 +278,15 @@ export default function App() {
     }
   };
   const [darkMode, setDarkMode] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }, [darkMode]);
+
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
   const [searchText, setSearchText] = useState<string>('');
   

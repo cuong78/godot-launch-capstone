@@ -15,6 +15,7 @@ public class ContractResponse {
     private String gameTitle;
     private UUID sellerId;
     private String sellerName;
+    private String sellerEmail;
     private UUID buyerId;
     private ContractType contractType;
     private String termsHash;
@@ -33,5 +34,6 @@ public class ContractResponse {
     private Instant signedAtBuyer;
     private String sellerSignatureBase64;
     private String buyerSignatureBase64;
+    private String rejectionReason;
     private Instant createdAt;
 }

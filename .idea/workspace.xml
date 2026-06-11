@@ -6,8 +6,26 @@
   <component name="ChangeListManager">
     <list default="true" id="33275470-931d-4ccf-8b3e-1200a6f57305" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/CommunityChatServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/CommunityChatServiceImpl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/CommunityHub.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/CommunityHub.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/controller/ContractController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/controller/ContractController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/response/ContractResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/response/ContractResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/response/GameResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/dto/response/GameResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/entity/Contract.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/entity/Contract.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/entity/enums/ContractStatus.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/entity/enums/ContractStatus.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/ContractService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/ContractService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/PdfGenerationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/PdfGenerationService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/ContractServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/ContractServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/EmailServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/EmailServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/GameServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/GameServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/PdfGenerationServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/godotlaunch/backend/service/impl/PdfGenerationServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/test/java/com/godotlaunch/backend/BackendApplicationTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/godotlaunch/backend/BackendApplicationTests.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/test/java/com/godotlaunch/backend/controller/CategoryControllerTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/godotlaunch/backend/controller/CategoryControllerTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/Footer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/Footer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/page/AdminPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/AdminPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/page/DashboardPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/page/DashboardPage.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/types.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -98,7 +116,7 @@
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
     &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Capstone/project/godot-launch-capstone&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Admin/Desktop/SEP/godot-launch-capstone&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -113,6 +131,12 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Admin\Desktop\SEP\godot-launch-capstone" />
+      <recent name="C:\Users\Admin\Desktop\SEP\godot-launch-capstone\backend" />
+    </key>
+  </component>
   <component name="RunManager">
     <configuration name="BackendApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <module name="backend" />
@@ -162,6 +186,9 @@
       <workItem from="1780811273756" duration="6850000" />
       <workItem from="1780816648034" duration="2436000" />
       <workItem from="1780820748263" duration="291000" />
+      <workItem from="1781070299251" duration="9446000" />
+      <workItem from="1781155324213" duration="7092000" />
+      <workItem from="1781178743129" duration="2590000" />
     </task>
     <servers />
   </component>

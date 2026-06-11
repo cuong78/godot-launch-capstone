@@ -25,9 +25,9 @@ public class EmailServiceImpl implements EmailService {
     public void sendGameStatusNotification(String to, String gameTitle, String status, String reason) {
         String subject = "Godot Launch - Update on your project: " + gameTitle;
 
-        boolean isApproved = "APPROVED and PUBLISHED".equalsIgnoreCase(status);
+        boolean isApproved = status != null && status.toUpperCase().contains("APPROVED");
         String statusColor = isApproved ? "#00dbe7" : "#ff4d4d";
-        String statusText = isApproved ? "PUBLISHED" : "REJECTED";
+        String statusText = status;
 
         String htmlBody = "<div style=\"font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #121418; color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #2a2d35;\">"
                 + "<div style=\"background-color: #1a1d24; padding: 20px; text-align: center; border-bottom: 1px solid #2a2d35;\">"
@@ -49,7 +49,11 @@ public class EmailServiceImpl implements EmailService {
         }
 
         if (isApproved) {
-            htmlBody += "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Congratulations! Your game is now live and available on the Godot Launch store. Players can now download and experience your creation.</p>";
+            if (status.toUpperCase().contains("CONTRACT")) {
+                htmlBody += "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Your game has been approved by the admin. A publishing contract has been proposed. Please visit your developer dashboard to review and sign the contract.</p>";
+            } else {
+                htmlBody += "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Congratulations! Your game is now live and available on the Godot Launch store. Players can now download and experience your creation.</p>";
+            }
         } else {
             htmlBody += "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Please address the issues mentioned above and submit a new build for review when ready.</p>";
         }

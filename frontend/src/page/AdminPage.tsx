@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   ShieldAlert, 
   Users, 
@@ -20,13 +21,18 @@ import {
   Download,
   Eye,
   Video,
-  Image
+  Image,
+  FileText,
+  PenTool
 } from 'lucide-react';
 import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { User, GameResponse } from '../types';
+import { Input, TextArea } from '../components/Input';
+import { User, GameResponse, ContractResponse } from '../types';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
+import { contractApi } from '../api/contractApi';
+import { SignaturePad } from '../components/SignaturePad';
+import { ContractViewerModal } from '../components/ContractViewerModal';
 
 interface PendingAsset {
   id: string;
@@ -51,6 +57,28 @@ interface AdminPageProps {
   currentUser: User | null;
 }
 
+const getContractStatusLabel = (status: string, signedAtSeller?: string | null) => {
+  switch (status) {
+    case 'signed':
+      return { text: 'Hoàn tất', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
+    case 'negotiating':
+      return { text: 'Thương lượng', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
+    case 're_issued':
+      return signedAtSeller
+        ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
+        : { text: 'Cấp lại / Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+    case 'cancelled':
+      return { text: 'Đã hủy', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+    case 'expired':
+      return { text: 'Hết hạn', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+    case 'pending':
+    default:
+      return signedAtSeller
+        ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
+        : { text: 'Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+  }
+};
+
 export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
@@ -59,28 +87,64 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   
   // Real Game Moderation state
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
+  const [contracts, setContracts] = useState<ContractResponse[]>([]);
   const [isLoadingGames, setIsLoadingGames] = useState<boolean>(false);
   const [gamesError, setGamesError] = useState<string | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [activeScreenshotUrl, setActiveScreenshotUrl] = useState<string | null>(null);
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
 
-  const fetchPendingGames = async () => {
+  // Contract Offer states
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<GameResponse | null>(null);
+  const [selectedContract, setSelectedContract] = useState<ContractResponse | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerMode, setViewerMode] = useState<'view' | 'sign-admin'>('view');
+
+  // Form states for creating contract
+  const [buyerRepresentative, setBuyerRepresentative] = useState('');
+  const [buyerPosition, setBuyerPosition] = useState('Ban quản trị hệ thống / Authorized Representative');
+  const [sellerRepresentative, setSellerRepresentative] = useState('');
+  const [sellerAddress, setSellerAddress] = useState('');
+  const [sellerTaxCode, setSellerTaxCode] = useState('');
+  const [lumpSumAmount, setLumpSumAmount] = useState('');
+  const [revenueSplit, setRevenueSplit] = useState(70);
+  const [disputeResolutionClause, setDisputeResolutionClause] = useState(
+    'Mọi tranh chấp phát sinh từ hoặc liên quan đến hợp đồng này sẽ được giải quyết trước tiên thông qua thương lượng thân thiện. Nếu không giải quyết được, tranh chấp sẽ được đưa ra giải quyết tại Trọng tài theo quy định.\nAny dispute arising out of or in connection with this contract shall first be resolved through friendly negotiations. If unresolved, it shall be referred to arbitration.'
+  );
+  const [additionalTerms, setAdditionalTerms] = useState('');
+  const [adminSignatureBase64, setAdminSignatureBase64] = useState<string | null>(null);
+
+  const fetchPendingGamesAndContracts = async () => {
     setIsLoadingGames(true);
     setGamesError(null);
     try {
-      const response = await gameApi.getAllGames('pending');
-      if (response.success && response.data) {
-        setPendingGames(response.data);
+      const [gamesRes, contractsRes] = await Promise.all([
+        gameApi.getAllGames(),
+        contractApi.getAllContracts()
+      ]);
+      
+      if (gamesRes.success && gamesRes.data) {
+        const filtered = gamesRes.data.filter((game: GameResponse) => 
+          game.status?.toLowerCase() === 'pending' || 
+          game.status?.toLowerCase() === 'approved'
+        );
+        setPendingGames(filtered);
       } else {
-        setGamesError(response.message || 'Failed to load pending games');
+        setGamesError(gamesRes.message || 'Failed to load pending games');
+      }
+
+      if (contractsRes.success && contractsRes.data) {
+        setContracts(contractsRes.data);
       }
     } catch (err: any) {
-      setGamesError(err.response?.data?.message || err.message || 'Failed to fetch pending games');
+      setGamesError(err.response?.data?.message || err.message || 'Failed to fetch moderation queue');
     } finally {
       setIsLoadingGames(false);
     }
   };
+
 
   // Mock Users state (initial fallback)
   const [users, setUsers] = useState<AdminUser[]>([
@@ -122,7 +186,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     if (activeTab === 'users') {
       fetchUsers();
     } else if (activeTab === 'moderation') {
-      fetchPendingGames();
+      fetchPendingGamesAndContracts();
     }
   }, [activeTab]);
 
@@ -162,20 +226,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  const handleApproveGame = async (id: string, title: string) => {
-    if (!window.confirm(`Are you sure you want to APPROVE and publish "${title}"?`)) {
-      return;
-    }
-    try {
-      const res = await gameApi.approveGame(id);
-      if (res.success) {
-        alert(`Game "${title}" approved & published successfully!`);
-        fetchPendingGames();
-      } else {
-        alert(res.message || 'Failed to approve game');
+  const handleApproveGame = async (game: GameResponse) => {
+    if (!game.publishingType || game.publishingType === 'marketplace_listing') {
+      if (!window.confirm(`Are you sure you want to APPROVE and publish "${game.title}"?`)) {
+        return;
       }
-    } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to approve game');
+      try {
+        const res = await gameApi.approveGame(game.id);
+        if (res.success) {
+          alert(`Game "${game.title}" approved & published successfully!`);
+          fetchPendingGamesAndContracts();
+        } else {
+          alert(res.message || 'Failed to approve game');
+        }
+      } catch (err: any) {
+        alert(err.response?.data?.message || err.message || 'Failed to approve game');
+      }
+    } else {
+      // Contract-based game: Open contract creation modal directly upon approval!
+      handleOpenContractModal(game);
     }
   };
 
@@ -186,12 +255,80 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const res = await gameApi.rejectGame(id, reason || "Violated store policies");
       if (res.success) {
         alert(`Game "${title}" rejected. Creator notified.`);
-        fetchPendingGames();
+        fetchPendingGamesAndContracts();
       } else {
         alert(res.message || 'Failed to reject game');
       }
     } catch (err: any) {
       alert(err.response?.data?.message || err.message || 'Failed to reject game');
+    }
+  };
+
+  const handleOpenContractModal = (game: GameResponse) => {
+    setSelectedGame(game);
+    // Prefill details
+    setBuyerRepresentative(currentUser?.fullName || 'Ban quản trị GodotLaunch');
+    setBuyerPosition('Authorized Representative');
+    setSellerRepresentative(game.creatorFullName || game.creatorName || '');
+    setSellerAddress('');
+    setSellerTaxCode('');
+    setLumpSumAmount('');
+    setRevenueSplit(70);
+    setAdditionalTerms('');
+    setIsContractModalOpen(true);
+  };
+
+  const handleCreateContractOffer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGame) return;
+
+    try {
+      const res = await contractApi.createOffer({
+        gameId: selectedGame.id,
+        contractType: selectedGame.publishingType === 'co_publishing' ? 'co_publishing' : 'full_acquisition',
+        revenueSplit: selectedGame.publishingType === 'co_publishing' ? revenueSplit : undefined,
+        lumpSumAmount: selectedGame.publishingType === 'full_acquisition' ? lumpSumAmount : undefined,
+        disputeResolutionClause,
+        additionalTerms: additionalTerms || undefined,
+        buyerRepresentative,
+        buyerPosition,
+        sellerRepresentative,
+        sellerAddress,
+        sellerTaxCode
+      });
+
+      if (res.success) {
+        alert('Hợp đồng đề xuất đã được tạo thành công và gửi cho Developer!');
+        setIsContractModalOpen(false);
+        fetchPendingGamesAndContracts();
+      } else {
+        alert(res.message || 'Lỗi tạo hợp đồng');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Lỗi gửi yêu cầu tạo hợp đồng');
+    }
+  };
+
+  const handleOpenSignModal = (contract: ContractResponse) => {
+    setSelectedContract(contract);
+    setAdminSignatureBase64(null);
+    setIsSignModalOpen(true);
+  };
+
+  const handleCountersign = async () => {
+    if (!selectedContract || !adminSignatureBase64) return;
+
+    try {
+      const res = await contractApi.signByAdmin(selectedContract.id, adminSignatureBase64);
+      if (res.success) {
+        alert('Đã ký đối ứng thành công! Hợp đồng hoàn tất và game đã được phê duyệt.');
+        setIsSignModalOpen(false);
+        fetchPendingGamesAndContracts();
+      } else {
+        alert(res.message || 'Lỗi ký đối ứng hợp đồng');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Lỗi thực hiện ký đối ứng');
     }
   };
 
@@ -280,7 +417,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fade-in py-2">
+    <>
+      <div className="space-y-6 animate-fade-in py-2">
       
       {/* Top Welcome Title Banner */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 bg-slate-950 text-white rounded-2xl border border-slate-800 gap-4 shadow-xl relative overflow-hidden">
@@ -317,7 +455,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <span className="text-2xl font-display font-bold dark:text-white">$14,842.20</span>
             <span className="text-[10px] text-emerald-500 font-bold font-mono">+8.4%</span>
           </div>
-          <p className="text-[9px] text-slate-450 dark:text-slate-500 leading-tight">Net fee earnings: ${(14842.2 * (commission/100)).toFixed(2)} ({commission}%)</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Net fee earnings: ${(14842.2 * (commission/100)).toFixed(2)} ({commission}%)</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
@@ -328,7 +466,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <span className="text-2xl font-display font-bold dark:text-white">{users.length * 280 + 32} users</span>
             <span className="text-[10px] text-emerald-500 font-bold font-mono">+32 today</span>
           </div>
-          <p className="text-[9px] text-slate-450 dark:text-slate-500 leading-tight">Active sessions: 184 creators online</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">Active sessions: 184 creators online</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
@@ -341,7 +479,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <span className="text-[10px] text-amber-500 font-bold font-mono animate-pulse">Action required</span>
             )}
           </div>
-          <p className="text-[9px] text-slate-450 dark:text-slate-500 leading-tight">Average response turnaround: 4.8 hours</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">Average response turnaround: 4.8 hours</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
@@ -352,7 +490,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
             <span className="text-2xl font-display font-bold dark:text-white">99.98%</span>
           </div>
-          <p className="text-[9px] text-slate-450 dark:text-slate-500 leading-tight">API nodes healthy (US-West / SG-East)</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">API nodes healthy (US-West / SG-East)</p>
         </div>
 
       </div>
@@ -414,6 +552,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       <th className="p-3">Category</th>
                       <th className="p-3">Publishing Type</th>
                       <th className="p-3">Proposed Price</th>
+                      <th className="p-3 text-center">Trạng thái HĐ</th>
                       <th className="p-3 text-center">Decisions</th>
                     </tr>
                   </thead>
@@ -434,6 +573,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             <td className="p-3">
                               <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                 {game.title}
+                                <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                                  game.status?.toLowerCase() === 'pending'
+                                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse'
+                                    : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                }`}>
+                                  {game.status?.toLowerCase() === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
+                                </span>
                                 <button
                                   onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                   className="text-slate-400 hover:text-amber-500 transition-colors"
@@ -442,7 +588,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   <Eye size={12} />
                                 </button>
                               </div>
-                              <div className="text-[10px] text-slate-450">by {game.creatorName}</div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-450">by {game.creatorName}</div>
                             </td>
                             <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Unassigned'}</td>
                             <td className="p-3">
@@ -459,33 +605,137 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             <td className="p-3 font-mono font-semibold dark:text-amber-400">
                               {game.priceProposed === 0 ? 'Free' : `$${game.priceProposed}`}
                             </td>
-                            <td className="p-3">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  onClick={() => handleApproveGame(game.id, game.title)}
-                                  className="p-1.5 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                  title="Approve & Publish"
-                                >
-                                  <Check size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleRejectGame(game.id, game.title)}
-                                  className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                  title="Reject & Notify"
-                                >
-                                  <X size={14} />
-                                </button>
-                              </div>
+                            <td className="p-3 text-center">
+                              {(() => {
+                                const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+                                if (!contract) {
+                                  return (
+                                    <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">Chưa tạo</span>
+                                  );
+                                }
+                                const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
+                                return (
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-mono border ${statusInfo.colorClass}`}>
+                                    {statusInfo.text}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                            <td className="p-3 text-center">
+                              {game.status?.toLowerCase() === 'pending' ? (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleApproveGame(game)}
+                                    className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                    title="Duyệt game"
+                                  >
+                                    <Check size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectGame(game.id, game.title)}
+                                    className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                    title="Từ chối game"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center gap-1">
+                                  {(() => {
+                                    const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+                                    if (!contract) {
+                                      return (
+                                        <button
+                                          onClick={() => handleOpenContractModal(game)}
+                                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                        >
+                                          <FileText size={12} />
+                                          Soạn Hợp đồng
+                                        </button>
+                                      );
+                                                    } else if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedContract(contract);
+                                            setViewerMode('view');
+                                            setIsViewerOpen(true);
+                                          }}
+                                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                        >
+                                          <Eye size={12} />
+                                          Chờ Dev ký
+                                        </button>
+                                      );
+                                    } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedContract(contract);
+                                            setViewerMode('sign-admin');
+                                            setIsViewerOpen(true);
+                                          }}
+                                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer animate-pulse"
+                                        >
+                                          <PenTool size={12} />
+                                          Ký đối ứng
+                                        </button>
+                                      );
+                                    } else if (contract.status === 'negotiating') {
+                                      return (
+                                        <button
+                                          onClick={() => handleOpenContractModal(game)}
+                                          className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                        >
+                                          <Sliders size={12} />
+                                          Điều chỉnh HĐ
+                                        </button>
+                                      );
+                                    } else {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedContract(contract);
+                                            setViewerMode('view');
+                                            setIsViewerOpen(true);
+                                          }}
+                                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                        >
+                                          <FileText size={12} />
+                                          Đã hoàn tất
+                                        </button>
+                                      );
+                                    }
+                                  })()}
+                                </div>
+                              )}
                             </td>
                           </tr>
                           
                           {/* Expanded detail sub-row */}
                           {expandedGameId === game.id && (
                             <tr>
-                              <td colSpan={6} className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
+                              <td colSpan={7} className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
                                   {/* Left Column: Thumbnail, Description, ZIP */}
                                   <div className="space-y-4">
+                                    {(() => {
+                                      const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === game.id && (c.status === 'negotiating' || c.status === 'cancelled') && c.rejectionReason);
+                                      if (activeRejectedContract) {
+                                        const isNegotiating = activeRejectedContract.status === 'negotiating';
+                                        return (
+                                          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs space-y-1">
+                                            <span className="font-bold block">
+                                              {isNegotiating ? "Developer từ chối hợp đồng với lý do:" : "Hợp đồng trước đó bị từ chối:"}
+                                            </span>
+                                            <p className="italic text-[11px] text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-rose-500/10 break-words">
+                                              "{activeRejectedContract.rejectionReason}"
+                                            </p>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                     <div>
                                       <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
                                         <Image size={12} /> Thumbnail
@@ -595,7 +845,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                        <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
                           🎉 Clean slate! No pending submissions to moderate.
                         </td>
                       </tr>
@@ -605,7 +855,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               </div>
             )}
           </div>
-        )}        {/* Tab 2: User Directory */}
+        )}
+        {/* Tab 2: User Directory */}
         {activeTab === 'users' && (
           <div className="space-y-4">
             <div>
@@ -700,7 +951,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Real-time Node Telemetry Logs</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Read logs emitted by system clusters and microservices</p>
               </div>
-              <span className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-450 uppercase">
+              <span className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Live streaming active
               </span>
             </div>
@@ -776,7 +1027,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                   <div>
                     <span className="block font-bold">Warning: Maintenance mode is active.</span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal block mt-0.5">This locks non-admin users out of performing checkouts, uploading files, or sync repos. Use with care.</span>
+<span className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal block mt-0.5">This locks non-admin users out of performing checkouts, uploading files, or sync repos. Use with care.</span>
                   </div>
                 </div>
               )}
@@ -789,8 +1040,179 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </form>
           </div>
         )}
-
       </div>
+    </div>
+
+
+      {/* Contract Creation Modal */}
+      {isContractModalOpen && selectedGame && createPortal(
+        <div className="fixed inset-0 z-[9999] flex justify-center items-start bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl w-full max-w-2xl my-8 space-y-6 relative overflow-hidden">
+            
+            <button 
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-studio cursor-pointer"
+              onClick={() => setIsContractModalOpen(false)}
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div className="p-3 bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 rounded-2xl shadow-md shadow-amber-500/20">
+                <PenTool size={22} />
+              </div>
+              <div>
+                <span className="text-[10px] font-mono tracking-widest text-amber-600 dark:text-amber-450 uppercase font-bold px-2 py-0.5 bg-amber-500/10 rounded">
+                  HỢP ĐỒNG PHÁT HÀNH
+                </span>
+                <h2 className="font-display font-bold text-xl text-slate-800 dark:text-white mt-1">
+                  Soạn thảo Hợp đồng Phát hành
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Nhập các điều khoản phát hành cho trò chơi "{selectedGame.title}"
+                </p>
+              </div>
+            </div>
+
+            {/* Display previous rejection reason if exists */}
+            {(() => {
+              const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === selectedGame.id && (c.status === 'negotiating' || c.status === 'cancelled') && c.rejectionReason);
+              if (activeRejectedContract) {
+                const isNegotiating = activeRejectedContract.status === 'negotiating';
+                return (
+                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl space-y-2 text-xs text-rose-600 dark:text-rose-450">
+                    <span className="font-bold flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+                      <AlertTriangle size={15} /> {isNegotiating ? "Lý do Developer từ chối ký hợp đồng:" : "Hợp đồng trước đó bị Developer từ chối:"}
+                    </span>
+                    <p className="italic bg-white/70 dark:bg-slate-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-900/20 text-slate-800 dark:text-slate-200 leading-normal break-words shadow-sm">
+                      "{activeRejectedContract.rejectionReason}"
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            <form onSubmit={handleCreateContractOffer} className="space-y-5">
+              {/* Bên A: Platform */}
+              <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="w-1.5 h-3 rounded bg-sky-500" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+                    BÊN A: BAN QUẢN TRỊ GODOTLAUNCH
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Người đại diện Bên A (Họ và Tên)"
+                    value={buyerRepresentative}
+                    onChange={(e) => setBuyerRepresentative(e.target.value)}
+                    required
+                  />
+                  <Input
+                    label="Chức vụ"
+                    value={buyerPosition}
+                    onChange={(e) => setBuyerPosition(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Điều khoản tài chính */}
+              <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="w-1.5 h-3 rounded bg-amber-400" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+                    ĐIỀU KHOẢN TÀI CHÍNH
+                  </span>
+                </div>
+                
+                {selectedGame.publishingType === 'co_publishing' ? (
+                  <Input
+                    label="Tỷ lệ chia sẻ doanh thu cho Developer (%)"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={revenueSplit}
+                    onChange={(e) => setRevenueSplit(parseInt(e.target.value) || 0)}
+                    helperText="Ví dụ: 70 có nghĩa là Developer nhận 70% và Platform nhận 30% doanh thu phát hành"
+                    required
+                  />
+                ) : (
+                  <Input
+                    label="Số tiền mua đứt trọn gói (USD)"
+                    placeholder="Ví dụ: $10,000"
+                    value={lumpSumAmount}
+                    onChange={(e) => setLumpSumAmount(e.target.value)}
+                    helperText="Số tiền thanh toán một lần để mua toàn bộ quyền sở hữu trò chơi"
+                    required
+                  />
+                )}
+              </div>
+
+              {/* Điều khoản pháp lý bổ sung */}
+              <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="w-1.5 h-3 rounded bg-sky-500" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+                    ĐIỀU KHOẢN PHÁP LÝ & BỔ SUNG
+                  </span>
+                </div>
+                <TextArea
+                  label="Điều khoản giải quyết tranh chấp (Dispute Resolution)"
+                  value={disputeResolutionClause}
+                  onChange={(e) => setDisputeResolutionClause(e.target.value)}
+                  rows={8}
+                  required
+                />
+
+                <TextArea
+                  label="Điều khoản bổ sung (Tùy chọn)"
+                  placeholder="Nhập thêm các điều khoản cam kết đặc biệt nếu có..."
+                  value={additionalTerms}
+                  onChange={(e) => setAdditionalTerms(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button 
+                  type="button"
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-studio"
+                  onClick={() => setIsContractModalOpen(false)}
+                >
+                  Hủy bỏ
+                </button>
+                <Button variant="primary" size="md" type="submit" icon={<FileCheck size={16} />}>
+                  Gửi đề nghị & Tạo Hợp đồng
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Universal Contract Viewer & Countersigning Modal */}
+      {isViewerOpen && selectedContract && (
+        <ContractViewerModal
+          contract={selectedContract}
+          currentUser={currentUser}
+          mode={viewerMode}
+          onClose={() => setIsViewerOpen(false)}
+          onSignSuccess={() => {
+            setIsViewerOpen(false);
+            fetchPendingGamesAndContracts();
+          }}
+          onSignAdmin={async (sig) => {
+            try {
+              const res = await contractApi.signByAdmin(selectedContract.id, sig);
+              return { success: res.success, message: res.message };
+            } catch (err: any) {
+              return { success: false, message: err.response?.data?.message || err.message || 'Lỗi ký đối ứng' };
+            }
+          }}
+        />
+      )}
 
       {/* Screenshot Lightbox Modal */}
       {isOpenLightbox && activeScreenshotUrl && (
@@ -799,7 +1221,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           onClick={() => setIsOpenLightbox(false)}
         >
           <button 
-            className="absolute top-4 right-4 p-2 bg-slate-900 border border-slate-800 text-slate-450 hover:text-white rounded-lg transition-studio active:scale-95 cursor-pointer"
+            className="absolute top-4 right-4 p-2 bg-slate-900 border border-slate-800 text-slate-500 hover:text-white rounded-lg transition-studio active:scale-95 cursor-pointer"
             onClick={() => setIsOpenLightbox(false)}
           >
             <X size={20} />
@@ -817,6 +1239,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </div>
       )}
 
-    </div>
+    </>
   );
 };

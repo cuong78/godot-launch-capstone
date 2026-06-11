@@ -155,6 +155,7 @@ public class GameServiceImpl implements GameService {
                 .communityAvailable(game.isSourceListed())
                 .status(game.getStatus().name())
                 .creatorName(game.getCreator().getEmail())
+                .creatorFullName(game.getCreator().getFullName())
                 .categoryName(game.getCategory() != null ? game.getCategory().getName() : null)
                 .publishingType(game.getPublishingType() != null ? game.getPublishingType().name() : null)
                 .screenshots(screenshots)
@@ -227,15 +228,27 @@ public class GameServiceImpl implements GameService {
             throw new IllegalStateException("Game must be in pending status to be approved");
         }
 
-        game.setStatus(GameStatus.published);
-        gameRepository.save(game);
+        if (game.getPublishingType() == null || game.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing) {
+            game.setStatus(GameStatus.published);
+            gameRepository.save(game);
 
-        emailService.sendGameStatusNotification(
-                game.getCreator().getEmail(),
-                game.getTitle(),
-                "APPROVED and PUBLISHED",
-                "Your game has passed all manual checks and is now live on the store."
-        );
+            emailService.sendGameStatusNotification(
+                    game.getCreator().getEmail(),
+                    game.getTitle(),
+                    "APPROVED and PUBLISHED",
+                    "Your game has passed all manual checks and is now live on the store."
+            );
+        } else {
+            game.setStatus(GameStatus.approved);
+            gameRepository.save(game);
+
+            emailService.sendGameStatusNotification(
+                    game.getCreator().getEmail(),
+                    game.getTitle(),
+                    "APPROVED - CONTRACT PENDING",
+                    "Your game has been approved by the admin. A contract will be drafted. Please check your developer dashboard to review and sign the contract."
+            );
+        }
     }
 
     @Override

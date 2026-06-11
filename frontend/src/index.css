@@ -18,6 +18,11 @@
 .dark ::-webkit-scrollbar-track {
   background: #111315;
 }
+/* 
+  Portals Inheritance Fix: 
+  By applying .dark class to document.body via useEffect in App.tsx, 
+  React Portals attached to the body now correctly inherit theme styles.
+*/
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
@@ -41,3 +46,40 @@
 .dark .pixel-grid-overlay {
   background-image: radial-gradient(circle, rgba(255, 215, 0, 0.04) 1px, transparent 1px);
 }
+
+/* Print CSS to isolate the contract document for PDF generation/printing */
+@media print {
+  @page {
+    size: auto;
+    margin: 0mm;
+  }
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #contract-print-area, #contract-print-area * {
+    visibility: visible;
+  }
+  #contract-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 20mm !important;
+    margin: 0 !important;
+    background-color: white !important;
+  }
+  /* Force dark and light text inside print area to print in pure black */
+  #contract-print-area * {
+    color: black !important;
+    background: transparent !important;
+  }
+}
+

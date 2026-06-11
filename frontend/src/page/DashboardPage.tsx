@@ -12,12 +12,18 @@ import {
   RefreshCw, 
   X, 
   AlertTriangle,
-  FileCheck
+  FileCheck,
+  PenTool,
+  FileText
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { DataTable } from '../components/DataTable';
-import { Asset, Project, User, GameResponse } from '../types';
+import { Input } from '../components/Input';
+import { Asset, Project, User, GameResponse, ContractResponse } from '../types';
 import { gameApi } from '../api/gameApi';
+import { contractApi } from '../api/contractApi';
+import { SignaturePad } from '../components/SignaturePad';
+import { ContractViewerModal } from '../components/ContractViewerModal';
 
 interface DashboardPageProps {
   currentUser: User | null;
@@ -30,6 +36,28 @@ interface DashboardPageProps {
   projectRepositories: Project[];
   setCurrentScreen: (screen: any) => void;
 }
+
+const getContractStatusLabel = (status: string, signedAtSeller?: string | null) => {
+  switch (status) {
+    case 'signed':
+      return { text: 'Hoàn tất', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
+    case 'negotiating':
+      return { text: 'Thương lượng', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
+    case 're_issued':
+      return signedAtSeller
+        ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
+        : { text: 'Cấp lại / Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+    case 'cancelled':
+      return { text: 'Đã hủy', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+    case 'expired':
+      return { text: 'Hết hạn', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+    case 'pending':
+    default:
+      return signedAtSeller
+        ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
+        : { text: 'Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+  }
+};
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentUser,
@@ -48,6 +76,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [activeScreenshotUrl, setActiveScreenshotUrl] = useState<string | null>(null);
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
+
+  // Contract integration states
+  const [contracts, setContracts] = useState<ContractResponse[]>([]);
+  const [isLoadingContracts, setIsLoadingContracts] = useState<boolean>(false);
+  const [isSignModalOpen, setIsSignModalOpen] = useState<boolean>(false);
+  const [selectedContract, setSelectedContract] = useState<ContractResponse | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState<boolean>(false);
+  const [viewerMode, setViewerMode] = useState<'view' | 'sign-developer'>('view');
+
+  // Form fields for Developer Signature
+  const [sellerRepresentative, setSellerRepresentative] = useState<string>('');
+  const [sellerAddress, setSellerAddress] = useState<string>('');
+  const [sellerTaxCode, setSellerTaxCode] = useState<string>('');
+  const [developerSignatureBase64, setDeveloperSignatureBase64] = useState<string | null>(null);
+  const [isSubmittingSignature, setIsSubmittingSignature] = useState<boolean>(false);
 
   const fetchMyGames = async () => {
     if (!currentUser?.email) return;
@@ -71,12 +114,67 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
+  const fetchMyContracts = async () => {
+    if (!currentUser?.email) return;
+    setIsLoadingContracts(true);
+    try {
+      const response = await contractApi.getMyContracts();
+      if (response.success && response.data) {
+        setContracts(response.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch contracts', err);
+    } finally {
+      setIsLoadingContracts(false);
+    }
+  };
+
+  const handleOpenSignModal = (contract: ContractResponse) => {
+    setSelectedContract(contract);
+    // Prefill details with developer's full name, not email
+    setSellerRepresentative(currentUser?.fullName || '');
+    setSellerAddress(contract.sellerAddress || '');
+    setSellerTaxCode(contract.sellerTaxCode || '');
+    setDeveloperSignatureBase64(null);
+    setIsSignModalOpen(true);
+  };
+
+  const handleSignContract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedContract || !developerSignatureBase64) return;
+    
+    setIsSubmittingSignature(true);
+    try {
+      const response = await contractApi.signByDeveloper(
+        selectedContract.id,
+        developerSignatureBase64,
+        sellerRepresentative,
+        sellerAddress,
+        sellerTaxCode
+      );
+      if (response.success) {
+        alert('Ký hợp đồng thành công! Đang chờ Admin ký đối ứng để hoàn tất.');
+        setIsSignModalOpen(false);
+        fetchMyGames();
+        fetchMyContracts();
+      } else {
+        alert(response.message || 'Lỗi ký hợp đồng');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Lỗi thực hiện ký hợp đồng');
+    } finally {
+      setIsSubmittingSignature(false);
+    }
+  };
+
   useEffect(() => {
     fetchMyGames();
+    fetchMyContracts();
   }, [currentUser]);
 
   return (
-    <div className="space-y-6 animate-fade-in py-2">
+    <>
+      <div className="space-y-6 animate-fade-in py-2">
       
       {/* Top overview row with developer metrics */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 gap-4 shadow-sm relative overflow-hidden">
@@ -234,17 +332,86 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 {game.priceProposed === 0 ? 'Miễn phí' : `$${game.priceProposed}`}
                               </td>
                               <td className="p-3 text-center">
-                                <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                                  game.status?.toLowerCase() === 'published'
-                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                                    : game.status?.toLowerCase() === 'pending'
-                                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse'
-                                    : game.status?.toLowerCase() === 'rejected'
-                                    ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                                    : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                                }`}>
-                                  {game.status}
-                                </span>
+                                <div className="flex flex-col items-center gap-1.5 justify-center">
+                                  {(() => {
+                                    const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+                                    if (contract) {
+                                      const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
+                                      return (
+                                        <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusInfo.colorClass}`}>
+                                          {statusInfo.text}
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                        game.status?.toLowerCase() === 'published'
+                                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                          : game.status?.toLowerCase() === 'pending'
+                                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse'
+                                          : game.status?.toLowerCase() === 'rejected'
+                                          ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                                          : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                      }`}>
+                                        {game.status}
+                                      </span>
+                                    );
+                                  })()}
+                                    {(() => {
+                                      const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+                                      if (contract) {
+                                        if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
+                                          return (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedContract(contract);
+                                                setViewerMode('sign-developer');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-2.5 py-1 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded text-[10px] transition-studio cursor-pointer animate-pulse whitespace-nowrap shadow-sm"
+                                            >
+                                              <PenTool size={10} />
+                                              Ký Hợp đồng
+                                            </button>
+                                          );
+                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
+                                          return (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedContract(contract);
+                                                setViewerMode('view');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded text-[10px] transition-studio cursor-pointer whitespace-nowrap shadow-sm"
+                                            >
+                                              <Eye size={10} />
+                                              Đã ký
+                                            </button>
+                                          );
+                                        } else if (contract.status === 'signed') {
+                                          return (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedContract(contract);
+                                                setViewerMode('view');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded text-[10px] transition-studio cursor-pointer whitespace-nowrap shadow-sm"
+                                            >
+                                              <FileText size={10} />
+                                              Chi tiết
+                                            </button>
+                                          );
+                                        } else if (contract.status === 'negotiating') {
+                                          return null;
+                                        }
+                                      }
+                                      return null;
+                                    })()}
+                                </div>
                               </td>
                             </tr>
                             
@@ -305,6 +472,73 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">Vui lòng kiểm tra địa chỉ email liên kết tài khoản của bạn để biết lý do từ chối chi tiết và các phản hồi từ ban quản trị hệ thống.</p>
                                         </div>
                                       )}
+
+                                      {/* Contract Status Card for Co-publishing or Full Acquisition */}
+                                      {(() => {
+                                        const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+                                        if (contract) {
+                                          return (
+                                            <div className="p-4 bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
+                                              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                <FileCheck size={12} className="text-sky-500" /> Hợp đồng phát hành
+                                              </span>
+                                              <div className="flex justify-between items-center text-xs">
+                                                <span className="text-slate-500">Trạng thái:</span>
+                                                {(() => {
+                                                  const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
+                                                  return (
+                                                    <span className={`font-bold uppercase tracking-wider ${
+                                                      contract.status === 'signed' ? 'text-emerald-500' :
+                                                      contract.status === 'negotiating' ? 'text-rose-500' :
+                                                      'text-amber-500'
+                                                    }`}>
+                                                      {statusInfo.text}
+                                                    </span>
+                                                  );
+                                                })()}
+                                              </div>
+                                              {((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) && (
+                                                <button
+                                                  onClick={() => {
+                                                    setSelectedContract(contract);
+                                                    setViewerMode('sign-developer');
+                                                    setIsViewerOpen(true);
+                                                  }}
+                                                  className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded-lg text-xs transition-studio cursor-pointer"
+                                                >
+                                                  <PenTool size={14} /> Ký hợp đồng điện tử
+                                                </button>
+                                              )}
+                                              {((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) && (
+                                                <button
+                                                  onClick={() => {
+                                                    setSelectedContract(contract);
+                                                    setViewerMode('view');
+                                                    setIsViewerOpen(true);
+                                                  }}
+                                                  className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-sky-550 hover:bg-sky-600 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer"
+                                                >
+                                                  <Eye size={14} /> Xem chi tiết hợp đồng đã ký
+                                                </button>
+                                              )}
+                                              {contract.status === 'negotiating' && null}
+                                              {contract.status === 'signed' && (
+                                                <button
+                                                  onClick={() => {
+                                                    setSelectedContract(contract);
+                                                    setViewerMode('view');
+                                                    setIsViewerOpen(true);
+                                                  }}
+                                                  className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer"
+                                                >
+                                                  <FileText size={14} /> Xem & Tải hợp đồng
+                                                </button>
+                                              )}
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
                                     </div>
 
                                     {/* Middle & Right Column: Screenshots & Video */}
@@ -412,7 +646,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               ].map((task, idx) => (
                 <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-350 font-medium">
                   <div className={`w-4.5 h-4.5 rounded border flex items-center justify-center flex-none ${task.done ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500 font-bold' : 'border-slate-300 dark:border-slate-800'}`}>
-                    {task.done && <Check size={11} />}
+                     {task.done && <Check size={11} />}
                   </div>
                   <span className={task.done ? 'line-through text-slate-400 dark:text-slate-500' : ''}>{task.text}</span>
                 </div>
@@ -437,8 +671,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
       </div>
+    </div>
 
-      {/* Screenshot Lightbox Modal */}
+    {/* Screenshot Lightbox Modal */}
       {isOpenLightbox && activeScreenshotUrl && (
         <div 
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4 animate-fade-in"
@@ -463,6 +698,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       )}
 
-    </div>
+      {/* Universal Contract Viewer & Signing Modal */}
+      {isViewerOpen && selectedContract && (
+        <ContractViewerModal
+          contract={selectedContract}
+          currentUser={currentUser}
+          mode={viewerMode}
+          onClose={() => setIsViewerOpen(false)}
+          onSignSuccess={() => {
+            setIsViewerOpen(false);
+            fetchMyGames();
+            fetchMyContracts();
+          }}
+          onSignDeveloper={async (sig, rep, addr, tax) => {
+            try {
+              const res = await contractApi.signByDeveloper(selectedContract.id, sig, rep, addr, tax);
+              return { success: res.success, message: res.message };
+            } catch (err: any) {
+              return { success: false, message: err.response?.data?.message || err.message || 'Lỗi ký hợp đồng' };
+            }
+          }}
+          onRejectDeveloper={async (reason) => {
+            try {
+              const res = await contractApi.rejectByDeveloper(selectedContract.id, reason);
+              return { success: res.success, message: res.message };
+            } catch (err: any) {
+              return { success: false, message: err.response?.data?.message || err.message || 'Lỗi từ chối hợp đồng' };
+            }
+          }}
+        />
+      )}
+
+    </>
   );
 };

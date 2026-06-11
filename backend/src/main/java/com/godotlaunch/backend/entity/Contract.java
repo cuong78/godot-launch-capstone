@@ -56,6 +56,39 @@ public class Contract {
     @Column(name = "revenue_split")
     private Short revenueSplit;
 
+    @Column(name = "lump_sum_amount")
+    private String lumpSumAmount;
+
+    @Column(name = "dispute_resolution_clause", columnDefinition = "TEXT")
+    private String disputeResolutionClause;
+
+    @Column(name = "additional_terms", columnDefinition = "TEXT")
+    private String additionalTerms;
+
+    @Column(name = "buyer_representative")
+    private String buyerRepresentative;
+
+    @Column(name = "buyer_position")
+    private String buyerPosition;
+
+    @Column(name = "seller_representative")
+    private String sellerRepresentative;
+
+    @Column(name = "seller_address", columnDefinition = "TEXT")
+    private String sellerAddress;
+
+    @Column(name = "seller_tax_code", length = 100)
+    private String sellerTaxCode;
+
+    @Column(name = "seller_signature_base64", columnDefinition = "TEXT")
+    private String sellerSignatureBase64;
+
+    @Column(name = "buyer_signature_base64", columnDefinition = "TEXT")
+    private String buyerSignatureBase64;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
     @Column(name = "signed_at_seller")
     private Instant signedAtSeller;
 

@@ -20,6 +20,8 @@ export interface Asset {
     propsCount: string;
     featuresList: string[];
   };
+  screenshots?: string[];
+  videoUrl?: string;
 }
 
 export interface Project {
@@ -163,6 +165,80 @@ export interface CreateReactionRequest {
 export interface SharePostRequest {
   message?: string;
 }
+
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  parentId?: string;
+  createdAt?: string;
+}
+
+export interface CreateGameRequest {
+  title: string;
+  description?: string;
+  priceProposed?: number;
+  categoryId?: string;
+  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+}
+
+export interface UpdateGameRequest {
+  title?: string;
+  description?: string;
+  priceProposed?: number;
+  categoryId?: string;
+  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+  status?: string;
+}
+
+export interface GameResponse {
+  id: string;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
+  priceProposed?: number;
+  downloadPrice?: number;
+  communityAvailable?: boolean;
+  status?: string;
+  creatorName?: string;
+  creatorFullName?: string;
+  categoryName?: string;
+  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+  screenshots?: string[];
+  videoUrl?: string;
+  fileUrl?: string;
+}
+
+export interface ContractResponse {
+  id: string;
+  gameId: string;
+  gameTitle: string;
+  sellerId: string;
+  sellerName: string;
+  sellerEmail?: string;
+  buyerId?: string;
+  contractType: 'full_acquisition' | 'co_publishing';
+  termsHash: string;
+  pdfUrl?: string;
+  status: 'pending' | 'signed' | 'expired' | 'cancelled' | 'negotiating' | 're_issued';
+  revenueSplit?: number;
+  lumpSumAmount?: string;
+  disputeResolutionClause?: string;
+  additionalTerms?: string;
+  buyerRepresentative?: string;
+  buyerPosition?: string;
+  sellerRepresentative?: string;
+  sellerAddress?: string;
+  sellerTaxCode?: string;
+  signedAtSeller?: string;
+  signedAtBuyer?: string;
+  sellerSignatureBase64?: string;
+  buyerSignatureBase64?: string;
+  rejectionReason?: string;
+  createdAt?: string;
+}
+
 
 
 
