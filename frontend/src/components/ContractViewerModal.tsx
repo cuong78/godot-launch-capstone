@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, FileText, Download, PenTool, CheckCircle, Clock, ShieldCheck, Printer, XCircle, AlertTriangle } from 'lucide-react';
+import { X, FileText, Download, PenTool, CheckCircle, Clock, ShieldCheck, XCircle, AlertTriangle } from 'lucide-react';
 import { ContractResponse, User } from '../types';
 import { SignaturePad } from './SignaturePad';
 import { Button } from './Button';
@@ -122,11 +122,11 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex justify-center items-start bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl w-full max-w-5xl my-8 flex flex-col relative animate-fade-in">
+    <div className="contract-modal-overlay fixed inset-0 z-[99999] flex justify-center items-start bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="contract-modal-box bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl w-full max-w-5xl my-8 flex flex-col relative animate-fade-in">
         
         {/* Header toolbar */}
-        <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
+        <div className="contract-header-toolbar flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono tracking-widest text-sky-500 dark:text-sky-400 uppercase font-bold">
@@ -178,7 +178,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
         </div>
 
         {/* Stepper Progress bar */}
-        <div className="grid grid-cols-3 gap-4 mb-6 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/50 dark:border-slate-850">
+        <div className="contract-stepper-bar grid grid-cols-3 gap-4 mb-6 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/50 dark:border-slate-850">
           {[
             { step: 1, title: 'Khởi tạo hợp đồng', desc: 'Admin biên soạn điều khoản', icon: <FileText size={16} /> },
             { step: 2, title: 'Developer ký tên', desc: contract.signedAtSeller ? `Đã ký lúc ${new Date(contract.signedAtSeller).toLocaleDateString()}` : 'Đang chờ ký tên', icon: <PenTool size={16} /> },
@@ -206,10 +206,10 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
         </div>
 
         {/* Split Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="contract-split-panels grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Left Panel: A4 Document Viewer */}
-          <div className="lg:col-span-7 flex flex-col gap-3">
+          <div className="contract-left-panel lg:col-span-7 flex flex-col gap-3">
             <div className="flex justify-between items-center px-1">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">
                 Bản xem trước hợp đồng (PDF Preview)
@@ -217,9 +217,9 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
               <button 
                 onClick={handlePrint}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold rounded-lg text-xs transition-studio cursor-pointer"
-                title="In hoặc lưu PDF cục bộ"
+                title="Tải xuống hợp đồng dạng PDF"
               >
-                <Printer size={14} /> In / Tải PDF
+                <Download size={14} /> Tải file PDF
               </button>
             </div>
             
@@ -438,7 +438,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
           </div>
 
           {/* Right Panel: Actions & Signing Flow */}
-          <div className="lg:col-span-5 space-y-4">
+          <div className="contract-right-panel lg:col-span-5 space-y-4">
             
             <div className="p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-4 shadow-sm">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider font-mono flex items-center gap-1.5">
@@ -489,7 +489,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                       onClick={handlePrint}
                       className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs transition-colors shadow-lg shadow-emerald-500/10 cursor-pointer"
                     >
-                      <Download size={14} /> In / Xuất Hợp đồng PDF
+                      <Download size={14} /> Tải xuống Hợp đồng PDF
                     </button>
                   )}
                 </div>
@@ -661,7 +661,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
             {mode === 'view' && (
               <div className="space-y-3">
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal">
-                  Chế độ xem hợp đồng chính thức. Bạn có thể in hợp đồng trực tiếp hoặc tải file PDF điện tử có dấu kiểm định.
+                  Chế độ xem hợp đồng chính thức. Bạn có thể tải file PDF điện tử để lưu trữ.
                 </p>
                 <button
                   type="button"

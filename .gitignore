@@ -1,2 +1,13 @@
 # Local Environment Variables
 .env
+
+# JetBrains IDEs
+.idea/
+.idea/workspace.xml
+workspace.xml
+
+# VS Code IDE
+.vscode/
+
+# Logs
+*.log

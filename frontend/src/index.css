@@ -50,36 +50,141 @@
 /* Print CSS to isolate the contract document for PDF generation/printing */
 @media print {
   @page {
-    size: auto;
-    margin: 0mm;
+    size: A4 portrait;
+    margin: 0; /* Set margins to 0 to completely hide default browser headers/footers (date, title, URL) */
   }
-  body {
+  
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
     background-color: white !important;
     color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  body * {
-    visibility: hidden;
+
+  /* Hide the rest of the application completely from the print layout */
+  body > *:not(.contract-modal-overlay) {
+    display: none !important;
   }
-  #contract-print-area, #contract-print-area * {
-    visibility: visible;
+
+  /* Reset the modal overlay wrapper */
+  .contract-modal-overlay {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 20mm 15mm 20mm 15mm !important; /* Set proper paper padding here, so it looks like margins on the page! */
+    margin: 0 !important;
+    display: block !important;
+    box-sizing: border-box !important;
   }
+
+  /* Reset the modal content box */
+  .contract-modal-box {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Hide specific UI elements (Header toolbar, Progress stepper, right panel) */
+  .contract-header-toolbar,
+  .contract-stepper-bar,
+  .contract-right-panel,
+  .contract-modal-box button,
+  .contract-modal-box a {
+    display: none !important;
+  }
+
+  /* Reset the split panels container to take full width */
+  .contract-split-panels {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Reset the left panel container */
+  .contract-left-panel {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide the left panel's preview title and action bar */
+  .contract-left-panel > div:first-child {
+    display: none !important;
+  }
+
+  /* Style and display the contract print area */
   #contract-print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
     max-height: none !important;
     overflow: visible !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 20mm !important;
+    padding: 0 !important;
     margin: 0 !important;
     background-color: white !important;
   }
-  /* Force dark and light text inside print area to print in pure black */
+
+  /* Force print color matching and override text colors to high-contrast black on white */
   #contract-print-area * {
     color: black !important;
     background: transparent !important;
+  }
+
+  /* Prevent sections, headers, paragraphs, and list items from being cut in half across pages */
+  #contract-print-area p,
+  #contract-print-area div,
+  #contract-print-area table,
+  #contract-print-area tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Force signature grid layout to format correctly as two side-by-side columns on print */
+  #contract-print-area .grid-cols-2 {
+    display: table !important;
+    width: 100% !important;
+    table-layout: fixed !important;
+    margin-top: 30px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #contract-print-area .grid-cols-2 > div {
+    display: table-cell !important;
+    width: 50% !important;
+    vertical-align: top !important;
+    padding: 15px !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Keep signature boxes nice and clean */
+  #contract-print-area .border-dashed {
+    border: 1px dashed #777777 !important;
+    border-radius: 4px !important;
+    min-height: 140px !important;
   }
 }
 
