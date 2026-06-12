@@ -14,7 +14,7 @@ public class AdminUpdateUserRequest {
     private String fullName;
 
     @NotBlank(message = "Role is required.")
-    private String roleName; // e.g. "admin", "developer", "player"
+    private String roleName; // e.g. "admin", "developer", "customer"
 
     @NotBlank(message = "Status is required.")
     private String status; // "active", "inactive", "banned"
