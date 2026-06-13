@@ -1,0 +1,21 @@
+package com.godotlaunch.backend.service;
+
+import com.godotlaunch.backend.dto.request.CreateMarketplaceItemRequest;
+import com.godotlaunch.backend.dto.request.UpdateMarketplaceItemRequest;
+import com.godotlaunch.backend.dto.response.MarketplaceItemResponse;
+import com.godotlaunch.backend.entity.enums.ItemStatus;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface MarketplaceItemService {
+    UUID createMarketplaceItem(CreateMarketplaceItemRequest request, String sellerEmail);
+    MarketplaceItemResponse getMarketplaceItemById(UUID id);
+    List<MarketplaceItemResponse> getAllMarketplaceItems();
+    List<MarketplaceItemResponse> getMarketplaceItemsByStatus(ItemStatus status);
+    List<MarketplaceItemResponse> getMarketplaceItemsBySeller(String sellerEmail);
+    MarketplaceItemResponse updateMarketplaceItem(UUID id, UpdateMarketplaceItemRequest request, String updaterEmail);
+    String getPresignedUploadUrl(UUID itemId, String contentType);
+    void confirmUploadComplete(UUID itemId, String objectKey);
+    void removeMarketplaceItem(UUID id, String updaterEmail);
+}

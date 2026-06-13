@@ -29,6 +29,7 @@ public enum ErrorCode {
     WISHLIST_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Game is not in your wishlist."),
     GUIDE_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested publishing guide does not exist."),
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested category does not exist."),
+    MARKETPLACE_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested marketplace item does not exist."),
     
     // 400 Bad Request additions / Category
     CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "Category name or slug already exists."),
