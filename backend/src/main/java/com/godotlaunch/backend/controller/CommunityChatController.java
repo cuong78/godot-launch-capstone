@@ -97,9 +97,9 @@ public class CommunityChatController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<ChatReactionResponse>> reactToPost(
             @PathVariable UUID id,
-            @Valid @RequestBody CreateReactionRequest request,
-            Principal principal) {
-        ChatReactionResponse response = communityChatService.reactToPost(principal.getName(), id, request);
+            @Valid @RequestBody CreateReactionRequest request
+            ) {
+        ChatReactionResponse response = communityChatService.reactToPost(id, request);
         if (response.isNew()) {
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(response, "Reaction added successfully."));

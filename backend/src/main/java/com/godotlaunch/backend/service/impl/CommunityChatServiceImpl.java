@@ -14,6 +14,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -217,14 +219,17 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
     @Override
     @Transactional
-    public ChatReactionResponse reactToPost(String email, UUID id, CreateReactionRequest request) {
+    public ChatReactionResponse reactToPost( UUID id, CreateReactionRequest request) {
         CommunityChat post = communityChatRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CHAT_NOT_FOUND));
         if (post.isDeleted()) {
             throw new AppException(ErrorCode.CHAT_ALREADY_DELETED);
         }
 
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = (String) authentication.getPrincipal();
         User currentUser = getCurrentUser(email);
+
         ChatReaction reaction;
         boolean isNew = false;
 
