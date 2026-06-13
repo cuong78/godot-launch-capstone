@@ -10,12 +10,14 @@ import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.service.AuthService;
+import com.godotlaunch.backend.service.AwsS3Service;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -24,6 +26,14 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final AwsS3Service awsS3Service;
+
+    @PostMapping("/avatar")
+    @Operation(summary = "Upload user avatar to S3", description = "Uploads a multipart file to S3 and returns the public url. Publicly accessible for profile creation during registration.")
+    public ResponseEntity<ApiResponse<String>> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        String avatarUrl = awsS3Service.uploadFile(file, "avatars");
+        return ResponseEntity.ok(ApiResponse.success(avatarUrl, "Avatar uploaded successfully."));
+    }
 
     @PostMapping("/signup")
     @Operation(summary = "Register a new user", description = "Creates a new user profile with selected roles (customer/developer). Defaults to 'customer'.")

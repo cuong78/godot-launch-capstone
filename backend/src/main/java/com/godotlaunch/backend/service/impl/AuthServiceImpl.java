@@ -80,6 +80,7 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName());
+        user.setAvatarUrl(request.getAvatarUrl());
         user.setStatus("active");
         user.setRole(role);
 
@@ -370,6 +371,7 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(user.getFullName())
                 .roleName(user.getRole().getName())
                 .status(user.getStatus())
+                .avatarUrl(user.getAvatarUrl())
                 .build();
     }
 }

@@ -45,5 +45,16 @@ export const authApi = {
   resetPassword: async (data: ResetPasswordRequest): Promise<ApiResponse<void>> => {
     const response = await api.post<ApiResponse<void>>('/api/auth/reset-password', data);
     return response.data;
+  },
+
+  uploadAvatar: async (file: File): Promise<ApiResponse<string>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<ApiResponse<string>>('/api/auth/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   }
 };

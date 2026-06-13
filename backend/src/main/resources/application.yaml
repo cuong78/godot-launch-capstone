@@ -1,4 +1,11 @@
 debug: false
+logging:
+  file:
+    name: backend.log
+  level:
+    com.godotlaunch.backend: DEBUG
+    org.springframework.web: INFO
+    org.springframework.messaging: DEBUG
 spring:
   application:
     name: backend

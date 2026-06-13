@@ -15,6 +15,7 @@ export interface AuthContextType {
   loginWithToken: (token: string) => Promise<User>;
   logout: () => void;
   setError: (error: string | null) => void;
+  updateUser: (user: User) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -71,6 +72,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem("accessToken");
     localStorage.removeItem("currentUser");
     setCurrentUser(null);
+  };
+
+  const updateUser = (user: User) => {
+    const mappedUser = mapBackendUserToFrontendUser(user);
+    setCurrentUser(mappedUser);
+    tokenStorage.setUser(mappedUser);
+    localStorage.setItem("currentUser", JSON.stringify(mappedUser));
   };
 
   const signUp = async (data: SignUpRequest): Promise<User> => {
@@ -201,7 +209,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       loginWithGitHub,
       loginWithToken,
       logout: handleLogout,
-      setError
+      setError,
+      updateUser
     }}>
       {children}
     </AuthContext.Provider>

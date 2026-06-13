@@ -2,6 +2,7 @@ package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
+import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.service.UserService;
@@ -35,6 +36,16 @@ public class UserController {
         String email = principal.getName();
         UserResponse user = userService.getUserByEmail(email);
         return ResponseEntity.ok(ApiResponse.success(user, "Current user profile retrieved successfully."));
+    }
+
+    @PutMapping("/me")
+    @Operation(summary = "Update current user profile", description = "Allows the currently authenticated user to update their own profile information (name, avatar, password).")
+    public ResponseEntity<ApiResponse<UserResponse>> updateCurrentUser(
+            Principal principal,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        String email = principal.getName();
+        UserResponse updatedUser = userService.updateMyProfile(email, request);
+        return ResponseEntity.ok(ApiResponse.success(updatedUser, "Profile updated successfully."));
     }
 
     @GetMapping

@@ -4,16 +4,35 @@ import {
   Coins,
   Loader2,
   Rocket,
-  UserPlus
+  UserPlus,
+  Camera,
+  Check,
+  Upload,
+  Globe,
+  Grid
 } from 'lucide-react';
 import { User } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { loginWithGitHub } from '../api/authService';
+import { authApi } from '../api/authApi';
+import { PROFILE_AVATAR_YOU, DEV_AVATARS } from '../../assets/images';
 
 interface SignUpPageProps {
   setCurrentScreen: (screen: any) => void;
   setCurrentUser: (user: User | null) => void;
 }
+
+const PRESET_AVATARS = [
+  PROFILE_AVATAR_YOU,
+  DEV_AVATARS.gdsage,
+  DEV_AVATARS.vectorvixen,
+  DEV_AVATARS.pixelwizard,
+  DEV_AVATARS.codemistress,
+  DEV_AVATARS.assetlord,
+  DEV_AVATARS.jammer1,
+  DEV_AVATARS.jammer2,
+  DEV_AVATARS.jammer3,
+];
 
 const panelClassName = 'relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#17130a]/70 p-6 shadow-2xl backdrop-blur-2xl sm:p-8 lg:max-w-xl lg:p-10';
 const labelClassName = 'ml-1 block font-mono text-[10px] uppercase tracking-[0.22em] text-[#d3c5ac]';
@@ -51,6 +70,11 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+
+  const [avatarUrl, setAvatarUrl] = useState(PROFILE_AVATAR_YOU);
+  const [avatarTab, setAvatarTab] = useState<'presets' | 'upload' | 'url'>('presets');
+  const [customUrl, setCustomUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   const validateFields = () => {
     if (!fullName) {
@@ -95,7 +119,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
     setLoading(true);
     try {
-      await signUp({ email, password, confirmPassword, fullName });
+      await signUp({ email, password, confirmPassword, fullName, avatarUrl });
       setSuccessMessage('Account created successfully! Redirecting to sign in...');
       setTimeout(() => {
         setCurrentScreen('signin');
@@ -242,6 +266,159 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                   className={inputClassName}
                   required
                 />
+              </div>
+
+              {/* Avatar Selector Block */}
+              <div className="space-y-2">
+                <label className={labelClassName}>Chọn Ảnh Đại Diện (Avatar)</label>
+                
+                {/* Preview and Selection Info */}
+                <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-3">
+                  <img 
+                    referrerPolicy="no-referrer"
+                    src={avatarUrl} 
+                    alt="Selected Avatar" 
+                    className="w-12 h-12 rounded-full object-cover border-2 border-amber-400 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#ece1d1] truncate">Avatar Preview</p>
+                    <p className="text-[10px] text-[#d3c5ac]/70">Chọn từ kho ảnh có sẵn, tải lên, hoặc dán link ảnh.</p>
+                  </div>
+                </div>
+
+                {/* Tab Switch Controls */}
+                <div className="flex gap-1.5 bg-black/45 p-1 rounded-lg border border-white/5 max-w-sm">
+                  <button
+                    type="button"
+                    onClick={() => setAvatarTab('presets')}
+                    className={`flex-1 py-1 px-2 rounded-md text-[10px] font-semibold flex items-center justify-center gap-1 transition-all ${
+                      avatarTab === 'presets' 
+                        ? 'bg-amber-400 text-slate-900 font-bold' 
+                        : 'text-[#d3c5ac] hover:text-[#ece1d1]'
+                    }`}
+                  >
+                    <Grid size={11} /> Có Sẵn
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarTab('upload')}
+                    className={`flex-1 py-1 px-2 rounded-md text-[10px] font-semibold flex items-center justify-center gap-1 transition-all ${
+                      avatarTab === 'upload' 
+                        ? 'bg-amber-400 text-slate-900 font-bold' 
+                        : 'text-[#d3c5ac] hover:text-[#ece1d1]'
+                    }`}
+                  >
+                    {isUploading ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />} Tải Lên
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarTab('url')}
+                    className={`flex-1 py-1 px-2 rounded-md text-[10px] font-semibold flex items-center justify-center gap-1 transition-all ${
+                      avatarTab === 'url' 
+                        ? 'bg-amber-400 text-slate-900 font-bold' 
+                        : 'text-[#d3c5ac] hover:text-[#ece1d1]'
+                    }`}
+                  >
+                    <Globe size={11} /> Link Ảnh
+                  </button>
+                </div>
+
+                {/* Presets Grid */}
+                {avatarTab === 'presets' && (
+                  <div className="grid grid-cols-5 gap-2 max-w-md p-2 bg-black/20 border border-white/5 rounded-xl">
+                    {PRESET_AVATARS.map((preset, index) => {
+                      const isSelected = avatarUrl === preset;
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setAvatarUrl(preset)}
+                          className="relative aspect-square rounded-full overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 shrink-0"
+                          style={{
+                            borderColor: isSelected ? '#fbbf24' : 'transparent'
+                          }}
+                        >
+                          <img referrerPolicy="no-referrer" src={preset} alt={`Preset ${index + 1}`} className="w-full h-full object-cover" />
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                              <Check className="text-amber-400" size={11} />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Upload File */}
+                {avatarTab === 'upload' && (
+                  <div className="border border-dashed border-white/20 rounded-xl p-4 text-center hover:border-amber-400/50 transition-colors relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploading}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (!file.type.startsWith('image/')) {
+                          setLocalError('Hãy chọn một file ảnh hợp lệ.');
+                          return;
+                        }
+                        if (file.size > 5 * 1024 * 1024) {
+                          setLocalError('Dung lượng ảnh tối đa là 5MB.');
+                          return;
+                        }
+                        setIsUploading(true);
+                        setLocalError('');
+                        try {
+                          const res = await authApi.uploadAvatar(file);
+                          if (res.success && res.data) {
+                            setAvatarUrl(res.data);
+                          } else {
+                            setLocalError(res.message || 'Tải ảnh lên thất bại.');
+                          }
+                        } catch (err: any) {
+                          setLocalError(err.response?.data?.message || err.message || 'Tải ảnh lên thất bại.');
+                        } finally {
+                          setIsUploading(false);
+                        }
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    <div className="flex flex-col items-center gap-1">
+                      <Upload className="text-[#d3c5ac] mb-1" size={14} />
+                      <p className="text-[11px] text-[#d3c5ac]">
+                        {isUploading ? 'Đang tải lên...' : 'Chọn file ảnh từ thiết bị'}
+                      </p>
+                      <p className="text-[9px] text-[#d3c5ac]/50">PNG, JPG tối đa 5MB</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Image URL Link */}
+                {avatarTab === 'url' && (
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={customUrl}
+                      onChange={(e) => setCustomUrl(e.target.value)}
+                      placeholder="Dán link ảnh tại đây..."
+                      className="flex-1 rounded-xl border border-white/10 bg-[#17130a] px-3 py-2 text-xs text-[#ece1d1] outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customUrl) {
+                          setAvatarUrl(customUrl);
+                          setCustomUrl('');
+                        }
+                      }}
+                      className="rounded-xl bg-amber-400 px-3 py-2 text-xs font-bold text-slate-900 shrink-0"
+                    >
+                      Áp Dụng
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

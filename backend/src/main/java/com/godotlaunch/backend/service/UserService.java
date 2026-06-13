@@ -2,6 +2,7 @@ package com.godotlaunch.backend.service;
 
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
+import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
 import com.godotlaunch.backend.dto.response.UserResponse;
 
 import java.util.List;
@@ -13,5 +14,6 @@ public interface UserService {
     UserResponse getUserByEmail(String email);
     UserResponse createUser(AdminCreateUserRequest request);
     UserResponse updateUser(UUID id, AdminUpdateUserRequest request);
+    UserResponse updateMyProfile(String email, UpdateProfileRequest request);
     void deleteUser(UUID id);
 }

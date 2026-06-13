@@ -1,0 +1,482 @@
+import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { userApi } from '../api/userApi';
+import { authApi } from '../api/authApi';
+import { Button } from '../components/Button';
+import { 
+  User as UserIcon, 
+  Mail, 
+  ShieldCheck, 
+  Lock, 
+  Upload, 
+  Globe, 
+  Grid, 
+  Check, 
+  Loader2, 
+  Sparkles,
+  Camera,
+  AlertCircle
+} from 'lucide-react';
+import { PROFILE_AVATAR_YOU, DEV_AVATARS } from '../../assets/images';
+
+const PRESET_AVATARS = [
+  PROFILE_AVATAR_YOU,
+  DEV_AVATARS.gdsage,
+  DEV_AVATARS.vectorvixen,
+  DEV_AVATARS.pixelwizard,
+  DEV_AVATARS.codemistress,
+  DEV_AVATARS.assetlord,
+  DEV_AVATARS.jammer1,
+  DEV_AVATARS.jammer2,
+  DEV_AVATARS.jammer3,
+];
+
+export function ProfilePage() {
+  const { currentUser, updateUser } = useAuth();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [fullName, setFullName] = useState(currentUser?.fullName || '');
+  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
+  const [avatarTab, setAvatarTab] = useState<'presets' | 'upload' | 'url'>('presets');
+  const [customUrl, setCustomUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  if (!currentUser) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-8">
+        <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 mb-4 animate-bounce">
+          <AlertCircle size={32} />
+        </div>
+        <h2 className="text-2xl font-display font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
+        <p className="text-slate-500 dark:text-slate-400 max-w-sm">Please log in to view and manage your profile settings.</p>
+      </div>
+    );
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Basic client validation
+    if (!file.type.startsWith('image/')) {
+      setStatusMessage({ type: 'error', text: 'Please select a valid image file.' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setStatusMessage({ type: 'error', text: 'Image file size must be less than 5MB.' });
+      return;
+    }
+
+    setIsUploading(true);
+    setStatusMessage(null);
+    try {
+      const res = await authApi.uploadAvatar(file);
+      if (res.success && res.data) {
+        setAvatarUrl(res.data);
+        setStatusMessage({ type: 'success', text: 'Avatar uploaded and updated!' });
+      } else {
+        setStatusMessage({ type: 'error', text: res.message || 'Failed to upload avatar.' });
+      }
+    } catch (err: any) {
+      setStatusMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || err.message || 'Failed to upload avatar.' 
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatusMessage(null);
+
+    if (password && password !== confirmPassword) {
+      setStatusMessage({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+
+    if (password && password.length < 6) {
+      setStatusMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload: any = {
+        fullName,
+        avatarUrl,
+      };
+      if (password) {
+        payload.password = password;
+      }
+
+      const res = await userApi.updateProfile(payload);
+      if (res.success && res.data) {
+        updateUser(res.data);
+        setStatusMessage({ type: 'success', text: 'Profile updated successfully!' });
+        setIsEditing(false);
+        setPassword('');
+        setConfirmPassword('');
+      } else {
+        setStatusMessage({ type: 'error', text: res.message || 'Failed to update profile.' });
+      }
+    } catch (err: any) {
+      setStatusMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || err.message || 'Failed to update profile.' 
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto py-8">
+      {/* Title block with gradient text and subtle spark elements */}
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-10 h-10 rounded-xl bg-amber-400 flex items-center justify-center text-slate-900 shadow-md">
+          <Sparkles size={20} className="animate-spin-slow" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-display font-extrabold tracking-tight bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 bg-clip-text text-transparent">
+            My Profile
+          </h1>
+          <p className="text-xs font-mono text-slate-400 tracking-wider">SECURE DEVELOPER MATRIX NODE</p>
+        </div>
+      </div>
+
+      {statusMessage && (
+        <div className={`p-4 mb-6 rounded-xl border flex items-start gap-3 backdrop-blur-md transition-all duration-300 animate-slide-up ${
+          statusMessage.type === 'success' 
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+        }`}>
+          <AlertCircle size={18} className="mt-0.5 shrink-0" />
+          <span className="text-sm font-semibold">{statusMessage.text}</span>
+        </div>
+      )}
+
+      {/* Main Glassmorphic Wrapper */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        {/* Left Column: Avatar & Quick Info Card */}
+        <div className="md:col-span-1 bg-white/5 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/20 dark:border-slate-800/80 rounded-2xl p-6 flex flex-col items-center text-center shadow-2xl relative overflow-hidden group">
+          {/* Accent decoration glow */}
+          <div className="absolute -top-16 -left-16 w-32 h-32 bg-amber-400/10 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-400/20 transition-all duration-500" />
+          
+          <div className="relative mb-4 group">
+            <img 
+              referrerPolicy="no-referrer"
+              src={avatarUrl} 
+              alt={currentUser.fullName || currentUser.username} 
+              className="w-32 h-32 rounded-full border-4 border-amber-400/80 shadow-2xl object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            {isEditing && (
+              <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer">
+                <Camera className="text-amber-400" size={24} />
+              </div>
+            )}
+          </div>
+
+          <h2 className="text-xl font-display font-bold text-slate-800 dark:text-white truncate w-full">
+            {currentUser.fullName || 'No Name Set'}
+          </h2>
+          <p className="text-xs font-mono text-slate-400 truncate w-full mb-4">
+            {currentUser.email}
+          </p>
+
+          <div className="w-full flex flex-col gap-2">
+            <div className="flex items-center justify-between px-3 py-2 bg-slate-800/40 border border-slate-700/30 rounded-lg text-xs">
+              <span className="text-slate-450 flex items-center gap-1.5"><ShieldCheck size={14} /> Node Role</span>
+              <span className="font-bold text-amber-400 capitalize font-mono bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                {currentUser.role || 'customer'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-2 bg-slate-800/40 border border-slate-700/30 rounded-lg text-xs">
+              <span className="text-slate-450 flex items-center gap-1.5"><Mail size={14} /> Account Status</span>
+              <span className="font-bold text-emerald-400 capitalize font-mono bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
+                {currentUser.status || 'active'}
+              </span>
+            </div>
+          </div>
+
+          <div className="w-full mt-6">
+            {!isEditing ? (
+              <Button
+                variant="outline"
+                className="w-full border-amber-500/30 hover:border-amber-400 hover:bg-amber-400/10 text-amber-500 dark:text-amber-400 transition-all font-semibold"
+                onClick={() => setIsEditing(true)}
+              >
+                Edit Profile Settings
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                className="w-full text-slate-500 dark:text-slate-400 hover:text-white"
+                onClick={() => {
+                  setIsEditing(false);
+                  setFullName(currentUser.fullName || '');
+                  setAvatarUrl(currentUser.avatarUrl || '');
+                  setPassword('');
+                  setConfirmPassword('');
+                }}
+              >
+                Cancel Changes
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: View / Edit Form */}
+        <div className="md:col-span-2 bg-white/5 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/20 dark:border-slate-800/80 rounded-2xl p-6 md:p-8 shadow-2xl">
+          
+          {!isEditing ? (
+            /* View Profile details mode */
+            <div className="space-y-6">
+              <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white border-b border-slate-700/30 pb-3 flex items-center gap-2">
+                <UserIcon size={18} className="text-amber-400" /> Account Node Data
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">Full Developer Name</label>
+                  <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-800/25 border border-slate-700/20 rounded-xl px-4 py-3">
+                    {currentUser.fullName || <span className="text-slate-500 italic">Not specified</span>}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">Registered Email Node</label>
+                  <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-800/25 border border-slate-700/20 rounded-xl px-4 py-3 flex items-center gap-2">
+                    <Mail size={16} className="text-slate-400 shrink-0" />
+                    {currentUser.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-700/30">
+                <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                  <ShieldCheck size={18} className="text-amber-400" /> Permissions & Credentials
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed mb-4">
+                  Your account node belongs to the <span className="text-amber-400 font-bold font-mono bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">{currentUser.role || 'customer'}</span> group. 
+                  {currentUser.role === 'admin' 
+                    ? ' You have full administrator capabilities across database resources.'
+                    : currentUser.role === 'developer' 
+                    ? ' You possess code publisher tokens to list packages, upload games, and configure payouts.'
+                    : ' You are authorized to access explore catalogs, chat in community channels, and buy products.'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Edit profile details form */
+            <form onSubmit={handleSaveProfile} className="space-y-6">
+              <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white border-b border-slate-700/30 pb-3 flex items-center gap-2">
+                <UserIcon size={18} className="text-amber-400" /> Edit Node Identity
+              </h3>
+
+              <div className="space-y-4">
+                {/* Full name input */}
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">Full Developer Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your name"
+                    className="w-full px-4 py-3 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-sm text-slate-800 dark:text-slate-200 transition-all placeholder-slate-500"
+                  />
+                </div>
+
+                {/* Avatar Picker layout */}
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">Choose Avatar Image</label>
+                  
+                  {/* Selector tab switch controls */}
+                  <div className="flex gap-1.5 bg-slate-850 p-1 rounded-lg border border-slate-800/80 mb-4 max-w-sm">
+                    <button
+                      type="button"
+                      onClick={() => setAvatarTab('presets')}
+                      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                        avatarTab === 'presets' 
+                          ? 'bg-amber-400 text-slate-900 shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Grid size={13} /> Presets
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAvatarTab('upload')}
+                      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                        avatarTab === 'upload' 
+                          ? 'bg-amber-400 text-slate-900 shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {isUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Local Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAvatarTab('url')}
+                      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                        avatarTab === 'url' 
+                          ? 'bg-amber-400 text-slate-900 shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Globe size={13} /> URL Link
+                    </button>
+                  </div>
+
+                  {/* Tab contents */}
+                  {avatarTab === 'presets' && (
+                    <div className="grid grid-cols-5 gap-3 max-w-md p-2 bg-slate-800/20 border border-slate-700/20 rounded-xl">
+                      {PRESET_AVATARS.map((preset, index) => {
+                        const isSelected = avatarUrl === preset;
+                        return (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setAvatarUrl(preset)}
+                            className="relative aspect-square rounded-full overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 shrink-0"
+                            style={{
+                              borderColor: isSelected ? '#fbbf24' : 'transparent',
+                              boxShadow: isSelected ? '0 0 10px rgba(251, 191, 36, 0.4)' : 'none'
+                            }}
+                          >
+                            <img referrerPolicy="no-referrer" src={preset} alt={`Preset ${index + 1}`} className="w-full h-full object-cover" />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                <Check className="text-amber-400" size={14} />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {avatarTab === 'upload' && (
+                    <div className="border-2 border-dashed border-slate-700/60 rounded-xl p-6 text-center hover:border-amber-400/50 transition-colors relative">
+                      <input
+                        type="file"
+                        id="avatar-upload-file"
+                        accept="image/*"
+                        disabled={isUploading}
+                        onChange={handleFileUpload}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="p-3 rounded-full bg-slate-800/50 text-slate-400">
+                          {isUploading ? <Loader2 className="animate-spin text-amber-400" size={20} /> : <Upload size={20} />}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-350">
+                            {isUploading ? 'Uploading to secure node storage...' : 'Click to select or drag and drop image'}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-1">PNG, JPG, or WEBP up to 5MB</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {avatarTab === 'url' && (
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={customUrl}
+                        onChange={(e) => setCustomUrl(e.target.value)}
+                        placeholder="Paste image network URL here..."
+                        className="flex-1 px-4 py-2 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all"
+                      />
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          if (customUrl) {
+                            setAvatarUrl(customUrl);
+                            setCustomUrl('');
+                            setStatusMessage({ type: 'success', text: 'Avatar URL set!' });
+                          }
+                        }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Password modification fields */}
+                <div className="pt-6 border-t border-slate-700/30 space-y-4">
+                  <h4 className="text-sm font-display font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <Lock size={15} className="text-amber-400" /> Change Password (Optional)
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-mono text-slate-400 uppercase mb-1.5">New Password</label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Min 6 characters"
+                        className="w-full px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all placeholder-slate-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-mono text-slate-400 uppercase mb-1.5">Confirm New Password</label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Repeat new password"
+                        className="w-full px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all placeholder-slate-600"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions submit block */}
+              <div className="pt-6 border-t border-slate-700/30 flex items-center justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setFullName(currentUser.fullName || '');
+                    setAvatarUrl(currentUser.avatarUrl || '');
+                    setPassword('');
+                    setConfirmPassword('');
+                  }}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={isSaving || isUploading}
+                  icon={isSaving ? <Loader2 className="animate-spin" size={14} /> : undefined}
+                >
+                  {isSaving ? 'Saving Node Data...' : 'Save Settings'}
+                </Button>
+              </div>
+            </form>
+          )}
+
+        </div>
+
+      </div>
+    </div>
+  );
+}

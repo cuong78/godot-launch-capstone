@@ -45,13 +45,20 @@ export interface User {
   status?: string;
 }
 
-export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin' | 'auth-callback';
+export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin' | 'auth-callback' | 'profile' | 'community-detail' | 'author-profile' | 'chat';
 
 export interface SignUpRequest {
   email: string;
   password?: string;
   confirmPassword?: string;
   fullName: string;
+  avatarUrl?: string;
+}
+
+export interface UpdateProfileRequest {
+  fullName: string;
+  avatarUrl?: string;
+  password?: string;
 }
 
 export interface SignInRequest {
@@ -289,6 +296,33 @@ export interface MarketplaceItemResponse {
   status: 'active' | 'removed' | 'pending' | 'rejected';
   createdAt?: string;
   updatedAt?: string;
+// --- WebSocket Notifications & Chat DM ---
+export type NotificationType = 'COMMENT' | 'REACTION' | 'SHARE' | 'CHAT_MESSAGE';
+
+export interface NotificationResponse {
+  id: string;
+  sender: UserSummary;
+  type: NotificationType;
+  message: string;
+  targetId: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface ChatMessageResponse {
+  id: string;
+  sender: UserSummary;
+  recipient: UserSummary;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface ConversationResponse {
+  recipient: UserSummary;
+  lastMessage: string;
+  unreadCount: number;
+  lastActiveAt: string;
 }
 
 

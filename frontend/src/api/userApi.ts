@@ -1,5 +1,5 @@
 import api from './axios';
-import { ApiResponse, User } from '../types';
+import { ApiResponse, User, UpdateProfileRequest } from '../types';
 
 export interface AdminUpdateUserRequest {
   fullName: string;
@@ -22,6 +22,11 @@ export const userApi = {
 
   deleteUser: async (id: string): Promise<ApiResponse<void>> => {
     const response = await api.delete<ApiResponse<void>>(`/api/v1/users/${id}`);
+    return response.data;
+  },
+
+  updateProfile: async (data: UpdateProfileRequest): Promise<ApiResponse<User>> => {
+    const response = await api.put<ApiResponse<User>>('/api/v1/users/me', data);
     return response.data;
   }
 };

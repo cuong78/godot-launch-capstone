@@ -95,6 +95,16 @@ export function AdminHeader({
                 <div className="border-t border-slate-800 my-1.5" />
                 <button
                   onClick={() => {
+                    setCurrentScreen('profile');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full text-left text-xs font-semibold text-slate-300 hover:text-amber-400 py-1.5 transition-colors cursor-pointer"
+                >
+                  My Profile
+                </button>
+                <div className="border-t border-slate-800 my-1" />
+                <button
+                  onClick={() => {
                     setCurrentUser(null);
                     setCurrentScreen('explore');
                     window.scrollTo({ top: 0, behavior: 'smooth' });

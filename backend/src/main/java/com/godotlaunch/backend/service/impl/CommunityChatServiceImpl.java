@@ -8,6 +8,8 @@ import com.godotlaunch.backend.entity.enums.ChatMediaType;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.*;
 import com.godotlaunch.backend.service.CommunityChatService;
+import com.godotlaunch.backend.service.NotificationService;
+import com.godotlaunch.backend.entity.NotificationType;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +31,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
     private final ChatReactionRepository chatReactionRepository;
     private final UserIpLogRepository userIpLogRepository;
     private final HttpServletRequest httpServletRequest;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -188,6 +191,14 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         logIp(currentUser, "post_chat");
 
+        notificationService.createAndSendNotification(
+                parentPost.getSender(),
+                currentUser,
+                NotificationType.COMMENT,
+                currentUser.getFullName() + " commented on your post: " + comment.getMessage(),
+                parentPost.getId().toString()
+        );
+
         return mapToResponse(comment);
     }
 
@@ -230,6 +241,14 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
             post.setReactionCount(post.getReactionCount() + 1);
             communityChatRepository.save(post);
+
+            notificationService.createAndSendNotification(
+                    post.getSender(),
+                    currentUser,
+                    NotificationType.REACTION,
+                    currentUser.getFullName() + " liked your post.",
+                    post.getId().toString()
+            );
         } else {
             reaction = existingOpt.get();
             if (!reaction.getReactionType().equals(request.getReactionType())) {
@@ -293,6 +312,14 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         originalPost.setShareCount(originalPost.getShareCount() + 1);
         communityChatRepository.save(originalPost);
+
+        notificationService.createAndSendNotification(
+                originalPost.getSender(),
+                currentUser,
+                NotificationType.SHARE,
+                currentUser.getFullName() + " shared your post.",
+                originalPost.getId().toString()
+        );
 
         return mapToResponse(shared);
     }

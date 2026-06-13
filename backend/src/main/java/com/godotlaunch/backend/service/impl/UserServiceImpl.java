@@ -3,6 +3,7 @@ package com.godotlaunch.backend.service.impl;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
+import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.User;
@@ -130,6 +131,23 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+    @Override
+    @Transactional
+    public UserResponse updateMyProfile(String email, UpdateProfileRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        user.setFullName(request.getFullName());
+        user.setAvatarUrl(request.getAvatarUrl());
+
+        if (StringUtils.hasText(request.getPassword())) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+
+        User updatedUser = userRepository.save(user);
+        return mapToUserResponse(updatedUser);
+    }
+
     private UserResponse mapToUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())
@@ -138,6 +156,7 @@ public class UserServiceImpl implements UserService {
                 .fullName(user.getFullName())
                 .roleName(user.getRole().getName())
                 .status(user.getStatus())
+                .avatarUrl(user.getAvatarUrl())
                 .build();
     }
 }

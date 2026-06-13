@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { AdminHeader } from './components/AdminHeader';
 import { Footer } from './components/Footer';
-import { Asset, Project, User, ScreenType } from './types';
+import { Asset, Project, User, ScreenType, CommunityChatResponse, UserSummary, ReactionType } from './types';
 import { Button } from './components/Button';
 import { ShieldAlert } from 'lucide-react';
 
@@ -19,10 +19,16 @@ import { SignInPage } from './page/SignInPage';
 import { SignUpPage } from './page/SignUpPage';
 import { AdminPage } from './page/AdminPage';
 import { GitHubCallbackPage } from './page/GitHubCallbackPage';
+import { ProfilePage } from './page/ProfilePage';
+import { CommunityDetailScreen } from './page/CommunityDetailScreen';
+import { ProfileScreen } from './page/ProfileScreen';
+import { ChatScreen } from './page/ChatScreen';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
+import { useWebSocket } from './context/WebSocketContext';
 import { gameApi } from './api/gameApi';
+import { communityApi } from './api/communityApi';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
@@ -253,9 +259,20 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   if (primary === 'upload') return { screen: 'upload' };
   if (primary === 'path') return { screen: 'path' };
   if (primary === 'dashboard') return { screen: 'dashboard' };
-  if (primary === 'community') return { screen: 'community' };
+  if (primary === 'community') {
+    if (segments[1] === 'detail' && segments[2]) {
+      return { screen: 'community-detail', assetId: segments[2] };
+    }
+    return { screen: 'community' };
+  }
   if (primary === 'signin') return { screen: 'signin' };
   if (primary === 'signup') return { screen: 'signup' };
+  if (primary === 'profile') {
+    if (segments[1]) {
+      return { screen: 'author-profile', assetId: segments[1] };
+    }
+    return { screen: 'profile' };
+  }
   if (primary === 'admin') return { screen: 'admin' };
   if (primary === 'auth' && segments[1] === 'callback') {
     return { screen: 'auth-callback' };
@@ -269,6 +286,8 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
 const screenToPath = (screen: ScreenType, assetId?: string): string => {
   if (screen === 'explore') return '/';
   if (screen === 'detail' && assetId) return `/detail/${assetId}`;
+  if (screen === 'community-detail' && assetId) return `/community/detail/${assetId}`;
+  if (screen === 'author-profile' && assetId) return `/profile/${assetId}`;
   if (screen === 'auth-callback') return '/auth/callback';
   return `/${screen}`;
 };
@@ -277,6 +296,7 @@ export default function App() {
   const initialRoute = pathToScreen(window.location.pathname);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
   const { currentUser, logout } = useAuth();
+  const { setActiveRecipientId } = useWebSocket();
   const setCurrentUser = (user: User | null) => {
     if (user === null) {
       logout();
@@ -293,6 +313,8 @@ export default function App() {
   }, [darkMode]);
 
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
+  const [selectedPost, setSelectedPost] = useState<CommunityChatResponse | null>(null);
+  const [selectedAuthor, setSelectedAuthor] = useState<UserSummary | null>(null);
   const [searchText, setSearchText] = useState<string>('');
   
   const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
@@ -436,6 +458,37 @@ export default function App() {
     alert(`Thank you for your purchase! Simulation completed successfully. Revenue metrics updated in developer's dashboard.`);
   };
 
+  // Community Actions for Detail Screen
+  const handleReactToPost = async (postId: string, type: ReactionType) => {
+    try {
+      await communityApi.reactToPost(postId, { reactionType: type });
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to react to post");
+    }
+  };
+
+  const handleSharePost = async (postId: string) => {
+    const shareMessage = window.prompt("Introduce this shared post (optional):");
+    if (shareMessage === null) return;
+    try {
+      await communityApi.sharePost(postId, { message: shareMessage });
+      alert("Post shared successfully!");
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to share post");
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
+    try {
+      await communityApi.deletePost(postId);
+      alert("Post deleted successfully!");
+      setCurrentScreen('community');
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to delete post");
+    }
+  };
+
 
 
   // Filter & Sort Logic for Marketplace
@@ -536,6 +589,9 @@ export default function App() {
           setIsCartOpen={setIsCartOpen}
           handleRemoveFromCart={handleRemoveFromCart}
           handleCheckout={handleCheckout}
+          setSelectedAssetId={setSelectedAssetId}
+          setSelectedPost={setSelectedPost}
+          setSelectedAuthor={setSelectedAuthor}
         />
       )}
 
@@ -614,7 +670,69 @@ export default function App() {
           <CommunityPage
             darkMode={darkMode}
             setCurrentScreen={setCurrentScreen}
+            onViewPostDetails={(post) => {
+              setSelectedPost(post);
+              setSelectedAssetId(post.id);
+              setCurrentScreen('community-detail');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onViewAuthorProfile={(author) => {
+              setSelectedAuthor(author);
+              setSelectedAssetId(author.id);
+              setCurrentScreen('author-profile');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
           />
+        )}
+
+        {currentScreen === 'community-detail' && (
+          <CommunityDetailScreen
+            post={selectedPost || undefined}
+            postId={selectedAssetId}
+            onNavigateBack={() => {
+              setCurrentScreen('community');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onNavigateToProfile={(author) => {
+              setSelectedAuthor(author);
+              setSelectedAssetId(author.id);
+              setCurrentScreen('author-profile');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onReact={handleReactToPost}
+            onShare={handleSharePost}
+            onDelete={handleDeletePost}
+          />
+        )}
+
+        {currentScreen === 'author-profile' && (
+          <ProfileScreen
+            author={selectedAuthor || undefined}
+            authorId={selectedAssetId}
+            onNavigateBack={() => {
+              setCurrentScreen('community');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onViewPostDetails={(post) => {
+              setSelectedPost(post);
+              setSelectedAssetId(post.id);
+              setCurrentScreen('community-detail');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onMessageCreator={(recipient) => {
+              setSelectedAuthor(recipient);
+              setSelectedAssetId(recipient.id);
+              setActiveRecipientId(recipient.id);
+              setCurrentScreen('chat');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {currentScreen === 'chat' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <ChatScreen />
+          </ProtectedRoute>
         )}
 
         {currentScreen === 'signin' && (
@@ -644,6 +762,12 @@ export default function App() {
               setCurrentScreen={setCurrentScreen}
               currentUser={currentUser}
             />
+          </ProtectedRoute>
+        )}
+
+        {currentScreen === 'profile' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <ProfilePage />
           </ProtectedRoute>
         )}
 

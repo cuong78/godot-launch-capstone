@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from './Button';
 import { Asset, User, ScreenType } from '../types';
+import { NotificationBell } from './NotificationBell';
 
 interface HeaderProps {
   currentScreen: ScreenType;
@@ -28,6 +29,9 @@ interface HeaderProps {
   setIsCartOpen: (open: boolean) => void;
   handleRemoveFromCart: (id: string, e: React.MouseEvent) => void;
   handleCheckout: () => void;
+  setSelectedAssetId: (id: string) => void;
+  setSelectedPost: (post: any) => void;
+  setSelectedAuthor: (author: any) => void;
 }
 
 export function Header({
@@ -43,15 +47,12 @@ export function Header({
   isCartOpen,
   setIsCartOpen,
   handleRemoveFromCart,
-  handleCheckout
+  handleCheckout,
+  setSelectedAssetId,
+  setSelectedPost,
+  setSelectedAuthor
 }: HeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
-  const [notifications, setNotifications] = React.useState([
-    { id: 1, title: 'Welcome to GodotLaunch!', message: 'Explore, download, or sell your Godot assets.', time: 'Just now', read: false },
-    { id: 2, title: 'Asset Approved!', message: 'Your submitted template was approved by moderation.', time: '2h ago', read: false },
-    { id: 3, title: 'New Seller Payout!', message: 'Payout of $49.00 has been sent to your bank.', time: '1d ago', read: true }
-  ]);
 
   return (
     <header id="godotlaunch-navbar" className="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 z-40 transition-colors duration-200 shadow-sm">
@@ -129,6 +130,14 @@ export function Header({
           >
             Dashboard
           </button>
+          {currentUser && (
+            <button
+              onClick={() => { setCurrentScreen('chat'); }}
+              className={`px-2 xl:px-3.5 py-2 text-xs xl:text-sm font-semibold rounded-lg transition-studio ${currentScreen === 'chat' ? 'bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'}`}
+            >
+              Messages
+            </button>
+          )}
           {currentUser?.role === 'admin' && (
             <button
               onClick={() => { setCurrentScreen('admin'); }}
@@ -158,7 +167,6 @@ export function Header({
               id="shopping-cart-btn"
               onClick={() => {
                 setIsCartOpen(!isCartOpen);
-                setIsNotificationsOpen(false);
                 setIsProfileOpen(false);
               }}
               className="p-2 text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-amber-400 transition-studio rounded-lg bg-slate-100/80 dark:bg-slate-950 border border-transparent dark:border-slate-850 relative"
@@ -240,71 +248,14 @@ export function Header({
           </div>
 
           {/* Notifications Trigger */}
-          <div className="relative">
-            <button
-              id="notifications-btn"
-              onClick={() => {
-                setIsNotificationsOpen(!isNotificationsOpen);
-                setIsCartOpen(false);
-                setIsProfileOpen(false);
-              }}
-              className="p-2 text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-amber-400 transition-studio rounded-lg bg-slate-100/80 dark:bg-slate-950 border border-transparent dark:border-slate-850 relative cursor-pointer"
-              title="View notifications"
-            >
-              <Bell size={17} />
-              {notifications.some(n => !n.read) && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white rounded-full text-[8px] font-bold flex items-center justify-center animate-pulse">
-                  {notifications.filter(n => !n.read).length}
-                </span>
-              )}
-            </button>
-
-            {isNotificationsOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsNotificationsOpen(false)} />
-                <div className="absolute right-0 mt-2.5 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-xl z-50 p-4 transition-colors duration-200">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2.5">
-                    <span className="font-display font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Bell size={15} /> Notifications
-                    </span>
-                    {notifications.some(n => !n.read) && (
-                      <button
-                        onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
-                        className="text-[10px] text-amber-500 hover:underline font-semibold cursor-pointer"
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-3 my-3 max-h-60 overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map(item => (
-                        <div
-                          key={item.id}
-                          className={`p-2.5 rounded-lg transition-colors border ${
-                            item.read
-                              ? 'bg-transparent border-transparent opacity-60'
-                              : 'bg-slate-50 dark:bg-slate-950/40 border-slate-100 dark:border-slate-850 border-l-amber-400 dark:border-l-amber-400 border-l-2'
-                          }`}
-                        >
-                          <div className="flex justify-between items-start gap-1">
-                            <p className="text-xs font-semibold text-slate-800 dark:text-white leading-tight">{item.title}</p>
-                            <span className="text-[9px] text-slate-400 font-mono shrink-0">{item.time}</span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{item.message}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-8 text-center text-slate-450">
-                        <p className="text-sm">You have no notifications.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          {currentUser && (
+            <NotificationBell
+              setCurrentScreen={setCurrentScreen}
+              setSelectedAssetId={setSelectedAssetId}
+              setSelectedPost={setSelectedPost}
+              setSelectedAuthor={setSelectedAuthor}
+            />
+          )}
 
           {/* Launch product custom setup screen button */}
           <div className="hidden sm:block lg:hidden xl:block">
@@ -329,7 +280,6 @@ export function Header({
                     onClick={() => {
                       setIsProfileOpen(!isProfileOpen);
                       setIsCartOpen(false);
-                      setIsNotificationsOpen(false);
                     }}
                     className="w-8 h-8 rounded-full border-2 border-amber-400 cursor-pointer hover:border-amber-300 transition-colors"
                   />
@@ -339,8 +289,30 @@ export function Header({
                       <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
                       <div className="absolute right-0 mt-2.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-xl p-3 z-50">
                         <p className="text-xs font-bold text-slate-850 dark:text-white truncate">{currentUser.username}</p>
-                        <p className="text-[10px] text-slate-450 dark:text-slate-400 truncate mb-2">{currentUser.email}</p>
+                        <p className="text-[10px] text-slate-455 dark:text-slate-400 truncate mb-2">{currentUser.email}</p>
                         <div className="border-t border-slate-100 dark:border-slate-800 my-1.5" />
+                        <button
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            setCurrentScreen('profile');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="w-full text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-amber-500 dark:hover:text-amber-400 py-1.5 transition-colors cursor-pointer"
+                        >
+                          My Profile
+                        </button>
+                        <div className="border-t border-slate-100 dark:border-slate-805 my-1" />
+                        <button
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            setCurrentScreen('chat');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="w-full text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-amber-500 dark:hover:text-amber-400 py-1.5 transition-colors cursor-pointer"
+                        >
+                          Direct Chat
+                        </button>
+                        <div className="border-t border-slate-100 dark:border-slate-805 my-1" />
                         <button
                           onClick={() => {
                             setIsProfileOpen(false);
@@ -384,6 +356,9 @@ export function Header({
         <button onClick={() => setCurrentScreen('explore')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'explore' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Explore</button>
         <button onClick={() => setCurrentScreen('marketplace')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'marketplace' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Marketplace</button>
         <button onClick={() => setCurrentScreen('community')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'community' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Community</button>
+        {currentUser && (
+          <button onClick={() => setCurrentScreen('chat')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'chat' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Messages</button>
+        )}
         <button onClick={() => setCurrentScreen('path')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'path' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Sell & Acquire</button>
         <button onClick={() => setCurrentScreen('dashboard')} className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === 'dashboard' ? 'text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850' : 'text-slate-600 dark:text-slate-400'}`}>Dashboard</button>
         {currentUser?.role === 'admin' && (

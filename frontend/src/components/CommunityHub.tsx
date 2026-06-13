@@ -32,12 +32,14 @@ import { DEV_AVATARS, PROFILE_AVATAR_YOU, IMAGE_SEED_MAP } from '../../assets/im
 import OIPImage from '../../assets/OIP.webp';
 import { useAuth } from '../hooks/useAuth';
 import { communityApi } from '../api/communityApi';
-import { CommunityChatResponse, ReactionType, ChatMediaResponse } from '../types';
+import { CommunityChatResponse, ReactionType, ChatMediaResponse, UserSummary } from '../types';
 
 interface CommunityHubProps {
   darkMode: boolean;
   onNavigateToSeller?: () => void;
   onNavigateToMarketplace?: () => void;
+  onViewPostDetails?: (post: CommunityChatResponse) => void;
+  onViewAuthorProfile?: (author: UserSummary) => void;
 }
 
 const REACTION_EMOJIS: Record<ReactionType, { emoji: string; color: string; label: string }> = {
@@ -49,7 +51,13 @@ const REACTION_EMOJIS: Record<ReactionType, { emoji: string; color: string; labe
   angry: { emoji: '😡', color: 'text-red-500 hover:scale-125', label: 'Angry' }
 };
 
-export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketplace }: CommunityHubProps) {
+export function CommunityHub({ 
+  darkMode, 
+  onNavigateToSeller, 
+  onNavigateToMarketplace,
+  onViewPostDetails,
+  onViewAuthorProfile
+}: CommunityHubProps) {
   const { currentUser } = useAuth();
   
   // Navigation active state inside Side Panel
@@ -621,11 +629,17 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
                   {/* Post Author Info header row */}
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3">
-                      <div className="w-11 h-11 rounded-full bg-slate-100 overflow-hidden border border-slate-200 dark:border-slate-850 flex-shrink-0">
+                      <div 
+                        onClick={() => onViewAuthorProfile?.(post.sender)}
+                        className="w-11 h-11 rounded-full bg-slate-100 overflow-hidden border border-slate-200 dark:border-slate-850 flex-shrink-0 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+                      >
                         <img referrerPolicy="no-referrer" src={post.sender.avatarUrl || PROFILE_AVATAR_YOU} alt={post.sender.fullName} className="w-full h-full object-cover" />
                       </div>
                       <div>
-                        <h3 className="font-display font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
+                        <h3 
+                          onClick={() => onViewAuthorProfile?.(post.sender)}
+                          className="font-display font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5 cursor-pointer hover:text-amber-500 dark:hover:text-amber-400 hover:underline transition-colors"
+                        >
                           {post.sender.fullName}
                           {post.sender.id === currentUser?.id && (
                             <span className="bg-amber-400/20 text-amber-500 text-[8px] uppercase tracking-wider px-1.5 py-0.5 border border-amber-500/30 rounded font-black font-mono">You</span>
@@ -684,7 +698,10 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-350 leading-relaxed whitespace-pre-wrap">
+                    <p 
+                      onClick={() => onViewPostDetails?.(post)}
+                      className="text-xs sm:text-sm text-slate-700 dark:text-slate-350 leading-relaxed whitespace-pre-wrap cursor-pointer hover:text-slate-800 dark:hover:text-white transition-colors"
+                    >
                       {post.message}
                     </p>
                   )}
@@ -695,7 +712,11 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
                       {post.mediaFiles.map((media, idx) => {
                         const isVideo = media.mediaType === 'video';
                         return (
-                          <div key={idx} className="rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-850 bg-slate-950 max-h-96">
+                          <div 
+                            key={idx} 
+                            onClick={() => onViewPostDetails?.(post)}
+                            className="rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-855 bg-slate-950 max-h-96 cursor-pointer hover:opacity-95 transition-opacity"
+                          >
                             {isVideo ? (
                               <video src={media.url} controls className="w-full h-full object-cover" />
                             ) : (
@@ -778,7 +799,7 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
                     </div>
 
                     <button 
-                      onClick={() => toggleCommentsExpansion(post.id)}
+                      onClick={() => onViewPostDetails?.(post)}
                       className="flex items-center gap-1.5 font-semibold hover:text-sky-500 transition-colors"
                     >
                       <MessageSquare size={14} />
@@ -793,94 +814,6 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
                       <span>{post.shareCount} Shares</span>
                     </button>
                   </div>
-
-                  {/* THREADED COMMENTS DRAWER SECTION */}
-                  {expandedPostComments[post.id] && (
-                    <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-850/60 animate-fade-in">
-                      
-                      {/* Submit Comment mini textbox */}
-                      {currentUser ? (
-                        <div className="flex gap-3 items-center">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-800">
-                            <img 
-                              referrerPolicy="no-referrer" 
-                              src={currentUser.avatarUrl || PROFILE_AVATAR_YOU} 
-                              alt="Your Avatar" 
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 relative flex items-center bg-slate-100 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-850 rounded-xl px-3 py-2">
-                            <input
-                              type="text"
-                              placeholder="Type an insightful feedback comment..."
-                              value={activeCommentTexts[post.id] || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setActiveCommentTexts(prev => ({ ...prev, [post.id]: val }));
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleAddComment(post.id);
-                              }}
-                              className="w-full bg-transparent border-0 ring-0 focus:ring-0 outline-none text-xs text-slate-850 dark:text-slate-150"
-                            />
-                            <button 
-                              onClick={() => handleAddComment(post.id)}
-                              className="text-amber-500 hover:text-amber-400 p-1 rounded transition-colors"
-                            >
-                              <Send size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-450 italic">Log in to comment.</p>
-                      )}
-
-                      {/* Display Comments Feed List */}
-                      {comments[post.id] && comments[post.id].length > 0 ? (
-                        <div className="space-y-4 pt-2">
-                          {comments[post.id].map((comment) => (
-                            <div key={comment.id} className="space-y-3">
-                              <div className="flex gap-3">
-                                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-850 bg-slate-100">
-                                  <img referrerPolicy="no-referrer" src={comment.sender.avatarUrl || PROFILE_AVATAR_YOU} alt={comment.sender.fullName} className="w-full h-full object-cover" />
-                                </div>
-                                <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/40 border border-slate-150 dark:border-slate-850 p-3 rounded-xl relative">
-                                  <div className="flex justify-between items-baseline mb-1">
-                                    <span className="font-display font-bold text-xs text-slate-800 dark:text-white flex items-center gap-1">
-                                      {comment.sender.fullName}
-                                      {comment.sender.id === post.sender.id && (
-                                        <span className="bg-amber-400/20 text-amber-500 text-[7px] uppercase px-1 border border-amber-500/20 rounded font-black font-mono">OP</span>
-                                      )}
-                                    </span>
-                                    <span className="text-[9px] text-slate-400 font-mono">
-                                      {new Date(comment.createdAt).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-slate-655 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{comment.message}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-
-                          {/* Comments pagination */}
-                          {commentHasMore[post.id] && (
-                            <div className="text-center">
-                              <button
-                                onClick={() => loadComments(post.id, false)}
-                                className="text-[10px] font-bold text-amber-500 hover:text-amber-400 hover:underline"
-                              >
-                                Load more comments...
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-center text-slate-450 py-2">No active discussions. Add yours first!</p>
-                      )}
-
-                    </div>
-                  )}
-
                 </div>
               </article>
             ))

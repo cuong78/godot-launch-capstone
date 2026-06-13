@@ -137,6 +137,26 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(to, subject, htmlBody);
     }
 
+    @org.springframework.scheduling.annotation.Async
+    @Override
+    public void sendNotificationEmail(String to, String subject, String messageBody) {
+        String htmlBody = "<div style=\"font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #121418; color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #2a2d35;\">"
+                + "<div style=\"background-color: #1a1d24; padding: 20px; text-align: center; border-bottom: 1px solid #2a2d35;\">"
+                + "  <h1 style=\"margin: 0; color: #ffffff; font-size: 24px; letter-spacing: 2px; text-transform: uppercase;\">GODOT LAUNCH</h1>"
+                + "</div>"
+                + "<div style=\"padding: 30px;\">"
+                + "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Hello,</p>"
+                + "  <p style=\"font-size: 16px; color: #ffffff; line-height: 1.5;\">" + messageBody + "</p>"
+                + "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5; margin-top: 30px;\">Thank you,<br/><strong style=\"color: #ffffff;\">The Godot Launch Team</strong></p>"
+                + "</div>"
+                + "<div style=\"background-color: #0d0f12; padding: 15px; text-align: center; font-size: 12px; color: #6b7280;\">"
+                + "  &copy; 2026 Godot Launch. This is an automated message, please do not reply."
+                + "</div>"
+                + "</div>";
+
+        sendEmail(to, subject, htmlBody);
+    }
+
     private void sendEmail(String to, String subject, String htmlBody) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
