@@ -99,6 +99,25 @@ public class MarketplaceItemController {
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Marketplace item ZIP uploaded successfully"), "Success"));
     }
 
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Approve marketplace item", description = "Approves a pending marketplace item, changing its status to active and notifying the developer.")
+    public ResponseEntity<ApiResponse<Void>> approveMarketplaceItem(@PathVariable UUID id) {
+        marketplaceItemService.approveMarketplaceItem(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Marketplace item approved successfully"));
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Reject marketplace item", description = "Rejects a pending marketplace item, changing its status to rejected, deleting files and notifying the developer.")
+    public ResponseEntity<ApiResponse<Void>> rejectMarketplaceItem(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> requestBody) {
+        String reason = requestBody != null ? requestBody.getOrDefault("reason", "Violated store policies") : "Violated store policies";
+        marketplaceItemService.rejectMarketplaceItem(id, reason);
+        return ResponseEntity.ok(ApiResponse.success(null, "Marketplace item rejected successfully"));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
     @Operation(summary = "Remove marketplace item", description = "Soft-deletes a marketplace item listing (sets status to removed).")

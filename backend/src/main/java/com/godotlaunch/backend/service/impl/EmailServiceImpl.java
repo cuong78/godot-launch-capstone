@@ -69,6 +69,49 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendMarketplaceItemStatusNotification(String to, String itemTitle, String status, String reason) {
+        String subject = "Godot Launch - Update on your marketplace asset: " + itemTitle;
+
+        boolean isApproved = status != null && status.toUpperCase().contains("APPROVED");
+        String statusColor = isApproved ? "#10b981" : "#ef4444";
+        String statusText = status;
+
+        String htmlBody = "<div style=\"font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #121418; color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #2a2d35;\">"
+                + "<div style=\"background-color: #1a1d24; padding: 20px; text-align: center; border-bottom: 1px solid #2a2d35;\">"
+                + "  <h1 style=\"margin: 0; color: #ffffff; font-size: 24px; letter-spacing: 2px; text-transform: uppercase;\">GODOT LAUNCH MARKETPLACE</h1>"
+                + "</div>"
+                + "<div style=\"padding: 30px;\">"
+                + "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Hello Developer,</p>"
+                + "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">The review process for your marketplace asset <strong>" + itemTitle + "</strong> has been completed.</p>"
+                + "  <div style=\"background-color: rgba(255,255,255,0.05); border-left: 4px solid " + statusColor + "; padding: 15px; margin: 25px 0; border-radius: 4px;\">"
+                + "    <h2 style=\"margin: 0 0 10px 0; font-size: 14px; color: #a0a5b5; text-transform: uppercase; letter-spacing: 1px;\">Status Update</h2>"
+                + "    <p style=\"margin: 0; font-size: 20px; color: " + statusColor + "; font-weight: bold; letter-spacing: 1px;\">" + statusText + "</p>"
+                + "  </div>";
+
+        if (reason != null && !reason.trim().isEmpty()) {
+            htmlBody += "  <div style=\"background-color: #1a1d24; padding: 15px; border-radius: 4px; border: 1px solid #2a2d35; margin-bottom: 25px;\">"
+                     + "    <h3 style=\"margin: 0 0 10px 0; font-size: 14px; color: #a0a5b5; text-transform: uppercase;\">Reviewer Notes</h3>"
+                     + "    <p style=\"margin: 0; font-size: 15px; color: #ffffff; line-height: 1.5;\">" + reason + "</p>"
+                     + "  </div>";
+        }
+
+        if (isApproved) {
+            htmlBody += "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Congratulations! Your asset has been approved and is now active on the creator marketplace catalog. Developers can now view, purchase, and download it.</p>";
+        } else {
+            htmlBody += "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Unfortunately, your asset has been rejected. Please review the notes above, address the issues, and submit a new package.</p>";
+        }
+
+        htmlBody += "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5; margin-top: 30px;\">Thank you,<br/><strong style=\"color: #ffffff;\">The Godot Launch Team</strong></p>"
+                + "</div>"
+                + "<div style=\"background-color: #0d0f12; padding: 15px; text-align: center; font-size: 12px; color: #6b7280;\">"
+                + "  &copy; 2026 Godot Launch. This is an automated message, please do not reply."
+                + "</div>"
+                + "</div>";
+
+        sendEmail(to, subject, htmlBody);
+    }
+
+    @Override
     public void sendOtpEmail(String to, String otp) {
         String subject = "Godot Launch - Password Reset Verification Code";
 

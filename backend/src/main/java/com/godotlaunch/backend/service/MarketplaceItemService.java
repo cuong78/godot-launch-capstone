@@ -17,5 +17,7 @@ public interface MarketplaceItemService {
     MarketplaceItemResponse updateMarketplaceItem(UUID id, UpdateMarketplaceItemRequest request, String updaterEmail);
     String getPresignedUploadUrl(UUID itemId, String contentType);
     void confirmUploadComplete(UUID itemId, String objectKey);
+    void approveMarketplaceItem(UUID id);
+    void rejectMarketplaceItem(UUID id, String reason);
     void removeMarketplaceItem(UUID id, String updaterEmail);
 }

@@ -15,7 +15,9 @@ import com.godotlaunch.backend.repository.CategoryRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.MarketplaceItemRepository;
 import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.service.AsyncVirusScanService;
 import com.godotlaunch.backend.service.AwsS3Service;
+import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.MarketplaceItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,8 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     private final CategoryRepository categoryRepository;
     private final GameRepository gameRepository;
     private final AwsS3Service awsS3Service;
+    private final AsyncVirusScanService asyncVirusScanService;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -51,7 +55,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         item.setTitle(request.getTitle());
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
-        item.setStatus(ItemStatus.active);
+        item.setStatus(ItemStatus.pending);
 
         if (request.getCategoryId() != null) {
             Category category = categoryRepository.findById(request.getCategoryId())
@@ -201,7 +205,62 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         String fileUrl = awsS3Service.getFileUrl(actualKey);
         item.setFileUrl(fileUrl);
         marketplaceItemRepository.save(item);
-        log.info("Marketplace item {} upload confirmed with key {}", itemId, actualKey);
+        
+        asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, actualKey);
+        log.info("Marketplace item {} upload confirmed with key {} and virus scan started", itemId, actualKey);
+    }
+
+    @Override
+    @Transactional
+    public void approveMarketplaceItem(UUID id) {
+        MarketplaceItem item = marketplaceItemRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+
+        if (item.getStatus() != ItemStatus.pending) {
+            throw new IllegalStateException("Marketplace item must be in pending status to be approved");
+        }
+
+        item.setStatus(ItemStatus.active);
+        marketplaceItemRepository.save(item);
+
+        emailService.sendMarketplaceItemStatusNotification(
+                item.getSeller().getEmail(),
+                item.getTitle(),
+                "APPROVED",
+                "Your marketplace asset has been approved by the admin and is now active on the marketplace."
+        );
+        log.info("Marketplace item {} approved and email sent to {}", id, item.getSeller().getEmail());
+    }
+
+    @Override
+    @Transactional
+    public void rejectMarketplaceItem(UUID id, String reason) {
+        MarketplaceItem item = marketplaceItemRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+
+        if (item.getStatus() != ItemStatus.pending) {
+            throw new IllegalStateException("Marketplace item must be in pending status to be rejected");
+        }
+
+        item.setStatus(ItemStatus.rejected);
+        marketplaceItemRepository.save(item);
+
+        // Delete S3 zip file
+        try {
+            String objectKey = "marketplace/items/" + item.getId().toString() + "/project.zip";
+            awsS3Service.deleteObject(objectKey);
+            log.info("Deleted S3 file for rejected marketplace item: {}", id);
+        } catch (Exception e) {
+            log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
+        }
+
+        emailService.sendMarketplaceItemStatusNotification(
+                item.getSeller().getEmail(),
+                item.getTitle(),
+                "REJECTED",
+                reason != null ? reason : "Violated store policies"
+        );
+        log.info("Marketplace item {} rejected and email sent to {}", id, item.getSeller().getEmail());
     }
 
     @Override
