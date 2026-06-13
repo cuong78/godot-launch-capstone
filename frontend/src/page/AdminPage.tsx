@@ -23,14 +23,17 @@ import {
   Video,
   Image,
   FileText,
-  PenTool
+  PenTool,
+  Gamepad2,
+  ShoppingBag
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
-import { User, GameResponse, ContractResponse } from '../types';
+import { User, GameResponse, ContractResponse, MarketplaceItemResponse } from '../types';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
+import { marketplaceApi } from '../api/marketplaceApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 
@@ -94,6 +97,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [activeScreenshotUrl, setActiveScreenshotUrl] = useState<string | null>(null);
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
 
+  // Real Marketplace Moderation state
+  const [pendingMarketplaceItems, setPendingMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
+  const [isLoadingMarketplace, setIsLoadingMarketplace] = useState<boolean>(false);
+  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
+  const [expandedMarketplaceId, setExpandedMarketplaceId] = useState<string | null>(null);
+  const [moderationSubTab, setModerationSubTab] = useState<'games' | 'marketplace'>('games');
+
   // Contract Offer states
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
@@ -145,6 +155,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  const fetchPendingMarketplaceItems = async () => {
+    setIsLoadingMarketplace(true);
+    setMarketplaceError(null);
+    try {
+      const res = await marketplaceApi.getAllMarketplaceItems('pending');
+      if (res.success && res.data) {
+        setPendingMarketplaceItems(res.data);
+      } else {
+        setMarketplaceError(res.message || 'Failed to load pending marketplace items');
+      }
+    } catch (err: any) {
+      setMarketplaceError(err.response?.data?.message || err.message || 'Failed to fetch marketplace submissions');
+    } finally {
+      setIsLoadingMarketplace(false);
+    }
+  };
+
 
   // Mock Users state (initial fallback)
   const [users, setUsers] = useState<AdminUser[]>([
@@ -187,6 +214,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       fetchUsers();
     } else if (activeTab === 'moderation') {
       fetchPendingGamesAndContracts();
+      fetchPendingMarketplaceItems();
     }
   }, [activeTab]);
 
@@ -261,6 +289,39 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       }
     } catch (err: any) {
       alert(err.response?.data?.message || err.message || 'Failed to reject game');
+    }
+  };
+
+  const handleApproveMarketplaceItem = async (item: MarketplaceItemResponse) => {
+    if (!window.confirm(`Are you sure you want to APPROVE and activate the marketplace item "${item.title}"?`)) {
+      return;
+    }
+    try {
+      const res = await marketplaceApi.approveMarketplaceItem(item.id);
+      if (res.success) {
+        alert(`Marketplace item "${item.title}" approved & activated successfully!`);
+        fetchPendingMarketplaceItems();
+      } else {
+        alert(res.message || 'Failed to approve marketplace item');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Failed to approve marketplace item');
+    }
+  };
+
+  const handleRejectMarketplaceItem = async (id: string, title: string) => {
+    const reason = window.prompt(`Enter rejection reason for "${title}":`, "Violated store policies");
+    if (reason === null) return; // cancel
+    try {
+      const res = await marketplaceApi.rejectMarketplaceItem(id, reason || "Violated store policies");
+      if (res.success) {
+        alert(`Marketplace item "${title}" rejected. Creator notified.`);
+        fetchPendingMarketplaceItems();
+      } else {
+        alert(res.message || 'Failed to reject marketplace item');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Failed to reject marketplace item');
     }
   };
 
@@ -474,12 +535,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <FileCheck size={12} className="text-purple-500" /> Pending Moderation
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">{pendingGames.length} packages</span>
-            {pendingGames.length > 0 && (
+            <span className="text-2xl font-display font-bold dark:text-white">
+              {pendingGames.length + pendingMarketplaceItems.length} items
+            </span>
+            {(pendingGames.length > 0 || pendingMarketplaceItems.length > 0) && (
               <span className="text-[10px] text-amber-500 font-bold font-mono animate-pulse">Action required</span>
             )}
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">Average response turnaround: 4.8 hours</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">
+            {pendingGames.length} games / {pendingMarketplaceItems.length} marketplace assets
+          </p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
@@ -501,7 +566,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           onClick={() => setActiveTab('moderation')}
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'moderation' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
-          <FileCheck size={14} /> Moderation Queue ({pendingGames.length})
+          <FileCheck size={14} /> Moderation Queue ({pendingGames.length + pendingMarketplaceItems.length})
         </button>
         <button
           onClick={() => setActiveTab('users')}
@@ -534,325 +599,538 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <p className="text-xs text-slate-500 dark:text-slate-400">Review, test, and approve community-uploaded packages before they go public</p>
             </div>
 
-            {isLoadingGames ? (
-              <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
-                <RefreshCw className="animate-spin" size={18} /> Loading pending submissions...
-              </div>
-            ) : gamesError ? (
-              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                Error loading submissions: {gamesError}
-              </div>
-            ) : (
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
-                      <th className="p-3 w-10"></th>
-                      <th className="p-3">Asset Details</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3">Publishing Type</th>
-                      <th className="p-3">Proposed Price</th>
-                      <th className="p-3 text-center">Trạng thái HĐ</th>
-                      <th className="p-3 text-center">Decisions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
-                    {pendingGames.length > 0 ? (
-                      pendingGames.map(game => (
-                        <React.Fragment key={game.id}>
-                          <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? 'bg-slate-50/50 dark:bg-slate-950/20' : ''}`}>
-                            <td className="p-3 w-10 text-center">
-                              <button
-                                onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
-                                className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
-                                title={expandedGameId === game.id ? "Hide Details" : "Show Details"}
-                              >
-                                {expandedGameId === game.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                              </button>
-                            </td>
-                            <td className="p-3">
-                              <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                {game.title}
-                                <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
-                                  game.status?.toLowerCase() === 'pending'
-                                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse'
-                                    : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                }`}>
-                                  {game.status?.toLowerCase() === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
-                                </span>
-                                <button
-                                  onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
-                                  className="text-slate-400 hover:text-amber-500 transition-colors"
-                                  title="Quick View Content"
-                                >
-                                  <Eye size={12} />
-                                </button>
-                              </div>
-                              <div className="text-[10px] text-slate-500 dark:text-slate-450">by {game.creatorName}</div>
-                            </td>
-                            <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Unassigned'}</td>
-                            <td className="p-3">
-                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
-                                game.publishingType === 'full_acquisition'
-                                  ? 'bg-amber-450/10 text-amber-500 border-amber-500/20'
-                                  : game.publishingType === 'co_publishing'
-                                  ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
-                                  : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
-                              }`}>
-                                {game.publishingType ? game.publishingType.toUpperCase() : 'MARKETPLACE_LISTING'}
-                              </span>
-                            </td>
-                            <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                              {game.priceProposed === 0 ? 'Free' : `$${game.priceProposed}`}
-                            </td>
-                            <td className="p-3 text-center">
-                              {(() => {
-                                const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
-                                if (!contract) {
-                                  return (
-                                    <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">Chưa tạo</span>
-                                  );
-                                }
-                                const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
-                                return (
-                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-mono border ${statusInfo.colorClass}`}>
-                                    {statusInfo.text}
+            {/* Moderation Sub-Tabs */}
+            <div className="flex bg-slate-100 dark:bg-slate-955 p-1 rounded-xl w-fit border border-slate-200 dark:border-slate-800/60 gap-1 mb-4">
+              <button
+                onClick={() => setModerationSubTab('games')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
+                  moderationSubTab === 'games'
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <Gamepad2 size={14} />
+                Game Submissions
+                <span className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
+                  moderationSubTab === 'games' ? 'bg-slate-950 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}>
+                  {pendingGames.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setModerationSubTab('marketplace')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
+                  moderationSubTab === 'marketplace'
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <ShoppingBag size={14} />
+                Marketplace Submissions
+                <span className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
+                  moderationSubTab === 'marketplace' ? 'bg-slate-950 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400'
+                }`}>
+                  {pendingMarketplaceItems.length}
+                </span>
+              </button>
+            </div>
+
+            {moderationSubTab === 'games' ? (
+              <>
+                {isLoadingGames ? (
+                  <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
+                    <RefreshCw className="animate-spin" size={18} /> Loading pending submissions...
+                  </div>
+                ) : gamesError ? (
+                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                    Error loading submissions: {gamesError}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                          <th className="p-3 w-10"></th>
+                          <th className="p-3">Asset Details</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3">Publishing Type</th>
+                          <th className="p-3">Proposed Price</th>
+                          <th className="p-3 text-center">Trạng thái HĐ</th>
+                          <th className="p-3 text-center">Decisions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                        {pendingGames.length > 0 ? (
+                          pendingGames.map(game => (
+                            <React.Fragment key={game.id}>
+                              <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? 'bg-slate-50/50 dark:bg-slate-950/20' : ''}`}>
+                                <td className="p-3 w-10 text-center">
+                                  <button
+                                    onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
+                                    className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
+                                    title={expandedGameId === game.id ? "Hide Details" : "Show Details"}
+                                  >
+                                    {expandedGameId === game.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </button>
+                                </td>
+                                <td className="p-3">
+                                  <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    {game.title}
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                                      game.status?.toLowerCase() === 'pending'
+                                        ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse'
+                                        : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                    }`}>
+                                      {game.status?.toLowerCase() === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
+                                    </span>
+                                    <button
+                                      onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
+                                      className="text-slate-400 hover:text-amber-500 transition-colors"
+                                      title="Quick View Content"
+                                    >
+                                      <Eye size={12} />
+                                    </button>
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-455">by {game.creatorName}</div>
+                                </td>
+                                <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Unassigned'}</td>
+                                <td className="p-3">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                                    game.publishingType === 'full_acquisition'
+                                      ? 'bg-amber-450/10 text-amber-500 border-amber-500/20'
+                                      : game.publishingType === 'co_publishing'
+                                      ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
+                                      : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
+                                  }`}>
+                                    {game.publishingType ? game.publishingType.toUpperCase() : 'MARKETPLACE_LISTING'}
                                   </span>
-                                );
-                              })()}
-                            </td>
-                            <td className="p-3 text-center">
-                              {game.status?.toLowerCase() === 'pending' ? (
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <button
-                                    onClick={() => handleApproveGame(game)}
-                                    className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                    title="Duyệt game"
-                                  >
-                                    <Check size={14} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleRejectGame(game.id, game.title)}
-                                    className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                    title="Từ chối game"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex flex-col items-center justify-center gap-1">
+                                </td>
+                                <td className="p-3 font-mono font-semibold dark:text-amber-400">
+                                  {game.priceProposed === 0 ? 'Free' : `$${game.priceProposed}`}
+                                </td>
+                                <td className="p-3 text-center">
                                   {(() => {
                                     const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
                                     if (!contract) {
                                       return (
-                                        <button
-                                          onClick={() => handleOpenContractModal(game)}
-                                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                        >
-                                          <FileText size={12} />
-                                          Soạn Hợp đồng
-                                        </button>
-                                      );
-                                                    } else if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
-                                      return (
-                                        <button
-                                          onClick={() => {
-                                            setSelectedContract(contract);
-                                            setViewerMode('view');
-                                            setIsViewerOpen(true);
-                                          }}
-                                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                        >
-                                          <Eye size={12} />
-                                          Chờ Dev ký
-                                        </button>
-                                      );
-                                    } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
-                                      return (
-                                        <button
-                                          onClick={() => {
-                                            setSelectedContract(contract);
-                                            setViewerMode('sign-admin');
-                                            setIsViewerOpen(true);
-                                          }}
-                                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer animate-pulse"
-                                        >
-                                          <PenTool size={12} />
-                                          Ký đối ứng
-                                        </button>
-                                      );
-                                    } else if (contract.status === 'negotiating') {
-                                      return (
-                                        <button
-                                          onClick={() => handleOpenContractModal(game)}
-                                          className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                        >
-                                          <Sliders size={12} />
-                                          Điều chỉnh HĐ
-                                        </button>
-                                      );
-                                    } else {
-                                      return (
-                                        <button
-                                          onClick={() => {
-                                            setSelectedContract(contract);
-                                            setViewerMode('view');
-                                            setIsViewerOpen(true);
-                                          }}
-                                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                        >
-                                          <FileText size={12} />
-                                          Đã hoàn tất
-                                        </button>
+                                        <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">Chưa tạo</span>
                                       );
                                     }
+                                    const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
+                                    return (
+                                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-mono border ${statusInfo.colorClass}`}>
+                                        {statusInfo.text}
+                                      </span>
+                                    );
                                   })()}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                          
-                          {/* Expanded detail sub-row */}
-                          {expandedGameId === game.id && (
-                            <tr>
-                              <td colSpan={7} className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
-                                  {/* Left Column: Thumbnail, Description, ZIP */}
-                                  <div className="space-y-4">
-                                    {(() => {
-                                      const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === game.id && (c.status === 'negotiating' || c.status === 'cancelled') && c.rejectionReason);
-                                      if (activeRejectedContract) {
-                                        const isNegotiating = activeRejectedContract.status === 'negotiating';
-                                        return (
-                                          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs space-y-1">
-                                            <span className="font-bold block">
-                                              {isNegotiating ? "Developer từ chối hợp đồng với lý do:" : "Hợp đồng trước đó bị từ chối:"}
-                                            </span>
-                                            <p className="italic text-[11px] text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-rose-500/10 break-words">
-                                              "{activeRejectedContract.rejectionReason}"
-                                            </p>
+                                </td>
+                                <td className="p-3 text-center">
+                                  {game.status?.toLowerCase() === 'pending' ? (
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <button
+                                        onClick={() => handleApproveGame(game)}
+                                        className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                        title="Duyệt game"
+                                      >
+                                        <Check size={14} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectGame(game.id, game.title)}
+                                        className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                        title="Từ chối game"
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center gap-1">
+                                      {(() => {
+                                        const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+                                        if (!contract) {
+                                          return (
+                                            <button
+                                              onClick={() => handleOpenContractModal(game)}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                            >
+                                              <FileText size={12} />
+                                              Soạn Hợp đồng
+                                            </button>
+                                          );
+                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
+                                          return (
+                                            <button
+                                              onClick={() => {
+                                                setSelectedContract(contract);
+                                                setViewerMode('view');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                            >
+                                              <Eye size={12} />
+                                              Chờ Dev ký
+                                            </button>
+                                          );
+                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
+                                          return (
+                                            <button
+                                              onClick={() => {
+                                                setSelectedContract(contract);
+                                                setViewerMode('sign-admin');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer animate-pulse"
+                                            >
+                                              <PenTool size={12} />
+                                              Ký đối ứng
+                                            </button>
+                                          );
+                                        } else if (contract.status === 'negotiating') {
+                                          return (
+                                            <button
+                                              onClick={() => handleOpenContractModal(game)}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                            >
+                                              <Sliders size={12} />
+                                              Điều chỉnh HĐ
+                                            </button>
+                                          );
+                                        } else {
+                                          return (
+                                            <button
+                                              onClick={() => {
+                                                setSelectedContract(contract);
+                                                setViewerMode('view');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                            >
+                                              <FileText size={12} />
+                                              Đã hoàn tất
+                                            </button>
+                                          );
+                                        }
+                                      })()}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                              
+                              {/* Expanded detail sub-row */}
+                              {expandedGameId === game.id && (
+                                <tr>
+                                  <td colSpan={7} className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
+                                      {/* Left Column: Thumbnail, Description, ZIP */}
+                                      <div className="space-y-4">
+                                        {(() => {
+                                          const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === game.id && (c.status === 'negotiating' || c.status === 'cancelled') && c.rejectionReason);
+                                          if (activeRejectedContract) {
+                                            const isNegotiating = activeRejectedContract.status === 'negotiating';
+                                            return (
+                                              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs space-y-1">
+                                                <span className="font-bold block">
+                                                  {isNegotiating ? "Developer từ chối hợp đồng với lý do:" : "Hợp đồng trước đó bị từ chối:"}
+                                                </span>
+                                                <p className="italic text-[11px] text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-rose-500/10 break-words">
+                                                  "{activeRejectedContract.rejectionReason}"
+                                                </p>
+                                              </div>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                        <div>
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
+                                            <Image size={12} /> Thumbnail
+                                          </h4>
+                                          <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
+                                            {game.thumbnailUrl ? (
+                                              <img 
+                                                src={game.thumbnailUrl} 
+                                                alt={game.title} 
+                                                className="object-cover w-full h-full"
+                                              />
+                                            ) : (
+                                              <div className="flex flex-col items-center justify-center text-slate-500">
+                                                <Image size={32} className="mb-2 text-slate-650" />
+                                                <span className="text-[10px] font-mono">NO THUMBNAIL</span>
+                                              </div>
+                                            )}
                                           </div>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
-                                    <div>
-                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
-                                        <Image size={12} /> Thumbnail
-                                      </h4>
-                                      <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
-                                        {game.thumbnailUrl ? (
-                                          <img 
-                                            src={game.thumbnailUrl} 
-                                            alt={game.title} 
-                                            className="object-cover w-full h-full"
-                                          />
-                                        ) : (
-                                          <div className="flex flex-col items-center justify-center text-slate-500">
-                                            <Image size={32} className="mb-2 text-slate-650" />
-                                            <span className="text-[10px] font-mono">NO THUMBNAIL</span>
+                                        </div>
+                                        
+                                        <div className="space-y-1.5">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Mô tả chi tiết</h4>
+                                          <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                            {game.description || "Không có mô tả chi tiết từ developer."}
+                                          </p>
+                                        </div>
+                                        
+                                        {game.fileUrl ? (
+                                          <a 
+                                            href={game.fileUrl} 
+                                            download 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98]"
+                                          >
+                                            <Download size={14} /> Download Game Package (ZIP)
+                                          </a>
+                                            ) : (
+                                          <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                                            Không tìm thấy tệp game ZIP để tải về
                                           </div>
                                         )}
                                       </div>
-                                    </div>
-                                    
-                                    <div className="space-y-1.5">
-                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Mô tả chi tiết</h4>
-                                      <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                        {game.description || "Không có mô tả chi tiết từ developer."}
-                                      </p>
-                                    </div>
-                                    
-                                    {game.fileUrl ? (
-                                      <a 
-                                        href={game.fileUrl} 
-                                        download 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98]"
-                                      >
-                                        <Download size={14} /> Download Game Package (ZIP)
-                                      </a>
-                                    ) : (
-                                      <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                                        Không tìm thấy tệp game ZIP để tải về
-                                      </div>
-                                    )}
-                                  </div>
 
-                                  {/* Middle & Right Column: Screenshots & Video */}
-                                  <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
-                                    <div className="space-y-2">
-                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                        <Image size={12} className="text-amber-500" /> Ảnh chụp màn hình (Screenshots)
-                                      </h4>
-                                      {game.screenshots && game.screenshots.length > 0 ? (
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                          {game.screenshots.map((url, index) => (
-                                            <div 
-                                              key={index} 
-                                              onClick={() => {
-                                                setActiveScreenshotUrl(url);
-                                                setIsOpenLightbox(true);
-                                              }}
-                                              className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-amber-400/50 transition-studio"
-                                            >
-                                              <img 
-                                                src={url} 
-                                                alt={`Screenshot ${index + 1}`} 
-                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                                              />
-                                              <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <Eye size={16} className="text-white" />
-                                              </div>
+                                      {/* Middle & Right Column: Screenshots & Video */}
+                                      <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                            <Image size={12} className="text-amber-500" /> Ảnh chụp màn hình (Screenshots)
+                                          </h4>
+                                          {game.screenshots && game.screenshots.length > 0 ? (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                              {game.screenshots.map((url, index) => (
+                                                <div 
+                                                  key={index} 
+                                                  onClick={() => {
+                                                    setActiveScreenshotUrl(url);
+                                                    setIsOpenLightbox(true);
+                                                  }}
+                                                  className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-amber-400/50 transition-studio"
+                                                >
+                                                  <img 
+                                                    src={url} 
+                                                    alt={`Screenshot ${index + 1}`} 
+                                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                                                  />
+                                                  <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Eye size={16} className="text-white" />
+                                                  </div>
+                                                </div>
+                                              ))}
                                             </div>
-                                          ))}
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                              <Image size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
+                                              <span className="text-[10px]">Developer không tải lên screenshot nào</span>
+                                            </div>
+                                          )}
                                         </div>
-                                      ) : (
-                                        <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-950/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
-                                          <Image size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
-                                          <span className="text-[10px]">Developer không tải lên screenshot nào</span>
-                                        </div>
-                                      )}
-                                    </div>
 
-                                    {/* Video Gameplay */}
-                                    <div className="space-y-2">
-                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                        <Video size={12} className="text-amber-500" /> Video Gameplay Demo
-                                      </h4>
-                                      {game.videoUrl ? (
-                                        <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
-                                          <video 
-                                            src={game.videoUrl} 
-                                            controls 
-                                            className="w-full h-full object-contain"
-                                          />
+                                        {/* Video Gameplay */}
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                            <Video size={12} className="text-amber-500" /> Video Gameplay Demo
+                                          </h4>
+                                          {game.videoUrl ? (
+                                            <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
+                                              <video 
+                                                src={game.videoUrl} 
+                                                controls 
+                                                className="w-full h-full object-contain"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                              <Video size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
+                                              <span className="text-[10px]">Developer không tải lên video gameplay nào</span>
+                                            </div>
+                                          )}
                                         </div>
-                                      ) : (
-                                        <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-950/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
-                                          <Video size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
-                                          <span className="text-[10px]">Developer không tải lên video gameplay nào</span>
-                                        </div>
-                                      )}
+                                      </div>
                                     </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                              🎉 Clean slate! No pending submissions to moderate.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {isLoadingMarketplace ? (
+                  <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
+                    <RefreshCw className="animate-spin" size={18} /> Loading pending marketplace items...
+                  </div>
+                ) : marketplaceError ? (
+                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                    Error loading marketplace items: {marketplaceError}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-955/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                          <th className="p-3 w-10"></th>
+                          <th className="p-3">Asset Details</th>
+                          <th className="p-3">Item Type</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3">Proposed Price</th>
+                          <th className="p-3 text-center">Decisions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                        {pendingMarketplaceItems.length > 0 ? (
+                          pendingMarketplaceItems.map(item => (
+                            <React.Fragment key={item.id}>
+                              <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-955/5 transition-colors ${expandedMarketplaceId === item.id ? 'bg-slate-50/50 dark:bg-slate-955/20' : ''}`}>
+                                <td className="p-3 w-10 text-center">
+                                  <button
+                                    onClick={() => setExpandedMarketplaceId(expandedMarketplaceId === item.id ? null : item.id)}
+                                    className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
+                                    title={expandedMarketplaceId === item.id ? "Hide Details" : "Show Details"}
+                                  >
+                                    {expandedMarketplaceId === item.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </button>
+                                </td>
+                                <td className="p-3">
+                                  <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    {item.title}
+                                    <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse">
+                                      Pending
+                                    </span>
                                   </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
-                          🎉 Clean slate! No pending submissions to moderate.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-455">by {item.sellerFullName || item.sellerEmail}</div>
+                                </td>
+                                <td className="p-3">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                                    item.itemType === 'source_code'
+                                      ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
+                                      : 'bg-emerald-450/10 text-emerald-500 border-emerald-500/20'
+                                  }`}>
+                                    {item.itemType === 'source_code' ? 'SOURCE CODE' : 'RESOURCE ASSET'}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-slate-600 dark:text-slate-355">{item.categoryName || 'Unassigned'}</td>
+                                <td className="p-3 font-mono font-semibold dark:text-amber-400">
+                                  {item.price === 0 ? 'Free' : `$${item.price}`}
+                                </td>
+                                <td className="p-3 text-center">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      onClick={() => handleApproveMarketplaceItem(item)}
+                                      className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                      title="Approve Asset"
+                                    >
+                                      <Check size={14} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectMarketplaceItem(item.id, item.title)}
+                                      className="p-1.5 bg-rose-50 dark:bg-rose-955/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                      title="Reject Asset"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                              
+                              {/* Expanded row for marketplace item details */}
+                              {expandedMarketplaceId === item.id && (
+                                <tr>
+                                  <td colSpan={6} className="p-6 bg-slate-50/10 dark:bg-slate-955/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-700 dark:text-slate-300">
+                                      {/* Left Column: Details & Description */}
+                                      <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Item Description</h4>
+                                          <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                            {item.description || "No description provided."}
+                                          </p>
+                                        </div>
+
+                                        {item.fileUrl ? (
+                                          <a 
+                                            href={item.fileUrl} 
+                                            download 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98]"
+                                          >
+                                            <Download size={14} /> Download Asset Package (ZIP)
+                                          </a>
+                                        ) : (
+                                          <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                                            No file package uploaded for this asset
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Right Column: Specifications & Links */}
+                                      <div className="space-y-3.5 bg-white/30 dark:bg-slate-955/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                        <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5">Technical & Creator Details</h4>
+                                        <div className="space-y-2 text-xs">
+                                          <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                            <span className="text-slate-500">Creator Name</span>
+                                            <span className="font-semibold">{item.sellerFullName || 'N/A'}</span>
+                                          </div>
+                                          <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                            <span className="text-slate-500">Creator Email</span>
+                                            <span className="font-mono">{item.sellerEmail}</span>
+                                          </div>
+                                          {item.itemType === 'source_code' && (
+                                            <>
+                                              <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                                <span className="text-slate-500">Godot Version</span>
+                                                <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{item.godotVersion || 'N/A'}</span>
+                                              </div>
+                                              {item.githubRepoUrl && (
+                                                <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                                  <span className="text-slate-500">GitHub Repository</span>
+                                                  <a 
+                                                    href={item.githubRepoUrl} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className="font-mono text-sky-500 hover:underline break-all max-w-[200px]"
+                                                  >
+                                                    {item.githubRepoUrl}
+                                                  </a>
+                                                </div>
+                                              )}
+                                            </>
+                                          )}
+                                          {item.sourceGameTitle && (
+                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                              <span className="text-slate-500">Linked Store Game</span>
+                                              <span className="font-semibold text-amber-500">{item.sourceGameTitle}</span>
+                                            </div>
+                                          )}
+                                          <div className="flex justify-between pb-0.5">
+                                            <span className="text-slate-500">Submitted On</span>
+                                            <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                              🎉 Clean slate! No pending marketplace submissions to moderate.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
