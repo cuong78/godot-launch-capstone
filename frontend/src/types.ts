@@ -248,6 +248,49 @@ export interface ContractResponse {
   createdAt?: string;
 }
 
+export interface CreateMarketplaceItemRequest {
+  title: string;
+  description?: string;
+  price: number;
+  itemType: 'source_code' | 'asset';
+  categoryId?: string;
+  godotVersion?: string;
+  githubRepoUrl?: string;
+  sourceGameId?: string;
+  fileUrl?: string;
+}
+
+export interface UpdateMarketplaceItemRequest {
+  title?: string;
+  description?: string;
+  price?: number;
+  categoryId?: string;
+  godotVersion?: string;
+  githubRepoUrl?: string;
+  fileUrl?: string;
+}
+
+export interface MarketplaceItemResponse {
+  id: string;
+  sellerEmail: string;
+  sellerFullName?: string;
+  categoryId?: string;
+  categoryName?: string;
+  itemType: 'source_code' | 'asset';
+  title: string;
+  description?: string;
+  price: number;
+  fileUrl?: string;
+  godotVersion?: string;
+  sourceGameId?: string;
+  sourceGameTitle?: string;
+  githubRepoUrl?: string;
+  githubVerifiedAt?: string;
+  status: 'active' | 'removed' | 'pending' | 'rejected';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 
 
 

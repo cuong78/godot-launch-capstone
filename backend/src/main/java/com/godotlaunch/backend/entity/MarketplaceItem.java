@@ -3,6 +3,8 @@ package com.godotlaunch.backend.entity;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.ItemType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -33,6 +35,7 @@ public class MarketplaceItem {
     private Category category;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "item_type", nullable = false, columnDefinition = "item_type_enum")
     private ItemType itemType;
 
@@ -62,6 +65,7 @@ public class MarketplaceItem {
     private Instant githubVerifiedAt;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "item_status_enum")
     private ItemStatus status = ItemStatus.active;
 
