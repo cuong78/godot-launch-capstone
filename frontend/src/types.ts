@@ -40,7 +40,7 @@ export interface User {
   email: string;
   fullName?: string;
   avatarUrl: string;
-  role?: 'user' | 'admin' | 'developer' | 'player';
+  role?: 'user' | 'admin' | 'developer' | 'customer' | 'guest';
   roleName?: string;
   status?: string;
 }

@@ -29,7 +29,7 @@ public class AdminCreateUserRequest {
     private String fullName;
 
     @NotBlank(message = "Role is required.")
-    private String roleName; // e.g. "admin", "developer", "player"
+    private String roleName; // e.g. "admin", "developer", "customer"
 
     private String status = "active"; // "active", "inactive", "banned"
 }

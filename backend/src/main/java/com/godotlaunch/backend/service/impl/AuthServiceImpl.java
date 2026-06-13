@@ -73,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.DUPLICATE_EMAIL);
         }
 
-        Role role = roleRepository.findByName("player")
+        Role role = roleRepository.findByName("customer")
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
         User user = new User();
@@ -145,7 +145,7 @@ public class AuthServiceImpl implements AuthService {
             }
 
             User user = userRepository.findByEmail(email).orElseGet(() -> {
-                Role playerRole = roleRepository.findByName("player")
+                Role customerRole = roleRepository.findByName("customer")
                         .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
                 User newUser = new User();
@@ -154,7 +154,7 @@ public class AuthServiceImpl implements AuthService {
                 newUser.setFullName(fullName != null ? fullName : email.split("@")[0]);
                 newUser.setAvatarUrl(picture);
                 newUser.setStatus("active");
-                newUser.setRole(playerRole);
+                newUser.setRole(customerRole);
                 return userRepository.save(newUser);
             });
 

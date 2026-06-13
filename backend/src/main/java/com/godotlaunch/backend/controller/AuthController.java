@@ -26,7 +26,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signup")
-    @Operation(summary = "Register a new user", description = "Creates a new user profile with selected roles (player/developer). Defaults to 'player'.")
+    @Operation(summary = "Register a new user", description = "Creates a new user profile with selected roles (customer/developer). Defaults to 'customer'.")
     public ResponseEntity<ApiResponse<UserResponse>> signUp(@Valid @RequestBody SignUpRequest request) {
         UserResponse response = authService.signUp(request);
         return ResponseEntity.ok(ApiResponse.success(response, "User registered successfully."));

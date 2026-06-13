@@ -398,6 +398,12 @@ export default function App() {
   // Add Item to Cart
   const handleAddToCart = (asset: Asset, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!currentUser) {
+      alert("You must log in to add items to your cart!");
+      setCurrentScreen('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (!cart.some(item => item.id === asset.id)) {
       setCart([...cart, asset]);
       setIsCartOpen(true);
@@ -412,6 +418,12 @@ export default function App() {
 
   // Simulating standard checkout action which completes and increments stats!
   const handleCheckout = () => {
+    if (!currentUser) {
+      alert("You must log in to make a purchase!");
+      setCurrentScreen('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (cart.length === 0) return;
     const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
     setFinanceStats(prev => ({

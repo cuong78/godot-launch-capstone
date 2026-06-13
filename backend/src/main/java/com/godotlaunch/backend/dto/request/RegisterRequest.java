@@ -31,5 +31,5 @@ public class RegisterRequest {
     @Size(max = 150, message = "Full name cannot exceed 150 characters.")
     private String fullName;
 
-    private String roleName = "player"; // defaults to "player", can be "developer" or "admin"
+    private String roleName = "customer"; // defaults to "customer", can be "developer" or "admin"
 }

@@ -203,6 +203,10 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
   // Create Post
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      alert("You must log in to post updates!");
+      return;
+    }
     if (!postText.trim()) return;
 
     setIsSubmittingPost(true);
@@ -231,6 +235,10 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
 
   // Add Comment
   const handleAddComment = async (postId: string) => {
+    if (!currentUser) {
+      alert("You must log in to comment!");
+      return;
+    }
     const text = activeCommentTexts[postId];
     if (!text || !text.trim()) return;
 
@@ -255,6 +263,10 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
 
   // Reactions
   const handleReact = async (postId: string, type: ReactionType) => {
+    if (!currentUser) {
+      alert("You must log in to react to posts!");
+      return;
+    }
     try {
       const prevReaction = myReactions[postId];
       if (prevReaction === type) {
@@ -291,6 +303,10 @@ export function CommunityHub({ darkMode, onNavigateToSeller, onNavigateToMarketp
 
   // Share Post
   const handleSharePost = async (postId: string) => {
+    if (!currentUser) {
+      alert("You must log in to share posts!");
+      return;
+    }
     const shareMessage = window.prompt("Introduce this shared post (optional):");
     if (shareMessage === null) return;
 

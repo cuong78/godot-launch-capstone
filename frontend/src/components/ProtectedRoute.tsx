@@ -7,7 +7,7 @@ import { isTokenExpired } from '../utils/jwtUtils';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   setCurrentScreen: (screen: ScreenType) => void;
-  requiredRole?: 'admin' | 'developer' | 'player';
+  requiredRole?: 'admin' | 'developer' | 'guest';
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({

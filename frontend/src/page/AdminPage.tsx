@@ -48,7 +48,7 @@ interface AdminUser {
   username: string;
   email: string;
   fullName: string;
-  role: 'admin' | 'developer' | 'player';
+  role: 'admin' | 'developer' | 'customer';
   status: 'active' | 'suspended' | 'inactive' | 'banned';
 }
 
@@ -151,8 +151,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     { id: 'u1', username: 'Cuong78', email: 'admin@godotlaunch.com', fullName: 'Cuong Admin', role: 'admin', status: 'active' },
     { id: 'u2', username: 'NeoArtisans', email: 'neo@artisans.com', fullName: 'Neo Artisans', role: 'developer', status: 'active' },
     { id: 'u3', username: 'LofiDev', email: 'lofi@dev.com', fullName: 'Lofi Dev', role: 'developer', status: 'active' },
-    { id: 'u4', username: 'SlyGamer', email: 'sly@gamer.com', fullName: 'Sly Gamer', role: 'player', status: 'active' },
-    { id: 'u5', username: 'SpamBot99', email: 'spam@bot.com', fullName: 'Spam Bot', role: 'player', status: 'suspended' }
+    { id: 'u4', username: 'SlyGamer', email: 'sly@gamer.com', fullName: 'Sly Gamer', role: 'customer', status: 'active' },
+    { id: 'u5', username: 'SpamBot99', email: 'spam@bot.com', fullName: 'Spam Bot', role: 'customer', status: 'suspended' }
   ]);
   const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(false);
   const [usersError, setUsersError] = useState<string | null>(null);
@@ -168,7 +168,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           username: u.username || u.email || '',
           email: u.email || '',
           fullName: u.fullName || '',
-          role: (u.roleName?.toLowerCase() as any) || 'player',
+          role: (u.roleName?.toLowerCase() as any) || 'customer',
           status: u.status === 'active' ? 'active' : u.status === 'banned' ? 'banned' : 'inactive'
         }));
         setUsers(mappedUsers);
@@ -336,7 +336,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     const userToUpdate = users.find(u => u.id === id);
     if (!userToUpdate) return;
 
-    const nextRole = userToUpdate.role === 'admin' ? 'developer' : userToUpdate.role === 'developer' ? 'player' : 'admin';
+    const nextRole = userToUpdate.role === 'admin' ? 'developer' : userToUpdate.role === 'developer' ? 'customer' : 'admin';
     
     try {
       const response = await userApi.updateUser(id, {
