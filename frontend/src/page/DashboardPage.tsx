@@ -14,14 +14,18 @@ import {
   AlertTriangle,
   FileCheck,
   PenTool,
-  FileText
+  FileText,
+  ShoppingBag,
+  Gamepad2,
+  Trash2
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { DataTable } from '../components/DataTable';
 import { Input } from '../components/Input';
-import { Asset, Project, User, GameResponse, ContractResponse } from '../types';
+import { Asset, Project, User, GameResponse, ContractResponse, MarketplaceItemResponse } from '../types';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
+import { marketplaceApi } from '../api/marketplaceApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 
@@ -66,8 +70,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   projectRepositories,
   setCurrentScreen
 }) => {
-  // Tab control: 'my-games' or 'git-repos'
-  const [activeTab, setActiveTab] = useState<'my-games' | 'git-repos'>('my-games');
+  // Tab control: 'my-games' | 'marketplace-items' | 'git-repos'
+  const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'git-repos'>('my-games');
 
   // Real Game list state
   const [myGames, setMyGames] = useState<GameResponse[]>([]);
@@ -75,6 +79,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [gamesError, setGamesError] = useState<string | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [activeScreenshotUrl, setActiveScreenshotUrl] = useState<string | null>(null);
+
+  // Real Marketplace Items state
+  const [myMarketplaceItems, setMyMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
+  const [isLoadingMarketplace, setIsLoadingMarketplace] = useState<boolean>(false);
+  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
 
   // Contract integration states
@@ -111,6 +120,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       setGamesError(err.response?.data?.message || err.message || 'Failed to fetch your games');
     } finally {
       setIsLoadingGames(false);
+    }
+  };
+
+  const fetchMyMarketplaceItems = async () => {
+    if (!currentUser?.email) return;
+    setIsLoadingMarketplace(true);
+    setMarketplaceError(null);
+    try {
+      const response = await marketplaceApi.getMyMarketplaceItems();
+      if (response.success && response.data) {
+        setMyMarketplaceItems(response.data);
+      } else {
+        setMarketplaceError(response.message || 'Failed to load your marketplace items');
+      }
+    } catch (err: any) {
+      setMarketplaceError(err.response?.data?.message || err.message || 'Failed to fetch your marketplace items');
+    } finally {
+      setIsLoadingMarketplace(false);
+    }
+  };
+
+  const handleDeleteMarketplaceItem = async (id: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn gỡ sản phẩm này khỏi Creator Marketplace?")) {
+      return;
+    }
+    try {
+      const res = await marketplaceApi.deleteMarketplaceItem(id);
+      if (res.success) {
+        alert("Đã gỡ sản phẩm thành công!");
+        fetchMyMarketplaceItems();
+      } else {
+        alert(res.message || "Không thể gỡ sản phẩm");
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Lỗi khi gỡ sản phẩm");
     }
   };
 
@@ -169,6 +213,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   useEffect(() => {
     fetchMyGames();
+    fetchMyMarketplaceItems();
     fetchMyContracts();
   }, [currentUser]);
 
@@ -255,7 +300,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={() => setActiveTab('my-games')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'my-games' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <FileCheck size={14} /> Game của tôi ({myGames.length})
+              <Gamepad2 size={14} /> Game Phát Hành ({myGames.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('marketplace-items')}
+              className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'marketplace-items' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+            >
+              <ShoppingBag size={14} /> Tài Nguyên Chợ ({myMarketplaceItems.length})
             </button>
             <button
               onClick={() => setActiveTab('git-repos')}
@@ -618,7 +669,90 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           )}
 
-          {/* Tab 2: Reusable Mock Projects list */}
+          {/* Tab 2: Developer's Real Marketplace Items */}
+          {activeTab === 'marketplace-items' && (
+            <div className="space-y-4">
+              {isLoadingMarketplace ? (
+                <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
+                  <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách tài nguyên...
+                </div>
+              ) : marketplaceError ? (
+                <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                  Lỗi tải danh sách tài nguyên: {marketplaceError}
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                        <th className="p-3">Thông tin chi tiết</th>
+                        <th className="p-3">Loại sản phẩm</th>
+                        <th className="p-3">Phân loại</th>
+                        <th className="p-3">Giá bán</th>
+                        <th className="p-3 text-center">Trạng thái</th>
+                        <th className="p-3 text-center">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                      {myMarketplaceItems.length > 0 ? (
+                        myMarketplaceItems.map(item => (
+                          <tr key={item.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
+                            <td className="p-3">
+                              <div className="font-semibold text-slate-800 dark:text-slate-100">
+                                {item.title}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono">ID: {item.id}</div>
+                            </td>
+                            <td className="p-3">
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border bg-amber-450/10 text-amber-500 border-amber-500/20">
+                                {item.itemType === 'source_code' ? 'SOURCE CODE' : 'RESOURCE ASSET'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-600 dark:text-slate-350">{item.categoryName || 'Chưa phân loại'}</td>
+                            <td className="p-3 font-mono font-semibold dark:text-amber-400">
+                              {item.price === 0 ? 'Miễn phí' : `$${item.price}`}
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                item.status === 'active'
+                                  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                  : item.status === 'pending'
+                                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse'
+                                  : item.status === 'rejected'
+                                  ? 'bg-rose-500/10 text-rose-505 border-rose-500/20'
+                                  : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                              }`}>
+                                {item.status === 'active' ? 'Đang bán' :
+                                 item.status === 'pending' ? 'Chờ duyệt' :
+                                 item.status === 'rejected' ? 'Bị từ chối' : 'Gỡ bỏ'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <button
+                                onClick={() => handleDeleteMarketplaceItem(item.id)}
+                                className="p-1.5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded transition-colors cursor-pointer"
+                                title="Gỡ sản phẩm"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20">
+                            Bạn chưa đăng bán sản phẩm nào trên Creator Marketplace. Nhấn "Deploy Asset" ở trên để bắt đầu!
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 3: Reusable Mock Projects list */}
           {activeTab === 'git-repos' && (
             <DataTable 
               data={projectRepositories} 
