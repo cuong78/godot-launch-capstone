@@ -24,7 +24,7 @@ public interface CommunityChatService {
 
     Page<CommunityChatResponse> getComments(UUID id, Pageable pageable);
 
-    ChatReactionResponse reactToPost( UUID id, CreateReactionRequest request);
+    ChatReactionResponse reactToPost(String email, UUID id, CreateReactionRequest request);
 
     void removeReaction(String email, UUID id);
 

@@ -219,15 +219,13 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
     @Override
     @Transactional
-    public ChatReactionResponse reactToPost( UUID id, CreateReactionRequest request) {
+    public ChatReactionResponse reactToPost(String email, UUID id, CreateReactionRequest request) {
         CommunityChat post = communityChatRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CHAT_NOT_FOUND));
         if (post.isDeleted()) {
             throw new AppException(ErrorCode.CHAT_ALREADY_DELETED);
         }
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = (String) authentication.getPrincipal();
         User currentUser = getCurrentUser(email);
 
         ChatReaction reaction;
