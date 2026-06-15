@@ -213,7 +213,11 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   const handleGoogleLogin = () => {
     clearApiError(null);
     setLocalError('');
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1013498846927-91l3g37oee1vdf4qg1n980p7m687a718.apps.googleusercontent.com';
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleClientId) {
+      setLocalError('Google Client ID is not configured. Please check your .env file.');
+      return;
+    }
     const redirectUri = window.location.origin + '/signin';
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth` +
       `?client_id=${googleClientId}` +

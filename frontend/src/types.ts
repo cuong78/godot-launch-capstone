@@ -296,6 +296,8 @@ export interface MarketplaceItemResponse {
   status: 'active' | 'removed' | 'pending' | 'rejected';
   createdAt?: string;
   updatedAt?: string;
+}
+
 // --- WebSocket Notifications & Chat DM ---
 export type NotificationType = 'COMMENT' | 'REACTION' | 'SHARE' | 'CHAT_MESSAGE';
 
