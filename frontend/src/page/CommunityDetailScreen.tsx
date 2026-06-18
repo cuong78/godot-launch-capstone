@@ -61,6 +61,50 @@ export function CommunityDetailScreen({
 
   const [hoveredReaction, setHoveredReaction] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [localMyReaction, setLocalMyReaction] = useState<ReactionType | undefined>(myReaction);
+
+  useEffect(() => {
+    setLocalMyReaction(myReaction);
+  }, [myReaction]);
+
+  const handleReactClick = async (type: ReactionType) => {
+    if (!post) return;
+    if (!currentUser) {
+      alert("You must log in to react to posts!");
+      return;
+    }
+    try {
+      const prevReaction = localMyReaction;
+      if (prevReaction === type) {
+        // Toggle Off
+        const res = await communityApi.removeReaction(post.id);
+        if (res.success) {
+          setLocalMyReaction(undefined);
+          setPost(prev => prev ? { ...prev, reactionCount: Math.max(0, prev.reactionCount - 1) } : null);
+        }
+      } else {
+        // Add or change reaction
+        const res = await communityApi.reactToPost(post.id, { reactionType: type });
+        if (res.success) {
+          setLocalMyReaction(type);
+          setPost(prev => {
+            if (!prev) return null;
+            const increment = prevReaction ? 0 : 1;
+            return { ...prev, reactionCount: prev.reactionCount + increment };
+          });
+        }
+      }
+      
+      // Notify parent component so it can update its state if needed
+      if (onReact) {
+        onReact(post.id, type);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to react to post");
+    } finally {
+      setHoveredReaction(false);
+    }
+  };
 
   // Self-heal post if not provided
   useEffect(() => {
@@ -268,38 +312,39 @@ export function CommunityDetailScreen({
             onMouseLeave={() => setHoveredReaction(false)}
           >
             <button 
-              onClick={() => onReact(post.id, 'like')}
+              onClick={() => handleReactClick('like')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-semibold transition-all active:scale-95 ${
-                myReaction 
+                localMyReaction 
                   ? "bg-amber-400 text-slate-900 border-amber-400 font-bold" 
                   : "bg-slate-800/20 border-slate-700/30 hover:bg-slate-800/40 text-slate-700 dark:text-slate-350"
               }`}
             >
-              <span>{myReaction ? REACTION_EMOJIS[myReaction].emoji : '👍'}</span>
-              <span>{myReaction ? REACTION_EMOJIS[myReaction].label : 'Like'} ({post.reactionCount})</span>
+              <span>{localMyReaction ? REACTION_EMOJIS[localMyReaction].emoji : '👍'}</span>
+              <span>{localMyReaction ? REACTION_EMOJIS[localMyReaction].label : 'Like'} ({post.reactionCount})</span>
             </button>
 
             {/* Hover popup emojis */}
             {hoveredReaction && (
               <div 
-                className="absolute bottom-full left-0 mb-2.5 flex items-center gap-2.5 p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-full shadow-2xl z-50 animate-bounce-short"
+                className="absolute bottom-full left-0 pb-2.5 z-50"
                 onMouseEnter={() => setHoveredReaction(true)}
                 onMouseLeave={() => setHoveredReaction(false)}
               >
-                {(Object.keys(REACTION_EMOJIS) as ReactionType[]).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => {
-                      onReact(post.id, type);
-                      setHoveredReaction(false);
-                    }}
-                    className={`text-xl p-1 rounded-full transition-transform transform ${REACTION_EMOJIS[type].color}`}
-                    title={REACTION_EMOJIS[type].label}
-                  >
-                    {REACTION_EMOJIS[type].emoji}
-                  </button>
-                ))}
+                <div className="flex items-center gap-2.5 p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-full shadow-2xl animate-bounce-short">
+                  {(Object.keys(REACTION_EMOJIS) as ReactionType[]).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => {
+                        handleReactClick(type);
+                      }}
+                      className={`text-xl p-1 rounded-full transition-transform transform ${REACTION_EMOJIS[type].color}`}
+                      title={REACTION_EMOJIS[type].label}
+                    >
+                      {REACTION_EMOJIS[type].emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

@@ -781,19 +781,21 @@ export function CommunityHub({
                         <div 
                           onMouseEnter={() => handleMouseEnterReaction(post.id)}
                           onMouseLeave={() => handleMouseLeaveReaction(post.id)}
-                          className="absolute bottom-full left-0 mb-2 flex items-center gap-2 p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-full shadow-lg z-50 animate-bounce-short"
+                          className="absolute bottom-full left-0 pb-2 z-50"
                         >
-                          {(Object.keys(REACTION_EMOJIS) as ReactionType[]).map((type) => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => handleReact(post.id, type)}
-                              className={`text-xl p-1 rounded-full transition-transform transform ${REACTION_EMOJIS[type].color}`}
-                              title={REACTION_EMOJIS[type].label}
-                            >
-                              {REACTION_EMOJIS[type].emoji}
-                            </button>
-                          ))}
+                          <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-full shadow-lg animate-bounce-short">
+                            {(Object.keys(REACTION_EMOJIS) as ReactionType[]).map((type) => (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => handleReact(post.id, type)}
+                                className={`text-xl p-1 rounded-full transition-transform transform ${REACTION_EMOJIS[type].color}`}
+                                title={REACTION_EMOJIS[type].label}
+                              >
+                                {REACTION_EMOJIS[type].emoji}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
