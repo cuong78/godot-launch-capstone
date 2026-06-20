@@ -3,7 +3,7 @@ package com.godotlaunch.backend.service.impl;
 import com.godotlaunch.backend.dto.response.NotificationResponse;
 import com.godotlaunch.backend.dto.response.UserSummary;
 import com.godotlaunch.backend.entity.Notification;
-import com.godotlaunch.backend.entity.NotificationType;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.repository.NotificationRepository;
 import com.godotlaunch.backend.repository.UserRepository;

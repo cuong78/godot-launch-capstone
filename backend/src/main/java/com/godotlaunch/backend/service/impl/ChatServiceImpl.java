@@ -5,7 +5,7 @@ import com.godotlaunch.backend.dto.response.ChatMessageResponse;
 import com.godotlaunch.backend.dto.response.ConversationResponse;
 import com.godotlaunch.backend.dto.response.UserSummary;
 import com.godotlaunch.backend.entity.ChatMessage;
-import com.godotlaunch.backend.entity.NotificationType;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.repository.ChatMessageRepository;
 import com.godotlaunch.backend.repository.UserRepository;

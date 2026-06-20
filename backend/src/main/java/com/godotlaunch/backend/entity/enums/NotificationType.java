@@ -1,4 +1,4 @@
-package com.godotlaunch.backend.entity;
+package com.godotlaunch.backend.entity.enums;
 
 public enum NotificationType {
     COMMENT,

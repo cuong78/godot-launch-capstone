@@ -6,21 +6,22 @@ logging:
     com.godotlaunch.backend: DEBUG
     org.springframework.web: INFO
     org.springframework.messaging: DEBUG
+    org.flywaydb: DEBUG
 spring:
   application:
     name: backend
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/godot_launch}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
     hibernate:
-      ddl-auto: update       # ← đổi lại validate
+      ddl-auto: validate       
     show-sql: true
     properties:
       hibernate:
@@ -31,6 +32,7 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
     validate-on-migrate: false
+    repair-on-migrate: true
 
   mail:
     host: smtp.gmail.com
@@ -47,19 +49,19 @@ spring:
 
 aws:
   s3:
-    bucket-name: ${AWS_S3_BUCKET:godot-launch-storage}
-    region: ${AWS_S3_REGION:ap-southeast-2}
+    bucket-name: ${AWS_S3_BUCKET}
+    region: ${AWS_S3_REGION}
   credentials:
-    access-key: ${AWS_ACCESS_KEY:dummy-access-key}
-    secret-key: ${AWS_SECRET_KEY:dummy-secret-key}
+    access-key: ${AWS_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_KEY}
 
 app:
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  frontend-url: ${FRONTEND_URL}
   security:
-    encryption-key: ${ENCRYPTION_KEY:godot-launch-encrypt-key-12345}
+    encryption-key: ${ENCRYPTION_KEY}
     oauth:
       google:
-        client-id: ${GOOGLE_CLIENT_ID:}
+        client-id: ${GOOGLE_CLIENT_ID}
       github:
-        client-id: ${GITHUB_CLIENT_ID:}
-        client-secret: ${GITHUB_CLIENT_SECRET:}
+        client-id: ${GITHUB_CLIENT_ID}
+        client-secret: ${GITHUB_CLIENT_SECRET}

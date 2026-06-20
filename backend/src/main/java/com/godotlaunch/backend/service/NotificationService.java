@@ -1,7 +1,7 @@
 package com.godotlaunch.backend.service;
 
 import com.godotlaunch.backend.dto.response.NotificationResponse;
-import com.godotlaunch.backend.entity.NotificationType;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.entity.User;
 
 import java.util.List;

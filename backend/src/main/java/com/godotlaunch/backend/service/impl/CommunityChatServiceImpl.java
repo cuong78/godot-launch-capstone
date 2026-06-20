@@ -9,13 +9,11 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.*;
 import com.godotlaunch.backend.service.CommunityChatService;
 import com.godotlaunch.backend.service.NotificationService;
-import com.godotlaunch.backend.entity.NotificationType;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

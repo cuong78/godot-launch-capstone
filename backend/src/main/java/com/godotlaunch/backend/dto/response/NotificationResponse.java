@@ -1,6 +1,6 @@
 package com.godotlaunch.backend.dto.response;
 
-import com.godotlaunch.backend.entity.NotificationType;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import lombok.*;
 
 import java.time.Instant;

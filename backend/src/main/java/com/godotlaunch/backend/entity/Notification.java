@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.entity;
 
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
