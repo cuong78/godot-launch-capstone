@@ -32,7 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String username = jwtProvider.getUsernameFromToken(token);
             String role = jwtProvider.getRoleFromToken(token);
             
-            // Map token role to Spring Security authority format (ROLE_ADMIN, ROLE_PLAYER, ROLE_DEVELOPER)
+            // Map token role to Spring Security authority format (ROLE_ADMIN, ROLE_DEVELOPER)
             String authority = role.toUpperCase().startsWith("ROLE_") ? role.toUpperCase() : "ROLE_" + role.toUpperCase();
             SimpleGrantedAuthority simpleGrantedAuthority = new SimpleGrantedAuthority(authority);
             List<SimpleGrantedAuthority> authorities = Collections.singletonList(simpleGrantedAuthority);
