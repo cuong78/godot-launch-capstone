@@ -19,6 +19,7 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Full authentication is required to access this resource."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Incorrect password or username."),
     USER_BANNED(HttpStatus.UNAUTHORIZED, "This user account has been banned."),
+    INVALID_RECAPTCHA(HttpStatus.BAD_REQUEST, "reCAPTCHA verification failed. Please try again."),
     
     // 403 Forbidden
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "You do not have permission to execute this operation."),

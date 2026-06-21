@@ -64,9 +64,14 @@ public class AuthServiceImpl implements AuthService {
     @Value("${app.security.oauth.github.client-secret:}")
     private String githubClientSecret;
 
+    @Value("${app.security.recaptcha.secret-key:}")
+    private String recaptchaSecretKey;
+
     @Override
     @Transactional
     public UserResponse signUp(SignUpRequest request) {
+        verifyRecaptcha(request.getRecaptchaToken());
+
         boolean isOtpValid = otpService.validateOtp(request.getEmail(), request.getOtp());
         if (!isOtpValid) {
             throw new AppException(ErrorCode.INVALID_OTP);
@@ -401,6 +406,28 @@ public class AuthServiceImpl implements AuthService {
             user.setSessionHash(null);
             userRepository.save(user);
         });
+    }
+
+    private void verifyRecaptcha(String token) {
+        if (!StringUtils.hasText(recaptchaSecretKey)) {
+            log.warn("reCAPTCHA secret key not configured, skipping verification");
+            return;
+        }
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String url = "https://www.google.com/recaptcha/api/siteverify"
+                    + "?secret=" + recaptchaSecretKey
+                    + "&response=" + token;
+            Map<?, ?> result = restTemplate.postForObject(url, null, Map.class);
+            if (result == null || !Boolean.TRUE.equals(result.get("success"))) {
+                throw new AppException(ErrorCode.INVALID_RECAPTCHA);
+            }
+        } catch (AppException ae) {
+            throw ae;
+        } catch (Exception e) {
+            log.error("reCAPTCHA verification error", e);
+            throw new AppException(ErrorCode.INVALID_RECAPTCHA);
+        }
     }
 
     private UserResponse mapToUserResponse(User user) {

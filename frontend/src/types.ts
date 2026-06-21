@@ -54,6 +54,7 @@ export interface SignUpRequest {
   fullName: string;
   avatarUrl?: string;
   otp?: string;
+  recaptchaToken?: string;
 }
 
 export interface UpdateProfileRequest {

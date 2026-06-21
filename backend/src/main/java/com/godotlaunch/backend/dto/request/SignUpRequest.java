@@ -29,4 +29,7 @@ public class SignUpRequest {
 
     @NotBlank(message = "OTP verification code is required.")
     private String otp;
+
+    @NotBlank(message = "reCAPTCHA token is required.")
+    private String recaptchaToken;
 }

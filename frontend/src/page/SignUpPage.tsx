@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import ReCAPTCHA from 'react-google-recaptcha';
 import {
   BadgeCheck,
   Coins,
@@ -80,6 +81,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   const handleSendOtp = async () => {
     clearApiError(null);
@@ -176,6 +179,10 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
       setLocalError('Passwords do not match.');
       return false;
     }
+    if (!recaptchaToken) {
+      setLocalError('Vui lòng xác nhận reCAPTCHA.');
+      return false;
+    }
     return true;
   };
 
@@ -189,14 +196,15 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
     setLoading(true);
     try {
-      await signUp({ email, password, confirmPassword, fullName, avatarUrl, otp });
+      await signUp({ email, password, confirmPassword, fullName, avatarUrl, otp, recaptchaToken: recaptchaToken! });
       setSuccessMessage('Account created successfully! Redirecting to sign in...');
       setTimeout(() => {
         setCurrentScreen('signin');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 1500);
     } catch (err: any) {
-      // Error is caught by AuthContext and displayed.
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -616,9 +624,19 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                   </label>
                 </div>
 
+                <div className="flex justify-center">
+                  <ReCAPTCHA
+                    ref={recaptchaRef}
+                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                    onChange={(token) => setRecaptchaToken(token)}
+                    onExpired={() => setRecaptchaToken(null)}
+                    theme="dark"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !recaptchaToken}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-4 font-display text-lg font-extrabold text-[#6c4f00] shadow-[0_0_20px_rgba(251,191,36,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_35px_rgba(251,191,36,0.35)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserPlus size={18} />}
