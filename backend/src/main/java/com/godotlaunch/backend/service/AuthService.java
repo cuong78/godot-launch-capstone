@@ -9,6 +9,8 @@ import com.godotlaunch.backend.dto.response.UserResponse;
 
 import com.godotlaunch.backend.dto.request.ForgotPasswordRequest;
 import com.godotlaunch.backend.dto.request.ResetPasswordRequest;
+import com.godotlaunch.backend.dto.request.SignupOtpRequest;
+import com.godotlaunch.backend.dto.request.VerifyOtpRequest;
 
 public interface AuthService {
     UserResponse signUp(SignUpRequest request);
@@ -17,4 +19,6 @@ public interface AuthService {
     JwtAuthenticationResponse loginWithGitHub(GitHubLoginRequest request);
     void requestPasswordReset(ForgotPasswordRequest request);
     void resetPassword(ResetPasswordRequest request);
+    void requestSignupOtp(SignupOtpRequest request);
+    void verifySignupOtp(VerifyOtpRequest request);
 }

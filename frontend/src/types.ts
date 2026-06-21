@@ -53,6 +53,7 @@ export interface SignUpRequest {
   confirmPassword?: string;
   fullName: string;
   avatarUrl?: string;
+  otp?: string;
 }
 
 export interface UpdateProfileRequest {

@@ -7,6 +7,8 @@ import com.godotlaunch.backend.dto.request.SignInRequest;
 import com.godotlaunch.backend.dto.request.SignUpRequest;
 import com.godotlaunch.backend.dto.request.ForgotPasswordRequest;
 import com.godotlaunch.backend.dto.request.ResetPasswordRequest;
+import com.godotlaunch.backend.dto.request.SignupOtpRequest;
+import com.godotlaunch.backend.dto.request.VerifyOtpRequest;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.entity.Role;
@@ -65,6 +67,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public UserResponse signUp(SignUpRequest request) {
+        boolean isOtpValid = otpService.validateOtp(request.getEmail(), request.getOtp());
+        if (!isOtpValid) {
+            throw new AppException(ErrorCode.INVALID_OTP);
+        }
+
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new AppException(ErrorCode.PASSWORDS_DO_NOT_MATCH);
         }
@@ -85,6 +92,8 @@ public class AuthServiceImpl implements AuthService {
         user.setRole(role);
 
         User savedUser = userRepository.save(user);
+
+        otpService.invalidateOtp(request.getEmail());
 
         return mapToUserResponse(savedUser);
     }
@@ -361,6 +370,24 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         otpService.invalidateOtp(user.getEmail());
+    }
+
+    @Override
+    public void requestSignupOtp(SignupOtpRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new AppException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
+        String otp = otpService.generateOtp(request.getEmail());
+        emailService.sendSignupOtpEmail(request.getEmail(), otp);
+    }
+
+    @Override
+    public void verifySignupOtp(VerifyOtpRequest request) {
+        boolean isOtpValid = otpService.validateOtp(request.getEmail(), request.getOtp());
+        if (!isOtpValid) {
+            throw new AppException(ErrorCode.INVALID_OTP);
+        }
     }
 
     private UserResponse mapToUserResponse(User user) {

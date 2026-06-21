@@ -56,5 +56,15 @@ export const authApi = {
       },
     });
     return response.data;
-  }
+  },
+
+  requestSignupOtp: async (email: string): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>('/api/auth/signup/otp', { email });
+    return response.data;
+  },
+
+  verifySignupOtp: async (email: string, otp: string): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>('/api/auth/signup/otp/verify', { email, otp });
+    return response.data;
+  },
 };

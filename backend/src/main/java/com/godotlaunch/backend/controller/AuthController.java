@@ -6,6 +6,8 @@ import com.godotlaunch.backend.dto.request.SignInRequest;
 import com.godotlaunch.backend.dto.request.SignUpRequest;
 import com.godotlaunch.backend.dto.request.ForgotPasswordRequest;
 import com.godotlaunch.backend.dto.request.ResetPasswordRequest;
+import com.godotlaunch.backend.dto.request.SignupOtpRequest;
+import com.godotlaunch.backend.dto.request.VerifyOtpRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
@@ -75,5 +77,19 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
         return ResponseEntity.ok(ApiResponse.success(null, "Password reset successfully. You can now log in with your new password."));
+    }
+
+    @PostMapping("/signup/otp")
+    @Operation(summary = "Send OTP for signup verification", description = "Generates a 6-digit OTP and sends it to the user's email if the email is not already registered.")
+    public ResponseEntity<ApiResponse<Void>> requestSignupOtp(@Valid @RequestBody SignupOtpRequest request) {
+        authService.requestSignupOtp(request);
+        return ResponseEntity.ok(ApiResponse.success(null, "OTP verification code sent to your email."));
+    }
+
+    @PostMapping("/signup/otp/verify")
+    @Operation(summary = "Verify OTP for signup", description = "Validates the OTP code for the given email to allow proceeding with registration.")
+    public ResponseEntity<ApiResponse<Void>> verifySignupOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        authService.verifySignupOtp(request);
+        return ResponseEntity.ok(ApiResponse.success(null, "OTP verified successfully."));
     }
 }
