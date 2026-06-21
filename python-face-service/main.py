@@ -1,0 +1,127 @@
+import os
+from dotenv import load_dotenv
+
+# Load .env TRƯỚC khi import google.cloud — SDK đọc credentials lúc import
+load_dotenv()
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+from face_service import extract_embedding
+from db import find_duplicate_face, save_face_embedding, delete_face_embedding
+from ocr_service import ocr_document
+
+app = FastAPI(title="GodotLaunch Face Service", version="1.0.0")
+
+THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.5"))
+
+
+class FaceCheckRequest(BaseModel):
+    imageBase64: str
+
+
+class FaceRegisterRequest(BaseModel):
+    userId: str
+    imageBase64: str
+
+
+class FaceCheckResponse(BaseModel):
+    isDuplicate: bool
+    message: str
+
+
+class FaceRegisterResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class OcrRequest(BaseModel):
+    imageBase64: str
+    documentType: str  # 'cccd' | 'passport'
+
+
+class OcrResponse(BaseModel):
+    documentType: str
+    idNumber: Optional[str] = None
+    fullName: Optional[str] = None
+    dateOfBirth: Optional[str] = None
+    address: Optional[str] = None
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/face/check", response_model=FaceCheckResponse)
+def check_face(req: FaceCheckRequest):
+    """
+    Kiểm tra xem khuôn mặt đã tồn tại trong DB chưa.
+    Gọi trước khi tạo user. Không lưu gì vào DB.
+    """
+    embedding = extract_embedding(req.imageBase64)
+
+    if embedding is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Không tìm thấy khuôn mặt rõ ràng trong ảnh. Vui lòng chụp lại với ánh sáng tốt hơn và nhìn thẳng vào camera."
+        )
+
+    is_dup = find_duplicate_face(embedding, THRESHOLD)
+    return FaceCheckResponse(
+        isDuplicate=is_dup,
+        message="Khuôn mặt đã được đăng ký với tài khoản khác." if is_dup else "OK"
+    )
+
+
+@app.post("/face/register", response_model=FaceRegisterResponse)
+def register_face(req: FaceRegisterRequest):
+    """
+    Lưu face embedding sau khi user đã được tạo thành công.
+    """
+    embedding = extract_embedding(req.imageBase64)
+
+    if embedding is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Không thể trích xuất đặc trưng khuôn mặt từ ảnh."
+        )
+
+    save_face_embedding(req.userId, embedding)
+    return FaceRegisterResponse(success=True, message="Face registered successfully.")
+
+
+@app.delete("/face/{user_id}", response_model=FaceRegisterResponse)
+def delete_face(user_id: str):
+    """
+    Xóa face embedding khi user bị xóa hoặc yêu cầu xóa dữ liệu (GDPR).
+    """
+    deleted = delete_face_embedding(user_id)
+    return FaceRegisterResponse(
+        success=deleted > 0,
+        message=f"Deleted {deleted} embedding(s)."
+    )
+
+
+@app.post("/ocr/document", response_model=OcrResponse)
+def ocr_id_document(req: OcrRequest):
+    """
+    OCR giấy tờ tùy thân: CCCD hoặc Passport.
+    Trả về thông tin đã parse: idNumber, fullName, dateOfBirth, address.
+    Không lưu gì vào DB — chỉ extract và trả về để Spring Boot lưu sau khi user confirm.
+    """
+    if req.documentType not in ("cccd", "passport"):
+        raise HTTPException(status_code=400, detail="documentType phải là 'cccd' hoặc 'passport'.")
+
+    try:
+        result = ocr_document(req.imageBase64, req.documentType)
+        return OcrResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi OCR: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

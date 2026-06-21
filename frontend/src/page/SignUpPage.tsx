@@ -6,7 +6,6 @@ import {
   Loader2,
   Rocket,
   UserPlus,
-  Camera,
   Check,
   Upload,
   Globe,

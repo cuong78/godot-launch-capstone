@@ -45,12 +45,33 @@ export const marketplaceApi = {
   },
 
   confirmUploadComplete: async (
-    id: string, 
+    id: string,
     objectKey?: string
   ): Promise<ApiResponse<{ message: string }>> => {
     const response = await api.post<ApiResponse<{ message: string }>>(`/api/v1/marketplace-items/${id}/upload-complete`, null, {
       params: { objectKey }
     });
+    return response.data;
+  },
+
+  // Proxy upload: gửi file zip lên backend → StorageRouter (S3 hoặc SeaweedFS theo routing config)
+  uploadItemFile: async (
+    id: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<ApiResponse<{ message: string }>>(
+      `/api/v1/marketplace-items/${id}/upload`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
+        },
+      }
+    );
     return response.data;
   },
 

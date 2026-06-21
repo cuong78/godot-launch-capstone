@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import { useFaceVerify } from '../context/FaceVerifyContext';
+import {
   CheckCircle2, 
   Upload, 
   AlertTriangle, 
@@ -56,6 +57,8 @@ const getFileKey = (file: File): string => {
 };
 
 export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
+  const { requireFaceVerify } = useFaceVerify();
+
   // Step State
   const [step, setStep] = useState<1 | 2>(1);
   const [gameId, setGameId] = useState<string | null>(null);
@@ -184,64 +187,45 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     };
   }, [scanStatus, gameId, publishProgram]);
 
+  // Logic API tách riêng để có thể gọi lại sau khi face verify xong
+  const submitDraft = async (priceNum: number) => {
+    if (publishProgram === 'marketplace') {
+      if (itemType === 'source_code') {
+        if (!godotVersion.trim()) { alert('Godot Version requirement is required for source code listings'); return; }
+        if (!githubRepoUrl.trim()) { alert('GitHub Repository Link is required for source code listings'); return; }
+      }
+      const res = await marketplaceApi.createMarketplaceItem({
+        title, description, price: priceNum, itemType,
+        categoryId: categoryId || undefined,
+        godotVersion: itemType === 'source_code' ? godotVersion : undefined,
+        githubRepoUrl: itemType === 'source_code' ? githubRepoUrl : undefined,
+      });
+      if (res.success && res.data?.itemId) { setGameId(res.data.itemId); setStep(2); }
+      else alert(res.message || 'Failed to create marketplace item');
+    } else {
+      const res = await gameApi.createGameDraft({
+        title, description, priceProposed: priceNum,
+        categoryId: categoryId || undefined, publishingType
+      });
+      if (res.success && res.data?.gameId) { setGameId(res.data.gameId); setStep(2); }
+      else alert(res.message || 'Failed to create game draft');
+    }
+  };
+
   // Handle Draft Creation (Step 1 submit)
-  const handleCreateDraft = async (e: React.FormEvent) => {
+  const handleCreateDraft = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!title) {
-      alert('Title is required');
-      return;
-    }
+    if (!title) { alert('Title is required'); return; }
     const priceNum = parseFloat(price);
-    if (isNaN(priceNum) || priceNum < 0) {
-      alert('Price must be a valid positive number');
-      return;
-    }
+    if (isNaN(priceNum) || priceNum < 0) { alert('Price must be a valid positive number'); return; }
 
     try {
-      if (publishProgram === 'marketplace') {
-        if (itemType === 'source_code') {
-          if (!godotVersion.trim()) {
-            alert('Godot Version requirement is required for source code listings');
-            return;
-          }
-          if (!githubRepoUrl.trim()) {
-            alert('GitHub Repository Link is required for source code listings');
-            return;
-          }
-        }
-        const res = await marketplaceApi.createMarketplaceItem({
-          title,
-          description,
-          price: priceNum,
-          itemType,
-          categoryId: categoryId || undefined,
-          godotVersion: itemType === 'source_code' ? godotVersion : undefined,
-          githubRepoUrl: itemType === 'source_code' ? githubRepoUrl : undefined,
-        });
-
-        if (res.success && res.data?.itemId) {
-          setGameId(res.data.itemId);
-          setStep(2);
-        } else {
-          alert(res.message || 'Failed to create marketplace item');
-        }
-      } else {
-        const res = await gameApi.createGameDraft({
-          title,
-          description,
-          priceProposed: priceNum,
-          categoryId: categoryId || undefined,
-          publishingType
-        });
-
-        if (res.success && res.data?.gameId) {
-          setGameId(res.data.gameId);
-          setStep(2);
-        } else {
-          alert(res.message || 'Failed to create game draft');
-        }
-      }
+      await submitDraft(priceNum);
     } catch (err: any) {
+      if (err.response?.data?.code === 'FACE_VERIFY_REQUIRED') {
+        requireFaceVerify(() => { submitDraft(priceNum); });
+        return;
+      }
       alert(err.response?.data?.message || err.message || 'Failed to initialize draft');
     }
   };
@@ -259,39 +243,32 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     setUploadError(null);
 
     try {
-      // 1. Get Presigned S3 PUT URL
-      let uploadUrl = '';
       if (publishProgram === 'marketplace') {
-        const urlRes = await marketplaceApi.getPresignedUrl(gameId, file.type);
-        if (!urlRes.success || !urlRes.data?.uploadUrl) {
-          throw new Error(urlRes.message || 'Failed to get upload URL');
+        // Marketplace: upload proxy 1 bước qua backend → StorageRouter (S3 / SeaweedFS)
+        const res = await marketplaceApi.uploadItemFile(gameId, file, (percent) => {
+          setUploadProgress(prev => ({ ...prev, [key]: percent }));
+        });
+        if (!res.success) {
+          throw new Error(res.message || 'Upload failed');
         }
-        uploadUrl = urlRes.data.uploadUrl;
       } else {
+        // Game: presigned S3 PUT trực tiếp (3 bước)
         const urlRes = await gameApi.getPresignedUrl(gameId, fileType, file.type);
         if (!urlRes.success || !urlRes.data?.uploadUrl) {
           throw new Error(urlRes.message || 'Failed to get upload URL');
         }
-        uploadUrl = urlRes.data.uploadUrl;
-      }
+        const uploadUrl = urlRes.data.uploadUrl;
 
-      // 2. Perform direct HTTP PUT binary upload to S3 (using raw axios instance, NO Bearer token)
-      await axios.put(uploadUrl, file, {
-        headers: {
-          'Content-Type': file.type
-        },
-        onUploadProgress: (progressEvent) => {
-          const total = progressEvent.total || file.size;
-          const percent = Math.round((progressEvent.loaded * 100) / total);
-          setUploadProgress(prev => ({ ...prev, [key]: percent }));
-        }
-      });
+        await axios.put(uploadUrl, file, {
+          headers: { 'Content-Type': file.type },
+          onUploadProgress: (progressEvent) => {
+            const total = progressEvent.total || file.size;
+            const percent = Math.round((progressEvent.loaded * 100) / total);
+            setUploadProgress(prev => ({ ...prev, [key]: percent }));
+          }
+        });
 
-      // 3. Confirm upload with Backend
-      const objectKey = extractObjectKey(uploadUrl);
-      if (publishProgram === 'marketplace') {
-        await marketplaceApi.confirmUploadComplete(gameId, objectKey);
-      } else {
+        const objectKey = extractObjectKey(uploadUrl);
         await gameApi.confirmUploadComplete(gameId, fileType, objectKey);
       }
 

@@ -11,3 +11,6 @@ workspace.xml
 
 # Logs
 *.log
+
+# Google Cloud credentials — KHÔNG commit
+*.json

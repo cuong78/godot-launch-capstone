@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -54,6 +55,30 @@ public class User {
 
     @Column(name = "session_hash", columnDefinition = "TEXT")
     private String sessionHash;
+
+    @Column(name = "face_verified", nullable = false)
+    private boolean faceVerified = false;
+
+    @Column(name = "kyc_verified", nullable = false)
+    private boolean kycVerified = false;
+
+    @Column(name = "kyc_full_name", columnDefinition = "TEXT")
+    private String kycFullName;
+
+    @Column(name = "kyc_id_number", columnDefinition = "TEXT")
+    private String kycIdNumber;
+
+    @Column(name = "kyc_date_of_birth")
+    private LocalDate kycDateOfBirth;
+
+    @Column(name = "kyc_address", columnDefinition = "TEXT")
+    private String kycAddress;
+
+    @Column(name = "kyc_document_type", columnDefinition = "TEXT")
+    private String kycDocumentType;
+
+    @Column(name = "kyc_verified_at")
+    private Instant kycVerifiedAt;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

@@ -23,14 +23,20 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle 401 Unauthorized
+// Response Interceptor: Handle 401 + FACE_VERIFY_REQUIRED (403)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    if (error.response?.status === 401) {
       tokenStorage.clear();
       if (window.location.pathname !== '/signin' && window.location.pathname !== '/signup') {
         window.location.href = '/signin';
+      }
+    }
+    if (error.response?.status === 403) {
+      const code = error.response?.data?.code;
+      if (code === 'FACE_VERIFY_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('face-verify-required'));
       }
     }
     return Promise.reject(error);

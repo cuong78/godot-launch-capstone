@@ -49,6 +49,10 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        if (!seller.isFaceVerified()) {
+            throw new AppException(ErrorCode.FACE_VERIFY_REQUIRED);
+        }
+
         MarketplaceItem item = new MarketplaceItem();
         item.setSeller(seller);
         item.setItemType(request.getItemType());

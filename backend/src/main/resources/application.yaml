@@ -55,6 +55,8 @@ aws:
 
 app:
   frontend-url: ${FRONTEND_URL}
+  face-service:
+    url: ${FACE_SERVICE_URL:http://localhost:8001}
   security:
     encryption-key: ${ENCRYPTION_KEY}
     recaptcha:

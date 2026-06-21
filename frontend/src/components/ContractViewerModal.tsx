@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, FileText, Download, PenTool, CheckCircle, Clock, ShieldCheck, XCircle, AlertTriangle } from 'lucide-react';
 import { ContractResponse, User } from '../types';
 import { SignaturePad } from './SignaturePad';
 import { Button } from './Button';
 import { Input } from './Input';
+import KycOcrModal from './KycOcrModal';
+import { kycApi } from '../api/kycApi';
 
 interface ContractViewerModalProps {
   contract: ContractResponse;
@@ -34,14 +36,35 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   const [sellerAddress, setSellerAddress] = useState(contract.sellerAddress || '');
   const [sellerTaxCode, setSellerTaxCode] = useState(contract.sellerTaxCode || '');
   const [devSignature, setDevSignature] = useState<string | null>(null);
-  
+
   // Admin signing states
   const [adminSignature, setAdminSignature] = useState<string | null>(null);
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+
+  // KYC gate: check on mount when developer needs to sign
+  const [showKycModal, setShowKycModal] = useState(false);
+
+  useEffect(() => {
+    if (mode !== 'sign-developer' || contract.signedAtSeller) return;
+    kycApi.getStatus().then((res) => {
+      if (res.success && res.data) {
+        if (!res.data.kycVerified) {
+          setShowKycModal(true);
+        } else {
+          // Auto-fill from stored KYC if fields are empty
+          if (!sellerRepresentative && res.data.fullName) setSellerRepresentative(res.data.fullName);
+          if (!sellerAddress && res.data.address) setSellerAddress(res.data.address);
+        }
+      }
+    }).catch(() => {
+      // KYC check failed — allow signing anyway (fail-open)
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stepper helper
   const getStepStatus = (step: 1 | 2 | 3) => {
@@ -120,6 +143,20 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   const handlePrint = () => {
     window.print();
   };
+
+  if (showKycModal) {
+    return createPortal(
+      <KycOcrModal
+        onSuccess={({ fullName, address }) => {
+          if (fullName) setSellerRepresentative(fullName);
+          if (address) setSellerAddress(address);
+          setShowKycModal(false);
+        }}
+        onClose={onClose}
+      />,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className="contract-modal-overlay fixed inset-0 z-[99999] flex justify-center items-start bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
