@@ -153,6 +153,13 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
+
+		<!-- SeaweedFS gRPC Java Client -->
+		<dependency>
+			<groupId>com.seaweedfs</groupId>
+			<artifactId>seaweedfs-client</artifactId>
+			<version>4.00</version>
+		</dependency>
 	</dependencies>
 
 	<build>

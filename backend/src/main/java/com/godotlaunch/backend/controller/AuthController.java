@@ -9,8 +9,9 @@ import com.godotlaunch.backend.dto.request.ResetPasswordRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
+import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.service.AuthService;
-import com.godotlaunch.backend.service.AwsS3Service;
+import com.godotlaunch.backend.service.impl.StorageRouter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,12 +27,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class AuthController {
 
     private final AuthService authService;
-    private final AwsS3Service awsS3Service;
+    private final StorageRouter storageRouter;
 
     @PostMapping("/avatar")
-    @Operation(summary = "Upload user avatar to S3", description = "Uploads a multipart file to S3 and returns the public url. Publicly accessible for profile creation during registration.")
+    @Operation(summary = "Upload user avatar", description = "Uploads avatar to configured storage provider and returns the public url.")
     public ResponseEntity<ApiResponse<String>> uploadAvatar(@RequestParam("file") MultipartFile file) {
-        String avatarUrl = awsS3Service.uploadFile(file, "avatars");
+        String avatarUrl = storageRouter.upload(FileType.avatar, file, "avatars");
         return ResponseEntity.ok(ApiResponse.success(avatarUrl, "Avatar uploaded successfully."));
     }
 

@@ -26,10 +26,10 @@ public class AwsS3Service {
     private final S3Presigner s3Presigner;
     private final S3Client s3Client;
 
-    @Value("${aws.s3.bucket-name}")
+    @Value("${aws.s3.bucket-name:dummy-bucket}")
     private String bucketName;
 
-    @Value("${aws.s3.region}")
+    @Value("${aws.s3.region:ap-southeast-1}")
     private String region;
 
     public AwsS3Service(S3Presigner s3Presigner, S3Client s3Client) {

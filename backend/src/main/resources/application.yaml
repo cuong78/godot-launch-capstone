@@ -1,7 +1,5 @@
 debug: false
 logging:
-  file:
-    name: backend.log
   level:
     com.godotlaunch.backend: DEBUG
     org.springframework.web: INFO
@@ -49,11 +47,11 @@ spring:
 
 aws:
   s3:
-    bucket-name: ${AWS_S3_BUCKET}
-    region: ${AWS_S3_REGION}
+    bucket-name: ${AWS_S3_BUCKET:placeholder-bucket}
+    region: ${AWS_S3_REGION:ap-southeast-1}
   credentials:
-    access-key: ${AWS_ACCESS_KEY}
-    secret-key: ${AWS_SECRET_KEY}
+    access-key: ${AWS_ACCESS_KEY:placeholder-access-key}
+    secret-key: ${AWS_SECRET_KEY:placeholder-secret-key}
 
 app:
   frontend-url: ${FRONTEND_URL}

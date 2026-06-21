@@ -3,8 +3,11 @@ package com.godotlaunch.backend.exception;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -53,6 +56,16 @@ public class GlobalExceptionHandler {
                 errorCode.getMessage()
         );
         return new ResponseEntity<>(response, errorCode.getHttpStatus());
+    }
+
+    @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(Exception ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        ApiResponse<Void> response = ApiResponse.error(
+                HttpStatus.UNAUTHORIZED.value(),
+                "Email hoặc mật khẩu không đúng."
+        );
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(Exception.class)
