@@ -8,6 +8,7 @@ import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.MarketplaceItem;
 import com.godotlaunch.backend.entity.User;
+import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.exception.AppException;
@@ -23,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -42,6 +44,19 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     private final AwsS3Service awsS3Service;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
+    private final StorageRouter storageRouter;
+
+    /** ObjectKey cố định cho zip của 1 marketplace item. */
+    private String buildObjectKey(UUID itemId) {
+        return "marketplace/items/" + itemId + "/project.zip";
+    }
+
+    /** FileType dùng cho routing — derive từ itemType. */
+    private FileType resolveFileType(MarketplaceItem item) {
+        return item.getItemType() == ItemType.source_code
+                ? FileType.source_code_zip
+                : FileType.asset;
+    }
 
     @Override
     @Transactional
@@ -195,8 +210,32 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         MarketplaceItem item = marketplaceItemRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
-        String objectKey = "marketplace/items/" + item.getId().toString() + "/project.zip";
+        String objectKey = buildObjectKey(item.getId());
         return awsS3Service.generatePresignedUploadUrl(objectKey, contentType);
+    }
+
+    @Override
+    @Transactional
+    public void uploadItemFile(UUID itemId, MultipartFile file, String uploaderEmail) {
+        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+
+        // Chỉ seller sở hữu item mới được upload
+        if (!item.getSeller().getEmail().equals(uploaderEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        String objectKey = buildObjectKey(item.getId());
+        FileType fileType = resolveFileType(item);
+
+        // Upload qua StorageRouter — tôn trọng routing config (S3 / SeaweedFS)
+        String fileUrl = storageRouter.uploadWithKey(fileType, file, objectKey);
+        item.setFileUrl(fileUrl);
+        marketplaceItemRepository.save(item);
+
+        asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, objectKey);
+        log.info("Marketplace item {} uploaded via StorageRouter ({}) with key {}, virus scan started",
+                itemId, storageRouter.getProvider(fileType), objectKey);
     }
 
     @Override
@@ -205,11 +244,11 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         MarketplaceItem item = marketplaceItemRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
-        String actualKey = objectKey != null ? objectKey : "marketplace/items/" + item.getId().toString() + "/project.zip";
+        String actualKey = objectKey != null ? objectKey : buildObjectKey(item.getId());
         String fileUrl = awsS3Service.getFileUrl(actualKey);
         item.setFileUrl(fileUrl);
         marketplaceItemRepository.save(item);
-        
+
         asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, actualKey);
         log.info("Marketplace item {} upload confirmed with key {} and virus scan started", itemId, actualKey);
     }

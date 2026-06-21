@@ -10,9 +10,11 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Adapter cho AWS S3 — khởi tạo với config động từ DB (không dùng application.yaml).
@@ -69,5 +71,17 @@ public class AwsS3Adapter implements StorageService {
     @Override
     public String getPublicUrl(String objectKey) {
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, objectKey);
+    }
+
+    /**
+     * Đọc file từ S3 về dạng stream (dùng khi cần proxy file về client hoặc virus scan).
+     * Caller có trách nhiệm đóng stream sau khi dùng.
+     */
+    public InputStream readFile(String objectKey) {
+        GetObjectRequest req = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .build();
+        return s3Client.getObject(req);
     }
 }

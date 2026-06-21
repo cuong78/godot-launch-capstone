@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,6 +49,49 @@ public class StorageRouter {
         StorageService adapter = resolveAdapter(fileType.name());
         String objectKey = prefix + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
         return adapter.upload(file, objectKey);
+    }
+
+    /**
+     * Upload với objectKey cố định (không random) — dùng khi cần đọc lại file
+     * theo key đã biết, ví dụ virus scan marketplace zip.
+     * @return public URL
+     */
+    public String uploadWithKey(FileType fileType, MultipartFile file, String objectKey) {
+        StorageService adapter = resolveAdapter(fileType.name());
+        return adapter.upload(file, objectKey);
+    }
+
+    /**
+     * Đọc file về dạng InputStream theo objectKey — dispatch đúng provider.
+     * Caller có trách nhiệm đóng stream.
+     */
+    public InputStream getInputStream(FileType fileType, String objectKey) {
+        StorageService adapter = resolveAdapter(fileType.name());
+        if (adapter instanceof SeaweedFsAdapter seaweed) {
+            return seaweed.readFile(objectKey);
+        }
+        if (adapter instanceof AwsS3Adapter s3) {
+            return s3.readFile(objectKey);
+        }
+        throw new RuntimeException("getInputStream not supported for provider of file type: " + fileType);
+    }
+
+    /**
+     * Public URL của file theo objectKey — dispatch đúng provider.
+     */
+    public String getPublicUrl(FileType fileType, String objectKey) {
+        return resolveAdapter(fileType.name()).getPublicUrl(objectKey);
+    }
+
+    /**
+     * Provider hiện đang route cho fileType này ("aws_s3" | "seaweedfs").
+     */
+    public String getProvider(FileType fileType) {
+        Optional<StorageRouting> routing = routingRepository.findByFileTypeWithJoin(fileType.name());
+        if (routing.isEmpty()) {
+            throw new RuntimeException("No storage routing configured for file type: " + fileType);
+        }
+        return routing.get().getBucket().getAccount().getProvider();
     }
 
     /**

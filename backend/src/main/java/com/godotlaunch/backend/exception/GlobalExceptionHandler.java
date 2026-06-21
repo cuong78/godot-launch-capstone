@@ -24,11 +24,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException ex) {
         ErrorCode errorCode = ex.getErrorCode();
         log.warn("Application business exception occurred: [{} - {}]", errorCode.name(), ex.getMessage());
-        
-        ApiResponse<Void> response = ApiResponse.error(
-                errorCode.getHttpStatus().value(),
-                errorCode.getMessage()
-        );
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(false)
+                .status(errorCode.getHttpStatus().value())
+                .code(errorCode.name())
+                .message(errorCode.getMessage())
+                .build();
         return new ResponseEntity<>(response, errorCode.getHttpStatus());
     }
 

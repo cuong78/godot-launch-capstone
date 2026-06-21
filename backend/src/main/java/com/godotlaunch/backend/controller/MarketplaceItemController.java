@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
@@ -87,6 +88,17 @@ public class MarketplaceItemController {
             @RequestParam(defaultValue = "application/zip") String contentType) {
         String url = marketplaceItemService.getPresignedUploadUrl(id, contentType);
         return ResponseEntity.ok(ApiResponse.success(Map.of("uploadUrl", url), "Presigned URL generated successfully"));
+    }
+
+    @PostMapping(value = "/{id}/upload", consumes = "multipart/form-data")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Upload item ZIP qua proxy", description = "Upload file zip qua backend → StorageRouter (S3 hoặc SeaweedFS theo routing config). Dùng cho SeaweedFS vì không hỗ trợ presigned URL.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadItemFile(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        marketplaceItemService.uploadItemFile(id, file, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "File uploaded successfully"), "Success"));
     }
 
     @PostMapping("/{id}/upload-complete")

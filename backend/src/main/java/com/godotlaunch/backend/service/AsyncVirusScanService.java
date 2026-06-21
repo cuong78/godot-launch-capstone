@@ -1,11 +1,13 @@
 package com.godotlaunch.backend.service;
 
-import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.MarketplaceItem;
+import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
+import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.MarketplaceItemRepository;
+import com.godotlaunch.backend.service.impl.StorageRouter;
 import com.godotlaunch.backend.util.SafeZipUnpacker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,7 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -28,6 +31,7 @@ public class AsyncVirusScanService {
     private final AwsS3Service awsS3Service;
     private final GameRepository gameRepository;
     private final MarketplaceItemRepository marketplaceItemRepository;
+    private final StorageRouter storageRouter;
 
     /**
      * Thực hiện kiểm duyệt tệp tin ZIP tải lên từ S3 bất đồng bộ (Background thread).
@@ -117,31 +121,37 @@ public class AsyncVirusScanService {
     public void scanAndProcessMarketplaceItem(UUID itemId, String objectKey) {
         log.info("Bắt đầu quy trình kiểm duyệt an toàn bất đồng bộ cho marketplace item: {}, objectKey: {}", itemId, objectKey);
 
-        if (!marketplaceItemRepository.existsById(itemId)) {
+        MarketplaceItem item = marketplaceItemRepository.findById(itemId).orElse(null);
+        if (item == null) {
             log.warn("Không tìm thấy MarketplaceItem với id {} để tiến hành quét bảo mật.", itemId);
             return;
         }
 
+        // FileType để StorageRouter resolve đúng provider (S3 / SeaweedFS) — khớp với lúc upload
+        FileType fileType = item.getItemType() == ItemType.source_code
+                ? FileType.source_code_zip
+                : FileType.asset;
+
         Path tempDir = null;
         try {
-            // Bước 1: Quét virus dạng Stream trực tiếp từ S3 qua ClamAV daemon
+            // Bước 1: Quét virus dạng Stream trực tiếp từ storage qua ClamAV daemon
             boolean isClean;
-            try (ResponseInputStream<GetObjectResponse> inputStream = awsS3Service.getObjectStream(objectKey)) {
+            try (InputStream inputStream = storageRouter.getInputStream(fileType, objectKey)) {
                 isClean = clamAVService.scanStream(inputStream);
             }
 
             if (!isClean) {
                 log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin tải lên của marketplace item: {}. Tiến hành xóa tệp và gỡ bỏ sản phẩm.", itemId);
                 updateMarketplaceItemStatus(itemId, ItemStatus.removed);
-                awsS3Service.deleteObject(objectKey);
+                storageRouter.delete(fileType, objectKey);
                 return;
             }
 
             log.info("Quét mã độc hoàn tất: AN TOÀN cho marketplace item: {}", itemId);
 
-            // Bước 2: Tải file nén về giải nén an toàn để chống Zip Bomb / Zip Slip
+            // Bước 2: Giải nén an toàn để chống Zip Bomb / Zip Slip
             tempDir = Files.createTempDirectory("marketplace_scan_" + itemId.toString());
-            try (ResponseInputStream<GetObjectResponse> inputStream = awsS3Service.getObjectStream(objectKey)) {
+            try (InputStream inputStream = storageRouter.getInputStream(fileType, objectKey)) {
                 SafeZipUnpacker.unzipSafely(inputStream, tempDir);
             }
 
@@ -151,9 +161,9 @@ public class AsyncVirusScanService {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với marketplace item: {}: {}", itemId, e.getMessage());
             updateMarketplaceItemStatus(itemId, ItemStatus.removed);
             try {
-                awsS3Service.deleteObject(objectKey);
+                storageRouter.delete(fileType, objectKey);
             } catch (Exception ex) {
-                log.warn("Không thể xóa file độc hại trên S3: {}", objectKey, ex);
+                log.warn("Không thể xóa file độc hại trên storage: {}", objectKey, ex);
             }
         } catch (Exception e) {
             log.error("Lỗi xảy ra trong quá trình quét bảo mật marketplace item: {}.", itemId, e);
