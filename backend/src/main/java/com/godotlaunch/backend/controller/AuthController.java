@@ -28,7 +28,7 @@ public class AuthController {
     private final AuthService authService;
     private final AwsS3Service awsS3Service;
 
-    @PostMapping("/avatar")
+    @PostMapping(value = "/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload user avatar to S3", description = "Uploads a multipart file to S3 and returns the public url. Publicly accessible for profile creation during registration.")
     public ResponseEntity<ApiResponse<String>> uploadAvatar(@RequestParam("file") MultipartFile file) {
         String avatarUrl = awsS3Service.uploadFile(file, "avatars");
