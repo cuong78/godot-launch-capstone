@@ -5,10 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-import com.godotlaunch.backend.entity.enums.ReactionType;
-
 import java.time.Instant;
 import java.util.UUID;
 

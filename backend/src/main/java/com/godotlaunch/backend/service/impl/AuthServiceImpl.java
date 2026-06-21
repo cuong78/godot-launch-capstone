@@ -99,7 +99,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public JwtAuthenticationResponse signIn(SignInRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -117,8 +117,19 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        String token = jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName());
+        return buildSessionResponse(user);
+    }
 
+    /**
+     * Tạo sessionSecret mới, lưu SHA-256(sessionSecret) vào DB, generate JWT.
+     * Mỗi lần login → session mới → token cũ bị revoke tự động.
+     */
+    private JwtAuthenticationResponse buildSessionResponse(User user) {
+        String sessionSecret = UUID.randomUUID().toString();
+        user.setSessionHash(JwtProvider.hashSessionSecret(sessionSecret));
+        userRepository.save(user);
+
+        String token = jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName(), sessionSecret);
         return JwtAuthenticationResponse.builder()
                 .token(token)
                 .user(mapToUserResponse(user))
@@ -175,11 +186,7 @@ public class AuthServiceImpl implements AuthService {
                 throw new AppException(ErrorCode.INVALID_CREDENTIALS);
             }
 
-            String token = jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName());
-            return JwtAuthenticationResponse.builder()
-                    .token(token)
-                    .user(mapToUserResponse(user))
-                    .build();
+            return buildSessionResponse(user);
 
         } catch (AppException ae) {
             throw ae;
@@ -328,11 +335,7 @@ public class AuthServiceImpl implements AuthService {
                 throw new AppException(ErrorCode.INVALID_CREDENTIALS);
             }
 
-            String token = jwtProvider.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole().getName());
-            return JwtAuthenticationResponse.builder()
-                    .token(token)
-                    .user(mapToUserResponse(savedUser))
-                    .build();
+            return buildSessionResponse(savedUser);
 
         } catch (AppException ae) {
             throw ae;
@@ -388,6 +391,16 @@ public class AuthServiceImpl implements AuthService {
         if (!isOtpValid) {
             throw new AppException(ErrorCode.INVALID_OTP);
         }
+    }
+
+    @Override
+    @Transactional
+    public void logout(String email) {
+        // Xóa sessionHash → token cũ không còn match DB → bị revoke ngay
+        userRepository.findByEmail(email).ifPresent(user -> {
+            user.setSessionHash(null);
+            userRepository.save(user);
+        });
     }
 
     private UserResponse mapToUserResponse(User user) {

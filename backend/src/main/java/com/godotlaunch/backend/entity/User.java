@@ -52,6 +52,9 @@ public class User {
     @Column(name = "github_linked_at")
     private Instant githubLinkedAt;
 
+    @Column(name = "session_hash", columnDefinition = "TEXT")
+    private String sessionHash;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 

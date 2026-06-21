@@ -12,13 +12,19 @@ import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.entity.enums.FileType;
+import com.godotlaunch.backend.security.JwtProvider;
 import com.godotlaunch.backend.service.AuthService;
 import com.godotlaunch.backend.service.impl.StorageRouter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,67 +36,127 @@ public class AuthController {
 
     private final AuthService authService;
     private final StorageRouter storageRouter;
+    private final JwtProvider jwtProvider;
+
+    private static final String COOKIE_NAME = "app_token";
+    private static final int COOKIE_MAX_AGE = 86400; // 24h (seconds)
 
     @PostMapping(value = "/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Upload user avatar to S3", description = "Uploads a multipart file to S3 and returns the public url. Publicly accessible for profile creation during registration.")
+    @Operation(summary = "Upload user avatar")
     public ResponseEntity<ApiResponse<String>> uploadAvatar(@RequestParam("file") MultipartFile file) {
         String avatarUrl = storageRouter.upload(FileType.avatar, file, "avatars");
         return ResponseEntity.ok(ApiResponse.success(avatarUrl, "Avatar uploaded successfully."));
     }
 
     @PostMapping("/signup")
-    @Operation(summary = "Register a new user", description = "Creates a new user profile with selected roles (customer/developer). Defaults to 'customer'.")
+    @Operation(summary = "Register a new user")
     public ResponseEntity<ApiResponse<UserResponse>> signUp(@Valid @RequestBody SignUpRequest request) {
-        UserResponse response = authService.signUp(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "User registered successfully."));
+        return ResponseEntity.ok(ApiResponse.success(authService.signUp(request), "User registered successfully."));
     }
 
     @PostMapping("/signin")
-    @Operation(summary = "Authenticate user and get JWT", description = "Verifies email and password, returning user profile details and standard JWT token.")
-    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> signIn(@Valid @RequestBody SignInRequest request) {
-        JwtAuthenticationResponse response = authService.signIn(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Login successful."));
+    @Operation(summary = "Authenticate user and get JWT + httpOnly cookie")
+    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> signIn(
+            @Valid @RequestBody SignInRequest request,
+            HttpServletResponse response) {
+        JwtAuthenticationResponse authResponse = authService.signIn(request);
+        setAuthCookie(response, authResponse.getToken());
+        return ResponseEntity.ok(ApiResponse.success(authResponse, "Login successful."));
     }
 
     @PostMapping("/google")
-    @Operation(summary = "Authenticate with Google", description = "Validates Google ID token and returns standard JWT token.")
-    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
-        JwtAuthenticationResponse response = authService.loginWithGoogle(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Google login successful."));
+    @Operation(summary = "Authenticate with Google")
+    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> loginWithGoogle(
+            @Valid @RequestBody GoogleLoginRequest request,
+            HttpServletResponse response) {
+        JwtAuthenticationResponse authResponse = authService.loginWithGoogle(request);
+        setAuthCookie(response, authResponse.getToken());
+        return ResponseEntity.ok(ApiResponse.success(authResponse, "Google login successful."));
     }
 
     @PostMapping("/github")
-    @Operation(summary = "Authenticate with GitHub", description = "Exchanges GitHub auth code and returns standard JWT token.")
-    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> loginWithGitHub(@Valid @RequestBody GitHubLoginRequest request) {
-        JwtAuthenticationResponse response = authService.loginWithGitHub(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "GitHub login successful."));
+    @Operation(summary = "Authenticate with GitHub")
+    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> loginWithGitHub(
+            @Valid @RequestBody GitHubLoginRequest request,
+            HttpServletResponse response) {
+        JwtAuthenticationResponse authResponse = authService.loginWithGitHub(request);
+        setAuthCookie(response, authResponse.getToken());
+        return ResponseEntity.ok(ApiResponse.success(authResponse, "GitHub login successful."));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Logout — revoke session + clear cookie")
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request, HttpServletResponse response) {
+        // Lấy email từ JWT hiện tại (Bearer hoặc cookie)
+        String token = resolveToken(request);
+        if (token != null && jwtProvider.validateToken(token)) {
+            String email = jwtProvider.getUsernameFromToken(token);
+            authService.logout(email);
+        }
+        clearAuthCookie(response);
+        return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully."));
     }
 
     @PostMapping("/forgot-password")
-    @Operation(summary = "Request password reset OTP", description = "Checks email registration and sends a 6-digit OTP code to the user's email.")
+    @Operation(summary = "Request password reset OTP")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.requestPasswordReset(request);
         return ResponseEntity.ok(ApiResponse.success(null, "OTP verification code sent to your email."));
     }
 
     @PostMapping("/reset-password")
-    @Operation(summary = "Reset password with OTP", description = "Validates the OTP code and updates the user's password.")
+    @Operation(summary = "Reset password with OTP")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
-        return ResponseEntity.ok(ApiResponse.success(null, "Password reset successfully. You can now log in with your new password."));
+        return ResponseEntity.ok(ApiResponse.success(null, "Password reset successfully."));
     }
 
     @PostMapping("/signup/otp")
-    @Operation(summary = "Send OTP for signup verification", description = "Generates a 6-digit OTP and sends it to the user's email if the email is not already registered.")
+    @Operation(summary = "Send OTP for signup verification")
     public ResponseEntity<ApiResponse<Void>> requestSignupOtp(@Valid @RequestBody SignupOtpRequest request) {
         authService.requestSignupOtp(request);
         return ResponseEntity.ok(ApiResponse.success(null, "OTP verification code sent to your email."));
     }
 
     @PostMapping("/signup/otp/verify")
-    @Operation(summary = "Verify OTP for signup", description = "Validates the OTP code for the given email to allow proceeding with registration.")
+    @Operation(summary = "Verify OTP for signup")
     public ResponseEntity<ApiResponse<Void>> verifySignupOtp(@Valid @RequestBody VerifyOtpRequest request) {
         authService.verifySignupOtp(request);
         return ResponseEntity.ok(ApiResponse.success(null, "OTP verified successfully."));
+    }
+
+    // ── Cookie helpers ────────────────────────────────────────
+
+    /**
+     * Set httpOnly cookie "app_token" — JavaScript không đọc được,
+     * browser tự gửi kèm mọi request đến cùng domain.
+     */
+    private void setAuthCookie(HttpServletResponse response, String token) {
+        Cookie cookie = new Cookie(COOKIE_NAME, token);
+        cookie.setHttpOnly(true);   // JS không đọc được → chống XSS
+        cookie.setSecure(false);    // true khi deploy HTTPS production
+        cookie.setPath("/");
+        cookie.setMaxAge(COOKIE_MAX_AGE);
+        response.addCookie(cookie);
+    }
+
+    private void clearAuthCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie(COOKIE_NAME, "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);
+        cookie.setPath("/");
+        cookie.setMaxAge(0); // xóa cookie ngay
+        response.addCookie(cookie);
+    }
+
+    private String resolveToken(HttpServletRequest request) {
+        String bearer = request.getHeader("Authorization");
+        if (bearer != null && bearer.startsWith("Bearer ")) return bearer.substring(7);
+        if (request.getCookies() != null) {
+            for (Cookie c : request.getCookies()) {
+                if (COOKIE_NAME.equals(c.getName())) return c.getValue();
+            }
+        }
+        return null;
     }
 }

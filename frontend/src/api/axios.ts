@@ -6,9 +6,12 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Gửi httpOnly cookie kèm theo mọi request (same-origin)
+  withCredentials: true,
 });
 
-// Request Interceptor: Attach JWT Token if present
+// Request Interceptor: Attach JWT Token nếu có trong localStorage
+// (httpOnly cookie được browser tự gửi — không cần đọc thủ công)
 api.interceptors.request.use(
   (config) => {
     const token = tokenStorage.getToken();
@@ -17,9 +20,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response Interceptor: Handle 401 Unauthorized

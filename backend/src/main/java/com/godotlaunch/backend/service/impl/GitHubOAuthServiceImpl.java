@@ -203,7 +203,10 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
             }
         }
 
-        // Step 5: Generate JWT
-        return jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName());
+        // Step 5: Generate JWT với sessionSecret để hỗ trợ revoke
+        String sessionSecret = UUID.randomUUID().toString();
+        user.setSessionHash(JwtProvider.hashSessionSecret(sessionSecret));
+        userRepository.save(user);
+        return jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName(), sessionSecret);
     }
 }

@@ -53,7 +53,8 @@ go-dot-launch-capstone-fptu/
 │       └── hooks/                   Custom React hooks
 ├── docs/
 │   ├── awsS3AndSeaweedfs.md         Setup AWS S3 + SeaweedFS, admin config guide
-│   └── githubOauth.md               GitHub OAuth setup, repo verify flow
+│   ├── githubOauth.md               GitHub OAuth setup, repo verify flow
+│   └── jwt-session-pattern.md       Revocable JWT: sessionSecret + SHA-256 DB + httpOnly cookie
 ├── docker-compose.seaweedfs.yml     Local SeaweedFS (master:9333, volume:8081)
 ├── CLAUDE.md                        File này
 ├── README.md                        Tổng quan dự án

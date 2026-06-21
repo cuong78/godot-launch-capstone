@@ -21,4 +21,5 @@ public interface AuthService {
     void resetPassword(ResetPasswordRequest request);
     void requestSignupOtp(SignupOtpRequest request);
     void verifySignupOtp(VerifyOtpRequest request);
+    void logout(String email);
 }

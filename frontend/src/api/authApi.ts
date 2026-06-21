@@ -67,4 +67,9 @@ export const authApi = {
     const response = await api.post<ApiResponse<void>>('/api/auth/signup/otp/verify', { email, otp });
     return response.data;
   },
+
+  logout: async (): Promise<void> => {
+    // Gọi backend để revoke sessionHash + clear httpOnly cookie
+    await api.post('/api/auth/logout').catch(() => {});
+  },
 };
