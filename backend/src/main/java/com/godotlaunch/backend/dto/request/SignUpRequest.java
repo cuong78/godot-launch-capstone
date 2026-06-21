@@ -26,4 +26,7 @@ public class SignUpRequest {
     private String fullName;
 
     private String avatarUrl;
+
+    @NotBlank(message = "OTP verification code is required.")
+    private String otp;
 }
