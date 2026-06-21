@@ -25,7 +25,8 @@ import {
   FileText,
   PenTool,
   Gamepad2,
-  ShoppingBag
+  ShoppingBag,
+  Database
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
@@ -36,6 +37,7 @@ import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
+import { AdminStoragePanel } from '../components/AdminStoragePanel';
 
 interface PendingAsset {
   id: string;
@@ -86,7 +88,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'logs' | 'settings'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'logs' | 'settings' | 'storage'>('moderation');
   
   // Real Game Moderation state
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
@@ -585,6 +587,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'settings' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
           <Settings size={14} /> Platform Settings
+        </button>
+        <button
+          onClick={() => setActiveTab('storage')}
+          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'storage' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+        >
+          <Database size={14} /> Storage
         </button>
       </div>
 
@@ -1243,6 +1251,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </div>
           </div>
         )}
+
+        {/* Tab 5: Storage Management */}
+        {activeTab === 'storage' && <AdminStoragePanel />}
 
         {/* Tab 4: Platform Settings */}
         {activeTab === 'settings' && (

@@ -418,7 +418,7 @@ export function CommunityHub({
             { id: 'home', label: 'All Community Feed', icon: <Home size={15} />, action: () => setGameIdFilter(undefined) },
             { id: 'discover', label: 'Discover Hub', icon: <Compass size={15} /> },
             { id: 'library', label: 'My Library', icon: <Gamepad2 size={15} /> },
-            { id: 'community', label: 'Community Sockets', icon: <MessageSquare size={15} /> },
+            { id: 'community', label: 'Community', icon: <MessageSquare size={15} /> },
             { id: 'settings', label: 'Account Settings', icon: <Settings size={15} /> }
           ].map((item) => (
             <button
@@ -540,7 +540,7 @@ export function CommunityHub({
                   <div className="flex gap-2 items-center">
                     <input 
                       type="text" 
-                      placeholder="Paste media S3 URL (ends in .png, .jpg, .mp4, etc.)..."
+                      placeholder="Paste image"
                       value={newMediaUrl}
                       onChange={(e) => setNewMediaUrl(e.target.value)}
                       onKeyDown={(e) => {
