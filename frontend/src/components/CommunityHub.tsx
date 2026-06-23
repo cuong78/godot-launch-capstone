@@ -60,8 +60,6 @@ export function CommunityHub({
 }: CommunityHubProps) {
   const { currentUser } = useAuth();
   
-  // Navigation active state inside Side Panel
-  const [activeSideNav, setActiveSideNav] = useState<'home' | 'discover' | 'library' | 'community' | 'settings'>('community');
   
   // Feed filtering & pagination states
   const [posts, setPosts] = useState<CommunityChatResponse[]>([]);
@@ -149,25 +147,6 @@ export function CommunityHub({
     e.target.value = '';
   };
 
-  // Suggested Developers to follow (mock UI representation)
-  const [suggestedDevs, setSuggestedDevs] = useState([
-    {
-      id: 'gdsage',
-      name: 'GDSage',
-      specialty: 'Shader Expert',
-      avatar: DEV_AVATARS.gdsage,
-      isFollowing: false,
-      followersCount: 1420
-    },
-    {
-      id: 'vectorvixen',
-      name: 'VectorVixen',
-      specialty: 'UI/UX Guru',
-      avatar: DEV_AVATARS.vectorvixen,
-      isFollowing: false,
-      followersCount: 980
-    }
-  ]);
 
   // Initial Load Feed
   useEffect(() => {
@@ -377,18 +356,6 @@ export function CommunityHub({
     setMediaUrls(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  const handleFollowDev = (devId: string) => {
-    setSuggestedDevs(prev => prev.map(dev => {
-      if (dev.id === devId) {
-        return {
-          ...dev,
-          isFollowing: !dev.isFollowing,
-          followersCount: dev.isFollowing ? dev.followersCount - 1 : dev.followersCount + 1
-        };
-      }
-      return dev;
-    }));
-  };
 
   const toggleCommentsExpansion = (postId: string) => {
     const isExpanded = !expandedPostComments[postId];
@@ -406,59 +373,8 @@ export function CommunityHub({
   return (
     <div id="community-hub-container" className="flex flex-col lg:flex-row gap-6 animate-fade-in relative z-10 w-full text-slate-700 dark:text-slate-200">
       
-      {/* SideNavBar - Column Left */}
-      <aside id="community-left-sidebar" className="hidden lg:flex flex-col w-64 h-fit sticky top-28 p-5 rounded-2xl bg-white/70 dark:bg-slate-900/45 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 shadow-sm space-y-6">
-        <div>
-          <h2 className="font-display font-bold text-base text-slate-800 dark:text-amber-400">Game Hub</h2>
-          <p className="text-[10px] text-slate-450 uppercase font-mono tracking-wider">Community Dashboard</p>
-        </div>
-
-        <nav className="flex flex-col gap-1.5">
-          {[
-            { id: 'home', label: 'All Community Feed', icon: <Home size={15} />, action: () => setGameIdFilter(undefined) },
-            { id: 'discover', label: 'Discover Hub', icon: <Compass size={15} /> },
-            { id: 'library', label: 'My Library', icon: <Gamepad2 size={15} /> },
-            { id: 'community', label: 'Community', icon: <MessageSquare size={15} /> },
-            { id: 'settings', label: 'Account Settings', icon: <Settings size={15} /> }
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveSideNav(item.id as any);
-                if (item.action) item.action();
-              }}
-              className={`flex items-center gap-3 w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl text-left transition-all ${activeSideNav === item.id && !gameIdFilter ? 'bg-amber-400 text-slate-900 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40'}`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Reaction Picker Visual Helper Widget */}
-        <div className="flex items-center gap-2 mb-3 bg-slate-100/50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800/40">
-          <img src={OIPImage} alt="Reaction emojis decoration backdrop sticker" className="w-12 h-12 object-contain" />
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase text-amber-500 font-mono">Custom Emojis</span>
-            <span className="text-[9px] text-slate-400 leading-tight">Hover/click Like to choose 6 custom reaction styles!</span>
-          </div>
-        </div>
-
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/50">
-          <button 
-            onClick={() => {
-              if (onNavigateToSeller) onNavigateToSeller();
-            }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-amber-400 hover:bg-amber-350 text-slate-900 rounded-xl text-xs font-bold font-display shadow-xs transition-studio"
-          >
-            <PlusCircle size={14} />
-            Publish Asset Pack
-          </button>
-        </div>
-      </aside>
-
       {/* Center Feed Column */}
-      <section id="community-feed-deck" className="flex-1 max-w-4xl space-y-6">
+      <section id="community-feed-deck" className="flex-1 max-w-4xl mx-auto space-y-6">
         
         {/* Filter tags feedback */}
         {(selectedTag || gameIdFilter) && (
@@ -579,23 +495,6 @@ export function CommunityHub({
                       <ImageIcon size={14} /> Select File
                     </button>
                     
-                    {/* Mock quick add image options to showcase visual look */}
-                    <button
-                      type="button"
-                      onClick={() => setMediaUrls(prev => [...prev, IMAGE_SEED_MAP.forest])}
-                      className="p-2 text-slate-500 hover:text-amber-500 hover:bg-amber-400/10 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-bold"
-                      title="Attach Voxel Forest Scene Mock"
-                    >
-                      +Forest Mock
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMediaUrls(prev => [...prev, IMAGE_SEED_MAP.sky])}
-                      className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-500/10 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-bold"
-                      title="Attach Sky Background Mock"
-                    >
-                      +Sky Mock
-                    </button>
                   </div>
 
                   <button
@@ -846,110 +745,6 @@ export function CommunityHub({
         )}
 
       </section>
-
-      {/* Right Column - Sideways widgets */}
-      <aside id="community-right-sidebar" className="w-full lg:w-80 space-y-6">
-        
-        {/* Trending Tags list cards */}
-        <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={16} className="text-amber-500" />
-            <h2 className="font-display font-bold text-sm text-slate-800 dark:text-white">Trending Keywords</h2>
-          </div>
-
-          <div className="space-y-2">
-            {[
-              { tag: 'Godot4', count: '2.4k' },
-              { tag: 'GDScript', count: '1.8k' },
-              { tag: 'Shader', count: '950' },
-              { tag: 'Pixel', count: '842' },
-              { tag: 'Water', count: '450' }
-            ].map((trend) => (
-              <button
-                key={trend.tag}
-                onClick={() => setSelectedTag(selectedTag === trend.tag ? null : trend.tag)}
-                className={`flex justify-between items-center w-full p-2 rounded-xl text-left transition-all ${selectedTag === trend.tag ? 'bg-amber-400 text-slate-950 font-bold' : 'hover:bg-slate-100/50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-300'}`}
-              >
-                <span className="text-xs font-medium">#{trend.tag}</span>
-                <span className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded ${selectedTag === trend.tag ? 'bg-slate-950/20 text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{trend.count}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Active Game Jam alerts */}
-        <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/60 dark:border-slate-800/60 overflow-hidden shadow-xs relative">
-          <div className="h-1 bg-amber-400 w-full" />
-          <div className="p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Calendar size={16} className="text-amber-500" />
-              <h2 className="font-display font-bold text-sm text-slate-800 dark:text-white">Active Jams</h2>
-            </div>
-
-            <div className="space-y-4">
-              <div className="relative pl-3 border-l-2 border-amber-400 space-y-1">
-                <p className="font-display font-bold text-xs text-slate-850 dark:text-white">Daylight Jam #42</p>
-                <p className="text-[10px] text-slate-400 font-mono">Ends in: 2d 14h</p>
-                
-                {/* Avatars overlay group */}
-                <div className="flex -space-x-1.5 pt-1">
-                  <img className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 shadow-sm" src={DEV_AVATARS.jammer1} alt="Jammer avatar" />
-                  <img className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 shadow-sm" src={DEV_AVATARS.jammer2} alt="Jammer avatar" />
-                  <img className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 shadow-sm" src={DEV_AVATARS.jammer3} alt="Jammer avatar" />
-                  <div className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 text-[8px] font-bold flex items-center justify-center text-slate-500 font-mono">+12</div>
-                </div>
-              </div>
-
-              <div className="relative pl-3 border-l-2 border-sky-400 space-y-1">
-                <p className="font-display font-bold text-xs text-slate-850 dark:text-white">Mini-Boss Challenge</p>
-                <p className="text-[10px] text-slate-400 font-mono font-semibold text-rose-500">Ends in: 4h 20m</p>
-                <button 
-                  onClick={() => alert('Launching mini challenge entry board! Create a unique voxel boss sprite to acquire rewards.')}
-                  className="text-[10px] text-sky-500 hover:underline font-bold transition-all pt-0.5"
-                >
-                  View current submissions &rarr;
-                </button>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => onNavigateToMarketplace && onNavigateToMarketplace()}
-              className="w-full block py-2 rounded-xl text-center border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800/40 font-display transition-colors"
-            >
-              Explore Sandbox Assets
-            </button>
-          </div>
-        </div>
-
-        {/* Suggested creators follow card */}
-        <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 shadow-xs">
-          <h2 className="font-display font-bold text-xs text-slate-400 uppercase tracking-wider mb-4">Suggested creators</h2>
-          
-          <div className="space-y-4">
-            {suggestedDevs.map((dev) => (
-              <div key={dev.id} className="flex items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 flex-shrink-0">
-                    <img referrerPolicy="no-referrer" src={dev.avatar} alt={dev.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-bold text-xs text-slate-850 dark:text-white">{dev.name}</h3>
-                    <p className="text-[9px] text-slate-450 font-mono">{dev.specialty} • {dev.followersCount} dev</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleFollowDev(dev.id)}
-                  className={`p-1.5 rounded-lg border transition-all ${dev.isFollowing ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'hover:bg-amber-400 hover:text-slate-900 text-slate-500 border-slate-200 dark:border-slate-800'}`}
-                >
-                  {dev.isFollowing ? <Check size={13} /> : <UserPlus size={13} />}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </aside>
 
     </div>
   );

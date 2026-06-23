@@ -5,7 +5,7 @@ import { AdminHeader } from './components/AdminHeader';
 import { Footer } from './components/Footer';
 import { Asset, Project, User, ScreenType, CommunityChatResponse, UserSummary, ReactionType } from './types';
 import { Button } from './components/Button';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 
 // Modular Page Components
 import { HomePage } from './page/HomePage';
@@ -303,6 +303,20 @@ export default function App() {
     }
   };
   const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (darkMode) {
@@ -421,7 +435,7 @@ export default function App() {
   const handleAddToCart = (asset: Asset, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!currentUser) {
-      alert("You must log in to add items to your cart!");
+      showToast("Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng!", "warning");
       setCurrentScreen('signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -441,7 +455,7 @@ export default function App() {
   // Simulating standard checkout action which completes and increments stats!
   const handleCheckout = () => {
     if (!currentUser) {
-      alert("You must log in to make a purchase!");
+      showToast("Bạn cần đăng nhập để mua hàng!", "warning");
       setCurrentScreen('signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -455,7 +469,7 @@ export default function App() {
     }));
     setCart([]);
     setIsCartOpen(false);
-    alert(`Thank you for your purchase! Simulation completed successfully. Revenue metrics updated in developer's dashboard.`);
+    showToast("Cảm ơn bạn đã mua hàng! Giao dịch đã hoàn tất và doanh thu đã cập nhật thành công.", "success");
   };
 
   // Community Actions for Detail Screen
@@ -463,29 +477,29 @@ export default function App() {
     try {
       await communityApi.reactToPost(postId, { reactionType: type });
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to react to post");
+      showToast(err.response?.data?.message || "Không thể tương tác với bài viết", "error");
     }
   };
 
   const handleSharePost = async (postId: string) => {
-    const shareMessage = window.prompt("Introduce this shared post (optional):");
+    const shareMessage = window.prompt("Giới thiệu bài đăng được chia sẻ này (tùy chọn):");
     if (shareMessage === null) return;
     try {
       await communityApi.sharePost(postId, { message: shareMessage });
-      alert("Post shared successfully!");
+      showToast("Chia sẻ bài viết thành công!", "success");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to share post");
+      showToast(err.response?.data?.message || "Không thể chia sẻ bài viết", "error");
     }
   };
 
   const handleDeletePost = async (postId: string) => {
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) return;
     try {
       await communityApi.deletePost(postId);
-      alert("Post deleted successfully!");
+      showToast("Xóa bài viết thành công!", "success");
       setCurrentScreen('community');
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to delete post");
+      showToast(err.response?.data?.message || "Không thể xóa bài viết", "error");
     }
   };
 
@@ -542,7 +556,7 @@ export default function App() {
   ];
 
   return (
-    <div id="godotlaunch-root" className={`${darkMode ? 'dark bg-transparent text-slate-100' : 'bg-transparent text-slate-800'} min-h-screen font-sans transition-colors duration-300 relative`}>
+    <div id="godotlaunch-root" className={`${darkMode ? 'dark bg-transparent text-slate-100' : 'bg-transparent text-slate-800'} min-h-screen flex flex-col font-sans transition-colors duration-300 relative`}>
       
       {/* 3D Voxel Nature Environment Background */}
       <img 
@@ -592,11 +606,12 @@ export default function App() {
           setSelectedAssetId={setSelectedAssetId}
           setSelectedPost={setSelectedPost}
           setSelectedAuthor={setSelectedAuthor}
+          showToast={showToast}
         />
       )}
 
       {/* PRIMARY VIEWS SWITCHER WITH STUNNING ACCENTUATIONS */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10 flex-grow">
         
         {currentScreen === 'explore' && (
           <HomePage
@@ -775,6 +790,37 @@ export default function App() {
 
       {/* FOOTER ACCENTS SECTION */}
       <Footer setCurrentScreen={setCurrentScreen} />
+
+      {/* Toast Notifications */}
+      {toast && (
+        <div 
+          className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 max-w-md p-4 rounded-xl shadow-2xl border backdrop-blur-md animate-toast-in transition-all duration-300"
+          style={{
+            backgroundColor: darkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+            borderColor: toast.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 
+                         toast.type === 'warning' ? 'rgba(245, 158, 11, 0.3)' : 
+                         toast.type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(56, 189, 248, 0.3)'
+          }}
+        >
+          <div className="flex-shrink-0">
+            {toast.type === 'success' && <CheckCircle className="text-emerald-500 w-5 h-5" />}
+            {toast.type === 'warning' && <AlertTriangle className="text-amber-500 w-5 h-5 animate-pulse" />}
+            {toast.type === 'error' && <ShieldAlert className="text-rose-500 w-5 h-5" />}
+            {toast.type === 'info' && <Info className="text-sky-500 w-5 h-5" />}
+          </div>
+          <div className="flex-grow text-xs sm:text-sm font-semibold tracking-wide pr-2">
+            <span className={darkMode ? 'text-slate-200' : 'text-slate-800'}>
+              {toast.message}
+            </span>
+          </div>
+          <button 
+            onClick={() => setToast(null)}
+            className="flex-shrink-0 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 p-1 rounded-md hover:bg-slate-100/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
     </div>
   );
