@@ -33,6 +33,7 @@ import OIPImage from '../../assets/OIP.webp';
 import { useAuth } from '../hooks/useAuth';
 import { useWebSocket } from '../context/WebSocketContext';
 import { communityApi } from '../api/communityApi';
+import { ReactionsModal } from './ReactionsModal';
 import { CommunityChatResponse, ReactionType, ChatMediaResponse, UserSummary } from '../types';
 
 interface CommunityHubProps {
@@ -91,6 +92,13 @@ export function CommunityHub({
   // Active Reaction per Post for current user
   const [myReactions, setMyReactions] = useState<{ [postId: string]: ReactionType }>({});
   const [hoveredPostReactionId, setHoveredPostReactionId] = useState<string | null>(null);
+
+  // Reactions Modal State
+  const [activeReactionsPostId, setActiveReactionsPostId] = useState<string | null>(null);
+
+  const handleOpenReactionsModal = (postId: string) => {
+    setActiveReactionsPostId(postId);
+  };
 
   // Reaction hover timeout manager
   const reactionTimeouts = React.useRef<{ [postId: string]: any }>({});
@@ -702,6 +710,22 @@ export function CommunityHub({
                     </div>
                   )}
 
+                  {/* Reaction Summary (Click to view who reacted) */}
+                  {post.reactionCount > 0 && (
+                    <button 
+                      onClick={() => handleOpenReactionsModal(post.id)}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-500 dark:hover:text-amber-400 transition-colors mb-2 ml-1"
+                    >
+                      <div className="flex -space-x-1">
+                        <span className="inline-block text-[11px]">👍</span>
+                        {post.reactionCount > 1 && <span className="inline-block text-[11px]">❤️</span>}
+                      </div>
+                      <span className="hover:underline font-semibold">
+                        {post.reactionCount} {post.reactionCount === 1 ? 'người thích' : 'lượt tương tác'}
+                      </span>
+                    </button>
+                  )}
+
                   {/* Interactive Action counts bar */}
                   <div className="flex flex-wrap items-center gap-6 pt-3.5 border-t border-slate-150 dark:border-slate-850 text-xs text-slate-500 relative">
                     
@@ -796,6 +820,12 @@ export function CommunityHub({
 
       </section>
 
+      <ReactionsModal 
+        isOpen={activeReactionsPostId !== null}
+        onClose={() => setActiveReactionsPostId(null)}
+        postId={activeReactionsPostId || ''}
+        onViewAuthorProfile={onViewAuthorProfile}
+      />
     </div>
   );
 }

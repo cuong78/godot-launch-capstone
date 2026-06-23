@@ -68,6 +68,11 @@ export const communityApi = {
     return response.data;
   },
 
+  getReactions: async (id: string): Promise<ApiResponse<ChatReactionResponse[]>> => {
+    const response = await api.get<ApiResponse<ChatReactionResponse[]>>(`/api/v1/community/posts/${id}/reactions`);
+    return response.data;
+  },
+
   sharePost: async (id: string, data: SharePostRequest): Promise<ApiResponse<CommunityChatResponse>> => {
     const response = await api.post<ApiResponse<CommunityChatResponse>>(`/api/v1/community/posts/${id}/share`, data);
     return response.data;

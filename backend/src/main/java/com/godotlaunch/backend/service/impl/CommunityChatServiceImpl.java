@@ -345,6 +345,21 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         return response;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<ChatReactionResponse> getReactions(UUID id) {
+        CommunityChat post = communityChatRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.CHAT_NOT_FOUND));
+        if (post.isDeleted()) {
+            throw new AppException(ErrorCode.CHAT_NOT_FOUND);
+        }
+
+        java.util.List<ChatReaction> reactions = chatReactionRepository.findByChatId(id);
+        return reactions.stream()
+                .map(this::mapToReactionResponse)
+                .toList();
+    }
+
     // --- Private Helper Methods ---
 
     private void broadcastPostUpdate(CommunityChat post) {

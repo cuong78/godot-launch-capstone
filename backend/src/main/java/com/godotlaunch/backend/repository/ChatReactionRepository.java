@@ -13,4 +13,6 @@ public interface ChatReactionRepository extends JpaRepository<ChatReaction, UUID
     Optional<ChatReaction> findByChatIdAndUserId(UUID chatId, UUID userId);
 
     long countByChatId(UUID chatId);
+
+    java.util.List<ChatReaction> findByChatId(UUID chatId);
 }
