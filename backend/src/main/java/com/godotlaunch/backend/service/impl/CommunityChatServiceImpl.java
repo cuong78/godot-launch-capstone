@@ -14,6 +14,7 @@ import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.entity.enums.ReactionType;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -93,9 +94,6 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         logIp(currentUser, "post_chat");
 
-        CommunityChatResponse response = mapToResponse(post);
-        broadcastNewPost(response);
-        return response;
         auditLogService.publishAuto(
                 AuditAction.post_created,
                 AuditTarget.community_chat,
@@ -105,7 +103,9 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 "User created community post: " + (post.getMessage().length() > 50 ? post.getMessage().substring(0, 50) + "..." : post.getMessage())
         );
 
-        return mapToResponse(post);
+        CommunityChatResponse response = mapToResponse(post);
+        broadcastNewPost(response);
+        return response;
     }
 
     @Override
@@ -288,8 +288,8 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                     NotificationType.REACTION,
                     currentUser.getFullName() + " liked your post.",
                     post.getId().toString());
-                    post.getId().toString()
-            );
+                    post.getId().toString();
+
 
             auditLogService.publishAuto(
                     AuditAction.reaction_created,
