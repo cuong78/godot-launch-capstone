@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
-import { User, GameResponse, ContractResponse, MarketplaceItemResponse } from '../types';
+import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType } from '../types';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
@@ -38,6 +38,7 @@ import { marketplaceApi } from '../api/marketplaceApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { AdminStoragePanel } from '../components/AdminStoragePanel';
+import { auditLogApi } from '../api/auditLogApi';
 
 interface PendingAsset {
   id: string;
@@ -82,6 +83,55 @@ const getContractStatusLabel = (status: string, signedAtSeller?: string | null) 
         ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
         : { text: 'Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
   }
+};
+
+const AUDIT_ACTIONS = [
+  { value: 'user_registered', label: 'User Registered' },
+  { value: 'user_login_success', label: 'Login Success' },
+  { value: 'user_login_failed', label: 'Login Failed' },
+  { value: 'user_logged_out', label: 'Logged Out' },
+  { value: 'user_banned', label: 'User Banned' },
+  { value: 'user_unbanned', label: 'User Unbanned' },
+  { value: 'user_role_changed', label: 'User Role Changed' },
+  { value: 'game_submitted', label: 'Game Submitted' },
+  { value: 'game_approved', label: 'Game Approved' },
+  { value: 'game_rejected', label: 'Game Rejected' },
+  { value: 'game_published', label: 'Game Published' },
+  { value: 'game_updated', label: 'Game Updated' },
+  { value: 'contract_created', label: 'Contract Created' },
+  { value: 'contract_signed', label: 'Contract Signed' },
+  { value: 'contract_cancelled', label: 'Contract Cancelled' },
+  { value: 'security_alert', label: 'Security Alert' },
+  { value: 'post_created', label: 'Post Created' },
+  { value: 'comment_created', label: 'Comment Created' },
+  { value: 'reaction_created', label: 'Reaction Created' },
+  { value: 'chat_message_sent', label: 'Chat Message Sent' }
+];
+
+const AUDIT_TARGETS = [
+  { value: 'user', label: 'User' },
+  { value: 'game', label: 'Game' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'community_chat', label: 'Community Post/Comment' },
+  { value: 'chat_message', label: 'Direct Message' },
+  { value: 'ai_report', label: 'AI Report' },
+  { value: 'transaction', label: 'Transaction' },
+  { value: 'withdrawal', label: 'Withdrawal' }
+];
+
+const getActionBadgeClass = (action: string) => {
+  if (!action) return 'bg-slate-500/10 text-slate-500 border border-slate-500/20';
+  const lower = action.toLowerCase();
+  if (lower.includes('success') || lower.includes('approved') || lower.includes('signed')) {
+    return 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
+  }
+  if (lower.includes('failed') || lower.includes('banned') || lower.includes('rejected') || lower.includes('cancelled') || lower.includes('alert')) {
+    return 'bg-rose-500/10 text-rose-500 border border-rose-500/20';
+  }
+  if (lower.includes('submitted') || lower.includes('created') || lower.includes('sent')) {
+    return 'bg-sky-500/10 text-sky-500 border border-sky-500/20';
+  }
+  return 'bg-slate-500/10 text-slate-500 border border-slate-500/20';
 };
 
 export const AdminPage: React.FC<AdminPageProps> = ({
@@ -211,50 +261,89 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  // Real Audit Logs state
+  const [auditLogs, setAuditLogs] = useState<AuditLogResponse[]>([]);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalElements, setTotalElements] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [isLoadingLogs, setIsLoadingLogs] = useState<boolean>(false);
+  const [logsError, setLogsError] = useState<string | null>(null);
+
+  // Filters state
+  const [filterAction, setFilterAction] = useState<string>('');
+  const [filterTargetType, setFilterTargetType] = useState<string>('');
+  const [isActionDropdownOpen, setIsActionDropdownOpen] = useState(false);
+  const [isTargetDropdownOpen, setIsTargetDropdownOpen] = useState(false);
+  const [searchActorId, setSearchActorId] = useState<string>('');
+  const [searchTargetId, setSearchTargetId] = useState<string>('');
+  const [searchIpAddress, setSearchIpAddress] = useState<string>('');
+
+  // Selected Log for detail modal / expanded view
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  const fetchAuditLogs = async () => {
+    setIsLoadingLogs(true);
+    setLogsError(null);
+    try {
+      const params: AuditLogFilterParams = {
+        page: currentPage,
+        size: pageSize,
+        actorId: searchActorId.trim() || undefined,
+        action: (filterAction || undefined) as any,
+        targetType: (filterTargetType || undefined) as any,
+        targetId: searchTargetId.trim() || undefined,
+        ipAddress: searchIpAddress.trim() || undefined
+      };
+      const res = await auditLogApi.getAuditLogs(params);
+      if (res.success && res.data) {
+        setAuditLogs(res.data.content);
+        setTotalPages(res.data.totalPages);
+        setTotalElements(res.data.totalElements);
+      } else {
+        setLogsError(res.message || 'Failed to load audit logs');
+      }
+    } catch (err: any) {
+      setLogsError(err.response?.data?.message || err.message || 'Failed to fetch audit logs');
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
     } else if (activeTab === 'moderation') {
       fetchPendingGamesAndContracts();
       fetchPendingMarketplaceItems();
+    } else if (activeTab === 'logs') {
+      fetchAuditLogs();
     }
-  }, [activeTab]);
+  }, [activeTab, currentPage, pageSize, filterAction, filterTargetType]);
+
+  const handleApplyTextFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(0);
+    fetchAuditLogs();
+  };
+
+  const handleClearFilters = () => {
+    setFilterAction('');
+    setFilterTargetType('');
+    setSearchActorId('');
+    setSearchTargetId('');
+    setSearchIpAddress('');
+    setCurrentPage(0);
+    setTimeout(() => {
+      fetchAuditLogs();
+    }, 50);
+  };
 
   // Mock settings state
   const [commission, setCommission] = useState(15);
   const [maintenance, setMaintenance] = useState(false);
   const [announcement, setAnnouncement] = useState('GodotLaunch Matrix Engine Upgrade is complete!');
   const [settingsSuccess, setSettingsSuccess] = useState(false);
-
-  // Mock System Logs state
-  const [logs, setLogs] = useState<string[]>([
-    `[11:02:14] [SYSTEM] API Gateway successfully scaled to 3 container node nodes.`,
-    `[11:03:02] [DATABASE] Connected to Postgres Cloud cluster - Latency: 4ms.`,
-    `[11:04:45] [AUTH] Token issue request approved for user "NeoArtisans" (developer).`,
-    `[11:08:12] [BILLING] Payout batch #492 processed successfully: $4,842.20 distributed.`,
-    `[11:15:33] [WEBSOCKET] Client handshake completed: 184 concurrent creator connections.`
-  ]);
-
-  // Add random logs simulator
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (activeTab === 'logs') {
-        const services = ['SYSTEM', 'DATABASE', 'AUTH', 'WEBSOCKET', 'ASSETS'];
-        const msgs = [
-          'Memory compaction run completed. Cleared 284MB.',
-          'Database check completed. 0 locks active.',
-          'User session heartbeats synchronized.',
-          'New asset upload payload signature verified.',
-          'Marketplace index rebuild completed in 142ms.'
-        ];
-        const randomService = services[Math.floor(Math.random() * services.length)];
-        const randomMsg = msgs[Math.floor(Math.random() * msgs.length)];
-        const time = new Date().toTimeString().split(' ')[0];
-        setLogs(prev => [`[${time}] [${randomService}] ${randomMsg}`, ...prev.slice(0, 15)]);
-      }
-    }, 4500);
-    return () => clearInterval(interval);
-  }, [activeTab]);
 
   const handleApproveGame = async (game: GameResponse) => {
     if (!game.publishingType || game.publishingType === 'marketplace_listing') {
@@ -608,7 +697,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </div>
 
             {/* Moderation Sub-Tabs */}
-            <div className="flex bg-slate-100 dark:bg-slate-955 p-1 rounded-xl w-fit border border-slate-200 dark:border-slate-800/60 gap-1 mb-4">
+            <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl w-fit border border-slate-200 dark:border-slate-800/60 gap-1 mb-4">
               <button
                 onClick={() => setModerationSubTab('games')}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
@@ -980,7 +1069,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-955/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
                           <th className="p-3 w-10"></th>
                           <th className="p-3">Asset Details</th>
                           <th className="p-3">Item Type</th>
@@ -993,7 +1082,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {pendingMarketplaceItems.length > 0 ? (
                           pendingMarketplaceItems.map(item => (
                             <React.Fragment key={item.id}>
-                              <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-955/5 transition-colors ${expandedMarketplaceId === item.id ? 'bg-slate-50/50 dark:bg-slate-955/20' : ''}`}>
+                              <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-900/5 transition-colors ${expandedMarketplaceId === item.id ? 'bg-slate-50/50 dark:bg-slate-900/20' : ''}`}>
                                 <td className="p-3 w-10 text-center">
                                   <button
                                     onClick={() => setExpandedMarketplaceId(expandedMarketplaceId === item.id ? null : item.id)}
@@ -1048,7 +1137,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                               {/* Expanded row for marketplace item details */}
                               {expandedMarketplaceId === item.id && (
                                 <tr>
-                                  <td colSpan={6} className="p-6 bg-slate-50/10 dark:bg-slate-955/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
+                                  <td colSpan={6} className="p-6 bg-slate-50/10 dark:bg-slate-900/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-700 dark:text-slate-300">
                                       {/* Left Column: Details & Description */}
                                       <div className="space-y-4">
@@ -1077,7 +1166,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                       </div>
 
                                       {/* Right Column: Specifications & Links */}
-                                      <div className="space-y-3.5 bg-white/30 dark:bg-slate-955/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                      <div className="space-y-3.5 bg-white/30 dark:bg-slate-900/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                                         <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5">Technical & Creator Details</h4>
                                         <div className="space-y-2 text-xs">
                                           <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
@@ -1173,7 +1262,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
                     {users.map(u => (
                       <tr key={u.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
-                        <td className="p-3 font-semibold text-slate-800 dark:text-slate-100">@{u.username}</td>
+                        <td className="p-3">
+                          <div className="font-semibold text-slate-800 dark:text-slate-100">@{u.username}</div>
+                          <div className="text-[9px] text-slate-450 dark:text-slate-500 font-mono mt-0.5" title="Click to copy User ID">
+                            <span className="text-[8px] text-slate-400 dark:text-slate-650 uppercase mr-1 select-none">ID:</span>
+                            <span className="select-all break-all">{u.id}</span>
+                          </div>
+                        </td>
                         <td className="p-3 text-slate-600 dark:text-slate-350">{u.email}</td>
                         <td className="p-3">
                           <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
@@ -1204,8 +1299,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                               onClick={() => handleToggleUserStatus(u.id)}
                               className={`p-1 rounded cursor-pointer transition-studio ${
                                 u.status === 'active' 
-                                  ? 'bg-rose-50 dark:bg-rose-955/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100' 
-                                  : 'bg-emerald-50 dark:bg-emerald-955/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
+                                  ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100' 
+                                  : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
                               }`}
                               title={u.status === 'active' ? 'Suspend Account' : 'Activate Account'}
                             >
@@ -1213,7 +1308,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             </button>
                             <button
                               onClick={() => handleDeleteUser(u.id)}
-                              className="p-1 rounded cursor-pointer transition-studio bg-rose-50 dark:bg-rose-955/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
+                              className="p-1 rounded cursor-pointer transition-studio bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
                               title="Delete User"
                             >
                               <Trash2 size={14} />
@@ -1231,24 +1326,335 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
         {/* Tab 3: System Logs */}
         {activeTab === 'logs' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Real-time Node Telemetry Logs</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Read logs emitted by system clusters and microservices</p>
-              </div>
-              <span className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Live streaming active
-              </span>
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Security Audit Logs</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Track and monitor security events, administrative decisions, and user authentications</p>
             </div>
 
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl font-mono text-[11px] text-emerald-400 space-y-1.5 max-h-80 overflow-y-auto shadow-inner leading-relaxed">
-              {logs.map((log, idx) => (
-                <div key={idx} className="hover:bg-slate-900/50 py-0.5 rounded px-1 transition-colors">
-                  <span className="text-slate-500">[{idx + 1}]</span> {log}
+            {/* Filter Panel */}
+            <form onSubmit={handleApplyTextFilters} className="bg-slate-50/50 dark:bg-slate-900/30 backdrop-blur-md p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40 space-y-5 shadow-sm transition-studio">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {/* Action Filter */}
+                <div className="flex flex-col gap-1.5 relative">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-slate-400 font-bold">Action</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionDropdownOpen(!isActionDropdownOpen);
+                      setIsTargetDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-xs text-left outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 text-slate-800 dark:text-slate-200 transition-studio shadow-sm cursor-pointer"
+                  >
+                    <span className="truncate">
+                      {filterAction ? AUDIT_ACTIONS.find(act => act.value === filterAction)?.label || filterAction : 'All Actions'}
+                    </span>
+                    <ChevronDown size={14} className={`text-slate-500 transition-transform duration-200 ${isActionDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isActionDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-45" onClick={() => setIsActionDropdownOpen(false)} />
+                      <div className="absolute top-full left-0 right-0 mt-1.5 z-50 max-h-60 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-xl shadow-xl py-1.5 divide-y divide-slate-105 dark:divide-slate-800/40 animate-fade-in">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilterAction('');
+                            setCurrentPage(0);
+                            setIsActionDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-amber-400 hover:text-slate-950 transition-colors ${!filterAction ? 'bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-700 dark:text-slate-300'}`}
+                        >
+                          All Actions
+                        </button>
+                        {AUDIT_ACTIONS.map(act => (
+                          <button
+                            key={act.value}
+                            type="button"
+                            onClick={() => {
+                              setFilterAction(act.value);
+                              setCurrentPage(0);
+                              setIsActionDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-amber-400 hover:text-slate-950 transition-colors ${filterAction === act.value ? 'bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-700 dark:text-slate-300'}`}
+                          >
+                            {act.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
-              ))}
-            </div>
+
+                {/* Target Type Filter */}
+                <div className="flex flex-col gap-1.5 relative">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-slate-400 font-bold">Target Type</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsTargetDropdownOpen(!isTargetDropdownOpen);
+                      setIsActionDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-white/60 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-xs text-left outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 text-slate-800 dark:text-slate-200 transition-studio shadow-sm cursor-pointer"
+                  >
+                    <span className="truncate">
+                      {filterTargetType ? AUDIT_TARGETS.find(t => t.value === filterTargetType)?.label || filterTargetType : 'All Targets'}
+                    </span>
+                    <ChevronDown size={14} className={`text-slate-500 transition-transform duration-200 ${isTargetDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isTargetDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-45" onClick={() => setIsTargetDropdownOpen(false)} />
+                      <div className="absolute top-full left-0 right-0 mt-1.5 z-50 max-h-60 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-xl shadow-xl py-1.5 divide-y divide-slate-105 dark:divide-slate-800/40 animate-fade-in">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilterTargetType('');
+                            setCurrentPage(0);
+                            setIsTargetDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-amber-400 hover:text-slate-950 transition-colors ${!filterTargetType ? 'bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-700 dark:text-slate-300'}`}
+                        >
+                          All Targets
+                        </button>
+                        {AUDIT_TARGETS.map(t => (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => {
+                              setFilterTargetType(t.value);
+                              setCurrentPage(0);
+                              setIsTargetDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-amber-400 hover:text-slate-950 transition-colors ${filterTargetType === t.value ? 'bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-700 dark:text-slate-300'}`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Actor ID Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-slate-400 font-bold">Actor ID (UUID)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter User ID..."
+                    value={searchActorId}
+                    onChange={(e) => setSearchActorId(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl text-xs outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 text-slate-800 dark:text-slate-200 transition-studio placeholder-slate-400 dark:placeholder-slate-500 shadow-sm"
+                  />
+                </div>
+
+                {/* Target ID Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-slate-400 font-bold">Target ID (UUID)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter Target ID..."
+                    value={searchTargetId}
+                    onChange={(e) => setSearchTargetId(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl text-xs outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 text-slate-800 dark:text-slate-200 transition-studio placeholder-slate-400 dark:placeholder-slate-500 shadow-sm"
+                  />
+                </div>
+
+                {/* IP Address Filter */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-slate-400 font-bold">IP Address</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 127.0.0.1"
+                    value={searchIpAddress}
+                    onChange={(e) => setSearchIpAddress(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl text-xs outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 text-slate-800 dark:text-slate-200 transition-studio placeholder-slate-400 dark:placeholder-slate-500 shadow-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200/50 dark:border-slate-800/40">
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl text-xs font-semibold cursor-pointer transition-studio active:scale-95 shadow-sm"
+                >
+                  Clear Filters
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 hover:text-black font-bold rounded-xl text-xs shadow-md shadow-amber-400/10 hover:shadow-amber-400/20 transition-studio active:scale-95 cursor-pointer"
+                >
+                  Search
+                </button>
+              </div>
+            </form>
+
+            {/* Error or Loader */}
+            {isLoadingLogs ? (
+              <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
+                <RefreshCw className="animate-spin" size={18} /> Loading audit logs...
+              </div>
+            ) : logsError ? (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                Error loading audit logs: {logsError}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                        <th className="p-3 w-10"></th>
+                        <th className="p-3">Time & IP</th>
+                        <th className="p-3">Actor Info</th>
+                        <th className="p-3">Action Type</th>
+                        <th className="p-3">Target Reference</th>
+                        <th className="p-3">Note / Summary</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                      {auditLogs && auditLogs.length > 0 ? (
+                        auditLogs.map(log => (
+                          <React.Fragment key={log.id}>
+                            <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-900/5 transition-colors ${expandedLogId === log.id ? 'bg-slate-50/50 dark:bg-slate-900/10' : ''}`}>
+                              <td className="p-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                                  className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
+                                  title="View JSON Payload Diff"
+                                >
+                                  {expandedLogId === log.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                </button>
+                              </td>
+                              <td className="p-3">
+                                <div className="font-mono text-[10px] text-slate-800 dark:text-slate-200">
+                                  {new Date(log.createdAt).toLocaleString()}
+                                </div>
+                                <div className="text-[9px] text-slate-400 dark:text-slate-550 font-mono mt-0.5">
+                                  IP: {log.ipAddress || 'Unknown'}
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                {log.actorEmail ? (
+                                  <div className="font-semibold text-slate-850 dark:text-slate-200">
+                                    {log.actorEmail}
+                                  </div>
+                                ) : (
+                                  <div className="italic text-slate-450">Anonymous / System</div>
+                                )}
+                                {log.actorId && (
+                                  <div className="font-mono text-[9px] text-slate-450 dark:text-slate-500 mt-0.5" title={log.actorId}>
+                                    <span className="text-[8px] text-slate-400 dark:text-slate-600 uppercase mr-1 select-none">ID:</span>
+                                    <span className="select-all break-all">{log.actorId}</span>
+                                  </div>
+                                )}
+                                <span className="inline-block mt-1 px-1.5 py-0.2 bg-slate-105 dark:bg-slate-950 text-[9px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded font-mono">
+                                  {log.actorRole ? log.actorRole.toUpperCase() : 'UNKNOWN'}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono ${getActionBadgeClass(log.action)}`}>
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div className="font-semibold text-slate-655 dark:text-slate-400">
+                                  Type: {log.targetType}
+                                </div>
+                                {log.targetId && (
+                                  <div className="font-mono text-[9px] text-slate-450 dark:text-slate-500 mt-0.5" title={log.targetId}>
+                                    <span className="text-[8px] text-slate-400 dark:text-slate-600 uppercase mr-1 select-none">Ref ID:</span>
+                                    <span className="select-all break-all">{log.targetId}</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-3 text-slate-700 dark:text-slate-300 max-w-xs break-words">
+                                {log.note || 'No notes'}
+                              </td>
+                            </tr>
+
+                            {/* Expanded Data Diff Sub-Row */}
+                            {expandedLogId === log.id && (
+                              <tr>
+                                <td colSpan={6} className="p-4 bg-slate-50/20 dark:bg-slate-900/30 border-t border-b border-slate-200/50 dark:border-slate-800/55">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                                    <div>
+                                      <span className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Old Value (Before)</span>
+                                      <pre className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl overflow-x-auto text-[10px] text-slate-800 dark:text-slate-300 max-h-48 leading-normal">
+                                        {log.oldValue ? (
+                                          (() => {
+                                            try {
+                                              return JSON.stringify(JSON.parse(log.oldValue), null, 2);
+                                            } catch (e) {
+                                              return log.oldValue;
+                                            }
+                                          })()
+                                        ) : 'NULL'}
+                                      </pre>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">New Value (After)</span>
+                                      <pre className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl overflow-x-auto text-[10px] text-slate-800 dark:text-slate-300 max-h-48 leading-normal">
+                                        {log.newValue ? (
+                                          (() => {
+                                            try {
+                                              return JSON.stringify(JSON.parse(log.newValue), null, 2);
+                                            } catch (e) {
+                                              return log.newValue;
+                                            }
+                                          })()
+                                        ) : 'NULL'}
+                                      </pre>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                            No audit logs found matching the selected filters.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination footer */}
+                {totalPages > 1 && (
+                  <div className="flex justify-between items-center bg-white dark:bg-slate-900/10 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+                    <span className="text-xs text-slate-500 font-mono">
+                      Page {currentPage + 1} of {totalPages} ({totalElements} logs)
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                        disabled={currentPage === 0 || isLoadingLogs}
+                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold transition-studio disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                        disabled={currentPage >= totalPages - 1 || isLoadingLogs}
+                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800/80 rounded-lg text-xs font-semibold transition-studio disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
