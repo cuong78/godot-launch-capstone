@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.dto.response;
 
+import com.godotlaunch.backend.entity.enums.ReactionType;
 import lombok.*;
 
 import java.time.Instant;
@@ -25,6 +26,7 @@ public class CommunityChatResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private CommunityChatResponse originalChat;
+    private ReactionType currentUserReaction;
 
     @Getter
     @Setter

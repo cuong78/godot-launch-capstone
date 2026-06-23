@@ -318,6 +318,35 @@ export default function App() {
     }
   }, [toast]);
 
+  // Listen for public WebSocket-driven community post updates
+  useEffect(() => {
+    const handlePostUpdate = (e: Event) => {
+      const data = (e as CustomEvent).detail;
+      if (data.type === 'DELETE_POST') {
+        const { postId } = data;
+        setSelectedPost(prev => {
+          if (prev && prev.id === postId) {
+            return null;
+          }
+          return prev;
+        });
+      } else if (data.type === 'POST_COUNT_UPDATE') {
+        const { postId, reactionCount, commentCount, shareCount } = data;
+        setSelectedPost(prev => {
+          if (prev && prev.id === postId) {
+            return { ...prev, reactionCount, commentCount, shareCount };
+          }
+          return prev;
+        });
+      }
+    };
+
+    window.addEventListener('community-post-update', handlePostUpdate);
+    return () => {
+      window.removeEventListener('community-post-update', handlePostUpdate);
+    };
+  }, []);
+
   useEffect(() => {
     if (darkMode) {
       document.body.classList.add('dark');
@@ -473,12 +502,19 @@ export default function App() {
   };
 
   // Community Actions for Detail Screen
-  const handleReactToPost = async (postId: string, type: ReactionType) => {
-    try {
-      await communityApi.reactToPost(postId, { reactionType: type });
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Không thể tương tác với bài viết", "error");
-    }
+  const handleReactToPost = (postId: string, type: ReactionType) => {
+    setSelectedPost(prev => {
+      if (!prev || prev.id !== postId) return prev;
+      const prevReaction = prev.currentUserReaction;
+      const isToggleOff = prevReaction === type;
+      
+      const newReaction = isToggleOff ? undefined : type;
+      
+      return {
+        ...prev,
+        currentUserReaction: newReaction
+      };
+    });
   };
 
   const handleSharePost = async (postId: string) => {

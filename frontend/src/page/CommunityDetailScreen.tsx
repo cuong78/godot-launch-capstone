@@ -61,11 +61,40 @@ export function CommunityDetailScreen({
 
   const [hoveredReaction, setHoveredReaction] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [localMyReaction, setLocalMyReaction] = useState<ReactionType | undefined>(myReaction);
+  const [localMyReaction, setLocalMyReaction] = useState<ReactionType | undefined>(
+    initialPost?.currentUserReaction || myReaction
+  );
 
   useEffect(() => {
-    setLocalMyReaction(myReaction);
-  }, [myReaction]);
+    if (post?.currentUserReaction) {
+      setLocalMyReaction(post.currentUserReaction);
+    } else {
+      setLocalMyReaction(myReaction);
+    }
+  }, [myReaction, post?.currentUserReaction]);
+
+  // Listen for public WebSocket-driven community post updates
+  useEffect(() => {
+    const handlePostUpdate = (e: Event) => {
+      const data = (e as CustomEvent).detail;
+      if (data.type === 'DELETE_POST') {
+        const { postId } = data;
+        if (post && post.id === postId) {
+          onNavigateBack();
+        }
+      } else if (data.type === 'POST_COUNT_UPDATE') {
+        const { postId, reactionCount, commentCount, shareCount } = data;
+        if (post && post.id === postId) {
+          setPost(prev => prev ? { ...prev, reactionCount, commentCount, shareCount } : null);
+        }
+      }
+    };
+
+    window.addEventListener('community-post-update', handlePostUpdate);
+    return () => {
+      window.removeEventListener('community-post-update', handlePostUpdate);
+    };
+  }, [post, onNavigateBack]);
 
   const handleReactClick = async (type: ReactionType) => {
     if (!post) return;
@@ -80,18 +109,12 @@ export function CommunityDetailScreen({
         const res = await communityApi.removeReaction(post.id);
         if (res.success) {
           setLocalMyReaction(undefined);
-          setPost(prev => prev ? { ...prev, reactionCount: Math.max(0, prev.reactionCount - 1) } : null);
         }
       } else {
         // Add or change reaction
         const res = await communityApi.reactToPost(post.id, { reactionType: type });
         if (res.success) {
           setLocalMyReaction(type);
-          setPost(prev => {
-            if (!prev) return null;
-            const increment = prevReaction ? 0 : 1;
-            return { ...prev, reactionCount: prev.reactionCount + increment };
-          });
         }
       }
       
@@ -312,10 +335,10 @@ export function CommunityDetailScreen({
             onMouseLeave={() => setHoveredReaction(false)}
           >
             <button 
-              onClick={() => handleReactClick('like')}
+              onClick={() => handleReactClick(localMyReaction || 'like')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-semibold transition-all active:scale-95 ${
                 localMyReaction 
-                  ? "bg-amber-400 text-slate-900 border-amber-400 font-bold" 
+                  ? "bg-amber-400 text-slate-950 border-amber-450 font-bold scale-105" 
                   : "bg-slate-800/20 border-slate-700/30 hover:bg-slate-800/40 text-slate-700 dark:text-slate-350"
               }`}
             >

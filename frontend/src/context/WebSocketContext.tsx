@@ -103,6 +103,16 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
         });
 
+        // Subscribe to public community updates
+        client.subscribe('/topic/community/updates', (message) => {
+          try {
+            const update = JSON.parse(message.body);
+            window.dispatchEvent(new CustomEvent('community-post-update', { detail: update }));
+          } catch (err) {
+            console.error("Error parsing community update message:", err);
+          }
+        });
+
         // Subscribe to user chat messages
         client.subscribe('/user/queue/messages', (message) => {
           const chatMsg: ChatMessageResponse = JSON.parse(message.body);

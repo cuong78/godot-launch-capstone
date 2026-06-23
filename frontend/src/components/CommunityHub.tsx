@@ -31,6 +31,7 @@ import {
 import { DEV_AVATARS, PROFILE_AVATAR_YOU, IMAGE_SEED_MAP } from '../../assets/images';
 import OIPImage from '../../assets/OIP.webp';
 import { useAuth } from '../hooks/useAuth';
+import { useWebSocket } from '../context/WebSocketContext';
 import { communityApi } from '../api/communityApi';
 import { CommunityChatResponse, ReactionType, ChatMediaResponse, UserSummary } from '../types';
 
@@ -59,6 +60,7 @@ export function CommunityHub({
   onViewAuthorProfile
 }: CommunityHubProps) {
   const { currentUser } = useAuth();
+  const { notifications } = useWebSocket();
   
   
   // Feed filtering & pagination states
@@ -159,9 +161,21 @@ export function CommunityHub({
     try {
       const res = await communityApi.getPosts(gameIdFilter, targetPage, 10);
       if (res.success && res.data) {
-        setPosts(prev => isReset ? res.data.content : [...prev, ...res.data.content]);
+        const newPosts = res.data.content;
+        console.log("[Debug Feed] newPosts from API:", newPosts);
+        setPosts(prev => isReset ? newPosts : [...prev, ...newPosts]);
         setPage(targetPage + 1);
         setHasMore(!res.data.last);
+
+        // Sync myReactions state from the API response
+        const reactionsUpdate: { [postId: string]: ReactionType } = {};
+        newPosts.forEach((post: CommunityChatResponse) => {
+          if (post.currentUserReaction) {
+            reactionsUpdate[post.id] = post.currentUserReaction;
+          }
+        });
+        console.log("[Debug Feed] reactionsUpdate:", reactionsUpdate);
+        setMyReactions(prev => isReset ? reactionsUpdate : { ...prev, ...reactionsUpdate });
       }
     } catch (err) {
       console.error("Failed to load feed", err);
@@ -169,6 +183,47 @@ export function CommunityHub({
       setIsLoading(false);
     }
   };
+
+  // Real-time update reaction/comment/share count from WebSocket public topic updates
+  useEffect(() => {
+    const handlePostUpdate = (e: Event) => {
+      const data = (e as CustomEvent).detail;
+      if (data.type === 'NEW_POST') {
+        const newPost = data.post;
+        // If we are filtering by a specific game and the new post doesn't match it, ignore it
+        if (gameIdFilter && newPost.gameId !== gameIdFilter) {
+          return;
+        }
+        setPosts(prev => {
+          if (prev.some(p => p.id === newPost.id)) {
+            return prev;
+          }
+          return [newPost, ...prev];
+        });
+      } else if (data.type === 'DELETE_POST') {
+        const { postId } = data;
+        setPosts(prev => prev.filter(p => p.id !== postId));
+      } else if (data.type === 'POST_COUNT_UPDATE') {
+        const { postId, reactionCount, commentCount, shareCount } = data;
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              reactionCount,
+              commentCount,
+              shareCount
+            };
+          }
+          return p;
+        }));
+      }
+    };
+
+    window.addEventListener('community-post-update', handlePostUpdate);
+    return () => {
+      window.removeEventListener('community-post-update', handlePostUpdate);
+    };
+  }, [gameIdFilter]);
 
   const loadComments = async (postId: string, isReset = false) => {
     const targetPage = isReset ? 0 : (commentPages[postId] || 0) + 1;
@@ -241,7 +296,6 @@ export function CommunityHub({
           [postId]: [newComment, ...(prev[postId] || [])]
         }));
         setActiveCommentTexts(prev => ({ ...prev, [postId]: '' }));
-        setPosts(prev => prev.map(p => p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p));
       }
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to comment");
@@ -265,20 +319,12 @@ export function CommunityHub({
             delete next[postId];
             return next;
           });
-          setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactionCount: Math.max(0, p.reactionCount - 1) } : p));
         }
       } else {
         // Add or change reaction
         const res = await communityApi.reactToPost(postId, { reactionType: type });
         if (res.success) {
           setMyReactions(prev => ({ ...prev, [postId]: type }));
-          setPosts(prev => prev.map(p => {
-            if (p.id === postId) {
-              const increment = prevReaction ? 0 : 1;
-              return { ...p, reactionCount: p.reactionCount + increment };
-            }
-            return p;
-          }));
         }
       }
     } catch (err: any) {
@@ -666,8 +712,12 @@ export function CommunityHub({
                       onMouseLeave={() => handleMouseLeaveReaction(post.id)}
                     >
                       <button 
-                        onClick={() => handleReact(post.id, 'like')}
-                        className={`flex items-center gap-1.5 font-semibold transition-all hover:text-amber-500`}
+                        onClick={() => handleReact(post.id, myReactions[post.id] || 'like')}
+                        className={`flex items-center gap-1.5 font-semibold transition-all hover:text-amber-500 ${
+                          myReactions[post.id] 
+                            ? 'text-amber-500 dark:text-amber-400 font-bold scale-105' 
+                            : 'text-slate-500 dark:text-slate-400'
+                        }`}
                       >
                         <span className="text-sm">
                           {myReactions[post.id] ? REACTION_EMOJIS[myReactions[post.id]].emoji : '👍'}
