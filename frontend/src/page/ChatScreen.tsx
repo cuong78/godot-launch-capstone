@@ -3,6 +3,8 @@ import { Send, MessageSquare, Search, Loader2, User, AlertCircle, Circle } from 
 import { useWebSocket } from '../context/WebSocketContext';
 import { useAuth } from '../hooks/useAuth';
 import { PROFILE_AVATAR_YOU } from '../../assets/images';
+import api from '../api/axios';
+import { UserSummary } from '../types';
 
 export function ChatScreen() {
   const { currentUser } = useAuth();
@@ -11,6 +13,8 @@ export function ChatScreen() {
     chatMessages,
     activeRecipientId,
     setActiveRecipientId,
+    activeRecipientDetails,
+    setActiveRecipientDetails,
     sendChatMessage,
     fetchChatHistory,
     fetchConversations,
@@ -21,11 +25,44 @@ export function ChatScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [searchResults, setSearchResults] = useState<UserSummary[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Load conversations on mount
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  // Global User Search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const res = await api.get(`/api/v1/users/search?query=${encodeURIComponent(searchQuery)}`);
+        if (res.data.success) {
+          const mappedUsers = res.data.data.map((u: any) => ({
+            id: u.id,
+            fullName: u.fullName,
+            avatarUrl: u.avatarUrl
+          }));
+          setSearchResults(mappedUsers);
+        }
+      } catch (err) {
+        console.error("Failed to search users:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
 
   // Fetch history when active recipient changes
   useEffect(() => {
@@ -34,6 +71,13 @@ export function ChatScreen() {
       fetchChatHistory(activeRecipientId)
         .catch((err) => console.error("Error loading chat history:", err))
         .finally(() => setIsLoadingHistory(false));
+
+      // If the activeRecipientId doesn't match the selected search recipient, clear it
+      if (activeRecipientDetails && activeRecipientDetails.id !== activeRecipientId) {
+        setActiveRecipientDetails(null);
+      }
+    } else {
+      setActiveRecipientDetails(null);
     }
   }, [activeRecipientId]);
 
@@ -47,7 +91,7 @@ export function ChatScreen() {
     (c) => c.recipient.id === activeRecipientId
   );
 
-  const activeRecipientInfo = activeConversation?.recipient || (activeRecipientId ? {
+  const activeRecipientInfo = activeConversation?.recipient || activeRecipientDetails || (activeRecipientId ? {
     id: activeRecipientId,
     fullName: 'Direct Chat',
     avatarUrl: undefined
@@ -67,11 +111,6 @@ export function ChatScreen() {
       handleSendMessage(e);
     }
   };
-
-  // Filter local active conversations list by name
-  const filteredConversations = conversations.filter((c) =>
-    c.recipient.fullName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div className="max-w-6xl mx-auto py-6">
@@ -99,80 +138,146 @@ export function ChatScreen() {
               </div>
             </div>
 
-            {/* Local Filter Search Bar */}
+            {/* Global User Search Bar */}
             <div className="relative">
               <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
                 <Search size={14} />
               </span>
               <input
                 type="text"
-                placeholder="Filter conversations..."
+                placeholder="Search users to chat..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8.5 pr-4 py-1.5 bg-slate-100/50 dark:bg-slate-950/60 border border-transparent dark:border-slate-800/50 rounded-xl outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all placeholder-slate-500"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-250 text-[10px] font-semibold"
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
           {/* Conversations Items Grid */}
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100/50 dark:divide-slate-800/10">
-            {filteredConversations.length > 0 ? (
-              filteredConversations.map((conv) => {
-                const isActive = conv.recipient.id === activeRecipientId;
-                return (
-                  <div
-                    key={conv.recipient.id}
-                    onClick={() => setActiveRecipientId(conv.recipient.id)}
-                    className={`p-3.5 flex items-center gap-3 cursor-pointer transition-all duration-200 relative group ${
-                      isActive 
-                        ? 'bg-amber-400/10 dark:bg-amber-400/5 border-l-4 border-amber-400 text-slate-900 dark:text-white' 
-                        : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/20 text-slate-600 dark:text-slate-400'
-                    }`}
-                  >
-                    {/* Active Line indicator hover */}
-                    {!isActive && (
-                      <div className="absolute left-0 top-0 bottom-0 w-0 bg-amber-400 group-hover:w-1 transition-all" />
-                    )}
+            {searchQuery.trim().length > 0 ? (
+              isSearching ? (
+                <div className="py-20 text-center flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-500">
+                  <Loader2 className="animate-spin text-amber-500" size={20} />
+                  <span className="text-xs font-mono">Searching users...</span>
+                </div>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((user) => {
+                  const isActive = user.id === activeRecipientId;
+                  return (
+                    <div
+                      key={user.id}
+                      onClick={() => {
+                        setActiveRecipientDetails(user);
+                        setActiveRecipientId(user.id);
+                        setSearchQuery('');
+                      }}
+                      className={`p-3.5 flex items-center gap-3 cursor-pointer transition-all duration-200 relative group ${
+                        isActive 
+                          ? 'bg-amber-400/10 dark:bg-amber-400/5 border-l-4 border-amber-400 text-slate-900 dark:text-white' 
+                          : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/20 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {/* Active Line indicator hover */}
+                      {!isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-0 bg-amber-400 group-hover:w-1 transition-all" />
+                      )}
 
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-800/60 shrink-0 relative">
-                      <img 
-                        referrerPolicy="no-referrer" 
-                        src={conv.recipient.avatarUrl || PROFILE_AVATAR_YOU} 
-                        alt={conv.recipient.fullName} 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-
-                    {/* Meta info info */}
-                    <div className="flex-grow min-w-0">
-                      <div className="flex justify-between items-baseline mb-0.5">
-                        <h3 className="text-xs font-bold truncate pr-2">
-                          {conv.recipient.fullName}
-                        </h3>
-                        <span className="text-[9px] text-slate-400 font-mono shrink-0">
-                          {conv.lastActiveAt ? new Date(conv.lastActiveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
+                      {/* Avatar */}
+                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-800/60 shrink-0">
+                        <img 
+                          referrerPolicy="no-referrer" 
+                          src={user.avatarUrl || PROFILE_AVATAR_YOU} 
+                          alt={user.fullName} 
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <p className="text-[10px] text-slate-450 truncate pr-2">
-                        {conv.lastMessage}
-                      </p>
-                    </div>
 
-                    {/* Unread Counter Badge */}
-                    {conv.unreadCount > 0 && (
-                      <span className="shrink-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white shadow-md">
-                        {conv.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                );
-              })
+                      {/* Meta info */}
+                      <div className="flex-grow min-w-0">
+                        <h3 className="text-xs font-bold truncate">
+                          {user.fullName}
+                        </h3>
+                        <p className="text-[10px] text-amber-500 font-mono">
+                          Click to start chat
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-20 text-center flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 px-4">
+                  <User size={20} className="stroke-[1.5] text-slate-400/80" />
+                  <p className="text-xs italic leading-relaxed">No users found matching "{searchQuery}"</p>
+                </div>
+              )
             ) : (
-              <div className="py-20 text-center flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 px-4">
-                <MessageSquare size={20} className="stroke-[1.5] text-slate-400/80" />
-                <p className="text-xs italic leading-relaxed">No active chat channels. Visit a creator's profile page to send them a direct message!</p>
-              </div>
+              conversations.length > 0 ? (
+                conversations.map((conv) => {
+                  const isActive = conv.recipient.id === activeRecipientId;
+                  return (
+                    <div
+                      key={conv.recipient.id}
+                      onClick={() => setActiveRecipientId(conv.recipient.id)}
+                      className={`p-3.5 flex items-center gap-3 cursor-pointer transition-all duration-200 relative group ${
+                        isActive 
+                          ? 'bg-amber-400/10 dark:bg-amber-400/5 border-l-4 border-amber-400 text-slate-900 dark:text-white' 
+                          : 'hover:bg-slate-100/60 dark:hover:bg-slate-800/20 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {/* Active Line indicator hover */}
+                      {!isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-0 bg-amber-400 group-hover:w-1 transition-all" />
+                      )}
+
+                      {/* Avatar */}
+                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-800/60 shrink-0 relative">
+                        <img 
+                          referrerPolicy="no-referrer" 
+                          src={conv.recipient.avatarUrl || PROFILE_AVATAR_YOU} 
+                          alt={conv.recipient.fullName} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Meta info info */}
+                      <div className="flex-grow min-w-0">
+                        <div className="flex justify-between items-baseline mb-0.5">
+                          <h3 className="text-xs font-bold truncate pr-2">
+                            {conv.recipient.fullName}
+                          </h3>
+                          <span className="text-[9px] text-slate-400 font-mono shrink-0">
+                            {conv.lastActiveAt ? new Date(conv.lastActiveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-450 truncate pr-2">
+                          {conv.lastMessage}
+                        </p>
+                      </div>
+
+                      {/* Unread Counter Badge */}
+                      {conv.unreadCount > 0 && (
+                        <span className="shrink-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white shadow-md">
+                          {conv.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-20 text-center flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 px-4">
+                  <MessageSquare size={20} className="stroke-[1.5] text-slate-400/80" />
+                  <p className="text-xs italic leading-relaxed">No active chat channels. Search for a user above to start chatting!</p>
+                </div>
+              )
             )}
           </div>
         </div>

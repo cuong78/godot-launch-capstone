@@ -148,6 +148,18 @@ public class UserServiceImpl implements UserService {
         return mapToUserResponse(updatedUser);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponse> searchUsersByName(String query, String excludeEmail) {
+        if (!org.springframework.util.StringUtils.hasText(query)) {
+            return List.of();
+        }
+        return userRepository.findByFullNameContainingIgnoreCaseAndStatus(query.trim(), "active").stream()
+                .filter(user -> !user.getEmail().equalsIgnoreCase(excludeEmail))
+                .map(this::mapToUserResponse)
+                .collect(Collectors.toList());
+    }
+
     private UserResponse mapToUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())

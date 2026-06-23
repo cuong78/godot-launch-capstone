@@ -296,7 +296,7 @@ export default function App() {
   const initialRoute = pathToScreen(window.location.pathname);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
   const { currentUser, logout } = useAuth();
-  const { setActiveRecipientId } = useWebSocket();
+  const { setActiveRecipientId, setActiveRecipientDetails } = useWebSocket();
   const setCurrentUser = (user: User | null) => {
     if (user === null) {
       logout();
@@ -354,6 +354,14 @@ export default function App() {
       document.body.classList.remove('dark');
     }
   }, [darkMode]);
+
+  // Clear active chat recipient when leaving chat screen
+  useEffect(() => {
+    if (currentScreen !== 'chat') {
+      setActiveRecipientId(null);
+      setActiveRecipientDetails(null);
+    }
+  }, [currentScreen, setActiveRecipientId, setActiveRecipientDetails]);
 
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
   const [selectedPost, setSelectedPost] = useState<CommunityChatResponse | null>(null);
