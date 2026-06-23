@@ -13,6 +13,10 @@ import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.entity.enums.ReactionType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -36,6 +40,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
     private final HttpServletRequest httpServletRequest;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
+    private final SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
     @Transactional
@@ -76,7 +81,8 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 mediaEntity.setDisplayOrder((short) i);
 
                 String lowerUrl = url.toLowerCase();
-                if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm") || lowerUrl.startsWith("data:video/")) {
+                if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm")
+                        || lowerUrl.startsWith("data:video/")) {
                     mediaEntity.setMediaType(ChatMediaType.video);
                 } else {
                     mediaEntity.setMediaType(ChatMediaType.image);
@@ -87,6 +93,9 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         logIp(currentUser, "post_chat");
 
+        CommunityChatResponse response = mapToResponse(post);
+        broadcastNewPost(response);
+        return response;
         auditLogService.publishAuto(
                 AuditAction.post_created,
                 AuditTarget.community_chat,
@@ -148,6 +157,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         post.setDeleted(true);
         communityChatRepository.save(post);
+        broadcastDeletePost(id);
 
         auditLogService.publishAuto(
                 AuditAction.chat_removed,
@@ -199,7 +209,8 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 mediaEntity.setDisplayOrder((short) i);
 
                 String lowerUrl = url.toLowerCase();
-                if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm") || lowerUrl.startsWith("data:video/")) {
+                if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov") || lowerUrl.endsWith(".webm")
+                        || lowerUrl.startsWith("data:video/")) {
                     mediaEntity.setMediaType(ChatMediaType.video);
                 } else {
                     mediaEntity.setMediaType(ChatMediaType.image);
@@ -210,6 +221,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         parentPost.setCommentCount(parentPost.getCommentCount() + 1);
         communityChatRepository.save(parentPost);
+        broadcastPostUpdate(parentPost);
 
         logIp(currentUser, "post_chat");
 
@@ -218,8 +230,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 currentUser,
                 NotificationType.COMMENT,
                 currentUser.getFullName() + " commented on your post: " + comment.getMessage(),
-                parentPost.getId().toString()
-        );
+                parentPost.getId().toString());
 
         auditLogService.publishAuto(
                 AuditAction.comment_created,
@@ -271,14 +282,12 @@ public class CommunityChatServiceImpl implements CommunityChatService {
             reaction = chatReactionRepository.save(reaction);
             isNew = true;
 
-            post.setReactionCount(post.getReactionCount() + 1);
-            communityChatRepository.save(post);
-
             notificationService.createAndSendNotification(
                     post.getSender(),
                     currentUser,
                     NotificationType.REACTION,
                     currentUser.getFullName() + " liked your post.",
+                    post.getId().toString());
                     post.getId().toString()
             );
 
@@ -309,6 +318,14 @@ public class CommunityChatServiceImpl implements CommunityChatService {
             // CASE 3: User HAS reacted before + reaction_type is SAME -> Do nothing
         }
 
+        chatReactionRepository.flush();
+
+        int count = (int) chatReactionRepository.countByChatId(post.getId());
+        post.setReactionCount(count);
+        post = communityChatRepository.saveAndFlush(post);
+
+        broadcastPostUpdate(post);
+
         ChatReactionResponse response = mapToReactionResponse(reaction);
         response.setNew(isNew);
         return response;
@@ -329,9 +346,12 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 .orElseThrow(() -> new AppException(ErrorCode.REACTION_NOT_FOUND));
 
         chatReactionRepository.delete(reaction);
+        chatReactionRepository.flush();
 
-        post.setReactionCount(Math.max(0, post.getReactionCount() - 1));
-        communityChatRepository.save(post);
+        int count = (int) chatReactionRepository.countByChatId(post.getId());
+        post.setReactionCount(count);
+        post = communityChatRepository.saveAndFlush(post);
+        broadcastPostUpdate(post);
     }
 
     @Override
@@ -368,13 +388,68 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 currentUser,
                 NotificationType.SHARE,
                 currentUser.getFullName() + " shared your post.",
-                originalPost.getId().toString()
-        );
+                originalPost.getId().toString());
 
-        return mapToResponse(shared);
+        CommunityChatResponse response = mapToResponse(shared);
+        broadcastNewPost(response);
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<ChatReactionResponse> getReactions(UUID id) {
+        CommunityChat post = communityChatRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.CHAT_NOT_FOUND));
+        if (post.isDeleted()) {
+            throw new AppException(ErrorCode.CHAT_NOT_FOUND);
+        }
+
+        java.util.List<ChatReaction> reactions = chatReactionRepository.findByChatId(id);
+        return reactions.stream()
+                .map(this::mapToReactionResponse)
+                .toList();
     }
 
     // --- Private Helper Methods ---
+
+    private void broadcastPostUpdate(CommunityChat post) {
+        try {
+            java.util.Map<String, Object> update = java.util.Map.of(
+                "type", "POST_COUNT_UPDATE",
+                "postId", post.getId().toString(),
+                "reactionCount", post.getReactionCount(),
+                "commentCount", post.getCommentCount(),
+                "shareCount", post.getShareCount()
+            );
+            simpMessagingTemplate.convertAndSend("/topic/community/updates", (Object) update);
+        } catch (Exception e) {
+            System.out.println("[WS Broadcast] Error broadcasting post update: " + e.getMessage());
+        }
+    }
+
+    private void broadcastNewPost(CommunityChatResponse postResponse) {
+        try {
+            java.util.Map<String, Object> update = java.util.Map.of(
+                "type", "NEW_POST",
+                "post", postResponse
+            );
+            simpMessagingTemplate.convertAndSend("/topic/community/updates", (Object) update);
+        } catch (Exception e) {
+            System.out.println("[WS Broadcast] Error broadcasting new post: " + e.getMessage());
+        }
+    }
+
+    private void broadcastDeletePost(UUID id) {
+        try {
+            java.util.Map<String, Object> update = java.util.Map.of(
+                "type", "DELETE_POST",
+                "postId", id.toString()
+            );
+            simpMessagingTemplate.convertAndSend("/topic/community/updates", (Object) update);
+        } catch (Exception e) {
+            System.out.println("[WS Broadcast] Error broadcasting delete post: " + e.getMessage());
+        }
+    }
 
     private User getCurrentUser(String email) {
         return userRepository.findByEmail(email)
@@ -440,6 +515,31 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         }
 
         UUID gameId = chat.getGame() != null ? chat.getGame().getId() : null;
+
+        ReactionType currentUserReaction = null;
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            System.out.println(
+                    "[Debug React] auth: " + auth + " | isAuthenticated: " + (auth != null && auth.isAuthenticated()));
+            if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
+                String email = auth.getName();
+                System.out.println("[Debug React] email: " + email);
+                User user = userRepository.findByEmail(email).orElse(null);
+                if (user != null) {
+                    System.out.println("[Debug React] user: " + user.getId() + " | post: " + chat.getId());
+                    var reactionOpt = chatReactionRepository.findByChatIdAndUserId(chat.getId(), user.getId());
+                    if (reactionOpt.isPresent()) {
+                        currentUserReaction = reactionOpt.get().getReactionType();
+                        System.out.println("[Debug React] reaction found: " + currentUserReaction);
+                    } else {
+                        System.out.println("[Debug React] no reaction in db");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("[Debug React] Error in mapToResponse: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         return CommunityChatResponse.builder()
                 .id(chat.getId())

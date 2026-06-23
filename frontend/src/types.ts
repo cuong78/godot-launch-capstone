@@ -141,6 +141,7 @@ export interface CommunityChatResponse {
   createdAt: string;
   updatedAt: string;
   originalChat?: CommunityChatResponse;
+  currentUserReaction?: ReactionType;
 }
 
 export interface ChatReactionResponse {

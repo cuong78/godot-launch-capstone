@@ -6,7 +6,8 @@ import api from '../api/axios';
 import { 
   NotificationResponse, 
   ChatMessageResponse, 
-  ConversationResponse 
+  ConversationResponse,
+  UserSummary
 } from '../types';
 import { tokenStorage } from '../utils/tokenStorage';
 
@@ -17,6 +18,8 @@ interface WebSocketContextType {
   conversations: ConversationResponse[];
   activeRecipientId: string | null;
   setActiveRecipientId: (id: string | null) => void;
+  activeRecipientDetails: UserSummary | null;
+  setActiveRecipientDetails: (info: UserSummary | null) => void;
   sendChatMessage: (recipientId: string, content: string) => void;
   markNotificationAsRead: (id: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
@@ -35,6 +38,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [chatMessages, setChatMessages] = useState<ChatMessageResponse[]>([]);
   const [conversations, setConversations] = useState<ConversationResponse[]>([]);
   const [activeRecipientId, setActiveRecipientId] = useState<string | null>(null);
+  const [activeRecipientDetails, setActiveRecipientDetails] = useState<UserSummary | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   
   const stompClientRef = useRef<Client | null>(null);
@@ -56,6 +60,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setChatMessages([]);
       setConversations([]);
       setActiveRecipientId(null);
+      setActiveRecipientDetails(null);
     }
   }, [currentUser]);
 
@@ -92,14 +97,25 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Subscribe to user notifications
         client.subscribe('/user/queue/notifications', (message) => {
           const notification: NotificationResponse = JSON.parse(message.body);
-          setNotifications((prev) => [notification, ...prev]);
           
-          // If it is NOT a chat message or if it is from someone we are NOT currently chatting with, increment unread counter
+          // If it is NOT a chat message or if it is from someone we are NOT currently chatting with
           if (notification.type !== 'CHAT_MESSAGE' || activeRecipientIdRef.current !== notification.sender.id) {
-            setUnreadNotificationsCount((prev) => prev + 1);
+            fetchNotifications();
           } else {
             // Auto read chat notifications if we are in their chat room
-            api.put(`/api/v1/chat/read/${notification.sender.id}`).catch((err) => console.error(err));
+            api.put(`/api/v1/chat/read/${notification.sender.id}`)
+              .then(() => fetchNotifications())
+              .catch((err) => console.error(err));
+          }
+        });
+
+        // Subscribe to public community updates
+        client.subscribe('/topic/community/updates', (message) => {
+          try {
+            const update = JSON.parse(message.body);
+            window.dispatchEvent(new CustomEvent('community-post-update', { detail: update }));
+          } catch (err) {
+            console.error("Error parsing community update message:", err);
           }
         });
 
@@ -169,6 +185,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setChatMessages(res.data.data);
       }
       fetchConversations();
+      fetchNotifications();
     } catch (err) {
       console.error("Failed to fetch chat history", err);
     }
@@ -244,6 +261,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       conversations,
       activeRecipientId,
       setActiveRecipientId,
+      activeRecipientDetails,
+      setActiveRecipientDetails,
       sendChatMessage,
       markNotificationAsRead,
       markAllNotificationsAsRead,

@@ -30,6 +30,16 @@ public class UserController {
 
     private final UserService userService;
 
+    @GetMapping("/search")
+    @Operation(summary = "Search users by name", description = "Allows authenticated users to search other active users by full name.")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> searchUsers(
+            @RequestParam String query,
+            Principal principal) {
+        String currentEmail = principal.getName();
+        List<UserResponse> users = userService.searchUsersByName(query, currentEmail);
+        return ResponseEntity.ok(ApiResponse.success(users, "Users searched successfully."));
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Get current user profile", description = "Retrieves profile details of the currently authenticated user.")
     public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(Principal principal) {

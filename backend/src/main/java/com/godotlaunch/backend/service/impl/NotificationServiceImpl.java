@@ -32,6 +32,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final EmailService emailService;
 
     @Override
+    @Transactional(readOnly = true)
     public List<NotificationResponse> getMyNotifications(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
@@ -42,6 +43,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public long getUnreadCount(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
@@ -133,5 +135,19 @@ public class NotificationServiceImpl implements NotificationService {
                 .isRead(notification.isRead())
                 .createdAt(notification.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void markChatNotificationsAsRead(UUID recipientId, UUID senderId) {
+        List<Notification> unread = notificationRepository.findAllByRecipientIdAndIsReadFalse(recipientId).stream()
+                .filter(n -> n.getType() == NotificationType.CHAT_MESSAGE && n.getSender().getId().equals(senderId))
+                .collect(Collectors.toList());
+        if (!unread.isEmpty()) {
+            for (Notification n : unread) {
+                n.setRead(true);
+            }
+            notificationRepository.saveAll(unread);
+        }
     }
 }

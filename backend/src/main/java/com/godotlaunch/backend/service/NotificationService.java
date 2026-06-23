@@ -13,4 +13,5 @@ public interface NotificationService {
     void markAsRead(UUID notificationId, String email);
     void markAllAsRead(String email);
     void createAndSendNotification(User recipient, User sender, NotificationType type, String message, String targetId);
+    void markChatNotificationsAsRead(UUID recipientId, UUID senderId);
 }

@@ -29,4 +29,6 @@ public interface CommunityChatService {
     void removeReaction(String email, UUID id);
 
     CommunityChatResponse sharePost(String email, UUID id, SharePostRequest request);
+
+    java.util.List<ChatReactionResponse> getReactions(UUID id);
 }

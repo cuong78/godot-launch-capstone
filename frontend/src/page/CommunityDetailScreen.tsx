@@ -16,6 +16,7 @@ import { CommunityChatResponse, ReactionType, UserSummary } from "../types";
 import { communityApi } from "../api/communityApi";
 import { useAuth } from "../hooks/useAuth";
 import { PROFILE_AVATAR_YOU } from "../../assets/images";
+import { ReactionsModal } from '../components/ReactionsModal';
 
 interface CommunityDetailScreenProps {
   post?: CommunityChatResponse;
@@ -23,9 +24,9 @@ interface CommunityDetailScreenProps {
   onNavigateBack: () => void;
   onNavigateToProfile?: (author: UserSummary) => void;
   myReaction?: ReactionType;
-  onReact: (postId: string, type: ReactionType) => Promise<void>;
-  onShare: (postId: string) => Promise<void>;
-  onDelete?: (postId: string) => Promise<void>;
+  onReact: (postId: string, type: ReactionType) => any;
+  onShare: (postId: string) => any;
+  onDelete?: (postId: string) => any;
 }
 
 const REACTION_EMOJIS: Record<ReactionType, { emoji: string; color: string; label: string }> = {
@@ -61,11 +62,41 @@ export function CommunityDetailScreen({
 
   const [hoveredReaction, setHoveredReaction] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [localMyReaction, setLocalMyReaction] = useState<ReactionType | undefined>(myReaction);
+  const [localMyReaction, setLocalMyReaction] = useState<ReactionType | undefined>(
+    initialPost?.currentUserReaction || myReaction
+  );
+  const [isReactionsModalOpen, setIsReactionsModalOpen] = useState(false);
 
   useEffect(() => {
-    setLocalMyReaction(myReaction);
-  }, [myReaction]);
+    if (post?.currentUserReaction) {
+      setLocalMyReaction(post.currentUserReaction);
+    } else {
+      setLocalMyReaction(myReaction);
+    }
+  }, [myReaction, post?.currentUserReaction]);
+
+  // Listen for public WebSocket-driven community post updates
+  useEffect(() => {
+    const handlePostUpdate = (e: Event) => {
+      const data = (e as CustomEvent).detail;
+      if (data.type === 'DELETE_POST') {
+        const { postId } = data;
+        if (post && post.id === postId) {
+          onNavigateBack();
+        }
+      } else if (data.type === 'POST_COUNT_UPDATE') {
+        const { postId, reactionCount, commentCount, shareCount } = data;
+        if (post && post.id === postId) {
+          setPost(prev => prev ? { ...prev, reactionCount, commentCount, shareCount } : null);
+        }
+      }
+    };
+
+    window.addEventListener('community-post-update', handlePostUpdate);
+    return () => {
+      window.removeEventListener('community-post-update', handlePostUpdate);
+    };
+  }, [post, onNavigateBack]);
 
   const handleReactClick = async (type: ReactionType) => {
     if (!post) return;
@@ -80,18 +111,14 @@ export function CommunityDetailScreen({
         const res = await communityApi.removeReaction(post.id);
         if (res.success) {
           setLocalMyReaction(undefined);
-          setPost(prev => prev ? { ...prev, reactionCount: Math.max(0, prev.reactionCount - 1) } : null);
+          setPost(prev => prev ? { ...prev, currentUserReaction: undefined } : null);
         }
       } else {
         // Add or change reaction
         const res = await communityApi.reactToPost(post.id, { reactionType: type });
         if (res.success) {
           setLocalMyReaction(type);
-          setPost(prev => {
-            if (!prev) return null;
-            const increment = prevReaction ? 0 : 1;
-            return { ...prev, reactionCount: prev.reactionCount + increment };
-          });
+          setPost(prev => prev ? { ...prev, currentUserReaction: type } : null);
         }
       }
       
@@ -302,6 +329,24 @@ export function CommunityDetailScreen({
               </div>
             </div>
           )}
+
+          {/* Reaction Summary (Click to view who reacted) */}
+          {post.reactionCount > 0 && (
+            <div className="px-6 pb-4">
+              <button 
+                onClick={() => setIsReactionsModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-500 dark:hover:text-amber-400 transition-colors"
+              >
+                <div className="flex -space-x-1">
+                  <span className="inline-block text-[11px]">👍</span>
+                  {post.reactionCount > 1 && <span className="inline-block text-[11px]">❤️</span>}
+                </div>
+                <span className="hover:underline font-semibold">
+                  {post.reactionCount} {post.reactionCount === 1 ? 'người thích' : 'lượt tương tác'}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Interaction Bar */}
@@ -312,10 +357,10 @@ export function CommunityDetailScreen({
             onMouseLeave={() => setHoveredReaction(false)}
           >
             <button 
-              onClick={() => handleReactClick('like')}
+              onClick={() => handleReactClick(localMyReaction || 'like')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-semibold transition-all active:scale-95 ${
                 localMyReaction 
-                  ? "bg-amber-400 text-slate-900 border-amber-400 font-bold" 
+                  ? "bg-amber-400 text-slate-950 border-amber-450 font-bold scale-105" 
                   : "bg-slate-800/20 border-slate-700/30 hover:bg-slate-800/40 text-slate-700 dark:text-slate-350"
               }`}
             >
@@ -471,6 +516,12 @@ export function CommunityDetailScreen({
         </div>
       </section>
 
+      <ReactionsModal 
+        isOpen={isReactionsModalOpen}
+        onClose={() => setIsReactionsModalOpen(false)}
+        postId={post.id}
+        onViewAuthorProfile={onNavigateToProfile}
+      />
     </div>
   );
 }

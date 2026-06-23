@@ -31,7 +31,9 @@ import {
 import { DEV_AVATARS, PROFILE_AVATAR_YOU, IMAGE_SEED_MAP } from '../../assets/images';
 import OIPImage from '../../assets/OIP.webp';
 import { useAuth } from '../hooks/useAuth';
+import { useWebSocket } from '../context/WebSocketContext';
 import { communityApi } from '../api/communityApi';
+import { ReactionsModal } from './ReactionsModal';
 import { CommunityChatResponse, ReactionType, ChatMediaResponse, UserSummary } from '../types';
 
 interface CommunityHubProps {
@@ -59,9 +61,8 @@ export function CommunityHub({
   onViewAuthorProfile
 }: CommunityHubProps) {
   const { currentUser } = useAuth();
+  const { notifications } = useWebSocket();
   
-  // Navigation active state inside Side Panel
-  const [activeSideNav, setActiveSideNav] = useState<'home' | 'discover' | 'library' | 'community' | 'settings'>('community');
   
   // Feed filtering & pagination states
   const [posts, setPosts] = useState<CommunityChatResponse[]>([]);
@@ -91,6 +92,13 @@ export function CommunityHub({
   // Active Reaction per Post for current user
   const [myReactions, setMyReactions] = useState<{ [postId: string]: ReactionType }>({});
   const [hoveredPostReactionId, setHoveredPostReactionId] = useState<string | null>(null);
+
+  // Reactions Modal State
+  const [activeReactionsPostId, setActiveReactionsPostId] = useState<string | null>(null);
+
+  const handleOpenReactionsModal = (postId: string) => {
+    setActiveReactionsPostId(postId);
+  };
 
   // Reaction hover timeout manager
   const reactionTimeouts = React.useRef<{ [postId: string]: any }>({});
@@ -149,25 +157,6 @@ export function CommunityHub({
     e.target.value = '';
   };
 
-  // Suggested Developers to follow (mock UI representation)
-  const [suggestedDevs, setSuggestedDevs] = useState([
-    {
-      id: 'gdsage',
-      name: 'GDSage',
-      specialty: 'Shader Expert',
-      avatar: DEV_AVATARS.gdsage,
-      isFollowing: false,
-      followersCount: 1420
-    },
-    {
-      id: 'vectorvixen',
-      name: 'VectorVixen',
-      specialty: 'UI/UX Guru',
-      avatar: DEV_AVATARS.vectorvixen,
-      isFollowing: false,
-      followersCount: 980
-    }
-  ]);
 
   // Initial Load Feed
   useEffect(() => {
@@ -180,9 +169,21 @@ export function CommunityHub({
     try {
       const res = await communityApi.getPosts(gameIdFilter, targetPage, 10);
       if (res.success && res.data) {
-        setPosts(prev => isReset ? res.data.content : [...prev, ...res.data.content]);
+        const newPosts = res.data.content;
+        console.log("[Debug Feed] newPosts from API:", newPosts);
+        setPosts(prev => isReset ? newPosts : [...prev, ...newPosts]);
         setPage(targetPage + 1);
         setHasMore(!res.data.last);
+
+        // Sync myReactions state from the API response
+        const reactionsUpdate: { [postId: string]: ReactionType } = {};
+        newPosts.forEach((post: CommunityChatResponse) => {
+          if (post.currentUserReaction) {
+            reactionsUpdate[post.id] = post.currentUserReaction;
+          }
+        });
+        console.log("[Debug Feed] reactionsUpdate:", reactionsUpdate);
+        setMyReactions(prev => isReset ? reactionsUpdate : { ...prev, ...reactionsUpdate });
       }
     } catch (err) {
       console.error("Failed to load feed", err);
@@ -190,6 +191,47 @@ export function CommunityHub({
       setIsLoading(false);
     }
   };
+
+  // Real-time update reaction/comment/share count from WebSocket public topic updates
+  useEffect(() => {
+    const handlePostUpdate = (e: Event) => {
+      const data = (e as CustomEvent).detail;
+      if (data.type === 'NEW_POST') {
+        const newPost = data.post;
+        // If we are filtering by a specific game and the new post doesn't match it, ignore it
+        if (gameIdFilter && newPost.gameId !== gameIdFilter) {
+          return;
+        }
+        setPosts(prev => {
+          if (prev.some(p => p.id === newPost.id)) {
+            return prev;
+          }
+          return [newPost, ...prev];
+        });
+      } else if (data.type === 'DELETE_POST') {
+        const { postId } = data;
+        setPosts(prev => prev.filter(p => p.id !== postId));
+      } else if (data.type === 'POST_COUNT_UPDATE') {
+        const { postId, reactionCount, commentCount, shareCount } = data;
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              reactionCount,
+              commentCount,
+              shareCount
+            };
+          }
+          return p;
+        }));
+      }
+    };
+
+    window.addEventListener('community-post-update', handlePostUpdate);
+    return () => {
+      window.removeEventListener('community-post-update', handlePostUpdate);
+    };
+  }, [gameIdFilter]);
 
   const loadComments = async (postId: string, isReset = false) => {
     const targetPage = isReset ? 0 : (commentPages[postId] || 0) + 1;
@@ -262,7 +304,6 @@ export function CommunityHub({
           [postId]: [newComment, ...(prev[postId] || [])]
         }));
         setActiveCommentTexts(prev => ({ ...prev, [postId]: '' }));
-        setPosts(prev => prev.map(p => p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p));
       }
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to comment");
@@ -286,20 +327,12 @@ export function CommunityHub({
             delete next[postId];
             return next;
           });
-          setPosts(prev => prev.map(p => p.id === postId ? { ...p, reactionCount: Math.max(0, p.reactionCount - 1) } : p));
         }
       } else {
         // Add or change reaction
         const res = await communityApi.reactToPost(postId, { reactionType: type });
         if (res.success) {
           setMyReactions(prev => ({ ...prev, [postId]: type }));
-          setPosts(prev => prev.map(p => {
-            if (p.id === postId) {
-              const increment = prevReaction ? 0 : 1;
-              return { ...p, reactionCount: p.reactionCount + increment };
-            }
-            return p;
-          }));
         }
       }
     } catch (err: any) {
@@ -377,18 +410,6 @@ export function CommunityHub({
     setMediaUrls(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  const handleFollowDev = (devId: string) => {
-    setSuggestedDevs(prev => prev.map(dev => {
-      if (dev.id === devId) {
-        return {
-          ...dev,
-          isFollowing: !dev.isFollowing,
-          followersCount: dev.isFollowing ? dev.followersCount - 1 : dev.followersCount + 1
-        };
-      }
-      return dev;
-    }));
-  };
 
   const toggleCommentsExpansion = (postId: string) => {
     const isExpanded = !expandedPostComments[postId];
@@ -406,59 +427,8 @@ export function CommunityHub({
   return (
     <div id="community-hub-container" className="flex flex-col lg:flex-row gap-6 animate-fade-in relative z-10 w-full text-slate-700 dark:text-slate-200">
       
-      {/* SideNavBar - Column Left */}
-      <aside id="community-left-sidebar" className="hidden lg:flex flex-col w-64 h-fit sticky top-28 p-5 rounded-2xl bg-white/70 dark:bg-slate-900/45 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 shadow-sm space-y-6">
-        <div>
-          <h2 className="font-display font-bold text-base text-slate-800 dark:text-amber-400">Game Hub</h2>
-          <p className="text-[10px] text-slate-450 uppercase font-mono tracking-wider">Community Dashboard</p>
-        </div>
-
-        <nav className="flex flex-col gap-1.5">
-          {[
-            { id: 'home', label: 'All Community Feed', icon: <Home size={15} />, action: () => setGameIdFilter(undefined) },
-            { id: 'discover', label: 'Discover Hub', icon: <Compass size={15} /> },
-            { id: 'library', label: 'My Library', icon: <Gamepad2 size={15} /> },
-            { id: 'community', label: 'Community', icon: <MessageSquare size={15} /> },
-            { id: 'settings', label: 'Account Settings', icon: <Settings size={15} /> }
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveSideNav(item.id as any);
-                if (item.action) item.action();
-              }}
-              className={`flex items-center gap-3 w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl text-left transition-all ${activeSideNav === item.id && !gameIdFilter ? 'bg-amber-400 text-slate-900 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/50 dark:hover:bg-slate-800/40'}`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Reaction Picker Visual Helper Widget */}
-        <div className="flex items-center gap-2 mb-3 bg-slate-100/50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800/40">
-          <img src={OIPImage} alt="Reaction emojis decoration backdrop sticker" className="w-12 h-12 object-contain" />
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase text-amber-500 font-mono">Custom Emojis</span>
-            <span className="text-[9px] text-slate-400 leading-tight">Hover/click Like to choose 6 custom reaction styles!</span>
-          </div>
-        </div>
-
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/50">
-          <button 
-            onClick={() => {
-              if (onNavigateToSeller) onNavigateToSeller();
-            }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-amber-400 hover:bg-amber-350 text-slate-900 rounded-xl text-xs font-bold font-display shadow-xs transition-studio"
-          >
-            <PlusCircle size={14} />
-            Publish Asset Pack
-          </button>
-        </div>
-      </aside>
-
       {/* Center Feed Column */}
-      <section id="community-feed-deck" className="flex-1 max-w-4xl space-y-6">
+      <section id="community-feed-deck" className="flex-1 max-w-4xl mx-auto space-y-6">
         
         {/* Filter tags feedback */}
         {(selectedTag || gameIdFilter) && (
@@ -579,23 +549,6 @@ export function CommunityHub({
                       <ImageIcon size={14} /> Select File
                     </button>
                     
-                    {/* Mock quick add image options to showcase visual look */}
-                    <button
-                      type="button"
-                      onClick={() => setMediaUrls(prev => [...prev, IMAGE_SEED_MAP.forest])}
-                      className="p-2 text-slate-500 hover:text-amber-500 hover:bg-amber-400/10 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-bold"
-                      title="Attach Voxel Forest Scene Mock"
-                    >
-                      +Forest Mock
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMediaUrls(prev => [...prev, IMAGE_SEED_MAP.sky])}
-                      className="p-2 text-slate-500 hover:text-sky-500 hover:bg-sky-500/10 rounded-lg transition-colors flex items-center gap-1 text-[10px] font-bold"
-                      title="Attach Sky Background Mock"
-                    >
-                      +Sky Mock
-                    </button>
                   </div>
 
                   <button
@@ -757,6 +710,22 @@ export function CommunityHub({
                     </div>
                   )}
 
+                  {/* Reaction Summary (Click to view who reacted) */}
+                  {post.reactionCount > 0 && (
+                    <button 
+                      onClick={() => handleOpenReactionsModal(post.id)}
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-500 dark:hover:text-amber-400 transition-colors mb-2 ml-1"
+                    >
+                      <div className="flex -space-x-1">
+                        <span className="inline-block text-[11px]">👍</span>
+                        {post.reactionCount > 1 && <span className="inline-block text-[11px]">❤️</span>}
+                      </div>
+                      <span className="hover:underline font-semibold">
+                        {post.reactionCount} {post.reactionCount === 1 ? 'người thích' : 'lượt tương tác'}
+                      </span>
+                    </button>
+                  )}
+
                   {/* Interactive Action counts bar */}
                   <div className="flex flex-wrap items-center gap-6 pt-3.5 border-t border-slate-150 dark:border-slate-850 text-xs text-slate-500 relative">
                     
@@ -767,8 +736,12 @@ export function CommunityHub({
                       onMouseLeave={() => handleMouseLeaveReaction(post.id)}
                     >
                       <button 
-                        onClick={() => handleReact(post.id, 'like')}
-                        className={`flex items-center gap-1.5 font-semibold transition-all hover:text-amber-500`}
+                        onClick={() => handleReact(post.id, myReactions[post.id] || 'like')}
+                        className={`flex items-center gap-1.5 font-semibold transition-all hover:text-amber-500 ${
+                          myReactions[post.id] 
+                            ? 'text-amber-500 dark:text-amber-400 font-bold scale-105' 
+                            : 'text-slate-500 dark:text-slate-400'
+                        }`}
                       >
                         <span className="text-sm">
                           {myReactions[post.id] ? REACTION_EMOJIS[myReactions[post.id]].emoji : '👍'}
@@ -847,110 +820,12 @@ export function CommunityHub({
 
       </section>
 
-      {/* Right Column - Sideways widgets */}
-      <aside id="community-right-sidebar" className="w-full lg:w-80 space-y-6">
-        
-        {/* Trending Tags list cards */}
-        <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={16} className="text-amber-500" />
-            <h2 className="font-display font-bold text-sm text-slate-800 dark:text-white">Trending Keywords</h2>
-          </div>
-
-          <div className="space-y-2">
-            {[
-              { tag: 'Godot4', count: '2.4k' },
-              { tag: 'GDScript', count: '1.8k' },
-              { tag: 'Shader', count: '950' },
-              { tag: 'Pixel', count: '842' },
-              { tag: 'Water', count: '450' }
-            ].map((trend) => (
-              <button
-                key={trend.tag}
-                onClick={() => setSelectedTag(selectedTag === trend.tag ? null : trend.tag)}
-                className={`flex justify-between items-center w-full p-2 rounded-xl text-left transition-all ${selectedTag === trend.tag ? 'bg-amber-400 text-slate-950 font-bold' : 'hover:bg-slate-100/50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-300'}`}
-              >
-                <span className="text-xs font-medium">#{trend.tag}</span>
-                <span className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded ${selectedTag === trend.tag ? 'bg-slate-950/20 text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{trend.count}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Active Game Jam alerts */}
-        <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/60 dark:border-slate-800/60 overflow-hidden shadow-xs relative">
-          <div className="h-1 bg-amber-400 w-full" />
-          <div className="p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Calendar size={16} className="text-amber-500" />
-              <h2 className="font-display font-bold text-sm text-slate-800 dark:text-white">Active Jams</h2>
-            </div>
-
-            <div className="space-y-4">
-              <div className="relative pl-3 border-l-2 border-amber-400 space-y-1">
-                <p className="font-display font-bold text-xs text-slate-850 dark:text-white">Daylight Jam #42</p>
-                <p className="text-[10px] text-slate-400 font-mono">Ends in: 2d 14h</p>
-                
-                {/* Avatars overlay group */}
-                <div className="flex -space-x-1.5 pt-1">
-                  <img className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 shadow-sm" src={DEV_AVATARS.jammer1} alt="Jammer avatar" />
-                  <img className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 shadow-sm" src={DEV_AVATARS.jammer2} alt="Jammer avatar" />
-                  <img className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 shadow-sm" src={DEV_AVATARS.jammer3} alt="Jammer avatar" />
-                  <div className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 text-[8px] font-bold flex items-center justify-center text-slate-500 font-mono">+12</div>
-                </div>
-              </div>
-
-              <div className="relative pl-3 border-l-2 border-sky-400 space-y-1">
-                <p className="font-display font-bold text-xs text-slate-850 dark:text-white">Mini-Boss Challenge</p>
-                <p className="text-[10px] text-slate-400 font-mono font-semibold text-rose-500">Ends in: 4h 20m</p>
-                <button 
-                  onClick={() => alert('Launching mini challenge entry board! Create a unique voxel boss sprite to acquire rewards.')}
-                  className="text-[10px] text-sky-500 hover:underline font-bold transition-all pt-0.5"
-                >
-                  View current submissions &rarr;
-                </button>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => onNavigateToMarketplace && onNavigateToMarketplace()}
-              className="w-full block py-2 rounded-xl text-center border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800/40 font-display transition-colors"
-            >
-              Explore Sandbox Assets
-            </button>
-          </div>
-        </div>
-
-        {/* Suggested creators follow card */}
-        <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 shadow-xs">
-          <h2 className="font-display font-bold text-xs text-slate-400 uppercase tracking-wider mb-4">Suggested creators</h2>
-          
-          <div className="space-y-4">
-            {suggestedDevs.map((dev) => (
-              <div key={dev.id} className="flex items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 flex-shrink-0">
-                    <img referrerPolicy="no-referrer" src={dev.avatar} alt={dev.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-bold text-xs text-slate-850 dark:text-white">{dev.name}</h3>
-                    <p className="text-[9px] text-slate-450 font-mono">{dev.specialty} • {dev.followersCount} dev</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleFollowDev(dev.id)}
-                  className={`p-1.5 rounded-lg border transition-all ${dev.isFollowing ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'hover:bg-amber-400 hover:text-slate-900 text-slate-500 border-slate-200 dark:border-slate-800'}`}
-                >
-                  {dev.isFollowing ? <Check size={13} /> : <UserPlus size={13} />}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </aside>
-
+      <ReactionsModal 
+        isOpen={activeReactionsPostId !== null}
+        onClose={() => setActiveReactionsPostId(null)}
+        postId={activeReactionsPostId || ''}
+        onViewAuthorProfile={onViewAuthorProfile}
+      />
     </div>
   );
 }

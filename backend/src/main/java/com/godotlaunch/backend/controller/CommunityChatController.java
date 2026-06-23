@@ -117,6 +117,13 @@ public class CommunityChatController {
         return ResponseEntity.ok(ApiResponse.success("Reaction removed successfully.", "Reaction removed successfully."));
     }
 
+    @GetMapping("/{id}/reactions")
+    @Operation(summary = "Get post reactions", description = "Retrieves all reactions for a post.")
+    public ResponseEntity<ApiResponse<java.util.List<ChatReactionResponse>>> getPostReactions(@PathVariable UUID id) {
+        java.util.List<ChatReactionResponse> responses = communityChatService.getReactions(id);
+        return ResponseEntity.ok(ApiResponse.success(responses, "Reactions retrieved successfully."));
+    }
+
     @PostMapping("/{id}/share")
     @Operation(summary = "Share a post", description = "Shares an existing community post, creating a new post referencing the original.")
     @SecurityRequirement(name = "bearerAuth")

@@ -16,4 +16,5 @@ public interface UserService {
     UserResponse updateUser(UUID id, AdminUpdateUserRequest request);
     UserResponse updateMyProfile(String email, UpdateProfileRequest request);
     void deleteUser(UUID id);
+    List<UserResponse> searchUsersByName(String query, String excludeEmail);
 }

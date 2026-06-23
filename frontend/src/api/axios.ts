@@ -14,7 +14,7 @@ const api = axios.create({
 // (httpOnly cookie được browser tự gửi — không cần đọc thủ công)
 api.interceptors.request.use(
   (config) => {
-    const token = tokenStorage.getToken();
+    const token = tokenStorage.getToken() || localStorage.getItem("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

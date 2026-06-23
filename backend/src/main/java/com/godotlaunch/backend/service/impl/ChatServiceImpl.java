@@ -171,6 +171,9 @@ public class ChatServiceImpl implements ChatService {
             }
             chatMessageRepository.saveAll(unreadMessages);
         }
+
+        // Mark corresponding chat notifications as read
+        notificationService.markChatNotificationsAsRead(user.getId(), senderId);
     }
 
     private ChatMessageResponse mapToResponse(ChatMessage message) {
