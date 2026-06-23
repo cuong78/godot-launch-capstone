@@ -10,6 +10,9 @@ import com.godotlaunch.backend.repository.*;
 import com.godotlaunch.backend.service.CommunityChatService;
 import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.entity.enums.NotificationType;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.service.AuditLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,6 +35,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
     private final UserIpLogRepository userIpLogRepository;
     private final HttpServletRequest httpServletRequest;
     private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -82,6 +86,15 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         }
 
         logIp(currentUser, "post_chat");
+
+        auditLogService.publishAuto(
+                AuditAction.post_created,
+                AuditTarget.community_chat,
+                post.getId(),
+                null,
+                post.getMessage(),
+                "User created community post: " + (post.getMessage().length() > 50 ? post.getMessage().substring(0, 50) + "..." : post.getMessage())
+        );
 
         return mapToResponse(post);
     }
@@ -135,6 +148,15 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         post.setDeleted(true);
         communityChatRepository.save(post);
+
+        auditLogService.publishAuto(
+                AuditAction.chat_removed,
+                AuditTarget.community_chat,
+                id,
+                null,
+                null,
+                (post.getParentMessage() == null ? "Community post" : "Comment") + " deleted by " + currentUser.getFullName()
+        );
     }
 
     @Override
@@ -199,6 +221,15 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 parentPost.getId().toString()
         );
 
+        auditLogService.publishAuto(
+                AuditAction.comment_created,
+                AuditTarget.community_chat,
+                comment.getId(),
+                null,
+                comment.getMessage(),
+                "User commented on community post: " + (comment.getMessage().length() > 50 ? comment.getMessage().substring(0, 50) + "..." : comment.getMessage())
+        );
+
         return mapToResponse(comment);
     }
 
@@ -250,12 +281,30 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                     currentUser.getFullName() + " liked your post.",
                     post.getId().toString()
             );
+
+            auditLogService.publishAuto(
+                    AuditAction.reaction_created,
+                    AuditTarget.community_chat,
+                    post.getId(),
+                    null,
+                    reaction.getReactionType().name(),
+                    "User reacted " + reaction.getReactionType() + " to post: " + post.getId()
+            );
         } else {
             reaction = existingOpt.get();
             if (!reaction.getReactionType().equals(request.getReactionType())) {
                 // CASE 2: User HAS reacted before + reaction_type is DIFFERENT
                 reaction.setReactionType(request.getReactionType());
                 reaction = chatReactionRepository.save(reaction);
+
+                auditLogService.publishAuto(
+                        AuditAction.reaction_created,
+                        AuditTarget.community_chat,
+                        post.getId(),
+                        null,
+                        reaction.getReactionType().name(),
+                        "User updated reaction to " + reaction.getReactionType() + " on post: " + post.getId()
+                );
             }
             // CASE 3: User HAS reacted before + reaction_type is SAME -> Do nothing
         }

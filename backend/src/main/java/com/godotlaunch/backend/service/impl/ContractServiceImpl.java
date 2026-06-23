@@ -11,6 +11,9 @@ import com.godotlaunch.backend.repository.ContractRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.AwsS3Service;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.ContractService;
 import com.godotlaunch.backend.service.EmailService;
 import org.springframework.stereotype.Service;
@@ -32,15 +35,18 @@ public class ContractServiceImpl implements ContractService {
     private final UserRepository userRepository;
     private final AwsS3Service awsS3Service;
     private final EmailService emailService;
+    private final AuditLogService auditLogService;
 
     public ContractServiceImpl(ContractRepository contractRepository, GameRepository gameRepository,
                                UserRepository userRepository,
-                               AwsS3Service awsS3Service, EmailService emailService) {
+                               AwsS3Service awsS3Service, EmailService emailService,
+                               AuditLogService auditLogService) {
         this.contractRepository = contractRepository;
         this.gameRepository = gameRepository;
         this.userRepository = userRepository;
         this.awsS3Service = awsS3Service;
         this.emailService = emailService;
+        this.auditLogService = auditLogService;
     }
 
     @Override
@@ -99,6 +105,15 @@ public class ContractServiceImpl implements ContractService {
         } catch (Exception e) {
             // log warning but don't fail transaction
         }
+
+        auditLogService.publishAuto(
+                AuditAction.contract_created,
+                AuditTarget.contract,
+                contract.getId(),
+                null,
+                contract.getStatus().name(),
+                "Contract proposed by Admin for game: " + game.getTitle()
+        );
 
         return mapToResponse(contract);
     }
@@ -175,6 +190,15 @@ public class ContractServiceImpl implements ContractService {
         game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.approved);
         gameRepository.save(game);
 
+        auditLogService.publishAuto(
+                AuditAction.contract_signed,
+                AuditTarget.contract,
+                contract.getId(),
+                null,
+                contract.getStatus().name(),
+                "Contract signed by developer (seller) for game: " + contract.getGame().getTitle()
+        );
+
         return mapToResponse(contract);
     }
 
@@ -204,6 +228,15 @@ public class ContractServiceImpl implements ContractService {
         game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.published);
         gameRepository.save(game);
 
+        auditLogService.publishAuto(
+                AuditAction.contract_signed,
+                AuditTarget.contract,
+                contract.getId(),
+                null,
+                contract.getStatus().name(),
+                "Contract signed by admin (buyer) and fully executed for game: " + contract.getGame().getTitle()
+        );
+
         return mapToResponse(contract);
     }
 
@@ -228,6 +261,15 @@ public class ContractServiceImpl implements ContractService {
         gameRepository.save(game);
 
         contractRepository.save(contract);
+        auditLogService.publishAuto(
+                AuditAction.contract_cancelled,
+                AuditTarget.contract,
+                contract.getId(),
+                null,
+                contract.getStatus().name(),
+                "Contract rejected by developer for game: " + contract.getGame().getTitle() + ". Reason: " + rejectionReason
+        );
+
         return mapToResponse(contract);
     }
 

@@ -9,6 +9,9 @@ import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.repository.ChatMessageRepository;
 import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.ChatService;
 import com.godotlaunch.backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserRepository userRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -75,6 +79,15 @@ public class ChatServiceImpl implements ChatService {
         } catch (Exception e) {
             log.error("Failed to create chat notification: {}", e.getMessage());
         }
+
+        auditLogService.publishAuto(
+                AuditAction.chat_message_sent,
+                AuditTarget.chat_message,
+                saved.getId(),
+                null,
+                null,
+                "Chat message sent from " + sender.getFullName() + " to " + recipient.getFullName()
+        );
 
         return response;
     }
