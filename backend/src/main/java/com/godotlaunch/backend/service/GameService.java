@@ -15,8 +15,18 @@ public interface GameService {
     /**
      * Submit game bằng repo GitHub: verify owner → clone → virus scan → snapshot.
      * Thay cho upload game.zip. Sạch → status pending, nhiễm → rejected.
+     * Nếu private chưa cấp quyền bot → throw REPO_NEEDS_BOT.
      */
     void submitGameRepo(UUID gameId, String repoUrl, String branch, String creatorEmail);
+
+    /**
+     * Sau khi developer mời bot vào repo private: bot accept invitation.
+     * @return true nếu bot đã có quyền truy cập (sẵn sàng submit lại)
+     */
+    boolean acceptBotInvitation(String repoUrl, String creatorEmail);
+
+    /** Username bot để frontend hiển thị hướng dẫn mời. */
+    String getBotUsername();
     GameResponse getGameById(UUID gameId);
     List<GameResponse> getAllGames();
     List<GameResponse> getGamesByStatus(GameStatus status);

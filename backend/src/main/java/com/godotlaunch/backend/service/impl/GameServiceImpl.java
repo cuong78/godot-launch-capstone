@@ -122,11 +122,18 @@ public class GameServiceImpl implements GameService {
             throw new AppException(ErrorCode.REPO_URL_REQUIRED);
         }
 
-        // 1. Verify owner repo khớp account GitHub + không fork
+        // 1. Kiểm tra hệ thống có truy cập được repo không
+        GitHubRepoService.RepoAccess access = gitHubRepoService.checkAccess(repoUrl);
+        if (access == GitHubRepoService.RepoAccess.PRIVATE_NO_ACCESS) {
+            // Private mà bot chưa có quyền → báo frontend hiện hướng dẫn mời bot
+            throw new AppException(ErrorCode.REPO_NEEDS_BOT);
+        }
+
+        // 2. Verify owner repo khớp account GitHub + không fork
         gitHubRepoService.verifyOwnership(creator, repoUrl);
 
-        // 2. Clone + virus scan + snapshot qua Python service
-        String token = gitHubRepoService.getDecryptedToken(creator);
+        // 3. Clone + virus scan + snapshot — token null nếu public, bot token nếu private
+        String token = gitHubRepoService.getCloneToken(repoUrl);
         SourceProcessResult result;
         try {
             result = sourceProcessingClient.process(repoUrl, token, branch);
@@ -159,6 +166,21 @@ public class GameServiceImpl implements GameService {
                 creator.getId(), ActorRole.developer, AuditAction.game_submitted,
                 AuditTarget.game, gameId, GameStatus.draft.name(), GameStatus.pending.name(),
                 "Game '" + game.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
+    }
+
+    @Override
+    public boolean acceptBotInvitation(String repoUrl, String creatorEmail) {
+        userRepository.findByEmail(creatorEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        if (repoUrl == null || repoUrl.isBlank()) {
+            throw new AppException(ErrorCode.REPO_URL_REQUIRED);
+        }
+        return gitHubRepoService.acceptBotInvitation(repoUrl);
+    }
+
+    @Override
+    public String getBotUsername() {
+        return gitHubRepoService.getBotUsername();
     }
 
     /** Lưu snapshot bất biến cho game (commit SHA + hash). */

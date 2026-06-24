@@ -43,11 +43,16 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
     public String buildAuthorizationUrl(HttpSession session) {
         String state = UUID.randomUUID().toString();
         session.setAttribute("github_oauth_state", state);
+        // scope user:email — KHÔNG xin 'repo' (token rộng).
+        // Private repo dùng mô hình bot: user mời godotlaunch-bot → bot clone.
+        String redirectUri = githubConfig.getRedirectUri() != null
+                ? githubConfig.getRedirectUri()
+                : "http://localhost:8080/api/v1/auth/github/callback";
         return "https://github.com/login/oauth/authorize"
                 + "?client_id=" + githubConfig.getClientId()
                 + "&scope=user:email"
                 + "&state=" + state
-                + "&redirect_uri=http://localhost:8080/api/v1/auth/github/callback";
+                + "&redirect_uri=" + redirectUri;
     }
 
     @Override

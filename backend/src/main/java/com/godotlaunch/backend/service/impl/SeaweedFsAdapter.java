@@ -8,9 +8,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
@@ -130,7 +132,22 @@ public class SeaweedFsAdapter implements StorageService {
     }
 
     private String getFullUrl(String objectKey) {
-        String key = objectKey.startsWith("/") ? objectKey : "/" + objectKey;
-        return String.format("http://%s:%d%s%s", filerHost, filerHttpPort, basePath, key);
+        String key = objectKey.startsWith("/") ? objectKey.substring(1) : objectKey;
+        return String.format("http://%s:%d%s/%s", filerHost, filerHttpPort, basePath, encodePath(key));
+    }
+
+    /**
+     * URL-encode từng segment của path (tên file user có thể chứa dấu cách, ngoặc, ký tự đặc biệt).
+     * Giữ nguyên dấu '/' ngăn cách, chỉ encode nội dung mỗi segment.
+     * URLEncoder mã hóa space thành '+', nhưng path cần '%20' → thay lại.
+     */
+    private String encodePath(String path) {
+        String[] segments = path.split("/");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < segments.length; i++) {
+            if (i > 0) sb.append("/");
+            sb.append(URLEncoder.encode(segments[i], StandardCharsets.UTF_8).replace("+", "%20"));
+        }
+        return sb.toString();
     }
 }

@@ -12,4 +12,7 @@ import org.springframework.stereotype.Component;
 public class GitHubOAuthConfig {
     private String clientId;
     private String clientSecret;
+    private String redirectUri;
+    private String botUsername;   // machine user account, vd "godotlaunch-bot"
+    private String botToken;      // PAT của bot — clone private repo developer mời
 }

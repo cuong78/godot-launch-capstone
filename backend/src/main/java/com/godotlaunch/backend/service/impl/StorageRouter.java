@@ -47,8 +47,21 @@ public class StorageRouter {
      */
     public String upload(FileType fileType, MultipartFile file, String prefix) {
         StorageService adapter = resolveAdapter(fileType.name());
-        String objectKey = prefix + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
+        String objectKey = prefix + "/" + UUID.randomUUID() + "_" + sanitizeFilename(file.getOriginalFilename());
         return adapter.upload(file, objectKey);
+    }
+
+    /**
+     * Làm sạch tên file: bỏ dấu cách, ngoặc, ký tự đặc biệt (gây lỗi URL với SeaweedFS,
+     * và rắc rối khi truy cập). Giữ chữ/số/dấu chấm/gạch ngang/gạch dưới.
+     */
+    private String sanitizeFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "file";
+        }
+        // Thay mọi ký tự không an toàn bằng '_', gộp '_' liên tiếp
+        String cleaned = filename.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("_+", "_");
+        return cleaned.isBlank() ? "file" : cleaned;
     }
 
     /**

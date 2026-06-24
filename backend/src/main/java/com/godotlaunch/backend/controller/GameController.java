@@ -39,7 +39,7 @@ public class GameController {
 
     @PostMapping("/{id}/submit-repo")
     @Operation(summary = "Submit game bằng repo GitHub",
-            description = "Verify owner repo → clone → virus scan → snapshot. Thay cho upload game.zip.")
+            description = "Verify owner repo → clone → virus scan → snapshot. Thay cho upload game.zip. Private chưa cấp quyền → 403 REPO_NEEDS_BOT.")
     public ResponseEntity<ApiResponse<Map<String, String>>> submitGameRepo(
             @PathVariable UUID id,
             @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
@@ -47,6 +47,26 @@ public class GameController {
         gameService.submitGameRepo(id, request.getRepoUrl(), request.getBranch(), principal.getName());
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of("message", "Repo verified và submit thành công. Đang chờ duyệt."), "Success"));
+    }
+
+    @GetMapping("/github-bot")
+    @Operation(summary = "Lấy username bot GitHub", description = "Username để developer mời bot vào repo private.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getGithubBot() {
+        String bot = gameService.getBotUsername();
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("botUsername", bot != null ? bot : ""), "OK"));
+    }
+
+    @PostMapping("/accept-bot")
+    @Operation(summary = "Bot accept invitation repo private",
+            description = "Sau khi developer mời bot vào repo, bot tự accept invitation. Trả granted=true nếu sẵn sàng submit.")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> acceptBot(
+            @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
+            Principal principal) {
+        boolean granted = gameService.acceptBotInvitation(request.getRepoUrl(), principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("granted", granted),
+                granted ? "Đã cấp quyền cho bot. Bạn có thể submit lại." : "Chưa tìm thấy lời mời. Vui lòng kiểm tra lại."));
     }
 
     @GetMapping
