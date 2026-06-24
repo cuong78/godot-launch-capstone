@@ -7,12 +7,15 @@ import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
 import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
+import com.godotlaunch.backend.dto.response.GitHubStatusResponse;
+import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.RoleRepository;
 import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.security.JwtProvider;
 import com.godotlaunch.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,6 +35,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
+    private final JwtProvider jwtProvider;
 
     @Override
     @Transactional(readOnly = true)
@@ -212,6 +216,52 @@ public class UserServiceImpl implements UserService {
                 .filter(user -> !user.getEmail().equalsIgnoreCase(excludeEmail))
                 .map(this::mapToUserResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GitHubStatusResponse getGitHubStatus(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return GitHubStatusResponse.builder()
+                .linked(user.getGithubId() != null)
+                .githubUsername(user.getGithubUsername())
+                .githubLinkedAt(user.getGithubLinkedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public JwtAuthenticationResponse unlinkGitHub(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!"developer".equalsIgnoreCase(user.getRole().getName())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        Role customerRole = roleRepository.findByName("customer")
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+        user.setRole(customerRole);
+
+        user.setGithubId(null);
+        user.setGithubUsername(null);
+        user.setGithubTokenEnc(null);
+        user.setGithubLinkedAt(null);
+
+        userRepository.save(user);
+
+        // Generate new JWT with customer role
+        String sessionSecret = UUID.randomUUID().toString();
+        user.setSessionHash(JwtProvider.hashSessionSecret(sessionSecret));
+        userRepository.save(user);
+
+        String token = jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName(), sessionSecret);
+        return JwtAuthenticationResponse.builder()
+                .token(token)
+                .user(mapToUserResponse(user))
+                .build();
     }
 
     private UserResponse mapToUserResponse(User user) {

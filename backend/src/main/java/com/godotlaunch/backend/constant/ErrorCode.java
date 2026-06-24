@@ -51,7 +51,12 @@ public enum ErrorCode {
     // GitHub OAuth
     GITHUB_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "GL-5020", "Failed to authenticate with GitHub."),
     GITHUB_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "GL-4060", "GitHub account must have a public email."),
-    GITHUB_TOKEN_EXCHANGE_FAILED(HttpStatus.BAD_GATEWAY, "GL-5021", "Failed to exchange GitHub authorization code.");
+    GITHUB_TOKEN_EXCHANGE_FAILED(HttpStatus.BAD_GATEWAY, "GL-5021", "Failed to exchange GitHub authorization code."),
+    
+    // GitHub Linking
+    GITHUB_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "GL-4070", "GitHub primary email does not match your registered email."),
+    GITHUB_ALREADY_LINKED(HttpStatus.BAD_REQUEST, "GL-4071", "This GitHub account is already linked to another user."),
+    GITHUB_LINK_NOT_PREPARED(HttpStatus.BAD_REQUEST, "GL-4072", "GitHub link session not found. Please start the linking process again.");
 
     private final HttpStatus httpStatus;
     private final String code;

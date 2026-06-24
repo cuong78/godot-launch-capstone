@@ -14,23 +14,43 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
   const { loginWithToken } = useAuth();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLinkFlow, setIsLinkFlow] = useState(false);
 
   useEffect(() => {
     const processCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const errorParam = urlParams.get('error');
       const tokenParam = urlParams.get('token');
+      const linkPending = localStorage.getItem("github_link_pending") === "true";
+      setIsLinkFlow(linkPending);
 
       // Clear the query params from the URL bar immediately for security
       window.history.replaceState({}, document.title, window.location.pathname);
 
-      if (errorParam === 'access_denied') {
-        setErrorMsg('GitHub login cancelled by user.');
+      if (errorParam) {
+        localStorage.removeItem("github_link_pending");
+        switch (errorParam) {
+          case 'GL-4070':
+            setErrorMsg('GitHub primary email does not match your registered email. Please use a GitHub account with matching email.');
+            break;
+          case 'GL-4071':
+            setErrorMsg('This GitHub account is already linked to another user account.');
+            break;
+          case 'GL-4072':
+            setErrorMsg('GitHub linking session not found or expired. Please try again from your profile.');
+            break;
+          case 'access_denied':
+            setErrorMsg('GitHub login/linking cancelled by user.');
+            break;
+          default:
+            setErrorMsg('GitHub authentication failed. Please try again.');
+        }
         setLoading(false);
         return;
       }
 
       if (!tokenParam) {
+        localStorage.removeItem("github_link_pending");
         setErrorMsg('GitHub login failed. No token returned.');
         setLoading(false);
         return;
@@ -39,7 +59,14 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
       try {
         const user = await loginWithToken(tokenParam);
         setCurrentUser(user);
-        setCurrentScreen('dashboard');
+        
+        if (linkPending) {
+          localStorage.removeItem("github_link_pending");
+          localStorage.setItem("github_link_success", "true");
+          setCurrentScreen('profile');
+        } else {
+          setCurrentScreen('dashboard');
+        }
       } catch (err: any) {
         setErrorMsg(err.message || 'GitHub login failed. Please try again.');
       } finally {
@@ -71,17 +98,17 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
               <AlertCircle className="h-8 w-8" />
             </div>
             <h2 className="font-display text-2xl font-bold tracking-tight text-[#ece1d1]">
-              Login Failed
+              {isLinkFlow ? 'Linking Failed' : 'Login Failed'}
             </h2>
             <p className="text-sm text-red-200">
               {errorMsg}
             </p>
             <button
-              onClick={() => setCurrentScreen('signin')}
+              onClick={() => setCurrentScreen(isLinkFlow ? 'profile' : 'signin')}
               className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-6 py-3 font-display text-base font-bold text-[#402d00] transition duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] active:scale-[0.98]"
             >
               <ArrowLeft size={16} />
-              Back to Sign In
+              {isLinkFlow ? 'Back to Profile' : 'Back to Sign In'}
             </button>
           </div>
         ) : null}

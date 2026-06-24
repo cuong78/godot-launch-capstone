@@ -585,8 +585,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         <div className="flex items-center gap-2">
           <button 
             onClick={() => {
-              const time = new Date().toTimeString().split(' ')[0];
-              setLogs(prev => [`[${time}] [SYSTEM] Force manual telemetry diagnostics successfully run.`, ...prev]);
               alert('Diagnostics run complete. Health metrics healthy.');
             }}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white transition-studio rounded-lg text-xs font-semibold cursor-pointer active:scale-95"

@@ -4,7 +4,11 @@ import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
 import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
+import com.godotlaunch.backend.dto.response.GitHubStatusResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
+import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
+import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -106,5 +110,28 @@ public class UserController {
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
         userService.deleteUser(id);
         return ResponseEntity.ok(ApiResponse.success(null, "User soft-deleted successfully."));
+    }
+
+    @GetMapping("/me/github-status")
+    @Operation(summary = "Get current user's GitHub link status")
+    public ResponseEntity<ApiResponse<GitHubStatusResponse>> getGitHubStatus(Principal principal) {
+        if (principal == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        String email = principal.getName();
+        GitHubStatusResponse status = userService.getGitHubStatus(email);
+        return ResponseEntity.ok(ApiResponse.success(status, "GitHub status retrieved successfully."));
+    }
+
+    @DeleteMapping("/me/github")
+    @PreAuthorize("hasAuthority('ROLE_DEVELOPER')")
+    @Operation(summary = "Unlink GitHub account from developer profile", description = "Unlinks GitHub account and downgrades user role to customer, returning a new JWT token.")
+    public ResponseEntity<ApiResponse<JwtAuthenticationResponse>> unlinkGitHub(Principal principal) {
+        if (principal == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        String email = principal.getName();
+        JwtAuthenticationResponse response = userService.unlinkGitHub(email);
+        return ResponseEntity.ok(ApiResponse.success(response, "GitHub account unlinked successfully. Role downgraded to customer."));
     }
 }
