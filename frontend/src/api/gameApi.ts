@@ -26,6 +26,21 @@ export const gameApi = {
     return response.data;
   },
 
+  // Lấy username bot GitHub (để mời vào repo private)
+  getGithubBot: async (): Promise<ApiResponse<{ botUsername: string }>> => {
+    const response = await api.get<ApiResponse<{ botUsername: string }>>('/api/v1/games/github-bot');
+    return response.data;
+  },
+
+  // Sau khi developer mời bot vào repo → bot accept invitation
+  acceptBot: async (repoUrl: string): Promise<ApiResponse<{ granted: boolean }>> => {
+    const response = await api.post<ApiResponse<{ granted: boolean }>>(
+      '/api/v1/games/accept-bot',
+      { repoUrl }
+    );
+    return response.data;
+  },
+
   getAllGames: async (status?: string): Promise<ApiResponse<GameResponse[]>> => {
     const response = await api.get<ApiResponse<GameResponse[]>>('/api/v1/games', {
       params: status ? { status } : {}

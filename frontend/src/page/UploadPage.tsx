@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFaceVerify } from '../context/FaceVerifyContext';
+import BotInviteModal from '../components/BotInviteModal';
 import {
   CheckCircle2, 
   Upload, 
@@ -91,6 +92,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [gameRepoBranch, setGameRepoBranch] = useState('');
   const [repoSubmitting, setRepoSubmitting] = useState(false);
   const [repoSubmitted, setRepoSubmitted] = useState(false);
+  // Mời bot vào repo private
+  const [showBotInvite, setShowBotInvite] = useState(false);
+  const [botUsername, setBotUsername] = useState('');
+  const [botChecking, setBotChecking] = useState(false);
 
   // Upload progress & status states
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
@@ -373,16 +378,67 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setUploadError(res.message || 'Submit repo thất bại.');
       }
     } catch (err: any) {
-      setScanStatus('failed');
-      setUploadError(err.response?.data?.message || err.message || 'Submit repo thất bại.');
+      // Repo private mà bot chưa có quyền → hiện hướng dẫn mời bot
+      if (err.response?.data?.code === 'REPO_NEEDS_BOT') {
+        setScanStatus('idle');
+        try {
+          const botRes = await gameApi.getGithubBot();
+          if (botRes.success) setBotUsername(botRes.data.botUsername);
+        } catch { /* ignore */ }
+        setShowBotInvite(true);
+      } else {
+        setScanStatus('failed');
+        setUploadError(err.response?.data?.message || err.message || 'Submit repo thất bại.');
+      }
     } finally {
       setRepoSubmitting(false);
     }
   };
 
+  // Sau khi developer mời bot → accept invitation rồi submit lại
+  const handleAcceptBotAndRetry = async () => {
+    if (!gameRepoUrl.trim()) return;
+    setBotChecking(true);
+    setUploadError(null);
+    try {
+      const res = await gameApi.acceptBot(gameRepoUrl.trim());
+      if (res.success && res.data.granted) {
+        setShowBotInvite(false);
+        await handleSubmitRepo(); // bot đã có quyền → submit lại
+      } else {
+        setUploadError(res.message || 'Chưa tìm thấy lời mời. Hãy chắc chắn bạn đã mời bot vào repo.');
+      }
+    } catch (err: any) {
+      setUploadError(err.response?.data?.message || 'Không kết nối được. Thử lại sau.');
+    } finally {
+      setBotChecking(false);
+    }
+  };
+
+  // Deep link tới trang invite collaborator của repo
+  const repoInviteUrl = (() => {
+    try {
+      const u = new URL(gameRepoUrl.trim());
+      const parts = u.pathname.replace(/^\//, '').replace(/\.git$/, '').split('/');
+      if (parts.length >= 2) return `https://github.com/${parts[0]}/${parts[1]}/settings/access`;
+    } catch { /* ignore */ }
+    return 'https://github.com';
+  })();
+
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto py-4">
-      
+
+      {showBotInvite && (
+        <BotInviteModal
+          botUsername={botUsername}
+          repoInviteUrl={repoInviteUrl}
+          checking={botChecking}
+          error={uploadError}
+          onConfirm={handleAcceptBotAndRetry}
+          onClose={() => setShowBotInvite(false)}
+        />
+      )}
+
       {/* Page Header */}
       <div className="border-l-4 border-amber-400 pl-3 flex justify-between items-center">
         <div>
