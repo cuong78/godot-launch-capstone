@@ -1,5 +1,5 @@
 -- ============================================================
---  V19 — Drop publishing_guides
+--  V22 — Drop publishing_guides
 --  Tính năng Publishing Wizard không còn nằm trong plan.
 --  Bảng không có FK nào tham chiếu ngược → drop an toàn.
 -- ============================================================
