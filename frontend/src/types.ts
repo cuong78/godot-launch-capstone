@@ -43,6 +43,7 @@ export interface User {
   role?: 'user' | 'admin' | 'developer' | 'customer' | 'guest';
   roleName?: string;
   status?: string;
+  createdAt?: string;
 }
 
 export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin' | 'auth-callback' | 'profile' | 'community-detail' | 'author-profile' | 'chat';

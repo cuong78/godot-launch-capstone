@@ -9,13 +9,10 @@ import {
   Terminal, 
   Activity, 
   FileCheck, 
-  UserMinus, 
-  UserCheck, 
   AlertTriangle,
   RefreshCw,
   Sliders,
   DollarSign,
-  Trash2,
   ChevronDown,
   ChevronUp,
   Download,
@@ -39,6 +36,12 @@ import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { AdminStoragePanel } from '../components/AdminStoragePanel';
 import { auditLogApi } from '../api/auditLogApi';
+import {
+  AdminUserManagementPanel,
+  AdminUserRecord,
+  AdminUserStatus,
+  AdminUserUpdateInput,
+} from '../components/admin/AdminUserManagementPanel';
 
 interface PendingAsset {
   id: string;
@@ -49,19 +52,52 @@ interface PendingAsset {
   date: string;
 }
 
-interface AdminUser {
-  id: string;
-  username: string;
-  email: string;
-  fullName: string;
-  role: 'admin' | 'developer' | 'customer';
-  status: 'active' | 'suspended' | 'inactive' | 'banned';
-}
-
 interface AdminPageProps {
   setCurrentScreen: (screen: any) => void;
   currentUser: User | null;
 }
+
+const isSoftDeletedUserEmail = (email: string) => email.includes('_deleted_');
+
+const mapUserStatusToAdminStatus = (status?: string, email?: string): AdminUserStatus => {
+  if (status === 'banned') {
+    return 'banned';
+  }
+
+  if (status === 'inactive') {
+    return isSoftDeletedUserEmail(email || '') ? 'inactive' : 'suspended';
+  }
+
+  return 'active';
+};
+
+const mapApiUserToAdminUser = (user: User): AdminUserRecord => {
+  const email = user.email || '';
+  const fullName = user.fullName || user.username || email;
+  const roleName = user.roleName?.toLowerCase();
+  const role: AdminUserRecord['role'] =
+    roleName === 'admin' || roleName === 'developer' ? roleName : 'customer';
+
+  return {
+    id: user.id || '',
+    username: user.username || email.split('@')[0] || email,
+    email,
+    fullName,
+    role,
+    status: mapUserStatusToAdminStatus(user.status, email),
+    avatarUrl: user.avatarUrl,
+    createdAt: user.createdAt,
+    isSoftDeleted: isSoftDeletedUserEmail(email),
+  };
+};
+
+const mapAdminStatusToApiStatus = (status: AdminUserStatus) => {
+  if (status === 'suspended') {
+    return 'inactive';
+  }
+
+  return status;
+};
 
 const getContractStatusLabel = (status: string, signedAtSeller?: string | null) => {
   switch (status) {
@@ -225,14 +261,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   };
 
 
-  // Mock Users state (initial fallback)
-  const [users, setUsers] = useState<AdminUser[]>([
-    { id: 'u1', username: 'Cuong78', email: 'admin@godotlaunch.com', fullName: 'Cuong Admin', role: 'admin', status: 'active' },
-    { id: 'u2', username: 'NeoArtisans', email: 'neo@artisans.com', fullName: 'Neo Artisans', role: 'developer', status: 'active' },
-    { id: 'u3', username: 'LofiDev', email: 'lofi@dev.com', fullName: 'Lofi Dev', role: 'developer', status: 'active' },
-    { id: 'u4', username: 'SlyGamer', email: 'sly@gamer.com', fullName: 'Sly Gamer', role: 'customer', status: 'active' },
-    { id: 'u5', username: 'SpamBot99', email: 'spam@bot.com', fullName: 'Spam Bot', role: 'customer', status: 'suspended' }
-  ]);
+  const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(false);
   const [usersError, setUsersError] = useState<string | null>(null);
 
@@ -242,14 +271,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     try {
       const response = await userApi.getAllUsers();
       if (response.success && response.data) {
-        const mappedUsers: AdminUser[] = response.data.map((u: any) => ({
-          id: u.id || '',
-          username: u.username || u.email || '',
-          email: u.email || '',
-          fullName: u.fullName || '',
-          role: (u.roleName?.toLowerCase() as any) || 'customer',
-          status: u.status === 'active' ? 'active' : u.status === 'banned' ? 'banned' : 'inactive'
-        }));
+        const mappedUsers = response.data.map(mapApiUserToAdminUser);
         setUsers(mappedUsers);
       } else {
         setUsersError(response.message || 'Failed to load users');
@@ -309,6 +331,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setIsLoadingLogs(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'users') {
@@ -484,81 +510,32 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleToggleUserRole = async (id: string) => {
-    const userToUpdate = users.find(u => u.id === id);
-    if (!userToUpdate) return;
+  const handleAdminUserUpdate = async (input: AdminUserUpdateInput) => {
+    const existingUser = users.find((user) => user.id === input.id);
+    if (!existingUser) {
+      throw new Error('User not found.');
+    }
 
-    const nextRole = userToUpdate.role === 'admin' ? 'developer' : userToUpdate.role === 'developer' ? 'customer' : 'admin';
-    
     try {
-      const response = await userApi.updateUser(id, {
-        fullName: userToUpdate.fullName || userToUpdate.username,
-        roleName: nextRole,
-        status: userToUpdate.status === 'suspended' ? 'banned' : userToUpdate.status === 'active' ? 'active' : 'inactive'
+      const response = await userApi.updateUser(input.id, {
+        fullName: input.fullName,
+        email: input.email,
+        roleName: input.role,
+        status: mapAdminStatusToApiStatus(input.status),
+        banReason: input.banReason,
+        avatarUrl: existingUser.avatarUrl,
       });
-      if (response.success) {
-        setUsers(users.map(u => {
-          if (u.id === id) {
-            return {
-              ...u,
-              role: nextRole
-            };
-          }
-          return u;
-        }));
-      } else {
-        alert(response.message || 'Failed to update user role');
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to update user.');
       }
+
+      const updatedUser = mapApiUserToAdminUser(response.data);
+      setUsers((currentUsers) =>
+        currentUsers.map((user) => (user.id === input.id ? updatedUser : user)),
+      );
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to update user role');
-    }
-  };
-
-  const handleToggleUserStatus = async (id: string) => {
-    const userToUpdate = users.find(u => u.id === id);
-    if (!userToUpdate) return;
-
-    const nextStatus = userToUpdate.status === 'active' ? 'banned' : 'active';
-
-    try {
-      const response = await userApi.updateUser(id, {
-        fullName: userToUpdate.fullName || userToUpdate.username,
-        roleName: userToUpdate.role,
-        status: nextStatus
-      });
-      if (response.success) {
-        setUsers(users.map(u => {
-          if (u.id === id) {
-            return {
-              ...u,
-              status: nextStatus === 'active' ? 'active' : 'suspended'
-            };
-          }
-          return u;
-        }));
-      } else {
-        alert(response.message || 'Failed to update user status');
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to update user status');
-    }
-  };
-
-  const handleDeleteUser = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this user? This will soft-delete their account.")) {
-      return;
-    }
-
-    try {
-      const response = await userApi.deleteUser(id);
-      if (response.success) {
-        setUsers(users.filter(u => u.id !== id));
-        alert("User soft-deleted successfully.");
-      } else {
-        alert(response.message || "Failed to delete user");
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.message || err.message || "Failed to delete user");
+      throw new Error(err.response?.data?.message || err.message || 'Failed to update user.');
     }
   };
 
@@ -613,10 +590,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <Users size={12} className="text-amber-500" /> Platform accounts
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">{users.length * 280 + 32} users</span>
-            <span className="text-[10px] text-emerald-500 font-bold font-mono">+32 today</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{users.length} users</span>
+            <span className="text-[10px] text-emerald-500 font-bold font-mono">Live directory</span>
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">Active sessions: 184 creators online</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">Synced from the admin user directory</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
@@ -1231,95 +1208,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         )}
         {/* Tab 2: User Directory */}
         {activeTab === 'users' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Account Database Directory</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Modify credentials, adjust user permissions, or suspend access keys</p>
-            </div>
-
-            {isLoadingUsers ? (
-              <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
-                <RefreshCw className="animate-spin" size={18} /> Loading platform users...
-              </div>
-            ) : usersError ? (
-              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                Error loading users: {usersError}
-              </div>
-            ) : (
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
-                      <th className="p-3">User</th>
-                      <th className="p-3">Email Address</th>
-                      <th className="p-3">Access Level</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
-                    {users.map(u => (
-                      <tr key={u.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5">
-                        <td className="p-3">
-                          <div className="font-semibold text-slate-800 dark:text-slate-100">@{u.username}</div>
-                          <div className="text-[9px] text-slate-450 dark:text-slate-500 font-mono mt-0.5" title="Click to copy User ID">
-                            <span className="text-[8px] text-slate-400 dark:text-slate-650 uppercase mr-1 select-none">ID:</span>
-                            <span className="select-all break-all">{u.id}</span>
-                          </div>
-                        </td>
-                        <td className="p-3 text-slate-600 dark:text-slate-350">{u.email}</td>
-                        <td className="p-3">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
-                            u.role === 'admin' 
-                              ? 'bg-amber-450/10 text-amber-500 border-amber-500/20' 
-                              : u.role === 'developer'
-                              ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
-                              : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800'
-                          }`}>
-                            {u.role.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <span className={`inline-flex items-center gap-1 font-bold ${u.status === 'active' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                            {u.status}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleToggleUserRole(u.id)}
-                              className="px-2.5 py-1 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 rounded border border-slate-250 dark:border-slate-800 font-semibold transition-studio cursor-pointer"
-                            >
-                              Toggle Role
-                            </button>
-                            <button
-                              onClick={() => handleToggleUserStatus(u.id)}
-                              className={`p-1 rounded cursor-pointer transition-studio ${
-                                u.status === 'active' 
-                                  ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100' 
-                                  : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
-                              }`}
-                              title={u.status === 'active' ? 'Suspend Account' : 'Activate Account'}
-                            >
-                              {u.status === 'active' ? <UserMinus size={14} /> : <UserCheck size={14} />}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(u.id)}
-                              className="p-1 rounded cursor-pointer transition-studio bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
-                              title="Delete User"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <AdminUserManagementPanel
+            users={users}
+            isLoading={isLoadingUsers}
+            error={usersError}
+            currentUserEmail={currentUser?.email}
+            onRefresh={fetchUsers}
+            onUpdateUser={handleAdminUserUpdate}
+          />
         )}
 
         {/* Tab 3: System Logs */}

@@ -3,9 +3,11 @@ import { ApiResponse, User, UpdateProfileRequest, JwtAuthenticationResponse } fr
 
 export interface AdminUpdateUserRequest {
   fullName: string;
+  email: string;
   roleName: string;
   status: string;
   password?: string;
+  banReason?: string;
   avatarUrl?: string;
 }
 

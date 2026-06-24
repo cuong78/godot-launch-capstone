@@ -99,12 +99,18 @@ public class UserServiceImpl implements UserService {
 
         String oldRole = user.getRole().getName();
         String oldStatus = user.getStatus();
+        String nextEmail = request.getEmail().trim();
+
+        if (!user.getEmail().equalsIgnoreCase(nextEmail) && userRepository.existsByEmail(nextEmail)) {
+            throw new AppException(ErrorCode.DUPLICATE_EMAIL);
+        }
 
         // Fetch and validate role
         Role role = roleRepository.findByName(request.getRoleName().trim().toLowerCase())
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
         user.setFullName(request.getFullName());
+        user.setEmail(nextEmail);
         user.setRole(role);
         user.setStatus(request.getStatus().trim().toLowerCase());
 
@@ -131,16 +137,21 @@ public class UserServiceImpl implements UserService {
         }
 
         if (!oldStatus.equalsIgnoreCase(user.getStatus())) {
-            if ("inactive".equalsIgnoreCase(user.getStatus())) {
+            String reasonSuffix = StringUtils.hasText(request.getBanReason())
+                    ? ". Reason: " + request.getBanReason().trim()
+                    : "";
+
+            if ("inactive".equalsIgnoreCase(user.getStatus()) || "banned".equalsIgnoreCase(user.getStatus())) {
                 auditLogService.publishAuto(
                         AuditAction.user_banned,
                         AuditTarget.user,
                         user.getId(),
                         oldStatus,
                         user.getStatus(),
-                        "User account status changed to inactive (banned) for " + user.getEmail()
+                        "User account status changed to " + user.getStatus() + " for " + user.getEmail() + reasonSuffix
                 );
-            } else if ("active".equalsIgnoreCase(user.getStatus()) && "inactive".equalsIgnoreCase(oldStatus)) {
+            } else if ("active".equalsIgnoreCase(user.getStatus())
+                    && ("inactive".equalsIgnoreCase(oldStatus) || "banned".equalsIgnoreCase(oldStatus))) {
                 auditLogService.publishAuto(
                         AuditAction.user_unbanned,
                         AuditTarget.user,
@@ -273,6 +284,7 @@ public class UserServiceImpl implements UserService {
                 .roleName(user.getRole().getName())
                 .status(user.getStatus())
                 .avatarUrl(user.getAvatarUrl())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }

@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -13,6 +14,10 @@ public class AdminUpdateUserRequest {
     @Size(max = 150, message = "Full name cannot exceed 150 characters.")
     private String fullName;
 
+    @NotBlank(message = "Email is required.")
+    @Email(message = "Email format is invalid.")
+    private String email;
+
     @NotBlank(message = "Role is required.")
     private String roleName; // e.g. "admin", "developer", "customer"
 
@@ -21,6 +26,8 @@ public class AdminUpdateUserRequest {
 
     @Size(min = 6, message = "Password must be at least 6 characters if specified.")
     private String password; // optional password reset
+
+    private String banReason;
 
     private String avatarUrl;
 }
