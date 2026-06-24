@@ -4,6 +4,7 @@ import com.godotlaunch.backend.entity.ChatReaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,5 +15,5 @@ public interface ChatReactionRepository extends JpaRepository<ChatReaction, UUID
 
     long countByChatId(UUID chatId);
 
-    java.util.List<ChatReaction> findByChatId(UUID chatId);
+    List<ChatReaction> findByChatId(UUID chatId);
 }

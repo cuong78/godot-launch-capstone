@@ -1,0 +1,48 @@
+﻿D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\config\FaceServiceClient.java:48: } catch (org.springframework.web.client.HttpClientErrorException e) {
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\config\WebSocketConfig.java:87: throw new org.springframework.messaging.MessageDeliveryException("WebSocket authentication failed: " + e.getMessage());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\config\WebSocketConfig.java:91: throw new org.springframework.messaging.MessageDeliveryException("WebSocket authentication failed: invalid or missing token");
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\controller\AdminAuditLogController.java:50: List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\controller\AdminAuditLogController.java:68: return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\controller\AdminStorageController.java:83: @RequestBody java.util.Map<String, String> body) {
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\controller\CommunityChatController.java:122: public ResponseEntity<ApiResponse<java.util.List<ChatReactionResponse>>> getPostReactions(@PathVariable UUID id) {
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\controller\CommunityChatController.java:123: java.util.List<ChatReactionResponse> responses = communityChatService.getReactions(id);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\controller\GameController.java:45: @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\controller\GameController.java:64: @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\controller\KycController.java:42: private final com.godotlaunch.backend.service.BannedIdentityService bannedIdentityService;
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\entity\AuditLog.java:63: @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\entity\UserIpLog.java:27: @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\repository\ChatReactionRepository.java:17: java.util.List<ChatReaction> findByChatId(UUID chatId);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\security\CustomUserDetailsService.java:30: return new org.springframework.security.core.userdetails.User(
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\CommunityChatService.java:33: java.util.List<ChatReactionResponse> getReactions(UUID id);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\AuditLogServiceImpl.java:44: java.nio.file.Path path = java.nio.file.Paths.get("audit-debug.log");
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\AuditLogServiceImpl.java:45: String logLine = java.time.LocalDateTime.now() + " : " + message + "\n";
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\AuditLogServiceImpl.java:46: java.nio.file.Files.writeString(path, logLine,
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\AuditLogServiceImpl.java:47: java.nio.file.StandardOpenOption.CREATE,
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\AuditLogServiceImpl.java:48: java.nio.file.StandardOpenOption.APPEND);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\AuditLogServiceImpl.java:154: java.io.StringWriter sw = new java.io.StringWriter();
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\AuditLogServiceImpl.java:155: e.printStackTrace(new java.io.PrintWriter(sw));
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:71: post.setCreatedAt(java.time.Instant.now());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:72: post.setUpdatedAt(java.time.Instant.now());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:140: post.setUpdatedAt(java.time.Instant.now());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:198: comment.setCreatedAt(java.time.Instant.now());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:199: comment.setUpdatedAt(java.time.Instant.now());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:378: shared.setCreatedAt(java.time.Instant.now());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:379: shared.setUpdatedAt(java.time.Instant.now());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:400: public java.util.List<ChatReactionResponse> getReactions(UUID id) {
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:407: java.util.List<ChatReaction> reactions = chatReactionRepository.findByChatId(id);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:417: java.util.Map<String, Object> update = java.util.Map.of(
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:432: java.util.Map<String, Object> update = java.util.Map.of(
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:444: java.util.Map<String, Object> update = java.util.Map.of(
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:555: .createdAt(chat.getCreatedAt() != null ? chat.getCreatedAt() : java.time.Instant.now())
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\CommunityChatServiceImpl.java:556: .updatedAt(chat.getUpdatedAt() != null ? chat.getUpdatedAt() : java.time.Instant.now())
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\ContractServiceImpl.java:190: game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.approved);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\ContractServiceImpl.java:228: game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.published);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\ContractServiceImpl.java:260: game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.pending);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\EmailServiceImpl.java:166: @org.springframework.scheduling.annotation.Async
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\GameServiceImpl.java:159: game.setGithubVerifiedAt(java.time.Instant.now());
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\GameServiceImpl.java:340: return awsS3Service.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\GameServiceImpl.java:503: if (game.getPublishingType() == null || game.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing) {
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\PdfGenerationServiceImpl.java:40: com.openhtmltopdf.outputdevice.helper.BaseRendererBuilder.FontStyle.NORMAL,
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\PdfGenerationServiceImpl.java:45: com.openhtmltopdf.outputdevice.helper.BaseRendererBuilder.FontStyle.NORMAL,
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\SeaweedFsAdapter.java:64: throw new java.io.UncheckedIOException(e);
+D:\Capstone\project\godot-launch-capstone\backend\src\main\java\com\godotlaunch\backend\service\impl\UserServiceImpl.java:223: if (!org.springframework.util.StringUtils.hasText(query)) {

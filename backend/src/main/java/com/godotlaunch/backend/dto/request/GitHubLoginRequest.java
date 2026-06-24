@@ -10,4 +10,6 @@ public class GitHubLoginRequest {
 
     @NotBlank(message = "GitHub OAuth code is required.")
     private String code;
+
+    private Boolean rememberMe = false;
 }

@@ -195,7 +195,8 @@ public class AuthServiceImpl implements AuthService {
                 getClientIp()
         );
 
-        return buildSessionResponse(user);
+        boolean rememberMe = request.getRememberMe() != null && request.getRememberMe();
+        return buildSessionResponse(user, rememberMe);
     }
 
     /**
@@ -203,11 +204,15 @@ public class AuthServiceImpl implements AuthService {
      * Mỗi lần login → session mới → token cũ bị revoke tự động.
      */
     private JwtAuthenticationResponse buildSessionResponse(User user) {
+        return buildSessionResponse(user, false);
+    }
+
+    private JwtAuthenticationResponse buildSessionResponse(User user, boolean rememberMe) {
         String sessionSecret = UUID.randomUUID().toString();
         user.setSessionHash(JwtProvider.hashSessionSecret(sessionSecret));
         userRepository.save(user);
 
-        String token = jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName(), sessionSecret);
+        String token = jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName(), sessionSecret, rememberMe);
         return JwtAuthenticationResponse.builder()
                 .token(token)
                 .user(mapToUserResponse(user))
@@ -298,7 +303,8 @@ public class AuthServiceImpl implements AuthService {
                     getClientIp()
             );
 
-            return buildSessionResponse(user);
+            boolean rememberMe = request.getRememberMe() != null && request.getRememberMe();
+            return buildSessionResponse(user, rememberMe);
 
         } catch (AppException ae) {
             throw ae;
@@ -481,7 +487,8 @@ public class AuthServiceImpl implements AuthService {
                     getClientIp()
             );
 
-            return buildSessionResponse(savedUser);
+            boolean rememberMe = request.getRememberMe() != null && request.getRememberMe();
+            return buildSessionResponse(savedUser, rememberMe);
 
         } catch (AppException ae) {
             throw ae;

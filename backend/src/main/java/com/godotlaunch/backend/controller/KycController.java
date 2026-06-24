@@ -9,6 +9,7 @@ import com.godotlaunch.backend.dto.response.KycStatusResponse;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.service.BannedIdentityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -39,7 +40,7 @@ import java.util.Map;
 public class KycController {
 
     private final UserRepository userRepository;
-    private final com.godotlaunch.backend.service.BannedIdentityService bannedIdentityService;
+    private final BannedIdentityService bannedIdentityService;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${app.face-service.url:http://localhost:8001}")
