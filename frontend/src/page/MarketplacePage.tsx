@@ -47,7 +47,7 @@ const SOURCE_KEYWORD_BLACKLIST = new Set([
 ]);
 
 const formatCompactPrice = (price: number) =>
-  price === 0 ? "FREE" : `$${price.toFixed(2)}`;
+  price === 0 ? "FREE" : `${price.toLocaleString('vi-VN')} đ`;
 
 export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   filteredAssets,
@@ -138,7 +138,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               setSearchText("");
               setSelectedCategories([]);
               setGodotVersion("All Versions");
-              setMaxPrice(100);
+              setMaxPrice(2000000);
             }}
             className="text-xs"
           >
@@ -227,22 +227,22 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 Max Budget Price
               </label>
               <span className="font-mono font-bold text-amber-500">
-                ${maxPrice}
+                {maxPrice.toLocaleString('vi-VN')} đ
               </span>
             </div>
             <input
               type="range"
               min="0"
-              max="100"
-              step="5"
+              max="2000000"
+              step="50000"
               value={maxPrice}
               onChange={(e) => setMaxPrice(parseInt(e.target.value))}
               className="w-full accent-amber-400 h-1 bg-slate-100 dark:bg-slate-950 rounded-lg appearance-none cursor-pointer"
             />
             <div className="flex justify-between text-[9px] font-mono text-slate-500">
-              <span>$0 (Free)</span>
-              <span>$50</span>
-              <span>$100+</span>
+              <span>0đ (Miễn phí)</span>
+              <span>1.000.000 đ</span>
+              <span>2.000.000 đ+</span>
             </div>
           </div>
 
@@ -283,7 +283,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   setSearchText("");
                   setSelectedCategories([]);
                   setGodotVersion("All Versions");
-                  setMaxPrice(100);
+                  setMaxPrice(2000000);
                 }}
               >
                 Reset Marketplace Search

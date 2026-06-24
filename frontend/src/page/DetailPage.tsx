@@ -210,7 +210,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 Single License Pack
               </span>
               <h2 className="font-display font-bold text-2xl text-slate-900 dark:text-white pt-1">
-                {focusedAsset.price === 0 ? 'Free Download' : `$${focusedAsset.price.toFixed(2)}`}
+                {focusedAsset.price === 0 ? 'Tải miễn phí' : `${focusedAsset.price.toLocaleString('vi-VN')} đ`}
               </h2>
               <p className="text-xs text-slate-400">Royalty-Free Indie Standard Certification</p>
             </div>
@@ -295,7 +295,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                         <p className="text-[10px] text-slate-500 truncate">{item.category}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-mono font-bold text-amber-500">${item.price.toFixed(2)}</span>
+                    <span className="text-xs font-mono font-bold text-amber-500">{item.price === 0 ? 'Miễn phí' : `${item.price.toLocaleString('vi-VN')} đ`}</span>
                   </div>
                 ))}
             </div>

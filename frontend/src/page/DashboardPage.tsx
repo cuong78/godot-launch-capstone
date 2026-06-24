@@ -248,7 +248,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
           <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Gross Sales Revenue</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">${financeStats.totalRevenue.toFixed(2)}</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{financeStats.totalRevenue.toLocaleString('vi-VN')} đ</span>
             <span className="text-[10px] text-emerald-500 font-bold font-mono">+12%</span>
           </div>
           <div className="w-full bg-slate-100 dark:bg-slate-950 h-1.5 rounded-full overflow-hidden">
@@ -380,7 +380,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 </span>
                               </td>
                               <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                                {game.priceProposed === 0 ? 'Miễn phí' : `$${game.priceProposed}`}
+                                {game.priceProposed === 0 ? 'Miễn phí' : `${game.priceProposed.toLocaleString('vi-VN')} đ`}
                               </td>
                               <td className="p-3 text-center">
                                 <div className="flex flex-col items-center gap-1.5 justify-center">
@@ -710,7 +710,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             </td>
                             <td className="p-3 text-slate-600 dark:text-slate-350">{item.categoryName || 'Chưa phân loại'}</td>
                             <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                              {item.price === 0 ? 'Miễn phí' : `$${item.price}`}
+                              {item.price === 0 ? 'Miễn phí' : `${item.price.toLocaleString('vi-VN')} đ`}
                             </td>
                             <td className="p-3 text-center">
                               <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${

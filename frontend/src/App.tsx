@@ -166,7 +166,7 @@ const INITIAL_ASSETS: Asset[] = [
   {
     id: 'cyber_interior',
     title: 'Cyberpunk Interior Kit',
-    price: 49.00,
+    price: 250000,
     rating: 4.9,
     reviewedCount: 82,
     author: 'NeoArtisans',
@@ -195,7 +195,7 @@ const INITIAL_ASSETS: Asset[] = [
   {
     id: 'neon_drift',
     title: 'Neon Drift 2088 Project Template',
-    price: 14.99,
+    price: 120000,
     rating: 4.8,
     reviewedCount: 142,
     author: 'OctaneGames',
@@ -250,7 +250,7 @@ const INITIAL_ASSETS: Asset[] = [
   {
     id: 'void_knight',
     title: 'Void Knight 3D Character Model Pack',
-    price: 19.99,
+    price: 150000,
     rating: 4.9,
     reviewedCount: 54,
     author: 'VoidSmithed',
@@ -277,7 +277,7 @@ const INITIAL_ASSETS: Asset[] = [
   {
     id: 'metro_tycoon',
     title: 'Metro Tycoon Management Kit',
-    price: 24.99,
+    price: 200000,
     rating: 4.7,
     reviewedCount: 95,
     author: 'StrategyLab',
@@ -304,7 +304,7 @@ const INITIAL_ASSETS: Asset[] = [
   {
     id: 'dynamic_sky',
     title: 'Stylized Dynamic Sky & Ocean System',
-    price: 29.00,
+    price: 300000,
     rating: 5.0,
     reviewedCount: 61,
     author: 'GlowFlow',
@@ -332,7 +332,7 @@ const INITIAL_ASSETS: Asset[] = [
   {
     id: 'forest_lush',
     title: 'Lush Forest 2D Cozy Tileset',
-    price: 15.05,
+    price: 90000,
     rating: 4.5,
     reviewedCount: 28,
     author: 'NaturePixel',
@@ -359,7 +359,7 @@ const INITIAL_ASSETS: Asset[] = [
   {
     id: 'retro_sfx',
     title: 'Retro Arcade SFX Sound Anthology',
-    price: 19.00,
+    price: 80000,
     rating: 4.7,
     reviewedCount: 89,
     author: 'LofiDev',
@@ -509,13 +509,13 @@ export default function App() {
   
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [godotVersion, setGodotVersion] = useState<string>('All Versions');
-  const [maxPrice, setMaxPrice] = useState<number>(100);
+  const [maxPrice, setMaxPrice] = useState<number>(2000000);
   const [sortOrder, setSortOrder] = useState<'popular' | 'price-low' | 'price-high'>('popular');
 
   const [cart, setCart] = useState<Asset[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [financeStats, setFinanceStats] = useState({
-    totalRevenue: 289.40,
+    totalRevenue: 12500000,
     activePlayers: 485,
     listedCount: 8
   });
@@ -667,7 +667,7 @@ export default function App() {
     const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
     setFinanceStats(prev => ({
       ...prev,
-      totalRevenue: Number((prev.totalRevenue + cartTotal).toFixed(2)),
+      totalRevenue: prev.totalRevenue + cartTotal,
       activePlayers: prev.activePlayers + Math.floor(Math.random() * 5) + 1
     }));
     setCart([]);

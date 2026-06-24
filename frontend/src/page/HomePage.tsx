@@ -143,7 +143,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   </span>
                 )}
                 <span className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded bg-slate-950/80 backdrop-blur-sm text-amber-400 text-xs font-mono font-bold border border-slate-800">
-                  {asset.price === 0 ? 'FREE' : `$${asset.price.toFixed(2)}`}
+                  {asset.price === 0 ? 'Miễn phí' : `${asset.price.toLocaleString('vi-VN')} đ`}
                 </span>
               </div>
 
@@ -221,7 +221,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                 <div className="flex items-center gap-3">
                   <span className="font-mono font-bold text-xs bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-md border border-slate-200/50 dark:border-slate-800/50">
-                    {item.price === 0 ? 'FREE' : `$${item.price.toFixed(2)}`}
+                    {item.price === 0 ? 'Miễn phí' : `${item.price.toLocaleString('vi-VN')} đ`}
                   </span>
                   <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                 </div>

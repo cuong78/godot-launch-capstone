@@ -240,7 +240,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const handleCreateDraft = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title) { alert('Title is required'); return; }
-    const priceNum = parseFloat(price);
+    const priceNum = price === '' ? 0 : parseFloat(price);
     if (isNaN(priceNum) || priceNum < 0) { alert('Price must be a valid positive number'); return; }
 
     try {
@@ -574,7 +574,15 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               type="number"
               step="1000"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') {
+                  setPrice('');
+                } else {
+                  const cleaned = val.replace(/^0+(?=\d)/, '');
+                  setPrice(cleaned);
+                }
+              }}
               required
             />
           </div>

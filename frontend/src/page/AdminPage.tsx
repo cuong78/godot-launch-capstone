@@ -785,7 +785,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   </span>
                                 </td>
                                 <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                                  {game.priceProposed === 0 ? 'Free' : `$${game.priceProposed}`}
+                                  {game.priceProposed === 0 ? 'Miễn phí' : `${game.priceProposed.toLocaleString('vi-VN')} đ`}
                                 </td>
                                 <td className="p-3 text-center">
                                   {(() => {
@@ -1094,7 +1094,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 </td>
                                 <td className="p-3 text-slate-600 dark:text-slate-355">{item.categoryName || 'Unassigned'}</td>
                                 <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                                  {item.price === 0 ? 'Free' : `$${item.price}`}
+                                  {item.price === 0 ? 'Miễn phí' : `${item.price.toLocaleString('vi-VN')} đ`}
                                 </td>
                                 <td className="p-3 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
@@ -1736,8 +1736,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   />
                 ) : (
                   <Input
-                    label="Số tiền mua đứt trọn gói (USD)"
-                    placeholder="Ví dụ: $10,000"
+                    label="Số tiền mua đứt trọn gói (VNĐ)"
+                    placeholder="Ví dụ: 100.000.000đ"
                     value={lumpSumAmount}
                     onChange={(e) => setLumpSumAmount(e.target.value)}
                     helperText="Số tiền thanh toán một lần để mua toàn bộ quyền sở hữu trò chơi"
