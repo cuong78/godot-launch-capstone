@@ -10,7 +10,11 @@ import com.godotlaunch.backend.repository.*;
 import com.godotlaunch.backend.service.CommunityChatService;
 import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.entity.enums.NotificationType;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.entity.enums.ReactionType;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -18,7 +22,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,7 @@ public class CommunityChatServiceImpl implements CommunityChatService {
     private final UserIpLogRepository userIpLogRepository;
     private final HttpServletRequest httpServletRequest;
     private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
     private final SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
@@ -89,6 +93,15 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         }
 
         logIp(currentUser, "post_chat");
+
+        auditLogService.publishAuto(
+                AuditAction.post_created,
+                AuditTarget.community_chat,
+                post.getId(),
+                null,
+                post.getMessage(),
+                "User created community post: " + (post.getMessage().length() > 50 ? post.getMessage().substring(0, 50) + "..." : post.getMessage())
+        );
 
         CommunityChatResponse response = mapToResponse(post);
         broadcastNewPost(response);
@@ -145,6 +158,15 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         post.setDeleted(true);
         communityChatRepository.save(post);
         broadcastDeletePost(id);
+
+        auditLogService.publishAuto(
+                AuditAction.chat_removed,
+                AuditTarget.community_chat,
+                id,
+                null,
+                null,
+                (post.getParentMessage() == null ? "Community post" : "Comment") + " deleted by " + currentUser.getFullName()
+        );
     }
 
     @Override
@@ -210,6 +232,15 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 currentUser.getFullName() + " commented on your post: " + comment.getMessage(),
                 parentPost.getId().toString());
 
+        auditLogService.publishAuto(
+                AuditAction.comment_created,
+                AuditTarget.community_chat,
+                comment.getId(),
+                null,
+                comment.getMessage(),
+                "User commented on community post: " + (comment.getMessage().length() > 50 ? comment.getMessage().substring(0, 50) + "..." : comment.getMessage())
+        );
+
         return mapToResponse(comment);
     }
 
@@ -257,12 +288,32 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                     NotificationType.REACTION,
                     currentUser.getFullName() + " liked your post.",
                     post.getId().toString());
+                    post.getId().toString();
+
+
+            auditLogService.publishAuto(
+                    AuditAction.reaction_created,
+                    AuditTarget.community_chat,
+                    post.getId(),
+                    null,
+                    reaction.getReactionType().name(),
+                    "User reacted " + reaction.getReactionType() + " to post: " + post.getId()
+            );
         } else {
             reaction = existingOpt.get();
             if (!reaction.getReactionType().equals(request.getReactionType())) {
                 // CASE 2: User HAS reacted before + reaction_type is DIFFERENT
                 reaction.setReactionType(request.getReactionType());
                 reaction = chatReactionRepository.save(reaction);
+
+                auditLogService.publishAuto(
+                        AuditAction.reaction_created,
+                        AuditTarget.community_chat,
+                        post.getId(),
+                        null,
+                        reaction.getReactionType().name(),
+                        "User updated reaction to " + reaction.getReactionType() + " on post: " + post.getId()
+                );
             }
             // CASE 3: User HAS reacted before + reaction_type is SAME -> Do nothing
         }
@@ -331,7 +382,6 @@ public class CommunityChatServiceImpl implements CommunityChatService {
 
         originalPost.setShareCount(originalPost.getShareCount() + 1);
         communityChatRepository.save(originalPost);
-        broadcastPostUpdate(originalPost);
 
         notificationService.createAndSendNotification(
                 originalPost.getSender(),
@@ -505,7 +555,6 @@ public class CommunityChatServiceImpl implements CommunityChatService {
                 .createdAt(chat.getCreatedAt() != null ? chat.getCreatedAt() : java.time.Instant.now())
                 .updatedAt(chat.getUpdatedAt() != null ? chat.getUpdatedAt() : java.time.Instant.now())
                 .originalChat(originalChatResponse)
-                .currentUserReaction(currentUserReaction)
                 .build();
     }
 

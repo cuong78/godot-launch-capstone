@@ -330,6 +330,78 @@ export interface ConversationResponse {
   lastActiveAt: string;
 }
 
+// --- Audit Log Types ---
+export type ActorRoleType = 'admin' | 'developer' | 'customer';
+
+export type AuditActionType =
+  | 'game_submitted'
+  | 'game_approved'
+  | 'game_rejected'
+  | 'game_published'
+  | 'game_community_enabled'
+  | 'game_updated'
+  | 'user_banned'
+  | 'user_unbanned'
+  | 'user_role_changed'
+  | 'contract_created'
+  | 'contract_signed'
+  | 'contract_cancelled'
+  | 'transaction_completed'
+  | 'transaction_failed'
+  | 'withdrawal_approved'
+  | 'withdrawal_rejected'
+  | 'marketplace_item_removed'
+  | 'review_removed'
+  | 'chat_removed'
+  | 'ai_report_generated'
+  | 'security_alert'
+  | 'post_created'
+  | 'comment_created'
+  | 'reaction_created'
+  | 'chat_message_sent'
+  | 'user_registered'
+  | 'user_login_success'
+  | 'user_login_failed'
+  | 'user_logged_out';
+
+export type AuditTargetType =
+  | 'user'
+  | 'game'
+  | 'contract'
+  | 'transaction'
+  | 'withdrawal'
+  | 'marketplace_item'
+  | 'review'
+  | 'community_chat'
+  | 'chat_message'
+  | 'ai_report';
+
+export interface AuditLogResponse {
+  id: string;
+  actorId?: string;
+  actorEmail?: string;
+  actorFullName?: string;
+  actorRole: ActorRoleType;
+  action: AuditActionType;
+  targetType: AuditTargetType;
+  targetId: string;
+  oldValue?: string;
+  newValue?: string;
+  note?: string;
+  ipAddress?: string;
+  createdAt: string;
+}
+
+export interface AuditLogFilterParams {
+  page?: number;
+  size?: number;
+  actorId?: string;
+  action?: AuditActionType;
+  targetType?: AuditTargetType;
+  targetId?: string;
+  ipAddress?: string;
+}
+
 
 
 

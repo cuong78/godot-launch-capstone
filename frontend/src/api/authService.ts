@@ -1,4 +1,5 @@
 import { tokenStorage } from '../utils/tokenStorage';
+import { authApi } from './authApi';
 
 export const loginWithGitHub = (): void => {
   window.location.href = "http://localhost:8080/api/v1/auth/github";
@@ -22,8 +23,12 @@ export const isAuthenticated = (): boolean => {
 };
 
 export const logout = (): void => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("currentUser");
-  tokenStorage.clear();
-  window.location.href = "/signin";
+  authApi.logout().catch(err => {
+    console.warn("Backend logout failed:", err);
+  }).finally(() => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("currentUser");
+    tokenStorage.clear();
+    window.location.href = "/signin";
+  });
 };

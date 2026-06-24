@@ -11,6 +11,11 @@ import com.godotlaunch.backend.service.impl.StorageRouter;
 import com.godotlaunch.backend.util.SafeZipUnpacker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.godotlaunch.backend.entity.Game;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.entity.enums.ActorRole;
+import com.godotlaunch.backend.service.AuditLogService;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -32,6 +37,7 @@ public class AsyncVirusScanService {
     private final GameRepository gameRepository;
     private final MarketplaceItemRepository marketplaceItemRepository;
     private final StorageRouter storageRouter;
+    private final AuditLogService auditLogService;
 
     /**
      * Thực hiện kiểm duyệt tệp tin ZIP tải lên từ S3 bất đồng bộ (Background thread).
@@ -44,7 +50,8 @@ public class AsyncVirusScanService {
     public void scanAndProcessGame(UUID gameId, String objectKey) {
         log.info("Bắt đầu quy trình kiểm duyệt an toàn bất đồng bộ cho gameId: {}, objectKey: {}", gameId, objectKey);
 
-        if (!gameRepository.existsById(gameId)) {
+        Game game = gameRepository.findById(gameId).orElse(null);
+        if (game == null) {
             log.warn("Không tìm thấy Game với id {} để tiến hành quét bảo mật.", gameId);
             return;
         }
@@ -61,6 +68,18 @@ public class AsyncVirusScanService {
                 log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin tải lên của gameId: {}. Tiến hành xóa tệp và từ chối game.", gameId);
                 updateGameStatus(gameId, GameStatus.rejected);
                 awsS3Service.deleteObject(objectKey);
+
+                auditLogService.publish(
+                        game.getCreator().getId(),
+                        ActorRole.developer,
+                        AuditAction.security_alert,
+                        AuditTarget.game,
+                        gameId,
+                        null,
+                        null,
+                        "PHÁT HIỆN MÃ ĐỘC (Malware detected) trong file game.zip của game: " + game.getTitle(),
+                        null
+                );
                 return;
             }
 
@@ -75,6 +94,18 @@ public class AsyncVirusScanService {
             // Sạch và hợp lệ -> chuyển trạng thái sang PENDING để Admin duyệt thủ công
             updateGameStatus(gameId, GameStatus.pending);
 
+            auditLogService.publish(
+                    game.getCreator().getId(),
+                    ActorRole.developer,
+                    AuditAction.game_submitted,
+                    AuditTarget.game,
+                    gameId,
+                    GameStatus.draft.name(),
+                    GameStatus.pending.name(),
+                    "Game '" + game.getTitle() + "' successfully verified and submitted for review.",
+                    null
+            );
+
         } catch (SecurityException | IllegalStateException e) {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với gameId: {}: {}", gameId, e.getMessage());
             updateGameStatus(gameId, GameStatus.rejected);
@@ -83,6 +114,18 @@ public class AsyncVirusScanService {
             } catch (Exception ex) {
                 log.warn("Không thể xóa file độc hại trên S3: {}", objectKey, ex);
             }
+
+            auditLogService.publish(
+                    game.getCreator().getId(),
+                    ActorRole.developer,
+                    AuditAction.security_alert,
+                    AuditTarget.game,
+                    gameId,
+                    null,
+                    null,
+                    "PHÁT HIỆN LỖI AN NINH TỆP NÉN (Zip Slip/Zip Bomb) đối với game: " + game.getTitle() + ". Chi tiết: " + e.getMessage(),
+                    null
+            );
         } catch (Exception e) {
             log.error("Lỗi xảy ra trong quá trình quét bảo mật gameId: {}. Chuyển sang chế độ PENDING dự phòng.", gameId, e);
             updateGameStatus(gameId, GameStatus.pending);
@@ -144,6 +187,18 @@ public class AsyncVirusScanService {
                 log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin tải lên của marketplace item: {}. Tiến hành xóa tệp và gỡ bỏ sản phẩm.", itemId);
                 updateMarketplaceItemStatus(itemId, ItemStatus.removed);
                 storageRouter.delete(fileType, objectKey);
+
+                auditLogService.publish(
+                        item.getSeller().getId(),
+                        ActorRole.developer,
+                        AuditAction.security_alert,
+                        AuditTarget.marketplace_item,
+                        itemId,
+                        null,
+                        null,
+                        "PHÁT HIỆN MÃ ĐỘC trong file tải lên của marketplace item: " + item.getTitle(),
+                        null
+                );
                 return;
             }
 
@@ -165,6 +220,18 @@ public class AsyncVirusScanService {
             } catch (Exception ex) {
                 log.warn("Không thể xóa file độc hại trên storage: {}", objectKey, ex);
             }
+
+            auditLogService.publish(
+                    item.getSeller().getId(),
+                    ActorRole.developer,
+                    AuditAction.security_alert,
+                    AuditTarget.marketplace_item,
+                    itemId,
+                    null,
+                    null,
+                    "PHÁT HIỆN LỖI AN NINH TỆP NÉN (Zip Slip/Zip Bomb) đối với marketplace item: " + item.getTitle() + ". Chi tiết: " + e.getMessage(),
+                    null
+            );
         } catch (Exception e) {
             log.error("Lỗi xảy ra trong quá trình quét bảo mật marketplace item: {}.", itemId, e);
         } finally {

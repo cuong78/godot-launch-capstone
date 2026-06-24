@@ -19,6 +19,9 @@ import com.godotlaunch.backend.repository.CategoryRepository;
 import com.godotlaunch.backend.repository.GameMediaRepository;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.service.AuditLogService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +46,7 @@ public class GameServiceImpl implements GameService {
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
     private final StorageRouter storageRouter;
+    private final AuditLogService auditLogService;
 
     /** Map fileType string (từ frontend) → FileType enum cho StorageRouter routing. */
     private FileType resolveMediaFileType(String fileType) {
@@ -141,6 +145,16 @@ public class GameServiceImpl implements GameService {
         }
 
         Game updatedGame = gameRepository.save(game);
+
+        auditLogService.publishAuto(
+                AuditAction.game_updated,
+                AuditTarget.game,
+                gameId,
+                null,
+                null,
+                "Game '" + updatedGame.getTitle() + "' draft updated by creator."
+        );
+
         return mapToResponse(updatedGame);
     }
 
@@ -374,6 +388,15 @@ public class GameServiceImpl implements GameService {
                     "APPROVED and PUBLISHED",
                     "Your game has passed all manual checks and is now live on the store."
             );
+
+            auditLogService.publishAuto(
+                    AuditAction.game_published,
+                    AuditTarget.game,
+                    game.getId(),
+                    GameStatus.pending.name(),
+                    GameStatus.published.name(),
+                    "Game '" + game.getTitle() + "' approved and published by administrator."
+            );
         } else {
             game.setStatus(GameStatus.approved);
             gameRepository.save(game);
@@ -383,6 +406,15 @@ public class GameServiceImpl implements GameService {
                     game.getTitle(),
                     "APPROVED - CONTRACT PENDING",
                     "Your game has been approved by the admin. A contract will be drafted. Please check your developer dashboard to review and sign the contract."
+            );
+
+            auditLogService.publishAuto(
+                    AuditAction.game_approved,
+                    AuditTarget.game,
+                    game.getId(),
+                    GameStatus.pending.name(),
+                    GameStatus.approved.name(),
+                    "Game '" + game.getTitle() + "' approved by administrator (contract pending)."
             );
         }
     }
@@ -431,6 +463,15 @@ public class GameServiceImpl implements GameService {
                 game.getTitle(),
                 "REJECTED",
                 reason
+        );
+
+        auditLogService.publishAuto(
+                AuditAction.game_rejected,
+                AuditTarget.game,
+                game.getId(),
+                GameStatus.pending.name(),
+                GameStatus.rejected.name(),
+                "Game '" + game.getTitle() + "' rejected by administrator. Reason: " + reason
         );
     }
 

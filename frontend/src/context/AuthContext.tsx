@@ -68,10 +68,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const handleLogout = () => {
-    tokenStorage.clear();
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("currentUser");
-    setCurrentUser(null);
+    authApi.logout().catch(err => {
+      console.warn("Backend logout failed:", err);
+    }).finally(() => {
+      tokenStorage.clear();
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("currentUser");
+      setCurrentUser(null);
+    });
   };
 
   const updateUser = (user: User) => {

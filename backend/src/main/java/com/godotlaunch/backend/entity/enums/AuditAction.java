@@ -21,5 +21,13 @@ public enum AuditAction {
     review_removed,
     chat_removed,
     ai_report_generated,
-    security_alert
+    security_alert,
+    post_created,
+    comment_created,
+    reaction_created,
+    chat_message_sent,
+    user_registered,
+    user_login_success,
+    user_login_failed,
+    user_logged_out
 }

@@ -21,6 +21,11 @@ import com.godotlaunch.backend.security.JwtProvider;
 import com.godotlaunch.backend.service.AuthService;
 import com.godotlaunch.backend.service.OtpService;
 import com.godotlaunch.backend.service.EmailService;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.entity.enums.ActorRole;
+import com.godotlaunch.backend.service.AuditLogService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +59,8 @@ public class AuthServiceImpl implements AuthService {
     private final EncryptionUtils encryptionUtils;
     private final OtpService otpService;
     private final EmailService emailService;
+    private final AuditLogService auditLogService;
+    private final HttpServletRequest httpServletRequest;
 
     @Value("${app.security.oauth.google.client-id:}")
     private String googleClientId;
@@ -100,15 +107,47 @@ public class AuthServiceImpl implements AuthService {
 
         otpService.invalidateOtp(request.getEmail());
 
+        auditLogService.publish(
+                savedUser.getId(),
+                ActorRole.customer,
+                AuditAction.user_registered,
+                AuditTarget.user,
+                savedUser.getId(),
+                null,
+                null,
+                "User registered successfully: " + savedUser.getEmail(),
+                getClientIp()
+        );
+
         return mapToUserResponse(savedUser);
     }
 
     @Override
     @Transactional
     public JwtAuthenticationResponse signIn(SignInRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (Exception e) {
+            User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+            UUID actorId = user != null ? user.getId() : null;
+            ActorRole role = user != null ? mapToActorRole(user.getRole().getName()) : ActorRole.customer;
+
+            auditLogService.publish(
+                    actorId,
+                    role,
+                    AuditAction.user_login_failed,
+                    AuditTarget.user,
+                    actorId,
+                    null,
+                    null,
+                    "Login failed: Invalid credentials for email: " + request.getEmail(),
+                    getClientIp()
+            );
+            throw e;
+        }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -116,11 +155,45 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
         if ("banned".equalsIgnoreCase(user.getStatus())) {
+            auditLogService.publish(
+                    user.getId(),
+                    mapToActorRole(user.getRole().getName()),
+                    AuditAction.user_login_failed,
+                    AuditTarget.user,
+                    user.getId(),
+                    null,
+                    null,
+                    "Login failed: User is banned. Email: " + user.getEmail(),
+                    getClientIp()
+            );
             throw new AppException(ErrorCode.USER_BANNED);
         }
         if ("inactive".equalsIgnoreCase(user.getStatus())) {
+            auditLogService.publish(
+                    user.getId(),
+                    mapToActorRole(user.getRole().getName()),
+                    AuditAction.user_login_failed,
+                    AuditTarget.user,
+                    user.getId(),
+                    null,
+                    null,
+                    "Login failed: User is inactive. Email: " + user.getEmail(),
+                    getClientIp()
+            );
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
+
+        auditLogService.publish(
+                user.getId(),
+                mapToActorRole(user.getRole().getName()),
+                AuditAction.user_login_success,
+                AuditTarget.user,
+                user.getId(),
+                null,
+                null,
+                "User logged in successfully: " + user.getEmail(),
+                getClientIp()
+        );
 
         return buildSessionResponse(user);
     }
@@ -185,11 +258,45 @@ public class AuthServiceImpl implements AuthService {
             });
 
             if ("banned".equalsIgnoreCase(user.getStatus())) {
+                auditLogService.publish(
+                        user.getId(),
+                        mapToActorRole(user.getRole().getName()),
+                        AuditAction.user_login_failed,
+                        AuditTarget.user,
+                        user.getId(),
+                        null,
+                        null,
+                        "Google login failed: User is banned. Email: " + user.getEmail(),
+                        getClientIp()
+                );
                 throw new AppException(ErrorCode.USER_BANNED);
             }
             if ("inactive".equalsIgnoreCase(user.getStatus())) {
+                auditLogService.publish(
+                        user.getId(),
+                        mapToActorRole(user.getRole().getName()),
+                        AuditAction.user_login_failed,
+                        AuditTarget.user,
+                        user.getId(),
+                        null,
+                        null,
+                        "Google login failed: User is inactive. Email: " + user.getEmail(),
+                        getClientIp()
+                );
                 throw new AppException(ErrorCode.INVALID_CREDENTIALS);
             }
+
+            auditLogService.publish(
+                    user.getId(),
+                    mapToActorRole(user.getRole().getName()),
+                    AuditAction.user_login_success,
+                    AuditTarget.user,
+                    user.getId(),
+                    null,
+                    null,
+                    "User logged in successfully via Google: " + user.getEmail(),
+                    getClientIp()
+            );
 
             return buildSessionResponse(user);
 
@@ -334,11 +441,45 @@ public class AuthServiceImpl implements AuthService {
             User savedUser = userRepository.save(user);
 
             if ("banned".equalsIgnoreCase(savedUser.getStatus())) {
+                auditLogService.publish(
+                        savedUser.getId(),
+                        mapToActorRole(savedUser.getRole().getName()),
+                        AuditAction.user_login_failed,
+                        AuditTarget.user,
+                        savedUser.getId(),
+                        null,
+                        null,
+                        "GitHub login failed: User is banned. Email: " + savedUser.getEmail(),
+                        getClientIp()
+                );
                 throw new AppException(ErrorCode.USER_BANNED);
             }
             if ("inactive".equalsIgnoreCase(savedUser.getStatus())) {
+                auditLogService.publish(
+                        savedUser.getId(),
+                        mapToActorRole(savedUser.getRole().getName()),
+                        AuditAction.user_login_failed,
+                        AuditTarget.user,
+                        savedUser.getId(),
+                        null,
+                        null,
+                        "GitHub login failed: User is inactive. Email: " + savedUser.getEmail(),
+                        getClientIp()
+                );
                 throw new AppException(ErrorCode.INVALID_CREDENTIALS);
             }
+
+            auditLogService.publish(
+                    savedUser.getId(),
+                    mapToActorRole(savedUser.getRole().getName()),
+                    AuditAction.user_login_success,
+                    AuditTarget.user,
+                    savedUser.getId(),
+                    null,
+                    null,
+                    "User logged in successfully via GitHub: " + savedUser.getEmail(),
+                    getClientIp()
+            );
 
             return buildSessionResponse(savedUser);
 
@@ -405,6 +546,19 @@ public class AuthServiceImpl implements AuthService {
         userRepository.findByEmail(email).ifPresent(user -> {
             user.setSessionHash(null);
             userRepository.save(user);
+
+            // Log logout event
+            auditLogService.publish(
+                    user.getId(),
+                    mapToActorRole(user.getRole().getName()),
+                    AuditAction.user_logged_out,
+                    AuditTarget.user,
+                    user.getId(),
+                    null,
+                    null,
+                    "User logged out successfully: " + user.getEmail(),
+                    getClientIp()
+            );
         });
     }
 
@@ -440,5 +594,36 @@ public class AuthServiceImpl implements AuthService {
                 .status(user.getStatus())
                 .avatarUrl(user.getAvatarUrl())
                 .build();
+    }
+
+    private String getClientIp() {
+        try {
+            String ip = httpServletRequest.getHeader("X-Forwarded-For");
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = httpServletRequest.getHeader("Proxy-Client-IP");
+            }
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = httpServletRequest.getRemoteAddr();
+            }
+            if (ip != null && ip.contains(",")) {
+                ip = ip.split(",")[0].trim();
+            }
+            return ip;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private ActorRole mapToActorRole(String roleName) {
+        if (roleName == null) return ActorRole.customer;
+        switch (roleName.trim().toLowerCase()) {
+            case "admin":
+                return ActorRole.admin;
+            case "developer":
+                return ActorRole.developer;
+            case "customer":
+            default:
+                return ActorRole.customer;
+        }
     }
 }

@@ -14,5 +14,6 @@ public enum AuditTarget {
     external_publish,
     notification,
     source_code_purchase,
-    community_chat
+    community_chat,
+    chat_message
 }

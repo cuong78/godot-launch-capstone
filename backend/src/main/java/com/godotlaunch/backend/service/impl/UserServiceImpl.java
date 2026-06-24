@@ -1,6 +1,9 @@
 package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
 import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
@@ -28,6 +31,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional(readOnly = true)
@@ -89,6 +93,9 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        String oldRole = user.getRole().getName();
+        String oldStatus = user.getStatus();
+
         // Fetch and validate role
         Role role = roleRepository.findByName(request.getRoleName().trim().toLowerCase())
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
@@ -106,6 +113,41 @@ public class UserServiceImpl implements UserService {
         }
 
         User updatedUser = userRepository.save(user);
+
+        // Ghi nhận Audit Log
+        if (!oldRole.equalsIgnoreCase(role.getName())) {
+            auditLogService.publishAuto(
+                    AuditAction.user_role_changed,
+                    AuditTarget.user,
+                    user.getId(),
+                    oldRole,
+                    role.getName(),
+                    "User role changed from " + oldRole + " to " + role.getName() + " for " + user.getEmail()
+            );
+        }
+
+        if (!oldStatus.equalsIgnoreCase(user.getStatus())) {
+            if ("inactive".equalsIgnoreCase(user.getStatus())) {
+                auditLogService.publishAuto(
+                        AuditAction.user_banned,
+                        AuditTarget.user,
+                        user.getId(),
+                        oldStatus,
+                        user.getStatus(),
+                        "User account status changed to inactive (banned) for " + user.getEmail()
+                );
+            } else if ("active".equalsIgnoreCase(user.getStatus()) && "inactive".equalsIgnoreCase(oldStatus)) {
+                auditLogService.publishAuto(
+                        AuditAction.user_unbanned,
+                        AuditTarget.user,
+                        user.getId(),
+                        oldStatus,
+                        user.getStatus(),
+                        "User account status changed to active (unbanned) for " + user.getEmail()
+                );
+            }
+        }
+
         return mapToUserResponse(updatedUser);
     }
 
@@ -120,6 +162,8 @@ public class UserServiceImpl implements UserService {
             return;
         }
 
+        String oldStatus = user.getStatus();
+
         // Soft delete: status = 'inactive' (to satisfy status check constraints)
         // and suffix email to free it up for future registration
         String originalEmail = user.getEmail();
@@ -129,6 +173,16 @@ public class UserServiceImpl implements UserService {
         user.setEmail(originalEmail + "_deleted_" + timestamp);
 
         userRepository.save(user);
+
+        // Ghi nhận Audit Log
+        auditLogService.publishAuto(
+                AuditAction.user_banned,
+                AuditTarget.user,
+                user.getId(),
+                oldStatus,
+                "inactive",
+                "User account soft-deleted / banned. Email changed from: " + originalEmail
+        );
     }
 
     @Override

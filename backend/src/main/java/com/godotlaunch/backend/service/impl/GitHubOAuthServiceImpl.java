@@ -165,6 +165,12 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
             if ("banned".equals(user.getStatus())) {
                 throw new AppException(ErrorCode.USER_BANNED);
             }
+            if (!"admin".equalsIgnoreCase(user.getRole().getName())
+                    && !"developer".equalsIgnoreCase(user.getRole().getName())) {
+                Role developerRole = roleRepository.findByName("developer")
+                        .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+                user.setRole(developerRole);
+            }
             user = userRepository.save(user);
         } else {
             Optional<User> userByEmail = userRepository.findByEmail(email);
@@ -177,6 +183,12 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
                 user.setGithubLinkedAt(Instant.now());
                 if ("banned".equals(user.getStatus())) {
                     throw new AppException(ErrorCode.USER_BANNED);
+                }
+                if (!"admin".equalsIgnoreCase(user.getRole().getName())
+                        && !"developer".equalsIgnoreCase(user.getRole().getName())) {
+                    Role developerRole = roleRepository.findByName("developer")
+                            .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+                    user.setRole(developerRole);
                 }
                 user = userRepository.save(user);
             } else {

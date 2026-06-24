@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
@@ -19,5 +20,6 @@ public class StorageAccountRequest {
     @NotBlank
     private String config;
 
+    @JsonProperty("isActive")
     private boolean isActive = true;
 }
