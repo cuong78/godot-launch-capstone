@@ -39,7 +39,14 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   setCurrentUser
 }) => {
   const { signIn, loginWithGoogle, error: apiError, setError: clearApiError } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    const saved = localStorage.getItem("signup_email");
+    if (saved) {
+      localStorage.removeItem("signup_email");
+      return saved;
+    }
+    return '';
+  });
   const [password, setPassword] = useState('');
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [localError, setLocalError] = useState('');

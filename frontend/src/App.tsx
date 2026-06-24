@@ -408,7 +408,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
     return { screen: 'profile' };
   }
   if (primary === 'admin') return { screen: 'admin' };
-  if (primary === 'auth' && segments[1] === 'callback') {
+  if (primary === 'auth' && (segments[1] === 'callback' || (segments[1] === 'github' && segments[2] === 'callback'))) {
     return { screen: 'auth-callback' };
   }
   if (primary === 'detail') {
