@@ -104,6 +104,16 @@ public class GameServiceImpl implements GameService {
         }
 
         Game savedGame = gameRepository.save(game);
+
+        auditLogService.publishAuto(
+                AuditAction.game_updated,
+                AuditTarget.game,
+                savedGame.getId(),
+                null,
+                null,
+                "Game draft '" + savedGame.getTitle() + "' initialized by creator."
+        );
+
         return savedGame.getId();
     }
 
@@ -326,14 +336,18 @@ public class GameServiceImpl implements GameService {
     }
 
     private String getPresignedGetUrl(String rawUrl) {
-        if (rawUrl == null) return null;
-
-        // File trên SeaweedFS (hoặc storage khác) đã là public URL → trả thẳng,
-        // chỉ S3 mới cần presigned GET URL.
-        if (!rawUrl.contains(".amazonaws.com/")) {
-            return rawUrl;
+        if (rawUrl == null || "pending".equalsIgnoreCase(rawUrl)) return rawUrl;
+        boolean isS3 = rawUrl.contains(".amazonaws.com");
+        if (!isS3) {
+            try {
+                String provider = storageRouter.getProvider(FileType.game_zip);
+                if ("seaweedfs".equalsIgnoreCase(provider)) {
+                    return rawUrl;
+                }
+            } catch (Exception e) {
+                // Fallback to S3 presigning if provider check fails
+            }
         }
-
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
@@ -409,6 +423,14 @@ public class GameServiceImpl implements GameService {
             String thumbnailUrl = awsS3Service.getFileUrl(actualKey);
             game.setThumbnailUrl(thumbnailUrl);
             gameRepository.save(game);
+            auditLogService.publishAuto(
+                    AuditAction.game_updated,
+                    AuditTarget.game,
+                    gameId,
+                    null,
+                    null,
+                    "Uploaded thumbnail for game '" + game.getTitle() + "'."
+            );
         } else if ("screenshot".equalsIgnoreCase(fileType) || "image".equalsIgnoreCase(fileType) || "video".equalsIgnoreCase(fileType)) {
             if (objectKey == null) {
                 throw new IllegalArgumentException("objectKey is required to confirm media uploads (screenshots or videos)");
@@ -426,6 +448,14 @@ public class GameServiceImpl implements GameService {
             media.setMediaType(isVideo ? "video" : "image");
             media.setMediaUrl(mediaUrl);
             gameMediaRepository.save(media);
+            auditLogService.publishAuto(
+                    AuditAction.game_updated,
+                    AuditTarget.game,
+                    gameId,
+                    null,
+                    null,
+                    "Uploaded " + fileType + " for game '" + game.getTitle() + "'."
+            );
         } else {
             String actualKey = objectKey != null ? objectKey : "games/" + gameId.toString() + "/game.zip";
             String fileUrl = awsS3Service.getFileUrl(actualKey);
@@ -434,6 +464,14 @@ public class GameServiceImpl implements GameService {
             gameRepository.save(game);
 
             asyncVirusScanService.scanAndProcessGame(gameId, actualKey);
+            auditLogService.publishAuto(
+                    AuditAction.game_submitted,
+                    AuditTarget.game,
+                    gameId,
+                    null,
+                    null,
+                    "Game package ZIP uploaded for '" + game.getTitle() + "'. Virus scan triggered."
+            );
         }
     }
 
@@ -468,6 +506,15 @@ public class GameServiceImpl implements GameService {
             media.setMediaUrl(mediaUrl);
             gameMediaRepository.save(media);
         }
+
+        auditLogService.publishAuto(
+                AuditAction.game_updated,
+                AuditTarget.game,
+                gameId,
+                null,
+                null,
+                "Uploaded " + fileType + " for game '" + game.getTitle() + "' via proxy."
+        );
 
         return objectKey;
     }
@@ -599,6 +646,14 @@ public class GameServiceImpl implements GameService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
+        int idx = url.indexOf("marketplace/items/");
+        if (idx != -1) {
+            return url.substring(idx);
+        }
+        idx = url.indexOf("games/");
+        if (idx != -1) {
+            return url.substring(idx);
+        }
         String prefix = ".amazonaws.com/";
         int index = url.indexOf(prefix);
         if (index != -1) {

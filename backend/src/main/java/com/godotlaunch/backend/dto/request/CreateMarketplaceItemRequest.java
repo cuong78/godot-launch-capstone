@@ -37,6 +37,8 @@ public class CreateMarketplaceItemRequest {
 
     private String license;
 
+    private String licenseTerms;
+
     private String documentation;
 
     private String version;

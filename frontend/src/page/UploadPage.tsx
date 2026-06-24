@@ -77,6 +77,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [godotVersion, setGodotVersion] = useState('');
   const [githubRepoUrl, setGithubRepoUrl] = useState('');
   const [license, setLicense] = useState('MIT');
+  const [licenseTerms, setLicenseTerms] = useState('');
   const [version, setVersion] = useState('1.0.0');
   const [supportedPlatforms, setSupportedPlatforms] = useState<string[]>([]);
   const [tagsInput, setTagsInput] = useState('');
@@ -219,6 +220,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         godotVersion: itemType === 'source_code' ? godotVersion : undefined,
         githubRepoUrl: itemType === 'source_code' ? githubRepoUrl : undefined,
         license,
+        licenseTerms: license === 'Proprietary' ? licenseTerms : undefined,
         version,
         supportedPlatforms: supportedPlatforms.join(', '),
         documentation,
@@ -240,7 +242,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const handleCreateDraft = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title) { alert('Title is required'); return; }
-    const priceNum = price === '' ? 0 : parseFloat(price);
+    const rawPrice = price.replace(/\./g, '');
+    const priceNum = rawPrice === '' ? 0 : parseFloat(rawPrice);
     if (isNaN(priceNum) || priceNum < 0) { alert('Price must be a valid positive number'); return; }
 
     try {
@@ -560,8 +563,20 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
-              label={publishProgram === 'marketplace' ? "Asset Title" : "Game Title"}
-              placeholder={publishProgram === 'marketplace' ? "e.g. RPG Inventory System Template" : "e.g. Neon Horizon Racer 3D"}
+              label={
+                publishProgram === 'marketplace'
+                  ? itemType === 'source_code'
+                    ? "Game Source Code Title"
+                    : "Asset Title"
+                  : "Game Title"
+              }
+              placeholder={
+                publishProgram === 'marketplace'
+                  ? itemType === 'source_code'
+                    ? "e.g. RPG Inventory System Template"
+                    : "e.g. Cyberpunk Interior Tileset"
+                  : "e.g. Neon Horizon Racer 3D"
+              }
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -570,17 +585,20 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             <Input
               label="Proposed Price (VNĐ)"
               prefix="đ"
-              placeholder="e.g. 50000 (Set 0 for Free)"
-              type="number"
-              step="1000"
+              placeholder="e.g. 50.000 (Set 0 for Free)"
+              type="text"
               value={price}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val === '') {
+                // Remove all non-digits
+                const clean = val.replace(/\D/g, '');
+                if (clean === '') {
                   setPrice('');
                 } else {
-                  const cleaned = val.replace(/^0+(?=\d)/, '');
-                  setPrice(cleaned);
+                  // Parse to remove leading zeros, format with dots
+                  const numStr = parseInt(clean, 10).toString();
+                  const formatted = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                  setPrice(formatted);
                 }
               }}
               required
@@ -590,7 +608,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                Asset Classification Category / Genre
+                {publishProgram === 'marketplace' && itemType === 'asset'
+                  ? "Asset Classification Category"
+                  : "Game Genre / Category"}
               </label>
               {isLoadingCategories ? (
                 <div className="text-xs text-slate-500 animate-pulse py-2.5">Fetching categories...</div>
@@ -722,12 +742,25 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
 
               <Input
-                label="Asset Version"
+                label={itemType === 'source_code' ? "Project / Source Code Version" : "Asset Version"}
                 placeholder="e.g. 1.0.0"
                 value={version}
                 onChange={(e) => setVersion(e.target.value)}
                 required
               />
+
+              {license === 'Proprietary' && (
+                <div className="flex flex-col gap-1.5 md:col-span-2 animate-fade-in">
+                  <TextArea
+                    label="Proprietary License Terms & Conditions *"
+                    placeholder="Describe custom terms, restrictions, or reuse conditions for this asset pack/code. E.g. No resale, attribution required, commercial use limits..."
+                    rows={4}
+                    value={licenseTerms}
+                    onChange={(e) => setLicenseTerms(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
 
               <div className="flex flex-col gap-1.5 md:col-span-2">
                 <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
@@ -1026,10 +1059,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             )}
 
             {/* 4. Video upload */}
-            {publishProgram === 'game' && (
+            {(publishProgram === 'game' || publishProgram === 'marketplace') && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Video size={16} className="text-amber-500" /> Gameplay Video Trailer (Optional)
+                  <Video size={16} className="text-amber-500" /> {publishProgram === 'marketplace' ? 'Product Demo Video (Optional)' : 'Gameplay Video Trailer (Optional)'}
                 </label>
                 <div className="flex items-center gap-3">
                   <input

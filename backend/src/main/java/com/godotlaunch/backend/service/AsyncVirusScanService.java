@@ -212,6 +212,18 @@ public class AsyncVirusScanService {
 
             log.info("Kiểm tra cấu trúc và tính an toàn của tệp ZIP hoàn tất cho marketplace item: {}", itemId);
 
+            auditLogService.publish(
+                    item.getSeller().getId(),
+                    ActorRole.developer,
+                    AuditAction.game_submitted,
+                    AuditTarget.marketplace_item,
+                    itemId,
+                    null,
+                    null,
+                    "Marketplace item '" + item.getTitle() + "' successfully scanned (clean) and pending review.",
+                    null
+            );
+
         } catch (SecurityException | IllegalStateException e) {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với marketplace item: {}: {}", itemId, e.getMessage());
             updateMarketplaceItemStatus(itemId, ItemStatus.removed);

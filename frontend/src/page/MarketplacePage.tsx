@@ -378,11 +378,19 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                               </span>
                             </div>
 
-                            <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-                              <span className="rounded-full bg-sky-500/10 px-2.5 py-1 font-bold uppercase tracking-wider text-sky-500">
-                                {asset.tagList[0] || "Source"}
-                              </span>
-                              <span className="text-slate-500 dark:text-slate-400">
+                            <div className="mb-4 flex flex-wrap items-center gap-1.5 text-xs">
+                              {asset.tagList && asset.tagList.length > 0 ? (
+                                asset.tagList.slice(0, 3).map((tag, idx) => (
+                                  <span key={idx} className="rounded-full bg-sky-500/10 dark:bg-sky-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-500 border border-sky-500/5">
+                                    {tag}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="rounded-full bg-sky-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-500">
+                                  Source
+                                </span>
+                              )}
+                              <span className="text-slate-500 dark:text-slate-400 ml-1">
                                 by {asset.author}
                               </span>
                             </div>
@@ -523,10 +531,18 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                             </p>
 
                             <div className="mt-auto flex items-center justify-between gap-2">
-                              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
-                                <PackageOpen size={12} className="text-sky-500" />
-                                {asset.tagList[0] || "Resource"}
-                              </span>
+                              <div className="flex flex-wrap items-center gap-1.5 max-w-[60%]">
+                                <PackageOpen size={12} className="text-sky-500 shrink-0" />
+                                {asset.tagList && asset.tagList.length > 0 ? (
+                                  asset.tagList.slice(0, 2).map((tag, idx) => (
+                                    <span key={idx} className="rounded-md bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-500 truncate max-w-[65px]" title={tag}>
+                                      {tag}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Resource</span>
+                                )}
+                              </div>
                               <Button
                                 variant="secondary-flat"
                                 size="sm"

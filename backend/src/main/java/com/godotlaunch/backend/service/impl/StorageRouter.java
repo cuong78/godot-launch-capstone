@@ -136,11 +136,19 @@ public class StorageRouter {
         return adapterCache.computeIfAbsent(fileType, ft -> {
             // findByFileTypeWithJoin là INNER JOIN → empty nếu file_type chưa gán bucket (bucket = null)
             Optional<StorageRouting> routing = routingRepository.findByFileTypeWithJoin(ft);
-            if (routing.isEmpty()) {
-                throw new RuntimeException(
-                    "File type '" + ft + "' chưa được gán bucket. Admin cần config routing trong Storage Settings.");
+            StorageBucket bucket;
+            if (routing.isPresent()) {
+                bucket = routing.get().getBucket();
+            } else {
+                // Fallback to the first available assigned bucket in DB if this specific file type is unassigned
+                bucket = routingRepository.findAllWithBucketAndAccount().stream()
+                        .map(StorageRouting::getBucket)
+                        .filter(java.util.Objects::nonNull)
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException(
+                            "File type '" + ft + "' chưa được gán bucket và không tìm thấy bất kỳ bucket nào khác để fallback. Admin cần config routing trong Storage Settings."));
+                log.info("StorageRouter: Fallback routing for file type '{}' to bucket '{}'", ft, bucket.getName());
             }
-            StorageBucket bucket = routing.get().getBucket();
             StorageAccount account = bucket.getAccount();
             String decryptedConfig = encryptionUtils.decrypt(account.getConfig());
             return buildAdapter(account.getProvider(), decryptedConfig);

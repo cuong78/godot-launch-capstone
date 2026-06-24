@@ -1120,9 +1120,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                               {expandedMarketplaceId === item.id && (
                                 <tr>
                                   <td colSpan={6} className="p-6 bg-slate-50/10 dark:bg-slate-900/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-700 dark:text-slate-300">
-                                      {/* Left Column: Details & Description */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
+                                      {/* Left Column: Thumbnail, Description, ZIP */}
                                       <div className="space-y-4">
+                                        <div>
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
+                                            <Image size={12} /> Thumbnail
+                                          </h4>
+                                          <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
+                                            {item.thumbnailUrl ? (
+                                              <img 
+                                                src={item.thumbnailUrl} 
+                                                alt={item.title} 
+                                                className="object-cover w-full h-full"
+                                              />
+                                            ) : (
+                                              <div className="flex flex-col items-center justify-center text-slate-500">
+                                                <Image size={32} className="mb-2 text-slate-650" />
+                                                <span className="text-[10px] font-mono">NO THUMBNAIL</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+
                                         <div className="space-y-1.5">
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Item Description</h4>
                                           <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
@@ -1147,48 +1167,133 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         )}
                                       </div>
 
-                                      {/* Right Column: Specifications & Links */}
-                                      <div className="space-y-3.5 bg-white/30 dark:bg-slate-900/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
-                                        <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5">Technical & Creator Details</h4>
-                                        <div className="space-y-2 text-xs">
-                                          <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                            <span className="text-slate-500">Creator Name</span>
-                                            <span className="font-semibold">{item.sellerFullName || 'N/A'}</span>
-                                          </div>
-                                          <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                            <span className="text-slate-500">Creator Email</span>
-                                            <span className="font-mono">{item.sellerEmail}</span>
-                                          </div>
-                                          {item.itemType === 'source_code' && (
-                                            <>
-                                              <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                                <span className="text-slate-500">Godot Version</span>
-                                                <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{item.godotVersion || 'N/A'}</span>
-                                              </div>
-                                              {item.githubRepoUrl && (
-                                                <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                                  <span className="text-slate-500">GitHub Repository</span>
-                                                  <a 
-                                                    href={item.githubRepoUrl} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer" 
-                                                    className="font-mono text-sky-500 hover:underline break-all max-w-[200px]"
-                                                  >
-                                                    {item.githubRepoUrl}
-                                                  </a>
+                                      {/* Middle Column: Screenshots & Video */}
+                                      <div className="space-y-4 flex flex-col justify-between">
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                            <Image size={12} className="text-amber-500" /> Screenshots
+                                          </h4>
+                                          {item.screenshots && item.screenshots.length > 0 ? (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                              {item.screenshots.map((url, index) => (
+                                                <div 
+                                                  key={index} 
+                                                  onClick={() => {
+                                                    setActiveScreenshotUrl(url);
+                                                    setIsOpenLightbox(true);
+                                                  }}
+                                                  className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-amber-400/50 transition-studio"
+                                                >
+                                                  <img 
+                                                    src={url} 
+                                                    alt={`Screenshot ${index + 1}`} 
+                                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                                                  />
+                                                  <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Eye size={16} className="text-white" />
+                                                  </div>
                                                 </div>
-                                              )}
-                                            </>
-                                          )}
-                                          {item.sourceGameTitle && (
-                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                              <span className="text-slate-500">Linked Store Game</span>
-                                              <span className="font-semibold text-amber-500">{item.sourceGameTitle}</span>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                              <Image size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
+                                              <span className="text-[10px]">No screenshots uploaded</span>
                                             </div>
                                           )}
-                                          <div className="flex justify-between pb-0.5">
-                                            <span className="text-slate-500">Submitted On</span>
-                                            <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                        </div>
+
+                                        {/* Video Demo */}
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                            <Video size={12} className="text-amber-500" /> Video Demo
+                                          </h4>
+                                          {item.videoUrl ? (
+                                            <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
+                                              <video 
+                                                src={item.videoUrl} 
+                                                controls 
+                                                className="w-full h-full object-contain"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                              <Video size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
+                                              <span className="text-[10px]">No demo video uploaded</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Right Column: Specifications, Creator Details & License info */}
+                                      <div className="space-y-4">
+                                        <div className="space-y-3.5 bg-white/30 dark:bg-slate-900/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5">Technical & Creator Details</h4>
+                                          <div className="space-y-2 text-xs">
+                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                              <span className="text-slate-500">Creator Name</span>
+                                              <span className="font-semibold">{item.sellerFullName || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                              <span className="text-slate-500">Creator Email</span>
+                                              <span className="font-mono">{item.sellerEmail}</span>
+                                            </div>
+                                            {item.itemType === 'source_code' && (
+                                              <>
+                                                <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                                  <span className="text-slate-500">Godot Version</span>
+                                                  <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{item.godotVersion || 'N/A'}</span>
+                                                </div>
+                                                {item.githubRepoUrl && (
+                                                  <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                                    <span className="text-slate-500">GitHub Repository</span>
+                                                    <a 
+                                                      href={item.githubRepoUrl} 
+                                                      target="_blank" 
+                                                      rel="noopener noreferrer" 
+                                                      className="font-mono text-sky-500 hover:underline break-all max-w-[200px]"
+                                                    >
+                                                      {item.githubRepoUrl}
+                                                    </a>
+                                                  </div>
+                                                )}
+                                              </>
+                                            )}
+                                            {item.sourceGameTitle && (
+                                              <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                                <span className="text-slate-500">Linked Store Game</span>
+                                                <span className="font-semibold text-amber-500">{item.sourceGameTitle}</span>
+                                              </div>
+                                            )}
+                                            <div className="flex justify-between pb-0.5">
+                                              <span className="text-slate-500">Submitted On</span>
+                                              <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* License Card */}
+                                        <div className="space-y-3 bg-white/30 dark:bg-slate-900/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1.5">
+                                            <FileText size={12} className="text-amber-500" /> License Information
+                                          </h4>
+                                          <div className="space-y-2 text-xs">
+                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                              <span className="text-slate-500">License Model</span>
+                                              <span className="font-semibold uppercase text-amber-500 font-mono">{item.license || 'N/A'}</span>
+                                            </div>
+                                            {item.licenseTerms ? (
+                                              <div className="space-y-1.5 pt-1.5">
+                                                <span className="text-slate-500 block font-semibold text-[10px] uppercase tracking-wider font-mono">Custom License Terms</span>
+                                                <div className="text-[11px] leading-relaxed max-h-32 overflow-y-auto bg-amber-500/5 dark:bg-amber-450/5 p-2.5 rounded-lg border border-amber-500/10 dark:border-amber-450/20 text-slate-700 dark:text-slate-300 font-sans italic whitespace-pre-wrap break-words">
+                                                  {item.licenseTerms}
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div className="text-[10px] text-slate-500 italic mt-1">
+                                                No custom terms specified. Standard terms apply.
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
                                       </div>

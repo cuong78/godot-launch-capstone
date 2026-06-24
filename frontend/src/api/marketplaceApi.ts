@@ -84,11 +84,11 @@ export const marketplaceApi = {
   ): Promise<ApiResponse<{ message: string; objectKey: string }>> => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('fileType', fileType);
     const response = await api.post<ApiResponse<{ message: string; objectKey: string }>>(
       `/api/v1/marketplace-items/${id}/media/upload`,
       formData,
       {
+        params: { fileType },
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
           if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));

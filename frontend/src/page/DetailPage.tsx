@@ -29,6 +29,20 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   assets,
   handleViewAssetDetails
 }) => {
+  const [showLicenseModal, setShowLicenseModal] = React.useState(false);
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
+  const [pendingAction, setPendingAction] = React.useState<(() => void) | null>(null);
+
+  const handlePurchaseAction = (action: () => void) => {
+    if (focusedAsset.license === 'Proprietary' && focusedAsset.licenseTerms) {
+      setPendingAction(() => action);
+      setAcceptedTerms(false);
+      setShowLicenseModal(true);
+    } else {
+      action();
+    }
+  };
+
   const mediaList = React.useMemo(() => {
     const list: { type: 'image' | 'video'; url: string }[] = [];
     if (focusedAsset.image) {
@@ -62,6 +76,13 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         <span className="cursor-pointer hover:text-slate-200" onClick={() => setCurrentScreen('marketplace')}>Marketplace</span>
         <ChevronRight size={12} />
         <span className="text-amber-400 truncate max-w-[200px]">{focusedAsset.title}</span>
+      </div>
+
+      {/* Title & Tags Header */}
+      <div className="space-y-3 pt-2">
+        <h1 className="font-display font-bold text-3xl text-slate-900 dark:text-white tracking-tight">
+          {focusedAsset.title}
+        </h1>
       </div>
 
       {/* Split gallery box on top */}
@@ -99,7 +120,18 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               >
                 {item.type === 'video' ? (
                   <div className="relative w-full h-full bg-slate-950 flex items-center justify-center">
-                    <Film className="text-slate-400" size={20} />
+                    <video
+                      src={item.url}
+                      className="w-full h-full object-cover opacity-70"
+                      preload="metadata"
+                      muted
+                      playsInline
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-950/10">
+                      <div className="w-7 h-7 rounded-full bg-slate-900/70 backdrop-blur-xs flex items-center justify-center text-white border border-white/10 shadow-lg">
+                        <Film className="text-amber-400" size={12} />
+                      </div>
+                    </div>
                     <span className="absolute bottom-1 right-1 px-1 rounded text-[8px] bg-slate-900 text-white font-mono">VIDEO</span>
                   </div>
                 ) : (
@@ -220,12 +252,12 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 variant="primary"
                 className="w-full"
                 size="md"
-                onClick={() => handleAddToCart(focusedAsset)}
+                onClick={() => handlePurchaseAction(() => handleAddToCart(focusedAsset))}
               >
                 Add To Creators Cart
               </Button>
               <button
-                onClick={() => { handleAddToCart(focusedAsset); handleCheckout(); }}
+                onClick={() => handlePurchaseAction(() => { handleAddToCart(focusedAsset); handleCheckout(); })}
                 className="w-full py-2.5 px-4 bg-transparent border border-sky-400 dark:border-sky-800 hover:bg-sky-500/20 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-sky-600 dark:text-white font-display text-center transition-studio cursor-pointer"
               >
                 Instant Purchase Sandbox
@@ -273,6 +305,23 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             </div>
           </div>
 
+          {/* Tags list widget */}
+          {focusedAsset.tagList && focusedAsset.tagList.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3.5 shadow-xs">
+              <h3 className="font-display font-bold text-xs uppercase tracking-wider text-slate-400">Keywords & Tags</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {focusedAsset.tagList.map((tag, idx) => (
+                  <span
+                    key={idx}
+                    className="rounded-lg bg-sky-500/10 dark:bg-sky-500/20 px-2.5 py-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400 border border-sky-500/10 dark:border-sky-500/20 shadow-xs"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Recommended Related Assets suggestions from same category */}
           <div className="space-y-3">
             <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm">
@@ -304,6 +353,66 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         </div>
 
       </div>
+
+      {/* Proprietary License Commitment Modal */}
+      {showLicenseModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-scale-in">
+            <div className="space-y-1.5">
+              <span className="px-2 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-500 uppercase font-bold border border-rose-500/20">
+                Proprietary License Commitment Required
+              </span>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">
+                Cam kết Điều khoản Bản quyền của Người bán
+              </h3>
+              <p className="text-xs text-slate-500">
+                Sản phẩm này được phát hành dưới bản quyền thương mại riêng của người bán. Bạn cần đồng ý với các điều khoản dưới đây trước khi tải về hoặc mua hàng.
+              </p>
+            </div>
+
+            <div className="max-h-60 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-850 text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-sans whitespace-pre-wrap">
+              {focusedAsset.licenseTerms || "Không có điều khoản cụ thể nào được cung cấp."}
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 rounded border-slate-300 dark:border-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-0 focus:ring-2"
+              />
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-normal">
+                Tôi đồng ý và cam kết tuân thủ đầy đủ các điều khoản bản quyền sở hữu trí tuệ của người bán ở trên.
+              </span>
+            </label>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setShowLicenseModal(false);
+                  setPendingAction(null);
+                }}
+                className="px-4 py-2 bg-slate-105 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs transition-studio"
+              >
+                Từ chối
+              </button>
+              <button
+                disabled={!acceptedTerms}
+                onClick={() => {
+                  if (pendingAction) {
+                    pendingAction();
+                  }
+                  setShowLicenseModal(false);
+                  setPendingAction(null);
+                }}
+                className="px-4 py-2 bg-sky-550 hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition-studio"
+              >
+                Đồng ý & Tiếp tục
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

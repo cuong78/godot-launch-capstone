@@ -24,6 +24,7 @@ export interface Asset {
   screenshots?: string[];
   videoUrl?: string;
   license?: string;
+  licenseTerms?: string;
   documentation?: string;
   supportedPlatforms?: string;
 }
@@ -280,6 +281,7 @@ export interface CreateMarketplaceItemRequest {
   fileUrl?: string;
   thumbnailUrl?: string;
   license?: string;
+  licenseTerms?: string;
   documentation?: string;
   version?: string;
   supportedPlatforms?: string;
@@ -296,6 +298,7 @@ export interface UpdateMarketplaceItemRequest {
   fileUrl?: string;
   thumbnailUrl?: string;
   license?: string;
+  licenseTerms?: string;
   documentation?: string;
   version?: string;
   supportedPlatforms?: string;
@@ -315,11 +318,13 @@ export interface MarketplaceItemResponse {
   fileUrl?: string;
   thumbnailUrl?: string;
   license?: string;
+  licenseTerms?: string;
   documentation?: string;
   version?: string;
   supportedPlatforms?: string;
   tags?: string[];
   screenshots?: string[];
+  videoUrl?: string;
   godotVersion?: string;
   sourceGameId?: string;
   sourceGameTitle?: string;

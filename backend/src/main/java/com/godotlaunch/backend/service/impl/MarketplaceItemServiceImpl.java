@@ -24,6 +24,9 @@ import com.godotlaunch.backend.service.AsyncVirusScanService;
 import com.godotlaunch.backend.service.AwsS3Service;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.MarketplaceItemService;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,6 +53,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
     private final StorageRouter storageRouter;
+    private final AuditLogService auditLogService;
 
     /** ObjectKey cố định cho zip của 1 marketplace item. */
     private String buildObjectKey(UUID itemId) {
@@ -103,6 +107,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         
         item.setThumbnailUrl(request.getThumbnailUrl());
         item.setLicense(request.getLicense());
+        item.setLicenseTerms(request.getLicenseTerms());
         item.setDocumentation(request.getDocumentation());
         if (request.getVersion() != null && !request.getVersion().trim().isEmpty()) {
             item.setVersion(request.getVersion());
@@ -148,6 +153,16 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         MarketplaceItem savedItem = marketplaceItemRepository.save(item);
+
+        auditLogService.publishAuto(
+                AuditAction.game_submitted,
+                AuditTarget.marketplace_item,
+                savedItem.getId(),
+                null,
+                null,
+                "Marketplace item '" + savedItem.getTitle() + "' (" + savedItem.getItemType() + ") draft initialized by developer."
+        );
+
         return savedItem.getId();
     }
 
@@ -218,6 +233,9 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         if (request.getLicense() != null) {
             item.setLicense(request.getLicense());
         }
+        if (request.getLicenseTerms() != null) {
+            item.setLicenseTerms(request.getLicenseTerms());
+        }
         if (request.getDocumentation() != null) {
             item.setDocumentation(request.getDocumentation());
         }
@@ -255,6 +273,16 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         MarketplaceItem updatedItem = marketplaceItemRepository.save(item);
+
+        auditLogService.publishAuto(
+                AuditAction.game_updated,
+                AuditTarget.marketplace_item,
+                id,
+                null,
+                null,
+                "Marketplace item '" + updatedItem.getTitle() + "' updated by developer."
+        );
+
         return mapToResponse(updatedItem);
     }
 
@@ -290,6 +318,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, objectKey);
         log.info("Marketplace item {} uploaded via StorageRouter ({}) with key {}, virus scan started",
                 itemId, storageRouter.getProvider(fileType), objectKey);
+
+        auditLogService.publishAuto(
+                AuditAction.game_submitted,
+                AuditTarget.marketplace_item,
+                itemId,
+                null,
+                null,
+                "Marketplace project ZIP package uploaded for '" + item.getTitle() + "'. Virus scan triggered."
+        );
     }
 
     @Override
@@ -305,6 +342,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
         asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, actualKey);
         log.info("Marketplace item {} upload confirmed with key {} and virus scan started", itemId, actualKey);
+
+        auditLogService.publishAuto(
+                AuditAction.game_submitted,
+                AuditTarget.marketplace_item,
+                itemId,
+                null,
+                null,
+                "Marketplace project ZIP upload confirmed for '" + item.getTitle() + "'. Virus scan triggered."
+        );
     }
 
     @Override
@@ -327,6 +373,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 "Your marketplace asset has been approved by the admin and is now active on the marketplace."
         );
         log.info("Marketplace item {} approved and email sent to {}", id, item.getSeller().getEmail());
+
+        auditLogService.publishAuto(
+                AuditAction.game_approved,
+                AuditTarget.marketplace_item,
+                id,
+                ItemStatus.pending.name(),
+                ItemStatus.active.name(),
+                "Marketplace item '" + item.getTitle() + "' approved and activated by administrator."
+        );
     }
 
     @Override
@@ -358,6 +413,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 reason != null ? reason : "Violated store policies"
         );
         log.info("Marketplace item {} rejected and email sent to {}", id, item.getSeller().getEmail());
+
+        auditLogService.publishAuto(
+                AuditAction.game_rejected,
+                AuditTarget.marketplace_item,
+                id,
+                ItemStatus.pending.name(),
+                ItemStatus.rejected.name(),
+                "Marketplace item '" + item.getTitle() + "' rejected by administrator. Reason: " + reason
+        );
     }
 
     @Override
@@ -386,6 +450,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         } catch (Exception e) {
             log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
         }
+
+        auditLogService.publishAuto(
+                AuditAction.marketplace_item_removed,
+                AuditTarget.marketplace_item,
+                id,
+                item.getStatus().name(),
+                ItemStatus.removed.name(),
+                "Marketplace item '" + item.getTitle() + "' removed by " + (isAdmin ? "administrator" : "owner") + "."
+        );
     }
 
     private MarketplaceItemResponse mapToResponse(MarketplaceItem item) {
@@ -398,6 +471,12 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                         .map(m -> getPresignedGetUrl(m.getMediaUrl()))
                         .collect(Collectors.toList())
                 : Collections.emptyList();
+        String videoUrl = item.getMediaFiles() != null
+                ? item.getMediaFiles().stream()
+                        .filter(m -> "video".equalsIgnoreCase(m.getMediaType()))
+                        .map(m -> getPresignedGetUrl(m.getMediaUrl()))
+                        .findFirst().orElse(null)
+                : null;
 
         return MarketplaceItemResponse.builder()
                 .id(item.getId())
@@ -412,11 +491,13 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .fileUrl(getPresignedGetUrl(item.getFileUrl()))
                 .thumbnailUrl(getPresignedGetUrl(item.getThumbnailUrl()))
                 .license(item.getLicense())
+                .licenseTerms(item.getLicenseTerms())
                 .documentation(item.getDocumentation())
                 .version(item.getVersion())
                 .supportedPlatforms(item.getSupportedPlatforms())
                 .tags(tags)
                 .screenshots(screenshots)
+                .videoUrl(videoUrl)
                 .godotVersion(item.getGodotVersion())
                 .sourceGameId(item.getSourceGame() != null ? item.getSourceGame().getId() : null)
                 .sourceGameTitle(item.getSourceGame() != null ? item.getSourceGame().getTitle() : null)
@@ -457,6 +538,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             media.setMediaUrl(mediaUrl);
             marketplaceItemMediaRepository.save(media);
         }
+
+        auditLogService.publishAuto(
+                AuditAction.game_updated,
+                AuditTarget.marketplace_item,
+                itemId,
+                null,
+                null,
+                "Uploaded " + fileType + " for marketplace item '" + item.getTitle() + "'."
+        );
 
         return objectKey;
     }
@@ -526,6 +616,17 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     private String getPresignedGetUrl(String rawUrl) {
         if (rawUrl == null || "pending".equalsIgnoreCase(rawUrl)) return rawUrl;
+        boolean isS3 = rawUrl.contains(".amazonaws.com");
+        if (!isS3) {
+            try {
+                String provider = storageRouter.getProvider(FileType.asset);
+                if ("seaweedfs".equalsIgnoreCase(provider)) {
+                    return rawUrl;
+                }
+            } catch (Exception e) {
+                // Fallback to S3 presigning if provider check fails
+            }
+        }
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
@@ -538,6 +639,14 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
+        int idx = url.indexOf("marketplace/items/");
+        if (idx != -1) {
+            return url.substring(idx);
+        }
+        idx = url.indexOf("games/");
+        if (idx != -1) {
+            return url.substring(idx);
+        }
         String prefix = ".amazonaws.com/";
         int index = url.indexOf(prefix);
         if (index != -1) {

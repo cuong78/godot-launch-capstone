@@ -16,6 +16,7 @@ public class UpdateMarketplaceItemRequest {
     private String fileUrl;
     private String thumbnailUrl;
     private String license;
+    private String licenseTerms;
     private String documentation;
     private String version;
     private String supportedPlatforms;
