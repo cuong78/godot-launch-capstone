@@ -11,6 +11,7 @@ export interface Asset {
   image: string;
   tag: string;
   tagList: string[];
+  itemType?: 'source_code' | 'asset';
   isBestseller?: boolean;
   version?: string;
   lastUpdated?: string;

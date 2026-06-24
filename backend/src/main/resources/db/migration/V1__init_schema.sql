@@ -165,6 +165,18 @@ COMMENT ON COLUMN users.github_token_enc IS 'AES-256 encrypted OAuth token — g
 --  TABLE 03: categories  [MOI v2.0]
 --  Ho tro category cha-con: vd Action > RPG > Turn-based
 -- ============================================================
+parent_id IS 'NULL = top-level category';
+
+
+-- ============================================================
+--  TABLE 04: tags  [MOI v2.0]
+-- ============================================================
+CREATE TABLE tags (
+                      id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                      name       VARCHAR(100) NOT NULL UNIQUE,
+                      slug       VARCHAR(100) NOT NULL UNIQUE,
+                      created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
 CREATE TABLE categories (
                             id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
                             name        VARCHAR(100) NOT NULL UNIQUE,
@@ -189,19 +201,7 @@ INSERT INTO categories (name, slug) VALUES
 
 COMMENT ON TABLE  categories           IS 'Danh muc game, ho tro cha-con qua parent_id';
 COMMENT ON COLUMN categories.slug      IS 'URL-friendly, vd: action-rpg';
-COMMENT ON COLUMN categories.parent_id IS 'NULL = top-level category';
-
-
--- ============================================================
---  TABLE 04: tags  [MOI v2.0]
--- ============================================================
-CREATE TABLE tags (
-                      id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-                      name       VARCHAR(100) NOT NULL UNIQUE,
-                      slug       VARCHAR(100) NOT NULL UNIQUE,
-                      created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-);
-
+COMMENT ON COLUMN categories.
 CREATE INDEX idx_tags_slug ON tags(slug);
 
 COMMENT ON TABLE tags IS 'Tag game: nhieu-nhieu voi games qua bang game_tags';
