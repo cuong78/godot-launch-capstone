@@ -8,6 +8,10 @@ logging:
 spring:
   application:
     name: backend
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
   datasource:
     url: ${DB_URL}
