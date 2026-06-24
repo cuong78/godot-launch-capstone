@@ -7,6 +7,7 @@ import com.godotlaunch.backend.entity.GameMedia;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.enums.GameStatus;
+import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.dto.request.CreateGameRequest;
 import com.godotlaunch.backend.service.AsyncVirusScanService;
 import com.godotlaunch.backend.service.AwsS3Service;
@@ -21,6 +22,7 @@ import com.godotlaunch.backend.constant.ErrorCode;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,6 +42,27 @@ public class GameServiceImpl implements GameService {
     private final AwsS3Service awsS3Service;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
+    private final StorageRouter storageRouter;
+
+    /** Map fileType string (từ frontend) → FileType enum cho StorageRouter routing. */
+    private FileType resolveMediaFileType(String fileType) {
+        if ("thumbnail".equalsIgnoreCase(fileType)) return FileType.thumbnail;
+        if ("video".equalsIgnoreCase(fileType)) return FileType.video;
+        // "screenshot" | "image"
+        return FileType.screenshot;
+    }
+
+    /** Build objectKey cố định/random theo loại media. */
+    private String buildMediaObjectKey(UUID gameId, String fileType) {
+        if ("thumbnail".equalsIgnoreCase(fileType)) {
+            return "games/" + gameId + "/thumbnail";
+        }
+        if ("video".equalsIgnoreCase(fileType)) {
+            return "games/" + gameId + "/video";
+        }
+        // screenshot: mỗi cái 1 key random
+        return "games/" + gameId + "/screenshots/" + UUID.randomUUID();
+    }
 
     @Override
     @Transactional
@@ -121,8 +144,62 @@ public class GameServiceImpl implements GameService {
         return mapToResponse(updatedGame);
     }
 
+    @Override
+    @Transactional
+    public void clearGameMedia(UUID gameId, String mediaType, String updaterEmail) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+
+        if (!game.getCreator().getEmail().equalsIgnoreCase(updaterEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // Chuẩn hóa: "screenshot" → "image" (DB lưu mediaType là "image")
+        String normalized = "video".equalsIgnoreCase(mediaType) ? "video" : "image";
+        deleteMediaFilesAndRecords(gameId, normalized);
+    }
+
+    @Override
+    @Transactional
+    public void deleteGameMediaByUrl(UUID gameId, String mediaUrl, String updaterEmail) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+
+        if (!game.getCreator().getEmail().equalsIgnoreCase(updaterEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // Frontend gửi presigned URL — match bằng objectKey (bỏ query string ?X-Amz-...)
+        String targetKey = extractObjectKeyFromUrl(mediaUrl);
+        if (targetKey == null) {
+            throw new IllegalArgumentException("Không xác định được objectKey từ mediaUrl");
+        }
+
+        gameMediaRepository.findByGameId(gameId).stream()
+                .filter(m -> targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
+                .findFirst()
+                .ifPresent(m -> {
+                    gameMediaRepository.delete(m);
+                    // Route đúng provider theo loại media (image→screenshot, video→video)
+                    FileType ft = "video".equalsIgnoreCase(m.getMediaType())
+                            ? FileType.video : FileType.screenshot;
+                    try {
+                        storageRouter.delete(ft, targetKey);
+                    } catch (Exception e) {
+                        log.warn("Đã xóa record media nhưng không xóa được file storage: {}", targetKey, e);
+                    }
+                });
+    }
+
     private String getPresignedGetUrl(String rawUrl) {
         if (rawUrl == null) return null;
+
+        // File trên SeaweedFS (hoặc storage khác) đã là public URL → trả thẳng,
+        // chỉ S3 mới cần presigned GET URL.
+        if (!rawUrl.contains(".amazonaws.com/")) {
+            return rawUrl;
+        }
+
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
@@ -201,10 +278,16 @@ public class GameServiceImpl implements GameService {
                 throw new IllegalArgumentException("objectKey is required to confirm media uploads (screenshots or videos)");
             }
             String mediaUrl = awsS3Service.getFileUrl(objectKey);
+            boolean isVideo = "video".equalsIgnoreCase(fileType);
+
+            // Video chỉ có 1 cái/game → upload mới thay thế cái cũ (không giữ lịch sử).
+            if (isVideo) {
+                gameMediaRepository.deleteByGameIdAndMediaType(gameId, "video");
+            }
 
             GameMedia media = new GameMedia();
             media.setGame(game);
-            media.setMediaType("video".equalsIgnoreCase(fileType) ? "video" : "image");
+            media.setMediaType(isVideo ? "video" : "image");
             media.setMediaUrl(mediaUrl);
             gameMediaRepository.save(media);
         } else {
@@ -216,6 +299,59 @@ public class GameServiceImpl implements GameService {
 
             asyncVirusScanService.scanAndProcessGame(gameId, actualKey);
         }
+    }
+
+    @Override
+    @Transactional
+    public String uploadGameMedia(UUID gameId, String fileType, MultipartFile file, String uploaderEmail) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+
+        if (!game.getCreator().getEmail().equalsIgnoreCase(uploaderEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        FileType ft = resolveMediaFileType(fileType);
+        String objectKey = buildMediaObjectKey(gameId, fileType);
+
+        // Upload qua StorageRouter — route đúng provider (S3 / SeaweedFS) theo routing config
+        String mediaUrl = storageRouter.uploadWithKey(ft, file, objectKey);
+
+        if ("thumbnail".equalsIgnoreCase(fileType)) {
+            game.setThumbnailUrl(mediaUrl);
+            gameRepository.save(game);
+        } else {
+            boolean isVideo = "video".equalsIgnoreCase(fileType);
+            // Video chỉ 1 cái/game → thay thế cái cũ
+            if (isVideo) {
+                deleteMediaFilesAndRecords(gameId, "video");
+            }
+            GameMedia media = new GameMedia();
+            media.setGame(game);
+            media.setMediaType(isVideo ? "video" : "image");
+            media.setMediaUrl(mediaUrl);
+            gameMediaRepository.save(media);
+        }
+
+        return objectKey;
+    }
+
+    /** Xóa cả file storage (đúng provider) lẫn record DB cho 1 loại media. */
+    private void deleteMediaFilesAndRecords(UUID gameId, String mediaType) {
+        FileType ft = "video".equalsIgnoreCase(mediaType) ? FileType.video : FileType.screenshot;
+        gameMediaRepository.findByGameId(gameId).stream()
+                .filter(m -> mediaType.equalsIgnoreCase(m.getMediaType()))
+                .forEach(m -> {
+                    String key = extractObjectKeyFromUrl(m.getMediaUrl());
+                    if (key != null) {
+                        try {
+                            storageRouter.delete(ft, key);
+                        } catch (Exception e) {
+                            log.warn("Không xóa được file media trên storage: {}", key, e);
+                        }
+                    }
+                });
+        gameMediaRepository.deleteByGameIdAndMediaType(gameId, mediaType);
     }
 
     @Override

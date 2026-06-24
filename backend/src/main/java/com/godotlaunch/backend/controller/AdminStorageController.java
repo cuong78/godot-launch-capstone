@@ -213,12 +213,17 @@ public class AdminStorageController {
     private StorageRoutingResponse toRoutingResponse(StorageRouting rt) {
         StorageRoutingResponse r = new StorageRoutingResponse();
         r.setFileType(rt.getFileType());
-        r.setBucketId(rt.getBucket().getId());
-        r.setBucketName(rt.getBucket().getName());
-        r.setAccountId(rt.getBucket().getAccount().getId());
-        r.setAccountName(rt.getBucket().getAccount().getName());
-        r.setProvider(rt.getBucket().getAccount().getProvider());
         r.setUpdatedAt(rt.getUpdatedAt());
+
+        // bucket = null → file_type chưa được admin gán bucket
+        StorageBucket bucket = rt.getBucket();
+        if (bucket != null) {
+            r.setBucketId(bucket.getId());
+            r.setBucketName(bucket.getName());
+            r.setAccountId(bucket.getAccount().getId());
+            r.setAccountName(bucket.getAccount().getName());
+            r.setProvider(bucket.getAccount().getProvider());
+        }
         return r;
     }
 }

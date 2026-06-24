@@ -83,6 +83,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [screenshots, setScreenshots] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  // Map fileKey → objectKey trên storage (để xóa screenshot lẻ trên server)
+  const [screenshotKeys, setScreenshotKeys] = useState<Record<string, string>>({});
 
   // Upload progress & status states
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
@@ -251,8 +253,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         if (!res.success) {
           throw new Error(res.message || 'Upload failed');
         }
-      } else {
-        // Game: presigned S3 PUT trực tiếp (3 bước)
+      } else if (fileType === 'game') {
+        // Game.zip: presigned S3 PUT trực tiếp (file lớn, không qua backend)
         const urlRes = await gameApi.getPresignedUrl(gameId, fileType, file.type);
         if (!urlRes.success || !urlRes.data?.uploadUrl) {
           throw new Error(urlRes.message || 'Failed to get upload URL');
@@ -270,6 +272,19 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
         const objectKey = extractObjectKey(uploadUrl);
         await gameApi.confirmUploadComplete(gameId, fileType, objectKey);
+      } else {
+        // Game media (thumbnail/screenshot/video): proxy qua backend → StorageRouter (S3/SeaweedFS)
+        const res = await gameApi.uploadMedia(gameId, fileType, file, (percent) => {
+          setUploadProgress(prev => ({ ...prev, [key]: percent }));
+        });
+        if (!res.success) {
+          throw new Error(res.message || 'Upload failed');
+        }
+
+        // Lưu objectKey của screenshot để xóa lẻ trên server sau này
+        if (fileType === 'screenshot' && res.data?.objectKey) {
+          setScreenshotKeys(prev => ({ ...prev, [key]: res.data!.objectKey }));
+        }
       }
 
       setUploadStatus(prev => ({ ...prev, [key]: 'completed' }));
@@ -306,8 +321,27 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     }
   };
 
-  const removeScreenshot = (idx: number) => {
+  const removeScreenshot = async (idx: number) => {
+    const file = screenshots[idx];
+    const key = file ? getFileKey(file) : null;
+    const objectKey = key ? screenshotKeys[key] : null;
+
+    // Xóa khỏi UI ngay
     setScreenshots(prev => prev.filter((_, i) => i !== idx));
+
+    // Nếu đã upload lên server → xóa cả trên server
+    if (gameId && objectKey) {
+      try {
+        await gameApi.deleteMediaItem(gameId, objectKey);
+        setScreenshotKeys(prev => {
+          const next = { ...prev };
+          if (key) delete next[key];
+          return next;
+        });
+      } catch (err) {
+        console.error('Failed to delete screenshot on server:', err);
+      }
+    }
   };
 
   return (

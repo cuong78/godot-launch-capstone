@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface GameMediaRepository extends JpaRepository<GameMedia, UUID> {
     List<GameMedia> findByGameId(UUID gameId);
     void deleteByGameId(UUID gameId);
+    void deleteByGameIdAndMediaType(UUID gameId, String mediaType);
 }

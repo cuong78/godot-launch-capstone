@@ -89,7 +89,8 @@ public class StorageRouter {
     public String getProvider(FileType fileType) {
         Optional<StorageRouting> routing = routingRepository.findByFileTypeWithJoin(fileType.name());
         if (routing.isEmpty()) {
-            throw new RuntimeException("No storage routing configured for file type: " + fileType);
+            throw new RuntimeException(
+                "File type '" + fileType + "' chưa được gán bucket. Admin cần config routing trong Storage Settings.");
         }
         return routing.get().getBucket().getAccount().getProvider();
     }
@@ -120,9 +121,11 @@ public class StorageRouter {
         }
 
         return adapterCache.computeIfAbsent(fileType, ft -> {
+            // findByFileTypeWithJoin là INNER JOIN → empty nếu file_type chưa gán bucket (bucket = null)
             Optional<StorageRouting> routing = routingRepository.findByFileTypeWithJoin(ft);
             if (routing.isEmpty()) {
-                throw new RuntimeException("No storage routing configured for file type: " + ft);
+                throw new RuntimeException(
+                    "File type '" + ft + "' chưa được gán bucket. Admin cần config routing trong Storage Settings.");
             }
             StorageBucket bucket = routing.get().getBucket();
             StorageAccount account = bucket.getAccount();

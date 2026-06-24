@@ -17,8 +17,9 @@ public class StorageRouting {
     @Column(name = "file_type", length = 50)
     private String fileType;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "bucket_id", nullable = false)
+    // nullable: file_type mới auto-seed từ enum nhưng chưa được admin gán bucket
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bucket_id")
     private StorageBucket bucket;
 
     @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)

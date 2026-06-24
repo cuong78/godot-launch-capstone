@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
@@ -93,5 +94,39 @@ public class GameController {
                     : "Game upload confirmed and virus scan started");
 
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", msg), "Success"));
+    }
+
+    @PostMapping(value = "/{id}/media/upload", consumes = "multipart/form-data")
+    @Operation(summary = "Upload media qua proxy", description = "Upload thumbnail/screenshot/video qua backend → StorageRouter (route đúng S3/SeaweedFS theo config). Thay cho presigned URL.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadGameMedia(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "screenshot") String fileType,
+            Principal principal) {
+        String objectKey = gameService.uploadGameMedia(id, fileType, file, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("message", "Media uploaded successfully", "objectKey", objectKey), "Success"));
+    }
+
+    @DeleteMapping("/{id}/media")
+    @Operation(summary = "Xóa media theo loại", description = "Xóa toàn bộ screenshot ('image') hoặc video ('video') của game — dùng khi cập nhật bộ ảnh mới cho version mới.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> clearGameMedia(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "image") String mediaType,
+            Principal principal) {
+
+        gameService.clearGameMedia(id, mediaType, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Media cleared successfully"), "Success"));
+    }
+
+    @DeleteMapping("/{id}/media/item")
+    @Operation(summary = "Xóa 1 media cụ thể", description = "Xóa 1 screenshot/video theo mediaUrl — dùng khi developer gỡ 1 ảnh lẻ khỏi danh sách.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> deleteGameMediaItem(
+            @PathVariable UUID id,
+            @RequestParam String mediaUrl,
+            Principal principal) {
+
+        gameService.deleteGameMediaByUrl(id, mediaUrl, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Media item deleted successfully"), "Success"));
     }
 }

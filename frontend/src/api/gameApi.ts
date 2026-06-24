@@ -42,12 +42,57 @@ export const gameApi = {
   },
 
   confirmUploadComplete: async (
-    gameId: string, 
-    fileType: 'game' | 'thumbnail' | 'screenshot' | 'video', 
+    gameId: string,
+    fileType: 'game' | 'thumbnail' | 'screenshot' | 'video',
     objectKey?: string
   ): Promise<ApiResponse<{ message: string }>> => {
     const response = await api.post<ApiResponse<{ message: string }>>(`/api/v1/games/${gameId}/upload-complete`, null, {
       params: { fileType, objectKey }
+    });
+    return response.data;
+  },
+
+  // Proxy upload media (thumbnail/screenshot/video) qua backend → StorageRouter (S3/SeaweedFS)
+  uploadMedia: async (
+    gameId: string,
+    fileType: 'thumbnail' | 'screenshot' | 'video',
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<{ message: string; objectKey: string }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<ApiResponse<{ message: string; objectKey: string }>>(
+      `/api/v1/games/${gameId}/media/upload`,
+      formData,
+      {
+        params: { fileType },
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Xóa toàn bộ screenshot ('image') hoặc video của game — dùng khi thay bộ ảnh mới
+  clearMedia: async (
+    gameId: string,
+    mediaType: 'image' | 'video'
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/api/v1/games/${gameId}/media`, {
+      params: { mediaType }
+    });
+    return response.data;
+  },
+
+  // Xóa 1 screenshot/video lẻ theo mediaUrl
+  deleteMediaItem: async (
+    gameId: string,
+    mediaUrl: string
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/api/v1/games/${gameId}/media/item`, {
+      params: { mediaUrl }
     });
     return response.data;
   },

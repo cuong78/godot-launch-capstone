@@ -16,6 +16,7 @@ public interface StorageRoutingRepository extends JpaRepository<StorageRouting, 
 
     Optional<StorageRouting> findByFileType(String fileType);
 
-    @Query("SELECT r FROM StorageRouting r JOIN FETCH r.bucket b JOIN FETCH b.account")
+    // LEFT JOIN: hiện cả file_type CHƯA gán bucket (bucket = null)
+    @Query("SELECT r FROM StorageRouting r LEFT JOIN FETCH r.bucket b LEFT JOIN FETCH b.account")
     List<StorageRouting> findAllWithBucketAndAccount();
 }

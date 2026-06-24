@@ -820,7 +820,9 @@ export function AdminStoragePanel() {
         provider: bucket.provider, updatedAt: new Date().toISOString(),
       };
     }
-    return routing.find(r => r.fileType === fileType);
+    // Dòng routing có thể tồn tại nhưng bucket = null (file_type chưa gán) → coi như chưa có routing
+    const found = routing.find(r => r.fileType === fileType);
+    return found?.bucketId ? found : undefined;
   };
 
   const getAssignedFileTypes = (bucketId: string) =>

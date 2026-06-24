@@ -22,11 +22,12 @@ export interface StorageBucketResponse {
 
 export interface StorageRoutingResponse {
   fileType: string;
-  bucketId: string;
-  bucketName: string;
-  accountId: string;
-  accountName: string;
-  provider: 'aws_s3' | 'seaweedfs';
+  // Các field bucket null khi file_type chưa được admin gán bucket
+  bucketId?: string | null;
+  bucketName?: string | null;
+  accountId?: string | null;
+  accountName?: string | null;
+  provider?: 'aws_s3' | 'seaweedfs' | null;
   updatedAt: string;
 }
 

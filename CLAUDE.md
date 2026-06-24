@@ -74,7 +74,7 @@ go-dot-launch-capstone-fptu/
 **Nhóm Community:** `reviews`, `community_chats`
 **Nhóm Download:** `source_downloads`, `store_download_stats`
 **Nhóm Security:** `user_ip_logs`, `banned_ips`
-**Nhóm Operations:** `audit_logs`, `notifications`, `publishing_guides`, `external_publishes`
+**Nhóm Operations:** `audit_logs`, `notifications`, `external_publishes`
 **Nhóm Storage (V14):** `storage_accounts`, `storage_buckets`, `storage_routing`
 
 **Quan trọng về migration:**
