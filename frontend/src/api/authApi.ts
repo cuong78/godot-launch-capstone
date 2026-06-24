@@ -72,4 +72,9 @@ export const authApi = {
     // Gọi backend để revoke sessionHash + clear httpOnly cookie
     await api.post('/api/auth/logout').catch(() => {});
   },
+
+  prepareLink: async (): Promise<ApiResponse<{ redirectUrl: string }>> => {
+    const response = await api.post<ApiResponse<{ redirectUrl: string }>>('/api/v1/auth/github/prepare-link');
+    return response.data;
+  },
 };

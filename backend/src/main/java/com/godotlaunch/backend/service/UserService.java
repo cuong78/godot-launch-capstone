@@ -3,6 +3,8 @@ package com.godotlaunch.backend.service;
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
 import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
+import com.godotlaunch.backend.dto.response.GitHubStatusResponse;
+import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 
 import java.util.List;
@@ -17,4 +19,6 @@ public interface UserService {
     UserResponse updateMyProfile(String email, UpdateProfileRequest request);
     void deleteUser(UUID id);
     List<UserResponse> searchUsersByName(String query, String excludeEmail);
+    GitHubStatusResponse getGitHubStatus(String email);
+    JwtAuthenticationResponse unlinkGitHub(String email);
 }

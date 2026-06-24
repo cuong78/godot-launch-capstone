@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { userApi } from '../api/userApi';
 import { authApi } from '../api/authApi';
+import { tokenStorage } from '../utils/tokenStorage';
 import { Button } from '../components/Button';
 import { 
   User as UserIcon, 
@@ -46,6 +47,79 @@ export function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [githubStatus, setGithubStatus] = useState<{ linked: boolean; githubUsername: string | null; githubLinkedAt: string | null } | null>(null);
+  const [loadingGithubStatus, setLoadingGithubStatus] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
+  const [searchParams] = useState(new URLSearchParams(window.location.search));
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchGithubStatus = async () => {
+      setLoadingGithubStatus(true);
+      try {
+        const res = await userApi.getGitHubStatus();
+        if (res.success && res.data) {
+          setGithubStatus(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch GitHub status:", err);
+      } finally {
+        setLoadingGithubStatus(false);
+      }
+    };
+    fetchGithubStatus();
+  }, [currentUser]);
+
+  useEffect(() => {
+    const linked = searchParams.get("linked");
+    if (linked === "true") {
+      setStatusMessage({ type: 'success', text: 'GitHub linked successfully! You are now a Developer.' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [searchParams]);
+
+  const handleLinkGitHub = async () => {
+    try {
+      const res = await authApi.prepareLink();
+      if (res.success && res.data?.redirectUrl) {
+        localStorage.setItem("github_link_pending", "true");
+        window.location.href = res.data.redirectUrl;
+      } else {
+        setStatusMessage({ type: 'error', text: 'Failed to initiate GitHub linking.' });
+      }
+    } catch (err: any) {
+      setStatusMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || err.message || 'Failed to initiate GitHub linking.' 
+      });
+    }
+  };
+
+  const handleUnlinkGitHub = async () => {
+    if (!window.confirm("Are you sure you want to unlink your GitHub account? Your role will return to Customer.")) return;
+    setIsUnlinking(true);
+    setStatusMessage(null);
+    try {
+      const res = await userApi.unlinkGitHub();
+      if (res.success && res.data) {
+        tokenStorage.setToken(res.data.token);
+        localStorage.setItem("accessToken", res.data.token);
+        updateUser(res.data.user);
+        setStatusMessage({ type: 'success', text: 'GitHub account unlinked successfully. Your role is now Customer.' });
+        setGithubStatus({ linked: false, githubUsername: null, githubLinkedAt: null });
+      } else {
+        setStatusMessage({ type: 'error', text: res.message || 'Failed to unlink GitHub.' });
+      }
+    } catch (err: any) {
+      setStatusMessage({ 
+        type: 'error', 
+        text: err.response?.data?.message || err.message || 'Failed to unlink GitHub.' 
+      });
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
 
   if (!currentUser) {
     return (
@@ -272,6 +346,59 @@ export function ProfilePage() {
                     ? ' You possess code publisher tokens to list packages, upload games, and configure payouts.'
                     : ' You are authorized to access explore catalogs, chat in community channels, and buy products.'}
                 </p>
+
+                {/* GitHub Linking / Developer Upgrade Section */}
+                <div className="mt-6 pt-6 border-t border-slate-700/30">
+                  <h4 className="text-sm font-display font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+                    <Globe size={16} className="text-amber-400" /> GitHub Account Link
+                  </h4>
+                  {githubStatus?.linked ? (
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="text-left">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 mb-1">
+                          Connected
+                        </span>
+                        <p className="text-sm text-slate-350 font-semibold">
+                          Linked GitHub: <span className="text-white font-mono">@{githubStatus.githubUsername}</span>
+                        </p>
+                        {githubStatus.githubLinkedAt && (
+                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            Linked at: {new Date(githubStatus.githubLinkedAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      {currentUser.role === 'developer' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-rose-500/30 hover:border-rose-400 hover:bg-rose-500/10 text-rose-500 transition-all font-semibold"
+                          onClick={handleUnlinkGitHub}
+                          disabled={isUnlinking}
+                        >
+                          {isUnlinking ? 'Unlinking...' : 'Unlink GitHub'}
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/30 text-left">
+                      <p className="text-xs text-slate-400 leading-relaxed mb-3">
+                        {currentUser.role === 'customer' 
+                          ? `Link your GitHub account to upgrade to a Developer role. This allows you to publish games, list templates, and share source code packages. Note: the email on your GitHub profile must match your registered email (${currentUser.email}).`
+                          : 'No GitHub account is currently linked to this profile.'}
+                      </p>
+                      {currentUser.role === 'customer' && (
+                        <Button 
+                          variant="primary" 
+                          size="sm"
+                          onClick={handleLinkGitHub}
+                          disabled={loadingGithubStatus}
+                        >
+                          Link GitHub & Become Developer
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (

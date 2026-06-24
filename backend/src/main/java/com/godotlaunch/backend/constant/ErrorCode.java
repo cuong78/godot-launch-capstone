@@ -64,6 +64,11 @@ public enum ErrorCode {
     REPO_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy repo hoặc bạn không có quyền truy cập."),
     SOURCE_PROCESSING_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Xử lý source code thất bại. Vui lòng kiểm tra lại repo."),
     SOURCE_MALWARE_DETECTED(HttpStatus.UNPROCESSABLE_ENTITY, "Phát hiện mã độc trong source code.");
+    
+    // GitHub Linking
+    GITHUB_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "GL-4070", "GitHub primary email does not match your registered email."),
+    GITHUB_ALREADY_LINKED(HttpStatus.BAD_REQUEST, "GL-4071", "This GitHub account is already linked to another user."),
+    GITHUB_LINK_NOT_PREPARED(HttpStatus.BAD_REQUEST, "GL-4072", "GitHub link session not found. Please start the linking process again.");
 
     private final HttpStatus httpStatus;
     private final String code;

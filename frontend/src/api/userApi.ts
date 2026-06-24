@@ -1,5 +1,5 @@
 import api from './axios';
-import { ApiResponse, User, UpdateProfileRequest } from '../types';
+import { ApiResponse, User, UpdateProfileRequest, JwtAuthenticationResponse } from '../types';
 
 export interface AdminUpdateUserRequest {
   fullName: string;
@@ -27,6 +27,16 @@ export const userApi = {
 
   updateProfile: async (data: UpdateProfileRequest): Promise<ApiResponse<User>> => {
     const response = await api.put<ApiResponse<User>>('/api/v1/users/me', data);
+    return response.data;
+  },
+
+  getGitHubStatus: async (): Promise<ApiResponse<{ linked: boolean; githubUsername: string | null; githubLinkedAt: string | null }>> => {
+    const response = await api.get<ApiResponse<{ linked: boolean; githubUsername: string | null; githubLinkedAt: string | null }>>('/api/v1/users/me/github-status');
+    return response.data;
+  },
+
+  unlinkGitHub: async (): Promise<ApiResponse<JwtAuthenticationResponse>> => {
+    const response = await api.delete<ApiResponse<JwtAuthenticationResponse>>('/api/v1/users/me/github');
     return response.data;
   }
 };

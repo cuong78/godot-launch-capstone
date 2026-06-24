@@ -106,6 +106,92 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
             throw new AppException(ErrorCode.GITHUB_AUTH_FAILED);
         }
 
+        String encryptedToken = encryptionService.encrypt(accessToken);
+
+        // Check if this is a Link Flow
+        String linkingUserEmail = (String) session.getAttribute("github_linking_user_email");
+        if (linkingUserEmail != null) {
+            // STEP 1: Validate role (only customer can link/upgrade)
+            User currentUser = userRepository.findByEmail(linkingUserEmail)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+            if ("admin".equalsIgnoreCase(currentUser.getRole().getName())
+                    || "developer".equalsIgnoreCase(currentUser.getRole().getName())) {
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+            }
+
+            // STEP 2: Fetch GitHub primary email (primary=true AND verified=true)
+            String githubPrimaryEmail = null;
+            try {
+                List<Map<String, Object>> emailsList = webClient.get()
+                        .uri("https://api.github.com/user/emails")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .header("Accept", "application/vnd.github+json")
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<List<Map<String, Object>>>() {})
+                        .block();
+
+                if (emailsList != null) {
+                    for (Map<String, Object> emailObj : emailsList) {
+                        Boolean primary = (Boolean) emailObj.get("primary");
+                        Boolean verified = (Boolean) emailObj.get("verified");
+                        if (Boolean.TRUE.equals(primary) && Boolean.TRUE.equals(verified)) {
+                            githubPrimaryEmail = (String) emailObj.get("email");
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                throw new AppException(ErrorCode.GITHUB_EMAIL_REQUIRED);
+            }
+
+            if (githubPrimaryEmail == null || githubPrimaryEmail.trim().isEmpty()) {
+                throw new AppException(ErrorCode.GITHUB_EMAIL_REQUIRED);
+            }
+
+            // STEP 3: Validate email match (case-insensitive)
+            if (!githubPrimaryEmail.equalsIgnoreCase(linkingUserEmail)) {
+                throw new AppException(ErrorCode.GITHUB_EMAIL_MISMATCH);
+            }
+
+            // STEP 4: Check GitHub ID not already linked to another account
+            Optional<User> existingLinkedUser = userRepository.findByGithubId(profile.getId());
+            if (existingLinkedUser.isPresent() && !existingLinkedUser.get().getId().equals(currentUser.getId())) {
+                User oldUser = existingLinkedUser.get();
+                if ("active".equalsIgnoreCase(oldUser.getStatus())) {
+                    throw new AppException(ErrorCode.GITHUB_ALREADY_LINKED);
+                } else {
+                    // If the old account is not active (inactive/soft-deleted), we free up the github link
+                    oldUser.setGithubId(null);
+                    oldUser.setGithubUsername(null);
+                    oldUser.setGithubTokenEnc(null);
+                    oldUser.setGithubLinkedAt(null);
+                    userRepository.saveAndFlush(oldUser);
+                }
+            }
+
+            // STEP 5: Update current user
+            currentUser.setGithubId(profile.getId());
+            currentUser.setGithubUsername(profile.getLogin());
+            currentUser.setGithubTokenEnc(encryptedToken);
+            currentUser.setGithubLinkedAt(Instant.now());
+
+            Role developerRole = roleRepository.findByName("developer")
+                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+            currentUser.setRole(developerRole);
+
+            userRepository.save(currentUser);
+
+            // STEP 6: Clear session
+            session.removeAttribute("github_linking_user_email");
+
+            // STEP 7: Issue new JWT with role=developer
+            String sessionSecret = UUID.randomUUID().toString();
+            currentUser.setSessionHash(JwtProvider.hashSessionSecret(sessionSecret));
+            userRepository.save(currentUser);
+            return jwtProvider.generateToken(currentUser.getEmail(), currentUser.getId(), currentUser.getRole().getName(), sessionSecret);
+        }
+
         // Fetch emails list fallback if profile email is not public
         String email = profile.getEmail();
         if (email == null || email.trim().isEmpty()) {
@@ -151,7 +237,6 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
         }
 
         // Step 4: Upsert user
-        String encryptedToken = encryptionService.encrypt(accessToken);
         Optional<User> userByGithub = userRepository.findByGithubId(profile.getId());
         User user;
         boolean isNewUser = false;
@@ -220,5 +305,19 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
         user.setSessionHash(JwtProvider.hashSessionSecret(sessionSecret));
         userRepository.save(user);
         return jwtProvider.generateToken(user.getEmail(), user.getId(), user.getRole().getName(), sessionSecret);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String prepareLinkSession(String email, HttpSession session) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if ("admin".equalsIgnoreCase(user.getRole().getName()) || "developer".equalsIgnoreCase(user.getRole().getName())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        session.setAttribute("github_linking_user_email", email);
+        return "http://localhost:8080/api/v1/auth/github?action=link";
     }
 }
