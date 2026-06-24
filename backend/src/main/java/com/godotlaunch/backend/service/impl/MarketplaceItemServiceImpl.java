@@ -12,6 +12,10 @@ import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.entity.Tag;
+import com.godotlaunch.backend.entity.MarketplaceItemMedia;
+import com.godotlaunch.backend.repository.TagRepository;
+import com.godotlaunch.backend.repository.MarketplaceItemMediaRepository;
 import com.godotlaunch.backend.repository.CategoryRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.MarketplaceItemRepository;
@@ -28,8 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +44,8 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final GameRepository gameRepository;
+    private final TagRepository tagRepository;
+    private final MarketplaceItemMediaRepository marketplaceItemMediaRepository;
     private final AwsS3Service awsS3Service;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
@@ -56,6 +61,26 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         return item.getItemType() == ItemType.source_code
                 ? FileType.source_code_zip
                 : FileType.asset;
+    }
+
+    private Set<Tag> resolveTags(List<String> tagNames) {
+        if (tagNames == null || tagNames.isEmpty()) {
+            return new HashSet<>();
+        }
+        Set<Tag> resolvedTags = new HashSet<>();
+        for (String name : tagNames) {
+            String trimmed = name.trim();
+            if (trimmed.isEmpty()) continue;
+            Tag tag = tagRepository.findByNameIgnoreCase(trimmed)
+                    .orElseGet(() -> {
+                        Tag newTag = new Tag();
+                        newTag.setName(trimmed);
+                        newTag.setSlug(trimmed.toLowerCase().replaceAll("[^a-z0-9]+", "-"));
+                        return tagRepository.save(newTag);
+                    });
+            resolvedTags.add(tag);
+        }
+        return resolvedTags;
     }
 
     @Override
@@ -75,6 +100,17 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
         item.setStatus(ItemStatus.pending);
+        
+        item.setThumbnailUrl(request.getThumbnailUrl());
+        item.setLicense(request.getLicense());
+        item.setDocumentation(request.getDocumentation());
+        if (request.getVersion() != null && !request.getVersion().trim().isEmpty()) {
+            item.setVersion(request.getVersion());
+        }
+        item.setSupportedPlatforms(request.getSupportedPlatforms());
+        if (request.getTags() != null) {
+            item.setTags(resolveTags(request.getTags()));
+        }
 
         if (request.getCategoryId() != null) {
             Category category = categoryRepository.findById(request.getCategoryId())
@@ -175,6 +211,24 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
         if (request.getFileUrl() != null) {
             item.setFileUrl(request.getFileUrl());
+        }
+        if (request.getThumbnailUrl() != null) {
+            item.setThumbnailUrl(request.getThumbnailUrl());
+        }
+        if (request.getLicense() != null) {
+            item.setLicense(request.getLicense());
+        }
+        if (request.getDocumentation() != null) {
+            item.setDocumentation(request.getDocumentation());
+        }
+        if (request.getVersion() != null) {
+            item.setVersion(request.getVersion());
+        }
+        if (request.getSupportedPlatforms() != null) {
+            item.setSupportedPlatforms(request.getSupportedPlatforms());
+        }
+        if (request.getTags() != null) {
+            item.setTags(resolveTags(request.getTags()));
         }
 
         if (item.getItemType() == ItemType.source_code) {
@@ -335,6 +389,16 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     }
 
     private MarketplaceItemResponse mapToResponse(MarketplaceItem item) {
+        List<String> tags = item.getTags() != null
+                ? item.getTags().stream().map(Tag::getName).collect(Collectors.toList())
+                : Collections.emptyList();
+        List<String> screenshots = item.getMediaFiles() != null
+                ? item.getMediaFiles().stream()
+                        .filter(m -> "image".equalsIgnoreCase(m.getMediaType()))
+                        .map(m -> getPresignedGetUrl(m.getMediaUrl()))
+                        .collect(Collectors.toList())
+                : Collections.emptyList();
+
         return MarketplaceItemResponse.builder()
                 .id(item.getId())
                 .sellerEmail(item.getSeller().getEmail())
@@ -346,6 +410,13 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .description(item.getDescription())
                 .price(item.getPrice())
                 .fileUrl(getPresignedGetUrl(item.getFileUrl()))
+                .thumbnailUrl(getPresignedGetUrl(item.getThumbnailUrl()))
+                .license(item.getLicense())
+                .documentation(item.getDocumentation())
+                .version(item.getVersion())
+                .supportedPlatforms(item.getSupportedPlatforms())
+                .tags(tags)
+                .screenshots(screenshots)
                 .godotVersion(item.getGodotVersion())
                 .sourceGameId(item.getSourceGame() != null ? item.getSourceGame().getId() : null)
                 .sourceGameTitle(item.getSourceGame() != null ? item.getSourceGame().getTitle() : null)
@@ -355,6 +426,102 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public String uploadMarketplaceItemMedia(UUID itemId, String fileType, MultipartFile file, String uploaderEmail) {
+        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+
+        if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        FileType ft = resolveMediaFileType(fileType);
+        String objectKey = buildMarketplaceMediaObjectKey(itemId, fileType);
+
+        String mediaUrl = storageRouter.uploadWithKey(ft, file, objectKey);
+
+        if ("thumbnail".equalsIgnoreCase(fileType)) {
+            item.setThumbnailUrl(mediaUrl);
+            marketplaceItemRepository.save(item);
+        } else {
+            boolean isVideo = "video".equalsIgnoreCase(fileType);
+            if (isVideo) {
+                deleteMarketplaceMediaFilesAndRecords(itemId, "video");
+            }
+            MarketplaceItemMedia media = new MarketplaceItemMedia();
+            media.setMarketplaceItem(item);
+            media.setMediaType(isVideo ? "video" : "image");
+            media.setMediaUrl(mediaUrl);
+            marketplaceItemMediaRepository.save(media);
+        }
+
+        return objectKey;
+    }
+
+    @Override
+    @Transactional
+    public void deleteMarketplaceItemMediaByUrl(UUID itemId, String mediaUrl, String uploaderEmail) {
+        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+
+        if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        String targetKey = extractObjectKeyFromUrl(mediaUrl);
+        if (targetKey == null) {
+            throw new IllegalArgumentException("Không xác định được objectKey từ mediaUrl");
+        }
+
+        marketplaceItemMediaRepository.findByMarketplaceItemId(itemId).stream()
+                .filter(m -> targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
+                .findFirst()
+                .ifPresent(m -> {
+                    marketplaceItemMediaRepository.delete(m);
+                    FileType ft = "video".equalsIgnoreCase(m.getMediaType())
+                            ? FileType.video : FileType.screenshot;
+                    try {
+                        storageRouter.delete(ft, targetKey);
+                    } catch (Exception e) {
+                        log.warn("Đã xóa record media nhưng không xóa được file storage: {}", targetKey, e);
+                    }
+                });
+    }
+
+    private FileType resolveMediaFileType(String fileType) {
+        if ("thumbnail".equalsIgnoreCase(fileType)) return FileType.thumbnail;
+        if ("video".equalsIgnoreCase(fileType)) return FileType.video;
+        return FileType.screenshot;
+    }
+
+    private String buildMarketplaceMediaObjectKey(UUID itemId, String fileType) {
+        if ("thumbnail".equalsIgnoreCase(fileType)) {
+            return "marketplace/items/" + itemId + "/thumbnail";
+        }
+        if ("video".equalsIgnoreCase(fileType)) {
+            return "marketplace/items/" + itemId + "/video";
+        }
+        return "marketplace/items/" + itemId + "/screenshots/" + UUID.randomUUID().toString();
+    }
+
+    private void deleteMarketplaceMediaFilesAndRecords(UUID itemId, String mediaType) {
+        FileType ft = "video".equalsIgnoreCase(mediaType) ? FileType.video : FileType.screenshot;
+        marketplaceItemMediaRepository.findByMarketplaceItemId(itemId).stream()
+                .filter(m -> mediaType.equalsIgnoreCase(m.getMediaType()))
+                .forEach(m -> {
+                    String key = extractObjectKeyFromUrl(m.getMediaUrl());
+                    if (key != null) {
+                        try {
+                            storageRouter.delete(ft, key);
+                        } catch (Exception e) {
+                            log.warn("Không xóa được file media trên storage: {}", key, e);
+                        }
+                    }
+                });
+        marketplaceItemMediaRepository.deleteByMarketplaceItemIdAndMediaType(itemId, mediaType);
     }
 
     private String getPresignedGetUrl(String rawUrl) {

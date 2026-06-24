@@ -140,4 +140,28 @@ public class MarketplaceItemController {
         marketplaceItemService.removeMarketplaceItem(id, updaterEmail);
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Marketplace item removed successfully"), "Success"));
     }
+
+    @PostMapping(value = "/{id}/media/upload", consumes = "multipart/form-data")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Upload media qua proxy", description = "Upload thumbnail/screenshot/video của marketplace item qua backend → StorageRouter.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadMarketplaceMedia(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "screenshot") String fileType,
+            Principal principal) {
+        String objectKey = marketplaceItemService.uploadMarketplaceItemMedia(id, fileType, file, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("message", "Media uploaded successfully", "objectKey", objectKey), "Success"));
+    }
+
+    @DeleteMapping("/{id}/media/item")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Xóa 1 media cụ thể", description = "Xóa 1 screenshot/video của marketplace item theo mediaUrl.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> deleteMarketplaceMediaItem(
+            @PathVariable UUID id,
+            @RequestParam String mediaUrl,
+            Principal principal) {
+        marketplaceItemService.deleteMarketplaceItemMediaByUrl(id, mediaUrl, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Media item deleted successfully"), "Success"));
+    }
 }

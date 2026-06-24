@@ -32,4 +32,16 @@ public class CreateMarketplaceItemRequest {
     private UUID sourceGameId;
 
     private String fileUrl;
+
+    private String thumbnailUrl;
+
+    private String license;
+
+    private String documentation;
+
+    private String version;
+
+    private String supportedPlatforms;
+
+    private java.util.List<String> tags;
 }

@@ -12,7 +12,7 @@ import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "marketplace_items")
@@ -51,6 +51,21 @@ public class MarketplaceItem {
     @Column(name = "file_url", nullable = false, columnDefinition = "TEXT")
     private String fileUrl;
 
+    @Column(name = "thumbnail_url", columnDefinition = "TEXT")
+    private String thumbnailUrl;
+
+    @Column(name = "license", length = 50)
+    private String license;
+
+    @Column(name = "documentation", columnDefinition = "TEXT")
+    private String documentation;
+
+    @Column(name = "version", length = 50)
+    private String version = "1.0.0";
+
+    @Column(name = "supported_platforms", length = 200)
+    private String supportedPlatforms;
+
     @Column(name = "godot_version", length = 20)
     private String godotVersion;
 
@@ -68,6 +83,15 @@ public class MarketplaceItem {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "item_status_enum")
     private ItemStatus status = ItemStatus.active;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "marketplace_item_tags",
+            joinColumns = @JoinColumn(name = "marketplace_item_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<Tag> tags = new HashSet<>();
+
+    @OneToMany(mappedBy = "marketplaceItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MarketplaceItemMedia> mediaFiles = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

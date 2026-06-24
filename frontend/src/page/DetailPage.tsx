@@ -10,7 +10,7 @@ interface DetailPageProps {
   selectedThumbIndex: number;
   setSelectedThumbIndex: (index: number) => void;
   activeDetailTab: string;
-  setActiveDetailTab: (tab: "overview" | "tech") => void;
+  setActiveDetailTab: (tab: "overview" | "tech" | "documentation") => void;
   handleAddToCart: (asset: Asset) => void;
   handleCheckout: () => void;
   assets: Asset[];
@@ -126,9 +126,23 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               >
                 Technical Specs
               </button>
+              {focusedAsset.documentation && (
+                <button
+                  onClick={() => setActiveDetailTab('documentation')}
+                  className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-studio ${activeDetailTab === 'documentation' ? 'border-amber-400 text-slate-800 dark:text-white' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                >
+                  Documentation
+                </button>
+              )}
             </div>
 
-            {activeDetailTab === 'overview' ? (
+            {activeDetailTab === 'documentation' ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-850">
+                  {focusedAsset.documentation}
+                </div>
+              </div>
+            ) : activeDetailTab === 'overview' ? (
               <div className="space-y-4">
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                   {focusedAsset.description}
@@ -235,6 +249,18 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   <span>VERSION:</span>
                   <span className="text-slate-800 dark:text-white font-bold">{focusedAsset.version || '1.0.0'}</span>
                 </div>
+                {focusedAsset.license && (
+                  <div className="flex justify-between">
+                    <span>LICENSE:</span>
+                    <span className="text-slate-800 dark:text-white font-bold">{focusedAsset.license}</span>
+                  </div>
+                )}
+                {focusedAsset.supportedPlatforms && (
+                  <div className="flex justify-between">
+                    <span>PLATFORMS:</span>
+                    <span className="text-slate-800 dark:text-white font-bold">{focusedAsset.supportedPlatforms}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>LAST UPDATED:</span>
                   <span className="text-slate-800 dark:text-white font-bold">{focusedAsset.lastUpdated}</span>

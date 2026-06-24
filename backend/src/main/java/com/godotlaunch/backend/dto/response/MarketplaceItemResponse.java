@@ -28,6 +28,13 @@ public class MarketplaceItemResponse {
     private String description;
     private BigDecimal price;
     private String fileUrl;
+    private String thumbnailUrl;
+    private String license;
+    private String documentation;
+    private String version;
+    private String supportedPlatforms;
+    private java.util.List<String> tags;
+    private java.util.List<String> screenshots;
     private String godotVersion;
     private UUID sourceGameId;
     private String sourceGameTitle;

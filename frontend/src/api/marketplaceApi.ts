@@ -75,6 +75,41 @@ export const marketplaceApi = {
     return response.data;
   },
 
+  // Upload thumbnail / screenshots / video
+  uploadMedia: async (
+    id: string,
+    fileType: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<{ message: string; objectKey: string }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileType', fileType);
+    const response = await api.post<ApiResponse<{ message: string; objectKey: string }>>(
+      `/api/v1/marketplace-items/${id}/media/upload`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Delete a specific media by url
+  deleteMediaItem: async (
+    id: string,
+    mediaUrl: string
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.delete<ApiResponse<{ message: string }>>(
+      `/api/v1/marketplace-items/${id}/media/item`,
+      { params: { mediaUrl } }
+    );
+    return response.data;
+  },
+
   deleteMarketplaceItem: async (id: string): Promise<ApiResponse<{ message: string }>> => {
     const response = await api.delete<ApiResponse<{ message: string }>>(`/api/v1/marketplace-items/${id}`);
     return response.data;

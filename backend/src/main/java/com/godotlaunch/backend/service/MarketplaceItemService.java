@@ -27,4 +27,14 @@ public interface MarketplaceItemService {
     void approveMarketplaceItem(UUID id);
     void rejectMarketplaceItem(UUID id, String reason);
     void removeMarketplaceItem(UUID id, String updaterEmail);
+
+    /**
+     * Proxy upload media (thumbnail, screenshot, video) cho MarketplaceItem.
+     */
+    String uploadMarketplaceItemMedia(UUID id, String fileType, MultipartFile file, String uploaderEmail);
+
+    /**
+     * Xóa 1 file media cụ thể của MarketplaceItem theo URL.
+     */
+    void deleteMarketplaceItemMediaByUrl(UUID id, String mediaUrl, String uploaderEmail);
 }

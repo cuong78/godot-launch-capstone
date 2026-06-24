@@ -118,7 +118,8 @@ const buildMarketplaceTagList = (
 
 const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
   const category = normalizeMarketplaceCategory(item.categoryName, item.itemType);
-  const tagList = buildMarketplaceTagList(item, category);
+  const dbTags = item.tags || [];
+  const tagList = dbTags.length > 0 ? dbTags : buildMarketplaceTagList(item, category);
 
   return {
     id: item.id,
@@ -130,13 +131,15 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
     authorAvatar: DEFAULT_AUTHOR_AVATAR,
     category,
     description: item.description || '',
-    image: getMarketplaceImage(item, category),
+    image: item.thumbnailUrl || getMarketplaceImage(item, category),
     tag: item.godotVersion || category,
     tagList,
     itemType: item.itemType,
-    version: item.itemType === 'source_code'
-      ? (item.godotVersion || 'Source')
-      : 'Asset Pack',
+    version: item.version || (item.itemType === 'source_code' ? (item.godotVersion || '1.0.0') : '1.0.0'),
+    screenshots: item.screenshots || [],
+    license: item.license || 'MIT',
+    documentation: item.documentation || '',
+    supportedPlatforms: item.supportedPlatforms || '',
     lastUpdated: formatMarketplaceDate(item.updatedAt || item.createdAt),
     details: {
       tilesCount: item.itemType === 'source_code' ? 'Complete project bundle' : 'Pack archive',
@@ -592,7 +595,7 @@ export default function App() {
     }
   }, [currentScreen]);
 
-  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech'>('overview');
+  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);
 
   // Sync state changes with URL address bar

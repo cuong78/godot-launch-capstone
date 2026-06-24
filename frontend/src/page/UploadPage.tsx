@@ -76,6 +76,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [itemType, setItemType] = useState<'source_code' | 'asset'>('source_code');
   const [godotVersion, setGodotVersion] = useState('');
   const [githubRepoUrl, setGithubRepoUrl] = useState('');
+  const [license, setLicense] = useState('MIT');
+  const [version, setVersion] = useState('1.0.0');
+  const [supportedPlatforms, setSupportedPlatforms] = useState<string[]>([]);
+  const [tagsInput, setTagsInput] = useState('');
+  const [documentation, setDocumentation] = useState('');
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
@@ -131,7 +136,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   useEffect(() => {
     const filtered = categories.filter(cat => {
       const isAssetCat = ['scripts-plugins', 'shaders-vfx', '2d-assets', '3d-models', 'audio-sfx'].includes(cat.slug);
-      return publishProgram === 'marketplace' ? isAssetCat : !isAssetCat;
+      const wantAssetCat = publishProgram === 'marketplace' && itemType === 'asset';
+      return wantAssetCat ? isAssetCat : !isAssetCat;
     });
     if (filtered.length > 0) {
       const isValid = filtered.some(cat => cat.id === categoryId);
@@ -139,7 +145,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setCategoryId(filtered[0].id);
       }
     }
-  }, [publishProgram, categories, categoryId]);
+  }, [publishProgram, categories, categoryId, itemType]);
 
   // Polling logic for security virus scan
   useEffect(() => {
@@ -212,6 +218,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         categoryId: categoryId || undefined,
         godotVersion: itemType === 'source_code' ? godotVersion : undefined,
         githubRepoUrl: itemType === 'source_code' ? githubRepoUrl : undefined,
+        license,
+        version,
+        supportedPlatforms: supportedPlatforms.join(', '),
+        documentation,
+        tags: tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0)
       });
       if (res.success && res.data?.itemId) { setGameId(res.data.itemId); setStep(2); }
       else alert(res.message || 'Failed to create marketplace item');
@@ -257,12 +268,25 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
     try {
       if (publishProgram === 'marketplace') {
-        // Marketplace: upload proxy 1 bước qua backend → StorageRouter (S3 / SeaweedFS)
-        const res = await marketplaceApi.uploadItemFile(gameId, file, (percent) => {
-          setUploadProgress(prev => ({ ...prev, [key]: percent }));
-        });
-        if (!res.success) {
-          throw new Error(res.message || 'Upload failed');
+        if (fileType === 'game') {
+          // Marketplace: upload proxy 1 bước qua backend → StorageRouter (S3 / SeaweedFS)
+          const res = await marketplaceApi.uploadItemFile(gameId, file, (percent) => {
+            setUploadProgress(prev => ({ ...prev, [key]: percent }));
+          });
+          if (!res.success) {
+            throw new Error(res.message || 'Upload failed');
+          }
+        } else {
+          // Marketplace Media (thumbnail / screenshots): upload proxy qua backend
+          const res = await marketplaceApi.uploadMedia(gameId, fileType, file, (percent) => {
+            setUploadProgress(prev => ({ ...prev, [key]: percent }));
+          });
+          if (!res.success) {
+            throw new Error(res.message || 'Upload failed');
+          }
+          if (fileType === 'screenshot' && res.data?.objectKey) {
+            setScreenshotKeys(prev => ({ ...prev, [key]: res.data!.objectKey }));
+          }
         }
       } else if (fileType === 'game') {
         // Game.zip: presigned S3 PUT trực tiếp (file lớn, không qua backend)
@@ -343,7 +367,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     // Nếu đã upload lên server → xóa cả trên server
     if (gameId && objectKey) {
       try {
-        await gameApi.deleteMediaItem(gameId, objectKey);
+        if (publishProgram === 'marketplace') {
+          await marketplaceApi.deleteMediaItem(gameId, objectKey);
+        } else {
+          await gameApi.deleteMediaItem(gameId, objectKey);
+        }
         setScreenshotKeys(prev => {
           const next = { ...prev };
           if (key) delete next[key];
@@ -540,11 +568,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             />
 
             <Input
-              label="Proposed Price (USD)"
-              prefix="$"
-              placeholder="e.g. 19.99 (Set 0 for Free)"
+              label="Proposed Price (VNĐ)"
+              prefix="đ"
+              placeholder="e.g. 50000 (Set 0 for Free)"
               type="number"
-              step="0.01"
+              step="1000"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               required
@@ -554,7 +582,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                Asset Classification Category
+                Asset Classification Category / Genre
               </label>
               {isLoadingCategories ? (
                 <div className="text-xs text-slate-500 animate-pulse py-2.5">Fetching categories...</div>
@@ -567,7 +595,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   {categories
                     .filter(cat => {
                       const isAssetCat = ['scripts-plugins', 'shaders-vfx', '2d-assets', '3d-models', 'audio-sfx'].includes(cat.slug);
-                      return publishProgram === 'marketplace' ? isAssetCat : !isAssetCat;
+                      const wantAssetCat = publishProgram === 'marketplace' && itemType === 'asset';
+                      return wantAssetCat ? isAssetCat : !isAssetCat;
                     })
                     .map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -662,6 +691,82 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 onChange={(e) => setGithubRepoUrl(e.target.value)}
                 required
               />
+            </div>
+          )}
+
+          {publishProgram === 'marketplace' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in border-t border-slate-100 dark:border-slate-800 pt-6">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                  License Model
+                </label>
+                <select
+                  value={license}
+                  onChange={(e) => setLicense(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
+                >
+                  <option value="MIT">MIT License (Open-source, free reuse)</option>
+                  <option value="Apache-2.0">Apache 2.0 (Open-source, commercial allowed)</option>
+                  <option value="CC-BY-4.0">Creative Commons Attribution 4.0 (CC-BY)</option>
+                  <option value="CC0-1.0">Creative Commons Zero (CC0 - Public Domain)</option>
+                  <option value="Proprietary">Proprietary / Commercial (All rights reserved)</option>
+                </select>
+              </div>
+
+              <Input
+                label="Asset Version"
+                placeholder="e.g. 1.0.0"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+                required
+              />
+
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                  Supported Platforms
+                </label>
+                <div className="flex flex-wrap gap-4 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl">
+                  {['Windows', 'Web', 'Android', 'iOS', 'macOS', 'Linux'].map((plat) => {
+                    const checked = supportedPlatforms.includes(plat);
+                    return (
+                      <label key={plat} className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            if (checked) {
+                              setSupportedPlatforms(supportedPlatforms.filter(p => p !== plat));
+                            } else {
+                              setSupportedPlatforms([...supportedPlatforms, plat]);
+                            }
+                          }}
+                          className="rounded border-slate-355 dark:border-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-0 focus:ring-2"
+                        />
+                        {plat}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <Input
+                  label="Keywords / Tags"
+                  placeholder="e.g. 2D, Pixel Art, Physics, Shader (separated by commas)"
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <TextArea
+                  label="Documentation & Setup Instructions (Markdown supported)"
+                  placeholder="Explain how to integrate and use this asset pack or plugin in Godot..."
+                  rows={4}
+                  value={documentation}
+                  onChange={(e) => setDocumentation(e.target.value)}
+                />
+              </div>
             </div>
           )}
 
@@ -786,7 +891,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             )}
 
             {/* 2. Thumbnail image */}
-            {publishProgram === 'game' && (
+            {(publishProgram === 'game' || publishProgram === 'marketplace') && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Image size={16} className="text-amber-500" /> Primary Cover Thumbnail *
@@ -834,7 +939,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             )}
 
             {/* 3. Screenshots (Multiple) */}
-            {publishProgram === 'game' && (
+            {(publishProgram === 'game' || publishProgram === 'marketplace') && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                   <span className="flex items-center gap-1.5"><Image size={16} className="text-amber-500" /> Screenshots (Optional, Max 5)</span>
