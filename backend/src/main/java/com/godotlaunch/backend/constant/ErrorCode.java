@@ -32,6 +32,9 @@ public enum ErrorCode {
     WISHLIST_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Game is not in your wishlist."),
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested category does not exist."),
     MARKETPLACE_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested marketplace item does not exist."),
+    DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy khiếu nại."),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ."),
+    IDENTITY_BANNED(HttpStatus.FORBIDDEN, "Danh tính này đã bị cấm khỏi hệ thống do vi phạm trước đó."),
     
     // 400 Bad Request additions / Category
     CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "Category name or slug already exists."),
@@ -51,7 +54,16 @@ public enum ErrorCode {
     // GitHub OAuth
     GITHUB_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "GL-5020", "Failed to authenticate with GitHub."),
     GITHUB_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "GL-4060", "GitHub account must have a public email."),
-    GITHUB_TOKEN_EXCHANGE_FAILED(HttpStatus.BAD_GATEWAY, "GL-5021", "Failed to exchange GitHub authorization code.");
+    GITHUB_TOKEN_EXCHANGE_FAILED(HttpStatus.BAD_GATEWAY, "GL-5021", "Failed to exchange GitHub authorization code."),
+
+    // Repo publish
+    GITHUB_NOT_LINKED(HttpStatus.BAD_REQUEST, "Bạn cần liên kết tài khoản GitHub trước khi submit code."),
+    REPO_URL_REQUIRED(HttpStatus.BAD_REQUEST, "Vui lòng cung cấp link repo GitHub."),
+    REPO_OWNER_MISMATCH(HttpStatus.FORBIDDEN, "Repo này không thuộc tài khoản GitHub của bạn."),
+    REPO_IS_FORK(HttpStatus.BAD_REQUEST, "Không chấp nhận repo fork. Vui lòng dùng repo gốc của bạn."),
+    REPO_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy repo hoặc bạn không có quyền truy cập."),
+    SOURCE_PROCESSING_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Xử lý source code thất bại. Vui lòng kiểm tra lại repo."),
+    SOURCE_MALWARE_DETECTED(HttpStatus.UNPROCESSABLE_ENTITY, "Phát hiện mã độc trong source code.");
 
     private final HttpStatus httpStatus;
     private final String code;

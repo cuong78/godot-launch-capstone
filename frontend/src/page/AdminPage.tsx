@@ -38,6 +38,7 @@ import { marketplaceApi } from '../api/marketplaceApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { AdminStoragePanel } from '../components/AdminStoragePanel';
+import AdminDisputePanel from '../components/AdminDisputePanel';
 import { auditLogApi } from '../api/auditLogApi';
 
 interface PendingAsset {
@@ -138,7 +139,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'logs' | 'settings' | 'storage'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
   
   // Real Game Moderation state
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
@@ -585,8 +586,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         <div className="flex items-center gap-2">
           <button 
             onClick={() => {
-              const time = new Date().toTimeString().split(' ')[0];
-              setLogs(prev => [`[${time}] [SYSTEM] Force manual telemetry diagnostics successfully run.`, ...prev]);
               alert('Diagnostics run complete. Health metrics healthy.');
             }}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white transition-studio rounded-lg text-xs font-semibold cursor-pointer active:scale-95"
@@ -682,6 +681,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'storage' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
           <Database size={14} /> Storage
+        </button>
+        <button
+          onClick={() => setActiveTab('disputes')}
+          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'disputes' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+        >
+          <AlertTriangle size={14} /> Disputes
         </button>
       </div>
 
@@ -1660,6 +1665,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
         {/* Tab 5: Storage Management */}
         {activeTab === 'storage' && <AdminStoragePanel />}
+        {activeTab === 'disputes' && <AdminDisputePanel />}
 
         {/* Tab 4: Platform Settings */}
         {activeTab === 'settings' && (

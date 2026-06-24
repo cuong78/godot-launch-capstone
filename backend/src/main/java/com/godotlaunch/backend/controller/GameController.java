@@ -37,6 +37,18 @@ public class GameController {
         return ResponseEntity.ok(ApiResponse.success(Map.of("gameId", gameId), "Game draft created successfully"));
     }
 
+    @PostMapping("/{id}/submit-repo")
+    @Operation(summary = "Submit game bằng repo GitHub",
+            description = "Verify owner repo → clone → virus scan → snapshot. Thay cho upload game.zip.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> submitGameRepo(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
+            Principal principal) {
+        gameService.submitGameRepo(id, request.getRepoUrl(), request.getBranch(), principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("message", "Repo verified và submit thành công. Đang chờ duyệt."), "Success"));
+    }
+
     @GetMapping
     @Operation(summary = "Get all games", description = "Retrieves all game drafts, submissions, or published games (optionally filtered by status).")
     public ResponseEntity<ApiResponse<List<GameResponse>>> getAllGames(

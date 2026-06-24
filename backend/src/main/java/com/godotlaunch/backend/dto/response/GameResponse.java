@@ -31,4 +31,6 @@ public class GameResponse {
     private List<String> screenshots;
     private String videoUrl;
     private String fileUrl;
+    private String githubRepoUrl;
+    private String githubBranch;
 }

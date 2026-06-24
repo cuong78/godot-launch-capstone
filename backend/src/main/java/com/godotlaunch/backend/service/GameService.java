@@ -11,6 +11,12 @@ import java.util.UUID;
 
 public interface GameService {
     UUID createGameDraft(CreateGameRequest request, String creatorEmail);
+
+    /**
+     * Submit game bằng repo GitHub: verify owner → clone → virus scan → snapshot.
+     * Thay cho upload game.zip. Sạch → status pending, nhiễm → rejected.
+     */
+    void submitGameRepo(UUID gameId, String repoUrl, String branch, String creatorEmail);
     GameResponse getGameById(UUID gameId);
     List<GameResponse> getAllGames();
     List<GameResponse> getGamesByStatus(GameStatus status);
