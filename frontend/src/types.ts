@@ -201,6 +201,8 @@ export interface CreateGameRequest {
   priceProposed?: number;
   categoryId?: string;
   publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+  githubRepoUrl?: string;
+  githubBranch?: string;
 }
 
 export interface UpdateGameRequest {

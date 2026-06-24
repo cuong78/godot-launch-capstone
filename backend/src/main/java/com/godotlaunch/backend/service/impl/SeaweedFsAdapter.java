@@ -4,28 +4,23 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.godotlaunch.backend.service.StorageService;
 import org.springframework.web.multipart.MultipartFile;
-import seaweedfs.client.FilerClient;
-import seaweedfs.client.SeaweedInputStream;
-import seaweedfs.client.SeaweedOutputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
 /**
- * Adapter cho SeaweedFS dùng gRPC Java Client (thay thế HTTP REST).
+ * Adapter cho SeaweedFS dùng HTTP REST API (thay thế gRPC Client để tránh lỗi routing IP Volume Server trong Docker).
  *
  * Config JSON: { "filerHost": "localhost", "filerGrpcPort": 18888, "filerHttpPort": 8888, "basePath": "/godotlaunch" }
- *
- * Kiến trúc gRPC:
- *   App ──gRPC──▶ Filer:18888 ──▶ Volume:8081 (SeaweedFS tự quản lý)
- *
- * So với HTTP REST cũ:
- *   App ──HTTP──▶ Master:9333 (assign fid) ──HTTP──▶ Volume:8081 (PUT file)
- *   gRPC gộp 2 bước thành 1 stream, không cần tự parse fid hay manage volumeUrl.
  */
 public class SeaweedFsAdapter implements StorageService {
 
-    private final FilerClient filerClient;
+    private final HttpClient httpClient;
     private final String filerHost;
     private final int filerHttpPort;
     private final String basePath;
@@ -36,55 +31,69 @@ public class SeaweedFsAdapter implements StorageService {
             JsonNode cfg = mapper.readTree(configJson);
 
             this.filerHost = cfg.get("filerHost").asText();
-            int grpcPort = cfg.has("filerGrpcPort") ? cfg.get("filerGrpcPort").asInt() : 18888;
             this.filerHttpPort = cfg.has("filerHttpPort") ? cfg.get("filerHttpPort").asInt() : 8888;
             this.basePath = cfg.has("basePath")
                     ? cfg.get("basePath").asText().replaceAll("/$", "")
                     : "/godotlaunch";
 
-            // FilerClient kết nối gRPC — singleton per adapter instance
-            this.filerClient = new FilerClient(filerHost, grpcPort);
+            this.httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
         } catch (Exception e) {
-            throw new RuntimeException("Invalid SeaweedFS gRPC config", e);
+            throw new RuntimeException("Invalid SeaweedFS HTTP config", e);
         }
     }
 
     /**
-     * Upload file lên SeaweedFS qua gRPC stream.
+     * Upload file lên SeaweedFS qua HTTP PUT.
      * objectKey được dùng làm path trong filer (vd: "avatars/uuid_file.jpg")
      * → lưu tại basePath/objectKey (vd: /godotlaunch/avatars/uuid_file.jpg)
      */
     @Override
     public String upload(MultipartFile file, String objectKey) {
-        String filerPath = basePath + "/" + objectKey;
-        try (
-            InputStream in = file.getInputStream();
-            SeaweedOutputStream out = new SeaweedOutputStream(filerClient, filerPath)
-        ) {
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = in.read(buffer)) != -1) {
-                out.write(buffer, 0, bytesRead);
+        String filerUrl = getFullUrl(objectKey);
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(filerUrl))
+                    .PUT(HttpRequest.BodyPublishers.ofInputStream(() -> {
+                        try {
+                            return file.getInputStream();
+                        } catch (IOException e) {
+                            throw new java.io.UncheckedIOException(e);
+                        }
+                    }))
+                    .header("Content-Type", file.getContentType() != null ? file.getContentType() : "application/octet-stream")
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new IOException("Unexpected response status: " + response.statusCode() + " - " + response.body());
             }
-            out.flush();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to upload to SeaweedFS via gRPC: " + filerPath, e);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload to SeaweedFS via HTTP: " + filerUrl, e);
         }
         return getPublicUrl(objectKey);
     }
 
     /**
-     * Xóa file khỏi filer qua gRPC.
+     * Xóa file khỏi filer qua HTTP DELETE.
      * objectKey = path tương đối (vd: "avatars/uuid_file.jpg")
      */
     @Override
     public void delete(String objectKey) {
-        String filerPath = basePath + "/" + objectKey;
+        String filerUrl = getFullUrl(objectKey);
         try {
-            // rm(path, isRecursive, ignoreRecursiveError)
-            filerClient.rm(filerPath, false, true);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(filerUrl))
+                    .DELETE()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200 && response.statusCode() != 204 && response.statusCode() != 404) {
+                throw new IOException("Unexpected response status: " + response.statusCode() + " - " + response.body());
+            }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to delete from SeaweedFS via gRPC: " + filerPath, e);
+            throw new RuntimeException("Failed to delete from SeaweedFS via HTTP: " + filerUrl, e);
         }
     }
 
@@ -95,19 +104,33 @@ public class SeaweedFsAdapter implements StorageService {
      */
     @Override
     public String getPublicUrl(String objectKey) {
-        return String.format("http://%s:%d%s/%s", filerHost, filerHttpPort, basePath, objectKey);
+        return getFullUrl(objectKey);
     }
 
     /**
      * Đọc file từ SeaweedFS về dạng stream (dùng khi cần proxy file về client).
      * Caller có trách nhiệm đóng stream sau khi dùng.
      */
-    public SeaweedInputStream readFile(String objectKey) {
-        String filerPath = basePath + "/" + objectKey;
+    public InputStream readFile(String objectKey) {
+        String filerUrl = getFullUrl(objectKey);
         try {
-            return new SeaweedInputStream(filerClient, filerPath);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(filerUrl))
+                    .GET()
+                    .build();
+
+            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new IOException("Unexpected response status: " + response.statusCode());
+            }
+            return response.body();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to read from SeaweedFS via gRPC: " + filerPath, e);
+            throw new RuntimeException("Failed to read from SeaweedFS via HTTP: " + filerUrl, e);
         }
+    }
+
+    private String getFullUrl(String objectKey) {
+        String key = objectKey.startsWith("/") ? objectKey : "/" + objectKey;
+        return String.format("http://%s:%d%s%s", filerHost, filerHttpPort, basePath, key);
     }
 }

@@ -86,6 +86,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Map fileKey → objectKey trên storage (để xóa screenshot lẻ trên server)
   const [screenshotKeys, setScreenshotKeys] = useState<Record<string, string>>({});
 
+  // Game repo-based submit (thay cho upload game.zip)
+  const [gameRepoUrl, setGameRepoUrl] = useState('');
+  const [gameRepoBranch, setGameRepoBranch] = useState('');
+  const [repoSubmitting, setRepoSubmitting] = useState(false);
+  const [repoSubmitted, setRepoSubmitted] = useState(false);
+
   // Upload progress & status states
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({});
@@ -341,6 +347,36 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       } catch (err) {
         console.error('Failed to delete screenshot on server:', err);
       }
+    }
+  };
+
+  // Game submit qua repo GitHub (verify owner → clone → scan → snapshot)
+  const handleSubmitRepo = async () => {
+    if (!gameId) return;
+    if (!gameRepoUrl.trim()) {
+      setUploadError('Vui lòng nhập link repo GitHub.');
+      return;
+    }
+    setRepoSubmitting(true);
+    setUploadError(null);
+    setScanStatus('scanning');
+    setScanMessage('Đang verify repo, clone và quét bảo mật source code...');
+    try {
+      const res = await gameApi.submitGameRepo(gameId, gameRepoUrl.trim(), gameRepoBranch.trim() || undefined);
+      if (res.success) {
+        setRepoSubmitted(true);
+        setUploadStatus(prev => ({ ...prev, game: 'completed' }));
+        setScanStatus('clean');
+        setScanMessage('Repo đã verify và quét sạch. Game đang chờ duyệt.');
+      } else {
+        setScanStatus('failed');
+        setUploadError(res.message || 'Submit repo thất bại.');
+      }
+    } catch (err: any) {
+      setScanStatus('failed');
+      setUploadError(err.response?.data?.message || err.message || 'Submit repo thất bại.');
+    } finally {
+      setRepoSubmitting(false);
     }
   };
 
@@ -606,51 +642,92 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
 
-            {/* 1. Game package ZIP */}
-            <div className="space-y-2.5">
-              <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <FileText size={16} className="text-amber-500" /> {publishProgram === 'marketplace' ? "Marketplace Item ZIP (.zip) *" : "Game Project Source ZIP (.zip) *"}
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="file"
-                  accept=".zip"
-                  onChange={(e) => {
-                    const file = e.target.files ? e.target.files[0] : null;
-                    setGameFile(file);
-                    if (file) uploadFileToS3(file, 'game', 'game');
-                  }}
-                  className="hidden"
-                  id="game-zip-input"
-                />
-                <label 
-                  htmlFor="game-zip-input"
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
-                >
-                  <Upload size={14} /> Select ZIP File
+            {/* 1. GAME → submit qua repo GitHub | MARKETPLACE → upload ZIP */}
+            {publishProgram === 'game' ? (
+              <div className="space-y-2.5">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <FileText size={16} className="text-amber-500" /> Repository GitHub của Game *
                 </label>
-                <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
-                  {gameFile ? `${gameFile.name} (${(gameFile.size / (1024 * 1024)).toFixed(2)} MB)` : 'No file selected (Max 50MB)'}
-                </span>
+                <p className="text-xs text-slate-500">
+                  Hệ thống sẽ verify repo thuộc tài khoản GitHub của bạn, clone về, quét bảo mật và lưu bằng chứng (commit snapshot). Không cần upload file zip.
+                </p>
+                <input
+                  type="text"
+                  placeholder="https://github.com/username/my-godot-game"
+                  value={gameRepoUrl}
+                  onChange={(e) => setGameRepoUrl(e.target.value)}
+                  disabled={repoSubmitted}
+                  className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                />
+                <input
+                  type="text"
+                  placeholder="Branch (tùy chọn, mặc định: nhánh chính)"
+                  value={gameRepoBranch}
+                  onChange={(e) => setGameRepoBranch(e.target.value)}
+                  disabled={repoSubmitted}
+                  className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-350 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                />
+                {!repoSubmitted ? (
+                  <button
+                    type="button"
+                    onClick={handleSubmitRepo}
+                    disabled={repoSubmitting || !gameRepoUrl.trim()}
+                    className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-studio"
+                  >
+                    {repoSubmitting ? <><RefreshCw size={14} className="animate-spin" /> Đang xử lý...</> : <><CheckCircle2 size={14} /> Verify & Submit Repo</>}
+                  </button>
+                ) : (
+                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                    <CheckCircle2 size={13} /> Repo verified, cloned & quét sạch
+                  </span>
+                )}
               </div>
-              {uploadStatus['game'] === 'uploading' && (
-                <div className="space-y-1.5 mt-1.5">
-                  <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                    <span>Uploading...</span>
-                    <span>{uploadProgress['game']}%</span>
-                  </div>
-                  <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
-                    <div className="bg-sky-500 h-full rounded-full transition-all duration-350" style={{ width: `${uploadProgress['game']}%` }}></div>
-                  </div>
+            ) : (
+              <div className="space-y-2.5">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <FileText size={16} className="text-amber-500" /> Marketplace Item ZIP (.zip) *
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept=".zip"
+                    onChange={(e) => {
+                      const file = e.target.files ? e.target.files[0] : null;
+                      setGameFile(file);
+                      if (file) uploadFileToS3(file, 'game', 'game');
+                    }}
+                    className="hidden"
+                    id="game-zip-input"
+                  />
+                  <label
+                    htmlFor="game-zip-input"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                  >
+                    <Upload size={14} /> Select ZIP File
+                  </label>
+                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
+                    {gameFile ? `${gameFile.name} (${(gameFile.size / (1024 * 1024)).toFixed(2)} MB)` : 'No file selected (Max 50MB)'}
+                  </span>
                 </div>
-              )}
-              {uploadStatus['game'] === 'completed' && (
-                <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1"><CheckCircle2 size={13} /> S3 Upload Complete</span>
-              )}
-              {uploadStatus['game'] === 'failed' && (
-                <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1"><AlertTriangle size={13} /> Upload Failed</span>
-              )}
-            </div>
+                {uploadStatus['game'] === 'uploading' && (
+                  <div className="space-y-1.5 mt-1.5">
+                    <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
+                      <span>Uploading...</span>
+                      <span>{uploadProgress['game']}%</span>
+                    </div>
+                    <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
+                      <div className="bg-sky-500 h-full rounded-full transition-all duration-350" style={{ width: `${uploadProgress['game']}%` }}></div>
+                    </div>
+                  </div>
+                )}
+                {uploadStatus['game'] === 'completed' && (
+                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1"><CheckCircle2 size={13} /> Upload Complete</span>
+                )}
+                {uploadStatus['game'] === 'failed' && (
+                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1"><AlertTriangle size={13} /> Upload Failed</span>
+                )}
+              </div>
+            )}
 
             {/* 2. Thumbnail image */}
             {publishProgram === 'game' && (
@@ -846,7 +923,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 variant="primary" 
                 size="md" 
                 disabled={
-                  (publishProgram === 'game' && (uploadStatus['game'] !== 'completed' || uploadStatus['thumbnail'] !== 'completed')) ||
+                  (publishProgram === 'game' && (!repoSubmitted || uploadStatus['thumbnail'] !== 'completed')) ||
                   (publishProgram === 'marketplace' && uploadStatus['game'] !== 'completed') ||
                   scanStatus === 'scanning'
                 }

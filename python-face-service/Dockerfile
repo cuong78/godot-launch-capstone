@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     libx11-dev \
     libgtk-3-dev \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

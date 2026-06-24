@@ -39,6 +39,7 @@ import java.util.Map;
 public class KycController {
 
     private final UserRepository userRepository;
+    private final com.godotlaunch.backend.service.BannedIdentityService bannedIdentityService;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${app.face-service.url:http://localhost:8001}")
@@ -115,6 +116,11 @@ public class KycController {
 
         if (user.isKycVerified()) {
             return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "KYC đã được xác thực trước đó."));
+        }
+
+        // Chặn nếu số CCCD/passport này thuộc danh tính đã bị ban (tránh đăng ký lại sau khi vi phạm)
+        if (bannedIdentityService.isKycBanned(request.getIdNumber())) {
+            throw new AppException(ErrorCode.IDENTITY_BANNED);
         }
 
         user.setKycDocumentType(request.getDocumentType());

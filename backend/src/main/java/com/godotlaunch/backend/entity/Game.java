@@ -46,6 +46,16 @@ public class Game {
     @Column(name = "file_url", columnDefinition = "TEXT")
     private String fileUrl;
 
+    // Repo-based submit: game pull code từ repo GitHub thay cho upload game.zip
+    @Column(name = "github_repo_url", columnDefinition = "TEXT")
+    private String githubRepoUrl;
+
+    @Column(name = "github_branch", length = 100)
+    private String githubBranch;
+
+    @Column(name = "github_verified_at")
+    private Instant githubVerifiedAt;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "game_status_enum")

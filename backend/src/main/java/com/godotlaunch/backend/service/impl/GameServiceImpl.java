@@ -6,9 +6,18 @@ import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.GameMedia;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Category;
+import com.godotlaunch.backend.entity.SourceSnapshot;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.FileType;
+import com.godotlaunch.backend.entity.enums.ActorRole;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.dto.request.CreateGameRequest;
+import com.godotlaunch.backend.dto.response.SourceProcessResult;
+import com.godotlaunch.backend.config.SourceProcessingClient;
+import com.godotlaunch.backend.service.GitHubRepoService;
+import com.godotlaunch.backend.repository.SourceSnapshotRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.godotlaunch.backend.service.AsyncVirusScanService;
 import com.godotlaunch.backend.service.AwsS3Service;
 import com.godotlaunch.backend.service.EmailService;
@@ -47,6 +56,10 @@ public class GameServiceImpl implements GameService {
     private final EmailService emailService;
     private final StorageRouter storageRouter;
     private final AuditLogService auditLogService;
+    private final GitHubRepoService gitHubRepoService;
+    private final SourceProcessingClient sourceProcessingClient;
+    private final SourceSnapshotRepository sourceSnapshotRepository;
+    private final ObjectMapper objectMapper;
 
     /** Map fileType string (từ frontend) → FileType enum cho StorageRouter routing. */
     private FileType resolveMediaFileType(String fileType) {
@@ -81,6 +94,8 @@ public class GameServiceImpl implements GameService {
         game.setCreator(creator);
         game.setStatus(GameStatus.draft);
         game.setPublishingType(request.getPublishingType());
+        game.setGithubRepoUrl(request.getGithubRepoUrl());
+        game.setGithubBranch(request.getGithubBranch());
 
         if (request.getCategoryId() != null) {
             Category category = categoryRepository.findById(request.getCategoryId())
@@ -90,6 +105,89 @@ public class GameServiceImpl implements GameService {
 
         Game savedGame = gameRepository.save(game);
         return savedGame.getId();
+    }
+
+    @Override
+    @Transactional
+    public void submitGameRepo(UUID gameId, String repoUrl, String branch, String creatorEmail) {
+        User creator = userRepository.findByEmail(creatorEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+
+        if (!game.getCreator().getId().equals(creator.getId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        if (repoUrl == null || repoUrl.isBlank()) {
+            throw new AppException(ErrorCode.REPO_URL_REQUIRED);
+        }
+
+        // 1. Verify owner repo khớp account GitHub + không fork
+        gitHubRepoService.verifyOwnership(creator, repoUrl);
+
+        // 2. Clone + virus scan + snapshot qua Python service
+        String token = gitHubRepoService.getDecryptedToken(creator);
+        SourceProcessResult result;
+        try {
+            result = sourceProcessingClient.process(repoUrl, token, branch);
+        } catch (SourceProcessingClient.SourceProcessingException e) {
+            throw new AppException(ErrorCode.SOURCE_PROCESSING_FAILED);
+        }
+
+        // 3. Phát hiện mã độc → reject
+        if (!result.isClean()) {
+            game.setStatus(GameStatus.rejected);
+            gameRepository.save(game);
+            saveSnapshotForGame(game, creator, repoUrl, result);
+            auditLogService.publish(
+                    creator.getId(), ActorRole.developer, AuditAction.security_alert,
+                    AuditTarget.game, gameId, null, null,
+                    "Phát hiện mã độc trong repo của game: " + game.getTitle(), null);
+            throw new AppException(ErrorCode.SOURCE_MALWARE_DETECTED);
+        }
+
+        // 4. Sạch → lưu repo + verified + snapshot → chuyển pending
+        game.setGithubRepoUrl(repoUrl);
+        game.setGithubBranch(branch);
+        game.setGithubVerifiedAt(java.time.Instant.now());
+        game.setStatus(GameStatus.pending);
+        gameRepository.save(game);
+
+        saveSnapshotForGame(game, creator, repoUrl, result);
+
+        auditLogService.publish(
+                creator.getId(), ActorRole.developer, AuditAction.game_submitted,
+                AuditTarget.game, gameId, GameStatus.draft.name(), GameStatus.pending.name(),
+                "Game '" + game.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
+    }
+
+    /** Lưu snapshot bất biến cho game (commit SHA + hash). */
+    private void saveSnapshotForGame(Game game, User creator, String repoUrl, SourceProcessResult result) {
+        try {
+            SourceSnapshot snap = new SourceSnapshot();
+            snap.setGame(game);
+            snap.setSubmittedBy(creator);
+            snap.setRepoUrl(repoUrl);
+            snap.setCommitSha(result.getCommitSha());
+            snap.setBundleHash(result.getBundleHash());
+            snap.setFileCount(result.getFileCount());
+            snap.setGodotProject(result.isGodotProject());
+            snap.setVirusClean(result.isClean());
+            snap.setVirusScanned(result.isScanned());
+            snap.setFileHashes(toJson(result.getFileHashes()));
+            snap.setSecretsFound(toJson(result.getSecrets()));
+            sourceSnapshotRepository.save(snap);
+        } catch (Exception e) {
+            log.warn("Không lưu được source snapshot cho game {}: {}", game.getId(), e.getMessage());
+        }
+    }
+
+    private String toJson(Object obj) {
+        try {
+            return obj == null ? null : objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
@@ -252,6 +350,8 @@ public class GameServiceImpl implements GameService {
                 .screenshots(screenshots)
                 .videoUrl(videoUrl)
                 .fileUrl(getPresignedGetUrl(game.getFileUrl()))
+                .githubRepoUrl(game.getGithubRepoUrl())
+                .githubBranch(game.getGithubBranch())
                 .build();
     }
 

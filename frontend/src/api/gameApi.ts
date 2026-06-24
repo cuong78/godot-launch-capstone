@@ -13,6 +13,19 @@ export const gameApi = {
     return response.data;
   },
 
+  // Submit game bằng repo GitHub: verify owner → clone → virus scan → snapshot
+  submitGameRepo: async (
+    gameId: string,
+    repoUrl: string,
+    branch?: string
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.post<ApiResponse<{ message: string }>>(
+      `/api/v1/games/${gameId}/submit-repo`,
+      { repoUrl, branch }
+    );
+    return response.data;
+  },
+
   getAllGames: async (status?: string): Promise<ApiResponse<GameResponse[]>> => {
     const response = await api.get<ApiResponse<GameResponse[]>>('/api/v1/games', {
       params: status ? { status } : {}

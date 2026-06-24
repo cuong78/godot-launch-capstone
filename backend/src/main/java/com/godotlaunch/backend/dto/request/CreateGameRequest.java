@@ -19,4 +19,9 @@ public class CreateGameRequest {
     private UUID categoryId;
 
     private PublishingType publishingType;
+
+    // Repo-based submit: link repo GitHub (thay cho upload game.zip)
+    private String githubRepoUrl;
+
+    private String githubBranch;
 }

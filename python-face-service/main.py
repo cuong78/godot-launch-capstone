@@ -10,6 +10,7 @@ from typing import Optional
 from face_service import extract_embedding
 from db import find_duplicate_face, save_face_embedding, delete_face_embedding
 from ocr_service import ocr_document
+import source_service
 
 app = FastAPI(title="GodotLaunch Face Service", version="1.0.0")
 
@@ -46,6 +47,24 @@ class OcrResponse(BaseModel):
     fullName: Optional[str] = None
     dateOfBirth: Optional[str] = None
     address: Optional[str] = None
+
+
+class SourceProcessRequest(BaseModel):
+    repoUrl: str
+    token: Optional[str] = None       # OAuth token developer (private repo)
+    branch: Optional[str] = None
+
+
+class SourceProcessResponse(BaseModel):
+    clean: bool                       # virus scan sạch?
+    scanned: bool                     # ClamAV có chạy được không
+    commitSha: str
+    bundleHash: str
+    fileCount: int
+    isGodotProject: bool
+    infected: list = []
+    secrets: list = []
+    fileHashes: dict = {}
 
 
 @app.get("/health")
@@ -120,6 +139,45 @@ def ocr_id_document(req: OcrRequest):
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi OCR: {str(e)}")
+
+
+@app.post("/source/process", response_model=SourceProcessResponse)
+def process_source(req: SourceProcessRequest):
+    """
+    Orchestrator cho luồng publish code repo-based:
+      clone repo → virus scan → snapshot (commit SHA + hash) → secret scan → cleanup.
+    Trả về kết quả gộp để Spring Boot lưu snapshot + quyết định trạng thái.
+    """
+    tmp_dir = None
+    try:
+        cloned = source_service.clone_repo(req.repoUrl, req.token, req.branch)
+        tmp_dir = cloned["tmpDir"]
+
+        virus = source_service.scan_virus(tmp_dir)
+        snap = source_service.snapshot(tmp_dir)
+        secrets = source_service.scan_secrets(tmp_dir)
+
+        return SourceProcessResponse(
+            clean=virus["clean"],
+            scanned=virus["scanned"],
+            commitSha=snap["commitSha"],
+            bundleHash=snap["bundleHash"],
+            fileCount=snap["fileCount"],
+            isGodotProject=snap["isGodotProject"],
+            infected=virus["infected"],
+            secrets=secrets,
+            fileHashes=snap["fileHashes"],
+        )
+    except ValueError as e:
+        # URL không hợp lệ / không phải github
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        # Clone fail / repo quá lớn
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi xử lý source: {str(e)}")
+    finally:
+        source_service.cleanup(tmp_dir)
 
 
 if __name__ == "__main__":
