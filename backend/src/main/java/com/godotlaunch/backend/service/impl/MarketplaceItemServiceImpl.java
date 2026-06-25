@@ -26,6 +26,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.entity.enums.ActorRole;
+import com.godotlaunch.backend.service.AuditLogService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -55,6 +59,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     private final com.godotlaunch.backend.repository.OrderRepository orderRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
+    private final AuditLogService auditLogService;
 
     /** ObjectKey cố định cho zip của 1 marketplace item. */
     private String buildObjectKey(UUID itemId) {
@@ -328,6 +333,19 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             item.setStatus(ItemStatus.removed);
             marketplaceItemRepository.save(item);
             saveSnapshotForItem(item, seller, repoUrl, result);
+
+            auditLogService.publish(
+                    seller.getId(),
+                    ActorRole.developer,
+                    AuditAction.security_alert,
+                    AuditTarget.marketplace_item,
+                    itemId,
+                    null,
+                    null,
+                    "PHÁT HIỆN MÃ ĐỘC (Malware detected) trong repo của marketplace item: " + item.getTitle(),
+                    null
+            );
+
             throw new AppException(ErrorCode.SOURCE_MALWARE_DETECTED);
         }
 
@@ -347,6 +365,18 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
         saveSnapshotForItem(item, seller, repoUrl, result);
         log.info("Marketplace source_code item {} submit qua repo, verified & snapshot. Chờ duyệt.", itemId);
+
+        auditLogService.publish(
+                seller.getId(),
+                ActorRole.developer,
+                AuditAction.game_submitted,
+                AuditTarget.marketplace_item,
+                itemId,
+                null,
+                ItemStatus.pending.name(),
+                "Marketplace item '" + item.getTitle() + "' submitted via repo, verified & snapshot. Pending review.",
+                null
+        );
 
         // AI review async (code + media) — tạo report đề xuất cho admin. Fail-soft.
         aiReviewService.reviewMarketplaceItemAsync(itemId);
@@ -560,6 +590,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 "Your marketplace asset has been approved by the admin and is now active on the marketplace."
         );
         log.info("Marketplace item {} approved and email sent to {}", id, item.getSeller().getEmail());
+
+        auditLogService.publishAuto(
+                AuditAction.game_published,
+                AuditTarget.marketplace_item,
+                id,
+                ItemStatus.pending.name(),
+                ItemStatus.active.name(),
+                "Marketplace item '" + item.getTitle() + "' approved and activated by administrator."
+        );
     }
 
     @Override
@@ -591,6 +630,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 reason != null ? reason : "Violated store policies"
         );
         log.info("Marketplace item {} rejected and email sent to {}", id, item.getSeller().getEmail());
+
+        auditLogService.publishAuto(
+                AuditAction.game_rejected,
+                AuditTarget.marketplace_item,
+                id,
+                ItemStatus.pending.name(),
+                ItemStatus.rejected.name(),
+                "Marketplace item '" + item.getTitle() + "' rejected by administrator. Reason: " + reason
+        );
     }
 
     @Override
@@ -609,6 +657,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
+        String oldStatus = item.getStatus() != null ? item.getStatus().name() : null;
         item.setStatus(ItemStatus.removed);
         marketplaceItemRepository.save(item);
 
@@ -619,6 +668,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         } catch (Exception e) {
             log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
         }
+
+        auditLogService.publishAuto(
+                AuditAction.marketplace_item_removed,
+                AuditTarget.marketplace_item,
+                id,
+                oldStatus,
+                ItemStatus.removed.name(),
+                "Marketplace item '" + item.getTitle() + "' removed by " + (isAdmin ? "Administrator" : "Owner") + "."
+        );
     }
 
     private Optional<User> resolveRequester(String requesterEmail) {

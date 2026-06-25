@@ -18,6 +18,7 @@ import com.godotlaunch.backend.entity.enums.ActorRole;
 import com.godotlaunch.backend.service.AuditLogService;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
@@ -47,6 +48,7 @@ public class AsyncVirusScanService {
      * @param objectKey Đường dẫn đối tượng trên S3
      */
     @Async
+    @Transactional
     public void scanAndProcessGame(UUID gameId, String objectKey) {
         log.info("Bắt đầu quy trình kiểm duyệt an toàn bất đồng bộ cho gameId: {}, objectKey: {}", gameId, objectKey);
 
@@ -129,6 +131,17 @@ public class AsyncVirusScanService {
         } catch (Exception e) {
             log.error("Lỗi xảy ra trong quá trình quét bảo mật gameId: {}. Chuyển sang chế độ PENDING dự phòng.", gameId, e);
             updateGameStatus(gameId, GameStatus.pending);
+            auditLogService.publish(
+                    game.getCreator().getId(),
+                    ActorRole.developer,
+                    AuditAction.game_submitted,
+                    AuditTarget.game,
+                    gameId,
+                    GameStatus.draft.name(),
+                    GameStatus.pending.name(),
+                    "Game '" + game.getTitle() + "' successfully uploaded (virus scan fallback to pending: " + e.getMessage() + ")",
+                    null
+            );
         } finally {
             // Bước 3: Dọn dẹp thư mục tạm thời sau khi xử lý xong
             if (tempDir != null) {
@@ -161,6 +174,7 @@ public class AsyncVirusScanService {
      * @param objectKey Đường dẫn đối tượng trên S3
      */
     @Async
+    @Transactional
     public void scanAndProcessMarketplaceItem(UUID itemId, String objectKey) {
         log.info("Bắt đầu quy trình kiểm duyệt an toàn bất đồng bộ cho marketplace item: {}, objectKey: {}", itemId, objectKey);
 

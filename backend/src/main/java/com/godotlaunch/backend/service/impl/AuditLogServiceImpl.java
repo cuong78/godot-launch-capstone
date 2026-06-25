@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.security.core.Authentication;
@@ -107,6 +108,7 @@ public class AuditLogServiceImpl implements AuditLogService {
     // AFTER_COMMIT: chỉ ghi audit SAU KHI transaction nghiệp vụ đã commit
     // fallbackExecution=true: vẫn chạy khi publish ngoài transaction (vd OAuth login).
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleAuditLogEvent(AuditLogEvent event) {
         writeDebugLog("handleAuditLogEvent started for action=" + event.getAction());
         try {

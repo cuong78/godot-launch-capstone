@@ -199,6 +199,15 @@ public class ContractServiceImpl implements ContractService {
                 "Contract signed by developer (seller) for game: " + contract.getGame().getTitle()
         );
 
+        auditLogService.publishAuto(
+                AuditAction.game_approved,
+                AuditTarget.game,
+                game.getId(),
+                com.godotlaunch.backend.entity.enums.GameStatus.pending.name(),
+                com.godotlaunch.backend.entity.enums.GameStatus.approved.name(),
+                "Game '" + game.getTitle() + "' approved (contract signed by developer)."
+        );
+
         return mapToResponse(contract);
     }
 
@@ -235,6 +244,15 @@ public class ContractServiceImpl implements ContractService {
                 null,
                 contract.getStatus().name(),
                 "Contract signed by admin (buyer) and fully executed for game: " + contract.getGame().getTitle()
+        );
+
+        auditLogService.publishAuto(
+                AuditAction.game_published,
+                AuditTarget.game,
+                game.getId(),
+                com.godotlaunch.backend.entity.enums.GameStatus.approved.name(),
+                com.godotlaunch.backend.entity.enums.GameStatus.published.name(),
+                "Game '" + game.getTitle() + "' published (contract countersigned by admin)."
         );
 
         return mapToResponse(contract);
