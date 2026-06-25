@@ -19,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -47,7 +48,7 @@ public class AdminAuditLogController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
         Specification<AuditLog> spec = (root, query, cb) -> {
-            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            List<Predicate> predicates = new ArrayList<>();
 
             if (actorId != null) {
                 predicates.add(cb.equal(root.get("actor").get("id"), actorId));
@@ -65,7 +66,7 @@ public class AdminAuditLogController {
                 predicates.add(cb.equal(root.get("ipAddress"), ipAddress.trim()));
             }
 
-            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         Page<AuditLog> logPage = auditLogRepository.findAll(spec, pageable);

@@ -38,6 +38,7 @@ public class AuthController {
 
     private static final String COOKIE_NAME = "app_token";
     private static final int COOKIE_MAX_AGE = 86400; // 24h (seconds)
+    private static final int REMEMBER_ME_COOKIE_MAX_AGE = 30 * 86400; // 30 days (seconds)
 
     @PostMapping(value = "/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload user avatar")
@@ -58,7 +59,8 @@ public class AuthController {
             @Valid @RequestBody SignInRequest request,
             HttpServletResponse response) {
         JwtAuthenticationResponse authResponse = authService.signIn(request);
-        setAuthCookie(response, authResponse.getToken());
+        boolean rememberMe = request.getRememberMe() != null && request.getRememberMe();
+        setAuthCookie(response, authResponse.getToken(), rememberMe);
         return ResponseEntity.ok(ApiResponse.success(authResponse, "Login successful."));
     }
 
@@ -68,7 +70,8 @@ public class AuthController {
             @Valid @RequestBody GoogleLoginRequest request,
             HttpServletResponse response) {
         JwtAuthenticationResponse authResponse = authService.loginWithGoogle(request);
-        setAuthCookie(response, authResponse.getToken());
+        boolean rememberMe = request.getRememberMe() != null && request.getRememberMe();
+        setAuthCookie(response, authResponse.getToken(), rememberMe);
         return ResponseEntity.ok(ApiResponse.success(authResponse, "Google login successful."));
     }
 
@@ -78,7 +81,8 @@ public class AuthController {
             @Valid @RequestBody GitHubLoginRequest request,
             HttpServletResponse response) {
         JwtAuthenticationResponse authResponse = authService.loginWithGitHub(request);
-        setAuthCookie(response, authResponse.getToken());
+        boolean rememberMe = request.getRememberMe() != null && request.getRememberMe();
+        setAuthCookie(response, authResponse.getToken(), rememberMe);
         return ResponseEntity.ok(ApiResponse.success(authResponse, "GitHub login successful."));
     }
 
@@ -130,11 +134,15 @@ public class AuthController {
      * browser tự gửi kèm mọi request đến cùng domain.
      */
     private void setAuthCookie(HttpServletResponse response, String token) {
+        setAuthCookie(response, token, false);
+    }
+
+    private void setAuthCookie(HttpServletResponse response, String token, boolean rememberMe) {
         Cookie cookie = new Cookie(COOKIE_NAME, token);
         cookie.setHttpOnly(true);   // JS không đọc được → chống XSS
         cookie.setSecure(false);    // true khi deploy HTTPS production
         cookie.setPath("/");
-        cookie.setMaxAge(COOKIE_MAX_AGE);
+        cookie.setMaxAge(rememberMe ? REMEMBER_ME_COOKIE_MAX_AGE : COOKIE_MAX_AGE);
         response.addCookie(cookie);
     }
 

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -80,7 +81,7 @@ public class AdminStorageController {
     @Operation(summary = "Đổi tên account (không thay đổi credentials)")
     public ResponseEntity<ApiResponse<StorageAccountResponse>> renameAccount(
             @PathVariable UUID id,
-            @RequestBody java.util.Map<String, String> body) {
+            @RequestBody Map<String, String> body) {
         StorageAccount account = accountRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
         String newName = body.get("name");

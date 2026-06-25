@@ -39,7 +39,14 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   setCurrentUser
 }) => {
   const { signIn, loginWithGoogle, error: apiError, setError: clearApiError } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    const saved = localStorage.getItem("signup_email");
+    if (saved) {
+      localStorage.removeItem("signup_email");
+      return saved;
+    }
+    return '';
+  });
   const [password, setPassword] = useState('');
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [localError, setLocalError] = useState('');
@@ -66,8 +73,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
         setOAuthProvider('Google');
         clearApiError(null);
         setLocalError('');
+        const rememberMe = localStorage.getItem("remember_me") === "true";
+        localStorage.removeItem("remember_me");
 
-        loginWithGoogle({ idToken })
+        loginWithGoogle({ idToken, rememberMe })
           .then((user) => {
             setCurrentUser(user);
             setCurrentScreen('explore');
@@ -109,7 +118,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
     setLoading(true);
     try {
-      const user = await signIn({ email, password });
+      const user = await signIn({ email, password, rememberMe: keepSignedIn });
       setCurrentUser(user);
       setCurrentScreen('explore');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -213,6 +222,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   const handleGoogleLogin = () => {
     clearApiError(null);
     setLocalError('');
+    localStorage.setItem("remember_me", keepSignedIn ? "true" : "false");
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!googleClientId) {
       setLocalError('Google Client ID is not configured. Please check your .env file.');
@@ -233,7 +243,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     setLocalError('');
     setIsOAuthLoading(true);
     setOAuthProvider('GitHub');
-    loginWithGitHub();
+    loginWithGitHub(keepSignedIn);
   };
 
   const displayError = localError || apiError;

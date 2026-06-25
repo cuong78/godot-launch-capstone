@@ -197,6 +197,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     try {
       await signUp({ email, password, confirmPassword, fullName, avatarUrl, otp, recaptchaToken: recaptchaToken! });
       setSuccessMessage('Account created successfully! Redirecting to sign in...');
+      localStorage.setItem("signup_email", email);
       setTimeout(() => {
         setCurrentScreen('signin');
         window.scrollTo({ top: 0, behavior: 'smooth' });

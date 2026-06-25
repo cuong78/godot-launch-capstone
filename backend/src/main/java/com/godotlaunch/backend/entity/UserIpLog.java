@@ -2,6 +2,7 @@ package com.godotlaunch.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnTransformer;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -24,7 +25,7 @@ public class UserIpLog {
     private User user;
 
     @Column(name = "ip_address", nullable = false, columnDefinition = "inet")
-    @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
+    @ColumnTransformer(write = "?::inet")
     private String ipAddress;
 
     @Column(name = "action", nullable = false, length = 50)

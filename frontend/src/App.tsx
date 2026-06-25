@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { AdminHeader } from './components/AdminHeader';
 import { Footer } from './components/Footer';
-import { Asset, Project, User, ScreenType, CommunityChatResponse, UserSummary, ReactionType } from './types';
+import { Asset, Project, User, ScreenType, CommunityChatResponse, UserSummary, ReactionType, MarketplaceItemResponse } from './types';
 import { Button } from './components/Button';
 import { ShieldAlert, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 
@@ -29,9 +29,135 @@ import { useAuth } from './hooks/useAuth';
 import { useWebSocket } from './context/WebSocketContext';
 import { gameApi } from './api/gameApi';
 import { communityApi } from './api/communityApi';
+import { marketplaceApi } from './api/marketplaceApi';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
+
+const DEFAULT_AUTHOR_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80';
+
+const normalizeMarketplaceCategory = (
+  categoryName?: string,
+  itemType?: Asset['itemType']
+): Asset['category'] => {
+  const normalized = categoryName?.trim().toLowerCase();
+
+  switch (normalized) {
+    case 'scripts & plugins':
+    case 'scripts-plugins':
+    case 'scripts and plugins':
+      return 'Scripts & Plugins';
+    case 'shaders & vfx':
+    case 'shaders-vfx':
+    case 'shaders and vfx':
+      return 'Shaders & VFX';
+    case '2d assets':
+    case '2d-assets':
+      return '2D Assets';
+    case '3d models':
+    case '3d-models':
+      return '3D Models';
+    case 'audio & sfx':
+    case 'audio-sfx':
+    case 'audio and sfx':
+      return 'Audio & SFX';
+    default:
+      return itemType === 'source_code' ? 'Scripts & Plugins' : '2D Assets';
+  }
+};
+
+const formatMarketplaceDate = (date?: string) => {
+  if (!date) {
+    return 'Recently listed';
+  }
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'Recently listed';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric'
+  }).format(parsedDate);
+};
+
+const hashString = (value: string) =>
+  Array.from(value).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0);
+
+const getMarketplaceImage = (
+  item: MarketplaceItemResponse,
+  category: Asset['category']
+) => {
+  const imagePool =
+    item.itemType === 'source_code'
+      ? [IMAGE_SEED_MAP.drift, IMAGE_SEED_MAP.planner, IMAGE_SEED_MAP.tycoon]
+      : {
+          'Shaders & VFX': [IMAGE_SEED_MAP.interior, IMAGE_SEED_MAP.sky],
+          '2D Assets': [IMAGE_SEED_MAP.forest, IMAGE_SEED_MAP.interior],
+          '3D Models': [IMAGE_SEED_MAP.knight, IMAGE_SEED_MAP.char],
+          'Audio & SFX': [IMAGE_SEED_MAP.char, IMAGE_SEED_MAP.sky],
+          'Scripts & Plugins': [IMAGE_SEED_MAP.planner, IMAGE_SEED_MAP.tycoon]
+        }[category];
+
+  return imagePool[Math.abs(hashString(item.id)) % imagePool.length];
+};
+
+const buildMarketplaceTagList = (
+  item: MarketplaceItemResponse,
+  category: Asset['category']
+) => [
+  item.itemType === 'source_code' ? 'Source Code' : 'Asset Pack',
+  category,
+  item.godotVersion,
+  item.sourceGameTitle,
+  item.githubVerifiedAt ? 'GitHub Verified' : undefined,
+  item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : undefined
+].filter((tag): tag is string => Boolean(tag));
+
+const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
+  const category = normalizeMarketplaceCategory(item.categoryName, item.itemType);
+  const tagList = buildMarketplaceTagList(item, category);
+
+  return {
+    id: item.id,
+    title: item.title,
+    price: Number(item.price || 0),
+    rating: item.itemType === 'source_code' ? 4.9 : 4.8,
+    reviewedCount: 0,
+    author: item.sellerFullName || item.sellerEmail || 'Unknown Creator',
+    authorAvatar: DEFAULT_AUTHOR_AVATAR,
+    category,
+    description: item.description || '',
+    image: getMarketplaceImage(item, category),
+    tag: item.godotVersion || category,
+    tagList,
+    itemType: item.itemType,
+    version: item.itemType === 'source_code'
+      ? (item.godotVersion || 'Source')
+      : 'Asset Pack',
+    lastUpdated: formatMarketplaceDate(item.updatedAt || item.createdAt),
+    details: {
+      tilesCount: item.itemType === 'source_code' ? 'Complete project bundle' : 'Pack archive',
+      spritesCount: item.itemType === 'source_code'
+        ? (item.sourceGameTitle || 'Standalone source package')
+        : 'Ready-to-import resources',
+      propsCount: item.githubRepoUrl ? 'GitHub-linked package' : 'Marketplace file package',
+      featuresList: item.itemType === 'source_code'
+        ? [
+            'Real marketplace source listing from API',
+            item.githubRepoUrl ? 'GitHub repository linked for verification' : 'Direct source package download',
+            item.godotVersion ? `Built for ${item.godotVersion}` : 'Compatible Godot project structure'
+          ]
+        : [
+            'Real marketplace asset listing from API',
+            'Ready for import into your production pipeline',
+            category ? `${category} category mapping preserved` : 'Category metadata preserved'
+          ]
+    }
+  };
+};
 
 const INITIAL_ASSETS: Asset[] = [
   {
@@ -47,6 +173,7 @@ const INITIAL_ASSETS: Asset[] = [
     image: IMAGE_SEED_MAP.interior,
     tag: 'Cyberpunk, 2D, Modular, Sci-Fi',
     tagList: ['Tileset', '2D', 'Emissive Shaders', 'Godot 4', 'Sci-Fi'],
+    itemType: 'asset',
     isBestseller: true,
     version: '1.2.0',
     lastUpdated: 'May 14, 2026',
@@ -75,6 +202,7 @@ const INITIAL_ASSETS: Asset[] = [
     image: IMAGE_SEED_MAP.drift,
     tag: 'Templates, 3D, Drift, Physics',
     tagList: ['Templates', '3D', 'Physics', 'Godot 4.x', 'Racing'],
+    itemType: 'source_code',
     isBestseller: true,
     version: '2.0.1',
     lastUpdated: 'Jan 22, 2026',
@@ -102,6 +230,7 @@ const INITIAL_ASSETS: Asset[] = [
     image: IMAGE_SEED_MAP.planner,
     tag: '2D, Grid, Simulation, Free',
     tagList: ['Frameworks', 'Cozy', 'Simulation', 'Godot 4.x', 'A-Star Pathfinding'],
+    itemType: 'source_code',
     version: '0.9.8',
     lastUpdated: 'Apr 02, 2026',
     details: {
@@ -128,6 +257,7 @@ const INITIAL_ASSETS: Asset[] = [
     image: IMAGE_SEED_MAP.knight,
     tag: 'Characters, 3D, Rigged, Fantasy',
     tagList: ['Characters', 'Stylized', '3D Scene', 'Rigged', 'Fantasy'],
+    itemType: 'asset',
     version: '1.0.0',
     lastUpdated: 'Feb 10, 2026',
     details: {
@@ -154,6 +284,7 @@ const INITIAL_ASSETS: Asset[] = [
     image: IMAGE_SEED_MAP.tycoon,
     tag: 'Strategy, UI, Economy, Grid',
     tagList: ['Strategy', 'UI & Elements', 'Grid Systems', 'Simulating', 'Godot 4'],
+    itemType: 'source_code',
     version: '1.5.0',
     lastUpdated: 'Mar 18, 2026',
     details: {
@@ -180,6 +311,7 @@ const INITIAL_ASSETS: Asset[] = [
     image: IMAGE_SEED_MAP.sky,
     tag: 'Shaders, Dynamic, Sky, Water',
     tagList: ['Shaders', 'Skybox', 'Weather System', '3D Scene', 'Godot 4.x'],
+    itemType: 'asset',
     isBestseller: true,
     version: '2.1.0',
     lastUpdated: 'Jun 01, 2026',
@@ -207,6 +339,7 @@ const INITIAL_ASSETS: Asset[] = [
     image: IMAGE_SEED_MAP.forest,
     tag: '2D, Tileset, Forest, RPG',
     tagList: ['Tileset', '2D Assets', 'Modular Forest', 'RPG', '16x16 Grid'],
+    itemType: 'asset',
     version: '1.0.3',
     lastUpdated: 'May 20, 2026',
     details: {
@@ -233,6 +366,7 @@ const INITIAL_ASSETS: Asset[] = [
     image: IMAGE_SEED_MAP.char, 
     tag: 'Audio, Sound Effects, Retro, Synthesizer',
     tagList: ['Audio', 'Chiptune FX', '16-bit', 'Vaporwave', 'Godot Ready'],
+    itemType: 'asset',
     version: '1.4.0',
     lastUpdated: 'Apr 11, 2026',
     details: {
@@ -274,7 +408,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
     return { screen: 'profile' };
   }
   if (primary === 'admin') return { screen: 'admin' };
-  if (primary === 'auth' && segments[1] === 'callback') {
+  if (primary === 'auth' && (segments[1] === 'callback' || (segments[1] === 'github' && segments[2] === 'callback'))) {
     return { screen: 'auth-callback' };
   }
   if (primary === 'detail') {
@@ -390,7 +524,7 @@ export default function App() {
     rating: 5.0,
     reviewedCount: 0,
     author: game.creatorName || 'Unknown Creator',
-    authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80',
+    authorAvatar: DEFAULT_AUTHOR_AVATAR,
     category: (game.categoryName || 'Scripts & Plugins') as any,
     description: game.description || '',
     image: game.thumbnailUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
@@ -407,6 +541,35 @@ export default function App() {
     screenshots: game.screenshots,
     videoUrl: game.videoUrl
   });
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchActiveMarketplaceItems = async () => {
+      try {
+        const res = await marketplaceApi.getAllMarketplaceItems('active');
+        if (!res.success || !res.data || res.data.length === 0 || isCancelled) {
+          return;
+        }
+
+        const mapped = res.data.map(mapMarketplaceItemToAsset);
+        setAssets(prev => {
+          const nonMarketplaceCatalog = prev.filter(item => !item.itemType);
+          return [...mapped, ...nonMarketplaceCatalog];
+        });
+      } catch (err) {
+        console.error('Failed to load marketplace items from backend:', err);
+      }
+    };
+
+    if (currentScreen === 'marketplace' || currentScreen === 'explore' || currentScreen === 'detail') {
+      fetchActiveMarketplaceItems();
+    }
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentScreen]);
 
   // Fetch published games from backend S3
   useEffect(() => {
@@ -549,9 +712,14 @@ export default function App() {
 
 
 
+  const marketplaceCatalogAssets = useMemo(
+    () => assets.filter((item): item is Asset & { itemType: 'source_code' | 'asset' } => Boolean(item.itemType)),
+    [assets]
+  );
+
   // Filter & Sort Logic for Marketplace
   const filteredAssets = useMemo(() => {
-    return assets.filter(item => {
+    return marketplaceCatalogAssets.filter(item => {
       // Search Box Filter
       if (searchText) {
         const matchesSearch = item.title.toLowerCase().includes(searchText.toLowerCase()) || 
@@ -574,7 +742,7 @@ export default function App() {
       if (sortOrder === 'price-high') return b.price - a.price;
       return b.rating - a.rating; // default standard popularity index
     });
-  }, [assets, searchText, selectedCategories, maxPrice, sortOrder]);
+  }, [marketplaceCatalogAssets, searchText, selectedCategories, maxPrice, sortOrder]);
 
   // Current Detail entity focus
   const focusedAsset = useMemo(() => {

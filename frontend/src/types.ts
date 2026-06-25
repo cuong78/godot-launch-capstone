@@ -11,6 +11,7 @@ export interface Asset {
   image: string;
   tag: string;
   tagList: string[];
+  itemType?: 'source_code' | 'asset';
   isBestseller?: boolean;
   version?: string;
   lastUpdated?: string;
@@ -67,14 +68,17 @@ export interface UpdateProfileRequest {
 export interface SignInRequest {
   email: string;
   password?: string;
+  rememberMe?: boolean;
 }
 
 export interface GoogleLoginRequest {
   idToken: string;
+  rememberMe?: boolean;
 }
 
 export interface GitHubLoginRequest {
   code: string;
+  rememberMe?: boolean;
 }
 
 export interface ApiResponse<T> {

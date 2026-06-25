@@ -6,6 +6,8 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.service.GitHubOAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,12 +46,18 @@ public class GitHubAuthController {
     @Operation(summary = "Redirect to GitHub OAuth page", description = "Redirects client browser to GitHub authentication page.")
     public ResponseEntity<Void> redirectToGitHub(
             @RequestParam(value = "action", required = false) String action,
+            @RequestParam(value = "rememberMe", required = false) Boolean rememberMe,
             HttpSession session) {
         if ("link".equals(action)) {
             String linkingEmail = (String) session.getAttribute("github_linking_user_email");
             if (linkingEmail == null) {
                 throw new AppException(ErrorCode.GITHUB_LINK_NOT_PREPARED);
             }
+        }
+        if (rememberMe != null) {
+            session.setAttribute("github_oauth_remember_me", rememberMe);
+        } else {
+            session.removeAttribute("github_oauth_remember_me");
         }
         String authUrl = githubOAuthService.buildAuthorizationUrl(session);
         HttpHeaders headers = new HttpHeaders();
@@ -63,9 +71,13 @@ public class GitHubAuthController {
             @RequestParam(value = "code", required = false) String code,
             @RequestParam(value = "error", required = false) String error,
             @RequestParam(value = "state", required = false) String state,
-            HttpSession session) {
+            HttpSession session,
+            HttpServletResponse response) {
 
         boolean isLinkFlow = session.getAttribute("github_linking_user_email") != null;
+        Boolean rememberMeObj = (Boolean) session.getAttribute("github_oauth_remember_me");
+        boolean rememberMe = rememberMeObj != null && rememberMeObj;
+        session.removeAttribute("github_oauth_remember_me");
 
         try {
             if (error != null || code == null) {
@@ -73,6 +85,9 @@ public class GitHubAuthController {
             }
 
             String jwt = githubOAuthService.handleCallback(code, state, session);
+
+            // Set httpOnly cookie
+            setAuthCookie(response, jwt, rememberMe);
 
             HttpHeaders headers = new HttpHeaders();
             if (isLinkFlow) {
@@ -91,5 +106,14 @@ public class GitHubAuthController {
             headers.setLocation(URI.create(frontendUrl + "/auth/github/callback?error=unknown"));
             return new ResponseEntity<>(headers, HttpStatus.FOUND);
         }
+    }
+
+    private void setAuthCookie(HttpServletResponse response, String token, boolean rememberMe) {
+        Cookie cookie = new Cookie("app_token", token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);
+        cookie.setPath("/");
+        cookie.setMaxAge(rememberMe ? 30 * 86400 : 86400);
+        response.addCookie(cookie);
     }
 }

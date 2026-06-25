@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.request.CreateGameRequest;
+import com.godotlaunch.backend.dto.request.SubmitGameRepoRequest;
 import com.godotlaunch.backend.dto.request.UpdateGameRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.GameResponse;
@@ -42,7 +43,7 @@ public class GameController {
             description = "Verify owner repo → clone → virus scan → snapshot. Thay cho upload game.zip. Private chưa cấp quyền → 403 REPO_NEEDS_BOT.")
     public ResponseEntity<ApiResponse<Map<String, String>>> submitGameRepo(
             @PathVariable UUID id,
-            @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
+            @Valid @RequestBody SubmitGameRepoRequest request,
             Principal principal) {
         gameService.submitGameRepo(id, request.getRepoUrl(), request.getBranch(), principal.getName());
         return ResponseEntity.ok(ApiResponse.success(
@@ -61,7 +62,7 @@ public class GameController {
     @Operation(summary = "Bot accept invitation repo private",
             description = "Sau khi developer mời bot vào repo, bot tự accept invitation. Trả granted=true nếu sẵn sàng submit.")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> acceptBot(
-            @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
+            @Valid @RequestBody SubmitGameRepoRequest request,
             Principal principal) {
         boolean granted = gameService.acceptBotInvitation(request.getRepoUrl(), principal.getName());
         return ResponseEntity.ok(ApiResponse.success(

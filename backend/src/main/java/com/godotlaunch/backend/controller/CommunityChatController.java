@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -119,8 +120,8 @@ public class CommunityChatController {
 
     @GetMapping("/{id}/reactions")
     @Operation(summary = "Get post reactions", description = "Retrieves all reactions for a post.")
-    public ResponseEntity<ApiResponse<java.util.List<ChatReactionResponse>>> getPostReactions(@PathVariable UUID id) {
-        java.util.List<ChatReactionResponse> responses = communityChatService.getReactions(id);
+    public ResponseEntity<ApiResponse<List<ChatReactionResponse>>> getPostReactions(@PathVariable UUID id) {
+        List<ChatReactionResponse> responses = communityChatService.getReactions(id);
         return ResponseEntity.ok(ApiResponse.success(responses, "Reactions retrieved successfully."));
     }
 

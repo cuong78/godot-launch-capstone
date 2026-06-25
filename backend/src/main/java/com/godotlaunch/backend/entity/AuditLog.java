@@ -5,6 +5,7 @@ import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.Setter;
@@ -60,7 +61,7 @@ public class AuditLog {
     private String note;
 
     @Column(name = "ip_address", columnDefinition = "inet")
-    @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
+    @ColumnTransformer(write = "?::inet")
     private String ipAddress;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)

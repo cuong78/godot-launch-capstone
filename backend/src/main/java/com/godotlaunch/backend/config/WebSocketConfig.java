@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -84,11 +85,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             log.info("[WS Conn] User successfully authenticated: {}", email);
                         } catch (Exception e) {
                             log.error("[WS Conn] User authentication exception: {}", e.getMessage(), e);
-                            throw new org.springframework.messaging.MessageDeliveryException("WebSocket authentication failed: " + e.getMessage());
+                            throw new MessageDeliveryException("WebSocket authentication failed: " + e.getMessage());
                         }
                     } else {
                         log.warn("[WS Conn] Token validation failed. Token is null or invalid: {}", token == null ? "null" : "invalid");
-                        throw new org.springframework.messaging.MessageDeliveryException("WebSocket authentication failed: invalid or missing token");
+                        throw new MessageDeliveryException("WebSocket authentication failed: invalid or missing token");
                     }
                 }
                 return message;

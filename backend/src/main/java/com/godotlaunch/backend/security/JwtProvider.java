@@ -20,14 +20,20 @@ public class JwtProvider {
     );
 
     private final long jwtExpirationMs = 86400000; // 24 hours
+    private final long jwtRememberMeExpirationMs = 30L * 24 * 60 * 60 * 1000; // 30 days
 
     /**
      * Tạo JWT nhúng sessionSecret (plain) vào payload.
      * sessionSecret là random UUID — dùng để verify phía server.
      */
     public String generateToken(String username, UUID userId, String role, String sessionSecret) {
+        return generateToken(username, userId, role, sessionSecret, false);
+    }
+
+    public String generateToken(String username, UUID userId, String role, String sessionSecret, boolean rememberMe) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
+        long expiration = rememberMe ? jwtRememberMeExpirationMs : jwtExpirationMs;
+        Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
             .subject(username)

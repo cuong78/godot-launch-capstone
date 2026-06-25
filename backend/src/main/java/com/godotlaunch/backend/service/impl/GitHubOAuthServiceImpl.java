@@ -52,7 +52,8 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
                 + "?client_id=" + githubConfig.getClientId()
                 + "&scope=user:email"
                 + "&state=" + state
-                + "&redirect_uri=" + redirectUri;
+                + "&redirect_uri=" + redirectUri
+                + "&prompt=select_account";
     }
 
     @Override

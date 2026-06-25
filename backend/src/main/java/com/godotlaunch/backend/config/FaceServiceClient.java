@@ -7,6 +7,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -45,7 +46,7 @@ public class FaceServiceClient {
 
         } catch (FaceServiceException e) {
             throw e;
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
+        } catch (HttpClientErrorException e) {
             // 422: không tìm thấy mặt trong ảnh
             String detail = extractDetail(e.getResponseBodyAsString());
             throw new FaceServiceException(detail);
