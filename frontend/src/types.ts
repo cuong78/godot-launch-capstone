@@ -73,7 +73,10 @@ export type ScreenType =
   | "author-profile"
   | "chat"
   | "checkout"
-  | "payment";
+  | "payment"
+  | "payment-success"
+  | "payment-failed"
+  | "payment-cancelled";
 
 export interface SignUpRequest {
   email: string;
@@ -365,28 +368,20 @@ export interface MarketplaceItemResponse {
   updatedAt?: string;
 }
 
-export type PaymentMethod = "MANUAL_BANK_TRANSFER";
+export type PaymentProvider = "PAYOS";
+
+export type OrderStatus = "PENDING" | "PAID";
 
 export type PaymentStatus =
   | "PENDING"
-  | "WAITING_VERIFICATION"
+  | "PROCESSING"
   | "PAID"
-  | "REJECTED"
-  | "CANCELLED";
+  | "FAILED"
+  | "CANCELLED"
+  | "EXPIRED";
 
 export interface CreatePaymentRequest {
   marketplaceItemId: string;
-}
-
-export interface UploadReceiptRequest {
-  payerName: string;
-  payerBank: string;
-  transferReference: string;
-  receiptFile: File;
-}
-
-export interface PaymentVerificationRequest {
-  rejectionReason: string;
 }
 
 export interface PaymentResponse {
@@ -401,18 +396,17 @@ export interface PaymentResponse {
   sellerId: string;
   sellerEmail: string;
   sellerFullName: string;
-  paymentMethod: PaymentMethod;
+  orderStatus: OrderStatus;
+  paymentProvider: PaymentProvider;
   paymentStatus: PaymentStatus;
   amount: number;
   currency: string;
-  receiptUrl?: string | null;
-  payerName?: string | null;
-  payerBank?: string | null;
-  transferReference: string;
-  verifiedById?: string | null;
-  verifiedByEmail?: string | null;
-  verifiedAt?: string | null;
-  rejectionReason?: string | null;
+  payosOrderCode?: number | null;
+  payosPaymentLinkId?: string | null;
+  payosTransactionId?: string | null;
+  checkoutUrl?: string | null;
+  paymentReference?: string | null;
+  paidAt?: string | null;
   downloadUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -421,8 +415,10 @@ export interface PaymentResponse {
 export interface PaymentStatusResponse {
   paymentId: string;
   orderId: string;
+  orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
-  downloadUrl: string;
+  checkoutUrl?: string | null;
+  downloadUrl?: string | null;
 }
 
 // --- WebSocket Notifications & Chat DM ---

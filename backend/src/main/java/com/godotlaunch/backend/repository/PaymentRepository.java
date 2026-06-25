@@ -2,6 +2,10 @@ package com.godotlaunch.backend.repository;
 
 import com.godotlaunch.backend.entity.Payment;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -10,5 +14,12 @@ import java.util.UUID;
 
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     Optional<Payment> findByOrderId(UUID orderId);
-    List<Payment> findByPaymentStatusOrderByCreatedAtAsc(PaymentStatus paymentStatus);
+    Optional<Payment> findByPayosOrderCode(Long payosOrderCode);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Payment p where p.payosOrderCode = :orderCode")
+    Optional<Payment> findByPayosOrderCodeForUpdate(@Param("orderCode") Long orderCode);
+    boolean existsByPayosOrderCode(Long payosOrderCode);
+    List<Payment> findTop50ByOrderByCreatedAtDesc();
+    List<Payment> findByOrderBuyerIdOrderByCreatedAtDesc(UUID buyerId);
+    List<Payment> findByPaymentStatusOrderByCreatedAtDesc(PaymentStatus paymentStatus);
 }

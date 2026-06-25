@@ -22,12 +22,13 @@ import {
 import { Button } from '../components/Button';
 import { DataTable } from '../components/DataTable';
 import { Input } from '../components/Input';
-import { Asset, Project, User, GameResponse, ContractResponse, MarketplaceItemResponse } from '../types';
+import { Asset, Project, User, GameResponse, ContractResponse, MarketplaceItemResponse, PaymentResponse } from '../types';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
+import { PurchasedInventoryPanel } from '../components/PurchasedInventoryPanel';
 
 interface DashboardPageProps {
   currentUser: User | null;
@@ -38,6 +39,7 @@ interface DashboardPageProps {
   };
   assets: Asset[];
   projectRepositories: Project[];
+  purchasedPayments: PaymentResponse[];
   setCurrentScreen: (screen: any) => void;
 }
 
@@ -68,6 +70,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   financeStats,
   assets,
   projectRepositories,
+  purchasedPayments,
   setCurrentScreen
 }) => {
   // Tab control: 'my-games' | 'marketplace-items' | 'git-repos'
@@ -764,6 +767,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {/* Right Column: Upcoming release tasks and support widgets */}
         <div className="space-y-6">
+          <PurchasedInventoryPanel
+            payments={purchasedPayments}
+            onOpenPaymentCenter={() => setCurrentScreen('payment')}
+          />
           
           {/* Release Schedule logging checklist */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl space-y-4 shadow-xs">

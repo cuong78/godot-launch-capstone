@@ -25,6 +25,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 }) => {
   const totalAmount = cart.reduce((sum, item) => sum + item.price, 0);
   const unsupportedItems = cart.filter((item) => !item.itemType);
+  const hasMultipleItems = cart.length > 1;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -41,11 +42,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <ShoppingBag size={20} className="text-amber-400" /> Checkout
           </h1>
           <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
-            Review your marketplace orders before placing a manual bank transfer payment.
+            Review your marketplace order before creating a secure PayOS checkout session.
           </p>
         </div>
         <div className="rounded-xl border border-amber-500/20 bg-amber-400/10 px-4 py-3">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500 font-mono">Total transfer</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500 font-mono">Total payment</p>
           <p className="mt-1 font-display text-xl font-bold text-slate-850 dark:text-white">{formatMoney(totalAmount)}</p>
         </div>
       </div>
@@ -60,7 +61,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </p>
             </div>
             <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400">
-              Manual checkout
+              PayOS checkout
             </span>
           </div>
 
@@ -117,27 +118,27 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
         <aside className="space-y-5">
           <section className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-amber-500/20 bg-amber-400/10 p-3 text-amber-500">
-                <Landmark size={18} />
-              </div>
-              <div>
-                <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">Payment Method</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Only manual bank transfer is supported right now.</p>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4">
-              <label className="flex items-start gap-3">
-                <input type="radio" checked readOnly className="mt-0.5 accent-sky-500" />
-                <div>
-                  <p className="text-sm font-semibold text-slate-850 dark:text-white">Manual Bank Transfer</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                    Place your order first, then upload the transfer receipt for admin verification.
-                  </p>
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl border border-amber-500/20 bg-amber-400/10 p-3 text-amber-500">
+                  <Landmark size={18} />
                 </div>
-              </label>
-            </div>
+                <div>
+                  <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">Payment Method</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Redirect customers to PayOS and unlock downloads only after webhook confirmation.</p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4">
+                <label className="flex items-start gap-3">
+                  <input type="radio" checked readOnly className="mt-0.5 accent-sky-500" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-850 dark:text-white">PayOS</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                      We will create a PayOS payment link and redirect you to the hosted checkout page.
+                    </p>
+                  </div>
+                </label>
+              </div>
 
             <div className="mt-5 space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
               <div className="flex items-center justify-between text-xs">
@@ -146,7 +147,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400">Payment Method</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">Bank Transfer</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">PayOS</span>
               </div>
               <div className="flex items-center justify-between border-t border-slate-200/80 pt-3 text-sm font-bold dark:border-slate-800/80">
                 <span className="text-slate-800 dark:text-white">Total Amount</span>
@@ -160,15 +161,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
             )}
 
+            {hasMultipleItems && (
+              <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-400/10 p-4 text-xs text-amber-600 dark:text-amber-400">
+                The current PayOS flow supports one marketplace item per checkout session. Please keep only one item in the cart before continuing.
+              </div>
+            )}
+
             <Button
               variant="primary"
               size="md"
               className="mt-5 w-full"
               icon={<ReceiptText size={16} />}
               onClick={onPlaceOrder}
-              disabled={cart.length === 0 || unsupportedItems.length > 0 || isPlacingOrder}
+              disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder}
             >
-              {isPlacingOrder ? 'Creating Orders...' : 'Place Order'}
+              {isPlacingOrder ? 'Creating PayOS Session...' : 'Pay with PayOS'}
             </Button>
           </section>
 
@@ -176,9 +183,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <div className="flex items-start gap-3">
               <ShieldCheck size={18} className="mt-0.5 text-emerald-500" />
               <div>
-                <h3 className="font-display text-sm font-bold text-slate-850 dark:text-white">Verification Flow</h3>
+                <h3 className="font-display text-sm font-bold text-slate-850 dark:text-white">Webhook Confirmation</h3>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                  Orders stay locked until the receipt is uploaded and approved by an administrator.
+                  Orders remain locked until the backend receives a valid PayOS webhook and marks the payment as paid.
                 </p>
               </div>
             </div>

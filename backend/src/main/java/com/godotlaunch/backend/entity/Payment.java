@@ -1,6 +1,6 @@
 package com.godotlaunch.backend.entity;
 
-import com.godotlaunch.backend.entity.enums.PaymentMethod;
+import com.godotlaunch.backend.entity.enums.PaymentProvider;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -33,8 +33,8 @@ public class Payment {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "payment_method", nullable = false, columnDefinition = "payment_method_enum")
-    private PaymentMethod paymentMethod = PaymentMethod.MANUAL_BANK_TRANSFER;
+    @Column(name = "payment_provider", nullable = false, columnDefinition = "payment_provider_enum")
+    private PaymentProvider paymentProvider = PaymentProvider.PAYOS;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -46,29 +46,25 @@ public class Payment {
 
     @JdbcTypeCode(Types.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
-    private String currency = "USD";
+    private String currency = "VND";
 
-    @Column(name = "receipt_url", columnDefinition = "TEXT")
-    private String receiptUrl;
+    @Column(name = "payos_order_code", unique = true)
+    private Long payosOrderCode;
 
-    @Column(name = "payer_name", length = 200)
-    private String payerName;
+    @Column(name = "payos_payment_link_id", length = 120)
+    private String payosPaymentLinkId;
 
-    @Column(name = "payer_bank", length = 200)
-    private String payerBank;
+    @Column(name = "payos_transaction_id", length = 120)
+    private String payosTransactionId;
 
-    @Column(name = "transfer_reference", length = 120)
-    private String transferReference;
+    @Column(name = "checkout_url", columnDefinition = "TEXT")
+    private String checkoutUrl;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "verified_by")
-    private User verifiedBy;
+    @Column(name = "payment_reference", length = 120)
+    private String paymentReference;
 
-    @Column(name = "verified_at")
-    private Instant verifiedAt;
-
-    @Column(name = "rejection_reason", columnDefinition = "TEXT")
-    private String rejectionReason;
+    @Column(name = "paid_at")
+    private Instant paidAt;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

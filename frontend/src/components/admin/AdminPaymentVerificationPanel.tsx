@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Clock3, Eye, RefreshCw, ShieldAlert, X } from 'lucide-react';
+import { CheckCircle2, Clock3, Eye, RefreshCw, X, XCircle } from 'lucide-react';
 import { paymentApi } from '../../api/paymentApi';
 import { Button } from '../Button';
-import { TextArea } from '../Input';
 import { PaymentResponse } from '../../types';
 
 const formatMoney = (amount: number) =>
@@ -11,7 +10,7 @@ const formatMoney = (amount: number) =>
     ? 'FREE'
     : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
-const formatTimestamp = (value?: string) => {
+const formatTimestamp = (value?: string | null) => {
   if (!value) {
     return 'N/A';
   }
@@ -30,19 +29,35 @@ const formatTimestamp = (value?: string) => {
   }).format(parsed);
 };
 
-const getStatusBadgeClass = (status: PaymentResponse['paymentStatus']) => {
+const getStatusMeta = (status: PaymentResponse['paymentStatus']) => {
   switch (status) {
     case 'PAID':
-      return 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
-    case 'WAITING_VERIFICATION':
-      return 'bg-amber-500/10 text-amber-500 border border-amber-500/20';
-    case 'REJECTED':
-      return 'bg-rose-500/10 text-rose-500 border border-rose-500/20';
+      return {
+        badgeClass: 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20',
+        icon: <CheckCircle2 size={12} />,
+      };
+    case 'PROCESSING':
+      return {
+        badgeClass: 'bg-amber-500/10 text-amber-500 border border-amber-500/20',
+        icon: <Clock3 size={12} />,
+      };
+    case 'FAILED':
+      return {
+        badgeClass: 'bg-rose-500/10 text-rose-500 border border-rose-500/20',
+        icon: <XCircle size={12} />,
+      };
     case 'CANCELLED':
-      return 'bg-slate-500/10 text-slate-500 border border-slate-500/20';
+    case 'EXPIRED':
+      return {
+        badgeClass: 'bg-slate-500/10 text-slate-500 border border-slate-500/20',
+        icon: <XCircle size={12} />,
+      };
     case 'PENDING':
     default:
-      return 'bg-sky-500/10 text-sky-500 border border-sky-500/20';
+      return {
+        badgeClass: 'bg-sky-500/10 text-sky-500 border border-sky-500/20',
+        icon: <Clock3 size={12} />,
+      };
   }
 };
 
@@ -52,38 +67,34 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<PaymentResponse | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isRejectMode, setIsRejectMode] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [isActing, setIsActing] = useState(false);
+  const [isRefreshingDetail, setIsRefreshingDetail] = useState(false);
 
-  const fetchPendingPayments = async () => {
+  const fetchPayments = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await paymentApi.getPendingPayments();
+      const res = await paymentApi.getAdminPayments();
       if (res.success && res.data) {
         setPayments(res.data);
       } else {
-        setError(res.message || 'Failed to load pending payments');
+        setError(res.message || 'Failed to load payments');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to load pending payments');
+      setError(err.response?.data?.message || err.message || 'Failed to load payments');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPendingPayments();
+    fetchPayments();
   }, []);
 
   const openPaymentDetail = async (paymentId: string) => {
     try {
-      const res = await paymentApi.getPaymentDetail(paymentId);
+      const res = await paymentApi.getAdminPaymentDetail(paymentId);
       if (res.success && res.data) {
         setSelectedPayment(res.data);
-        setRejectReason('');
-        setIsRejectMode(false);
         setIsModalOpen(true);
       } else {
         alert(res.message || 'Failed to load payment detail');
@@ -93,48 +104,23 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
     }
   };
 
-  const handleApprove = async (paymentId: string) => {
-    if (!window.confirm('Approve this payment and release the seller revenue?')) {
+  const refreshSelectedPayment = async () => {
+    if (!selectedPayment) {
       return;
     }
 
-    setIsActing(true);
+    setIsRefreshingDetail(true);
     try {
-      const res = await paymentApi.approvePayment(paymentId);
-      if (!res.success) {
-        alert(res.message || 'Failed to approve payment');
-        return;
+      const res = await paymentApi.getAdminPaymentDetail(selectedPayment.id);
+      if (res.success && res.data) {
+        setSelectedPayment(res.data);
+      } else {
+        alert(res.message || 'Failed to refresh payment detail');
       }
-      setIsModalOpen(false);
-      setSelectedPayment(null);
-      await fetchPendingPayments();
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to approve payment');
+      alert(err.response?.data?.message || err.message || 'Failed to refresh payment detail');
     } finally {
-      setIsActing(false);
-    }
-  };
-
-  const handleReject = async (paymentId: string) => {
-    if (!rejectReason.trim()) {
-      return;
-    }
-
-    setIsActing(true);
-    try {
-      const res = await paymentApi.rejectPayment(paymentId, { rejectionReason: rejectReason.trim() });
-      if (!res.success) {
-        alert(res.message || 'Failed to reject payment');
-        return;
-      }
-      setIsModalOpen(false);
-      setSelectedPayment(null);
-      setRejectReason('');
-      await fetchPendingPayments();
-    } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to reject payment');
-    } finally {
-      setIsActing(false);
+      setIsRefreshingDetail(false);
     }
   };
 
@@ -143,9 +129,9 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
       <div className="space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Payment Verification</h3>
+            <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">PayOS Payment Monitoring</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Review uploaded bank transfer receipts before releasing marketplace revenue.
+              Monitor recent hosted checkout sessions and inspect webhook-confirmed marketplace payments.
             </p>
           </div>
 
@@ -153,9 +139,9 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
             variant="ghost"
             size="sm"
             icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-            onClick={fetchPendingPayments}
+            onClick={fetchPayments}
           >
-            Refresh Queue
+            Refresh List
           </Button>
         </div>
 
@@ -170,12 +156,12 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-950/50">
                 <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500">
-                  <th className="p-4 font-semibold">Order ID</th>
+                  <th className="p-4 font-semibold">Order</th>
                   <th className="p-4 font-semibold">Buyer</th>
                   <th className="p-4 font-semibold">Amount</th>
+                  <th className="p-4 font-semibold">Provider</th>
                   <th className="p-4 font-semibold">Payment Status</th>
-                  <th className="p-4 font-semibold">Receipt</th>
-                  <th className="p-4 font-semibold">Created Time</th>
+                  <th className="p-4 font-semibold">Updated</th>
                   <th className="p-4 font-semibold text-right">Action</th>
                 </tr>
               </thead>
@@ -183,61 +169,52 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
                 {isLoading ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">
-                      Loading payment verification queue...
+                      Loading payment sessions...
                     </td>
                   </tr>
                 ) : payments.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">
-                      No payments are currently waiting for verification.
+                      No payment sessions are available right now.
                     </td>
                   </tr>
                 ) : (
-                  payments.map((payment) => (
-                    <tr key={payment.id} className="border-t border-slate-200/70 dark:border-slate-800/70">
-                      <td className="p-4">
-                        <div className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">
-                          {payment.orderId.slice(0, 8).toUpperCase()}
-                        </div>
-                        <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[180px]">
-                          {payment.marketplaceItemTitle}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">{payment.buyerFullName}</div>
-                        <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{payment.buyerEmail}</div>
-                      </td>
-                      <td className="p-4 font-semibold text-amber-500">{formatMoney(payment.amount)}</td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${getStatusBadgeClass(payment.paymentStatus)}`}>
-                          <Clock3 size={12} />
-                          {payment.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        {payment.receiptUrl ? (
-                          <a
-                            href={payment.receiptUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs font-semibold text-sky-500 hover:text-sky-600"
-                          >
-                            View Receipt
-                          </a>
-                        ) : (
-                          <span className="text-xs text-slate-400">No receipt</span>
-                        )}
-                      </td>
-                      <td className="p-4 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(payment.createdAt)}</td>
-                      <td className="p-4">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" icon={<Eye size={14} />} onClick={() => openPaymentDetail(payment.id)}>
-                            View
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  payments.map((payment) => {
+                    const statusMeta = getStatusMeta(payment.paymentStatus);
+
+                    return (
+                      <tr key={payment.id} className="border-t border-slate-200/70 dark:border-slate-800/70">
+                        <td className="p-4">
+                          <div className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            {payment.orderId.slice(0, 8).toUpperCase()}
+                          </div>
+                          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[180px]">
+                            {payment.marketplaceItemTitle}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">{payment.buyerFullName}</div>
+                          <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{payment.buyerEmail}</div>
+                        </td>
+                        <td className="p-4 font-semibold text-amber-500">{formatMoney(payment.amount)}</td>
+                        <td className="p-4 text-xs font-semibold text-slate-600 dark:text-slate-300">{payment.paymentProvider}</td>
+                        <td className="p-4">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${statusMeta.badgeClass}`}>
+                            {statusMeta.icon}
+                            {payment.paymentStatus}
+                          </span>
+                        </td>
+                        <td className="p-4 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(payment.updatedAt)}</td>
+                        <td className="p-4">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" icon={<Eye size={14} />} onClick={() => openPaymentDetail(payment.id)}>
+                              View
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -255,37 +232,43 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
                   Order {selectedPayment.orderId.slice(0, 8).toUpperCase()} • {selectedPayment.marketplaceItemTitle}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-studio"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<RefreshCw size={14} className={isRefreshingDetail ? 'animate-spin' : ''} />}
+                  onClick={refreshSelectedPayment}
+                >
+                  Refresh
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-lg p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-studio"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_0.95fr]">
               <div className="space-y-4">
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-950/50">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Receipt Image</p>
-                  {selectedPayment.receiptUrl ? (
-                    <a
-                      href={selectedPayment.receiptUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-3 block overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800"
-                    >
-                      <img
-                        src={selectedPayment.receiptUrl}
-                        alt="Payment receipt"
-                        className="max-h-[420px] w-full object-cover bg-slate-100 dark:bg-slate-950"
-                      />
-                    </a>
-                  ) : (
-                    <div className="mt-3 rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-12 text-center text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-500">
-                      No receipt uploaded yet.
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Payment Timeline</p>
+                  <div className="mt-4 space-y-3 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-slate-500 dark:text-slate-400">Created At</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatTimestamp(selectedPayment.createdAt)}</span>
                     </div>
-                  )}
+                    <div className="flex justify-between gap-3">
+                      <span className="text-slate-500 dark:text-slate-400">Updated At</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatTimestamp(selectedPayment.updatedAt)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-slate-500 dark:text-slate-400">Paid At</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatTimestamp(selectedPayment.paidAt)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -310,77 +293,35 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
                       <span className="font-semibold text-amber-500 text-right">{formatMoney(selectedPayment.amount)}</span>
                     </div>
                     <div className="flex justify-between gap-3">
+                      <span className="text-slate-500 dark:text-slate-400">Order Status</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.orderStatus}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-slate-500 dark:text-slate-400">Payment Status</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.paymentStatus}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
                       <span className="text-slate-500 dark:text-slate-400">Reference</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.transferReference}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.paymentReference || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Payer Name</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.payerName || 'N/A'}</span>
+                      <span className="text-slate-500 dark:text-slate-400">PayOS Order Code</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.payosOrderCode ?? 'N/A'}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Payer Bank</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.payerBank || 'N/A'}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Payment Link ID</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right break-all">{selectedPayment.payosPaymentLinkId || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-slate-500 dark:text-slate-400">Transaction ID</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right break-all">{selectedPayment.payosTransactionId || 'Waiting webhook'}</span>
                     </div>
                   </div>
                 </div>
 
-                {selectedPayment.rejectionReason && (
-                  <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-400">
-                    <div className="flex items-start gap-2">
-                      <ShieldAlert size={15} className="mt-0.5 shrink-0" />
-                      <div>
-                        <p className="font-semibold">Previous rejection reason</p>
-                        <p className="mt-1 leading-relaxed">{selectedPayment.rejectionReason}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {isRejectMode ? (
-                  <div className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-950/50">
-                    <TextArea
-                      label="Reject Payment"
-                      value={rejectReason}
-                      onChange={(event) => setRejectReason(event.target.value)}
-                      rows={4}
-                      placeholder="Enter the rejection reason shown to the customer..."
-                    />
-                    <div className="mt-4 flex justify-end gap-3">
-                      <Button variant="ghost" size="sm" onClick={() => setIsRejectMode(false)}>
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleReject(selectedPayment.id)}
-                        disabled={!rejectReason.trim() || isActing}
-                      >
-                        {isActing ? 'Rejecting...' : 'Confirm Reject'}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-950/50">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        icon={<X size={14} />}
-                        onClick={() => setIsRejectMode(true)}
-                        disabled={isActing}
-                      >
-                        Reject
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        icon={<Check size={14} />}
-                        onClick={() => handleApprove(selectedPayment.id)}
-                        disabled={isActing}
-                      >
-                        {isActing ? 'Approving...' : 'Approve'}
-                      </Button>
-                    </div>
+                {selectedPayment.downloadUrl && selectedPayment.paymentStatus === 'PAID' && (
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-slate-700 dark:text-slate-200">
+                    Download is unlocked for this payment because PayOS webhook confirmation has completed.
                   </div>
                 )}
               </div>

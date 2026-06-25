@@ -1,21 +1,20 @@
 package com.godotlaunch.backend.service;
 
 import com.godotlaunch.backend.dto.request.CreatePaymentRequest;
-import com.godotlaunch.backend.dto.request.PaymentVerificationRequest;
-import com.godotlaunch.backend.dto.request.UploadReceiptRequest;
 import com.godotlaunch.backend.dto.response.PaymentResponse;
-import org.springframework.core.io.Resource;
+import com.godotlaunch.backend.dto.response.PaymentStatusSummaryResponse;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface PaymentService {
-    PaymentResponse createPayment(CreatePaymentRequest request, String buyerEmail);
-    PaymentResponse uploadReceipt(UUID paymentId, UploadReceiptRequest request, String buyerEmail);
-    PaymentResponse approvePayment(UUID paymentId, String adminEmail);
-    PaymentResponse rejectPayment(UUID paymentId, PaymentVerificationRequest request, String adminEmail);
+    PaymentResponse createPayOSPayment(CreatePaymentRequest request, String buyerEmail);
+    PaymentResponse confirmPayment(UUID paymentId, String requesterEmail);
+    PaymentResponse cancelPayment(UUID paymentId, String requesterEmail);
+    PaymentResponse handleWebhook(Object payload);
+    List<PaymentResponse> getCurrentUserPayments(String requesterEmail);
     PaymentResponse getPaymentByOrder(UUID orderId, String requesterEmail);
-    PaymentResponse getPaymentById(UUID paymentId);
-    List<PaymentResponse> getPendingPayments();
-    Resource loadReceiptFile(UUID paymentId, String requesterEmail);
+    PaymentResponse getPaymentById(UUID paymentId, String requesterEmail);
+    PaymentStatusSummaryResponse getPaymentStatus(UUID orderId, String requesterEmail);
+    List<PaymentResponse> getAdminPayments();
 }

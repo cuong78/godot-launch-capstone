@@ -66,6 +66,10 @@ aws:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  payos:
+    client-id: ${PAYOS_CLIENT_ID:}
+    api-key: ${PAYOS_API_KEY:}
+    checksum-key: ${PAYOS_CHECKSUM_KEY:}
   security:
     encryption-key: ${ENCRYPTION_KEY}
     recaptcha:
@@ -80,7 +84,3 @@ app:
         # Bot account (machine user) để clone private repo developer mời
         bot-username: ${GITHUB_BOT_USERNAME:}
         bot-token: ${GITHUB_BOT_TOKEN:}
-    payos:
-      client-id: ${PAYOS_CLIENT_ID:}
-      api-key: ${PAYOS_API_KEY:}
-      checksum-key: ${PAYOS_CHECKSUM_KEY:}

@@ -2,18 +2,19 @@ package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.CreatePaymentRequest;
-import com.godotlaunch.backend.dto.request.PaymentVerificationRequest;
-import com.godotlaunch.backend.dto.request.UploadReceiptRequest;
 import com.godotlaunch.backend.dto.response.PaymentResponse;
+import com.godotlaunch.backend.dto.response.PaymentStatusSummaryResponse;
 import com.godotlaunch.backend.entity.MarketplaceItem;
 import com.godotlaunch.backend.entity.Order;
 import com.godotlaunch.backend.entity.Payment;
 import com.godotlaunch.backend.entity.Transaction;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Wallet;
+import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
+import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.OrderType;
-import com.godotlaunch.backend.entity.enums.PaymentMethod;
+import com.godotlaunch.backend.entity.enums.PaymentProvider;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
@@ -21,19 +22,31 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.MarketplaceItemRepository;
 import com.godotlaunch.backend.repository.OrderRepository;
 import com.godotlaunch.backend.repository.PaymentRepository;
+import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
+import com.godotlaunch.backend.service.AwsS3Service;
 import com.godotlaunch.backend.service.PaymentService;
+import com.godotlaunch.backend.service.payment.PaymentGateway;
+import com.godotlaunch.backend.service.payment.PaymentGatewayCreateRequest;
+import com.godotlaunch.backend.service.payment.PaymentGatewayCreateResponse;
+import com.godotlaunch.backend.service.payment.PaymentGatewayStatusResponse;
+import com.godotlaunch.backend.service.payment.PaymentGatewayWebhookResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -44,7 +57,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PaymentServiceImpl implements PaymentService {
 
-    private static final String DEFAULT_CURRENCY = "USD";
+    private static final String DEFAULT_CURRENCY = "VND";
+    private static final int PAYMENT_LINK_EXPIRY_MINUTES = 30;
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
@@ -52,12 +66,16 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
-    private final StorageRouter storageRouter;
-    private final PaymentReceiptStorageService paymentReceiptStorageService;
+    private final SourceSnapshotRepository sourceSnapshotRepository;
+    private final AwsS3Service awsS3Service;
+    private final PaymentGateway paymentGateway;
+
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
 
     @Override
     @Transactional
-    public PaymentResponse createPayment(CreatePaymentRequest request, String buyerEmail) {
+    public PaymentResponse createPayOSPayment(CreatePaymentRequest request, String buyerEmail) {
         User buyer = getUserByEmail(buyerEmail);
         validatePurchaserRole(buyer);
 
@@ -75,187 +93,203 @@ public class PaymentServiceImpl implements PaymentService {
         Order order = orderRepository.findByBuyerIdAndMarketplaceItemId(buyer.getId(), item.getId())
                 .orElseGet(() -> createOrder(buyer, item));
 
-        Payment existingPayment = order.getPayment();
-        if (existingPayment != null) {
-            return mapToResponse(existingPayment);
-        }
-
-        Payment payment = new Payment();
-        payment.setOrder(order);
-        payment.setPaymentMethod(PaymentMethod.MANUAL_BANK_TRANSFER);
-        payment.setAmount(item.getPrice());
-        payment.setCurrency(DEFAULT_CURRENCY);
-        payment.setTransferReference(buildTransferReference(order.getId()));
-
-        if (item.getPrice().compareTo(BigDecimal.ZERO) == 0) {
-            payment.setPaymentStatus(PaymentStatus.PAID);
-        } else {
+        Payment payment = order.getPayment();
+        if (payment == null) {
+            payment = new Payment();
+            payment.setOrder(order);
+            payment.setPaymentProvider(PaymentProvider.PAYOS);
             payment.setPaymentStatus(PaymentStatus.PENDING);
+            payment.setAmount(item.getPrice());
+            payment.setCurrency(DEFAULT_CURRENCY);
+            payment = paymentRepository.save(payment);
+        } else {
+            payment = syncPaymentFromGateway(payment);
+            if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+                return mapToResponse(payment);
+            }
+
+            if (isActiveCheckout(payment)) {
+                return mapToResponse(payment);
+            }
         }
-
-        Payment savedPayment = paymentRepository.save(payment);
-        return mapToResponse(savedPayment);
-    }
-
-    @Override
-    @Transactional
-    public PaymentResponse uploadReceipt(UUID paymentId, UploadReceiptRequest request, String buyerEmail) {
-        Payment payment = getPaymentEntity(paymentId);
-        User buyer = getUserByEmail(buyerEmail);
-        ensureBuyerOwnsPayment(payment, buyer);
 
         if (payment.getAmount().compareTo(BigDecimal.ZERO) == 0) {
+            payment.setCheckoutUrl(null);
+            payment.setPaymentReference(buildFreePaymentReference(payment.getId()));
+            payment = completePaidPayment(payment, Instant.now(), null);
             return mapToResponse(payment);
         }
 
-        if (payment.getPaymentStatus() == PaymentStatus.PAID) {
-            throw new AppException(ErrorCode.PAYMENT_ALREADY_PAID);
-        }
+        PaymentGatewayCreateResponse gatewayResponse = paymentGateway.createPayment(
+                PaymentGatewayCreateRequest.builder()
+                        .orderCode(generatePayOSOrderCode())
+                        .amount(toPayOSAmount(payment.getAmount()))
+                        .buyerName(resolveBuyerName(buyer))
+                        .buyerEmail(buyer.getEmail())
+                        .itemName(item.getTitle())
+                        .description(buildPaymentReference(payment.getId()))
+                        .returnUrl(buildFrontendUrl("/payment/success?paymentId=" + payment.getId()))
+                        .cancelUrl(buildFrontendUrl("/payment/cancelled?paymentId=" + payment.getId()))
+                        .expiredAt(Instant.now().plusSeconds(PAYMENT_LINK_EXPIRY_MINUTES * 60L).getEpochSecond())
+                        .build()
+        );
 
-        if (payment.getPaymentStatus() == PaymentStatus.WAITING_VERIFICATION) {
-            throw new AppException(ErrorCode.PAYMENT_NOT_READY_FOR_RECEIPT);
-        }
-
-        if (request.getReceiptFile() == null || request.getReceiptFile().isEmpty()) {
-            throw new AppException(ErrorCode.PAYMENT_RECEIPT_REQUIRED);
-        }
-
-        String receiptUrl = uploadReceiptFile(request.getReceiptFile());
-
-        payment.setReceiptUrl(receiptUrl);
-        payment.setPayerName(request.getPayerName().trim());
-        payment.setPayerBank(request.getPayerBank().trim());
-        payment.setTransferReference(request.getTransferReference().trim());
-        payment.setPaymentStatus(PaymentStatus.WAITING_VERIFICATION);
-        payment.setVerifiedBy(null);
-        payment.setVerifiedAt(null);
-        payment.setRejectionReason(null);
-
-        return mapToResponse(paymentRepository.save(payment));
-    }
-
-    @Override
-    @Transactional
-    public PaymentResponse approvePayment(UUID paymentId, String adminEmail) {
-        Payment payment = getPaymentEntity(paymentId);
-        User admin = getUserByEmail(adminEmail);
-
-        if (payment.getPaymentStatus() == PaymentStatus.PAID) {
-            throw new AppException(ErrorCode.PAYMENT_ALREADY_PAID);
-        }
-
-        if (payment.getPaymentStatus() != PaymentStatus.WAITING_VERIFICATION) {
-            throw new AppException(ErrorCode.PAYMENT_NOT_AWAITING_VERIFICATION);
-        }
-
-        Order order = payment.getOrder();
-        MarketplaceItem item = order.getMarketplaceItem();
-        Wallet sellerWallet = walletRepository.findByUserId(item.getSeller().getId())
-                .orElseGet(() -> createWallet(item.getSeller(), payment.getCurrency()));
-
-        Transaction transaction = new Transaction();
-        transaction.setWallet(sellerWallet);
-        transaction.setRelatedUser(order.getBuyer());
-        transaction.setGame(item.getSourceGame());
-        transaction.setAmount(payment.getAmount());
-        transaction.setPlatformCommission(BigDecimal.ZERO);
-        transaction.setNetAmount(payment.getAmount());
-        transaction.setType(TxnType.source_code_purchase);
-        transaction.setStatus(TxnStatus.completed);
-        transaction.setReferenceId(payment.getTransferReference());
-        Transaction savedTransaction = transactionRepository.save(transaction);
-
-        sellerWallet.setBalance(sellerWallet.getBalance().add(savedTransaction.getNetAmount()));
-        walletRepository.save(sellerWallet);
-
-        order.setTransaction(savedTransaction);
-        orderRepository.save(order);
-
-        payment.setPaymentStatus(PaymentStatus.PAID);
-        payment.setVerifiedBy(admin);
-        payment.setVerifiedAt(Instant.now());
-        payment.setRejectionReason(null);
+        payment.setPaymentProvider(PaymentProvider.PAYOS);
+        payment.setPaymentStatus(resolveCreatedPaymentStatus(gatewayResponse.getStatus()));
+        payment.setPayosOrderCode(gatewayResponse.getOrderCode());
+        payment.setPayosPaymentLinkId(gatewayResponse.getPaymentLinkId());
+        payment.setPayosTransactionId(null);
+        payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
+        payment.setPaymentReference(buildPaymentReference(payment.getId()));
+        payment.setPaidAt(null);
 
         return mapToResponse(paymentRepository.save(payment));
     }
 
     @Override
     @Transactional
-    public PaymentResponse rejectPayment(UUID paymentId, PaymentVerificationRequest request, String adminEmail) {
+    public PaymentResponse confirmPayment(UUID paymentId, String requesterEmail) {
         Payment payment = getPaymentEntity(paymentId);
-        User admin = getUserByEmail(adminEmail);
+        User requester = getUserByEmail(requesterEmail);
+        ensureRequesterCanAccess(payment, requester);
+        return mapToResponse(syncPaymentFromGateway(payment));
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponse cancelPayment(UUID paymentId, String requesterEmail) {
+        Payment payment = getPaymentEntity(paymentId);
+        User requester = getUserByEmail(requesterEmail);
+        ensureRequesterCanAccess(payment, requester);
 
         if (payment.getPaymentStatus() == PaymentStatus.PAID) {
             throw new AppException(ErrorCode.PAYMENT_ALREADY_PAID);
         }
 
-        if (payment.getPaymentStatus() != PaymentStatus.WAITING_VERIFICATION) {
-            throw new AppException(ErrorCode.PAYMENT_NOT_AWAITING_VERIFICATION);
+        if (!StringUtils.hasText(payment.getCheckoutUrl()) || payment.getPayosOrderCode() == null) {
+            throw new AppException(ErrorCode.PAYMENT_NOT_CANCELLABLE);
         }
 
-        if (!StringUtils.hasText(request.getRejectionReason())) {
-            throw new AppException(ErrorCode.PAYMENT_REJECTION_REASON_REQUIRED);
+        if (isTerminalFailure(payment.getPaymentStatus())) {
+            return mapToResponse(payment);
         }
 
-        payment.setPaymentStatus(PaymentStatus.REJECTED);
-        payment.setVerifiedBy(admin);
-        payment.setVerifiedAt(Instant.now());
-        payment.setRejectionReason(request.getRejectionReason().trim());
-
+        PaymentGatewayStatusResponse gatewayStatus = paymentGateway.cancelPayment(payment.getPayosOrderCode());
+        applyGatewayStatus(payment, gatewayStatus);
         return mapToResponse(paymentRepository.save(payment));
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public PaymentResponse getPaymentByOrder(UUID orderId, String requesterEmail) {
-        Payment payment = paymentRepository.findByOrderId(orderId)
+    @Transactional
+    public PaymentResponse handleWebhook(Object payload) {
+        PaymentGatewayWebhookResult webhook = paymentGateway.verifyWebhook(payload);
+        if (webhook.getOrderCode() == null || webhook.getAmount() == null) {
+            throw new AppException(ErrorCode.PAYMENT_WEBHOOK_INVALID);
+        }
+
+        Payment payment = paymentRepository.findByPayosOrderCodeForUpdate(webhook.getOrderCode())
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
-        User requester = getUserByEmail(requesterEmail);
-        boolean isAdmin = isAdmin(requester);
-        if (!isAdmin && !payment.getOrder().getBuyer().getId().equals(requester.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
+        long expectedAmount = toPayOSAmount(payment.getAmount());
+        if (expectedAmount != webhook.getAmount()) {
+            throw new AppException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
-        return mapToResponse(payment);
+        if (isCompletedPayment(payment)) {
+            payment.setPayosPaymentLinkId(firstNonBlank(webhook.getPaymentLinkId(), payment.getPayosPaymentLinkId()));
+            payment.setPayosTransactionId(firstNonBlank(webhook.getTransactionReference(), payment.getPayosTransactionId()));
+            payment.setPaidAt(payment.getPaidAt() != null ? payment.getPaidAt() : resolvePaidAt(webhook.getOccurredAt()));
+            return mapToResponse(paymentRepository.save(payment));
+        }
+
+        PaymentGatewayStatusResponse gatewayStatus = paymentGateway.getPaymentStatus(webhook.getOrderCode());
+
+        if (gatewayStatus.getStatus() != PaymentStatus.PAID) {
+            applyGatewayStatus(payment, gatewayStatus);
+            log.info("PayOS webhook received for order {} but payment is not paid yet. Current status: {}",
+                    webhook.getOrderCode(), gatewayStatus.getStatus());
+            return mapToResponse(paymentRepository.save(payment));
+        }
+
+        payment.setPayosPaymentLinkId(firstNonBlank(
+                webhook.getPaymentLinkId(),
+                gatewayStatus.getPaymentLinkId(),
+                payment.getPayosPaymentLinkId()
+        ));
+        payment.setPaymentReference(firstNonBlank(payment.getPaymentReference(), buildPaymentReference(payment.getId())));
+
+        Payment completedPayment = completePaidPayment(
+                payment,
+                resolvePaidAt(webhook.getOccurredAt(), gatewayStatus.getPaidAt()),
+                firstNonBlank(webhook.getTransactionReference(), gatewayStatus.getTransactionReference())
+        );
+
+        log.info("PayOS payment {} has been confirmed and finalized for order {}",
+                completedPayment.getId(), completedPayment.getOrder().getId());
+        return mapToResponse(completedPayment);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PaymentResponse getPaymentById(UUID paymentId) {
-        return mapToResponse(getPaymentEntity(paymentId));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<PaymentResponse> getPendingPayments() {
-        return paymentRepository.findByPaymentStatusOrderByCreatedAtAsc(PaymentStatus.WAITING_VERIFICATION).stream()
+    public List<PaymentResponse> getCurrentUserPayments(String requesterEmail) {
+        User requester = getUserByEmail(requesterEmail);
+        return paymentRepository.findByOrderBuyerIdOrderByCreatedAtDesc(requester.getId()).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Resource loadReceiptFile(UUID paymentId, String requesterEmail) {
+    @Transactional
+    public PaymentResponse getPaymentByOrder(UUID orderId, String requesterEmail) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
+
+        User requester = getUserByEmail(requesterEmail);
+        ensureRequesterCanAccess(payment, requester);
+
+        Payment syncedPayment = syncPaymentFromGateway(payment);
+        return mapToResponse(syncedPayment);
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponse getPaymentById(UUID paymentId, String requesterEmail) {
         Payment payment = getPaymentEntity(paymentId);
         User requester = getUserByEmail(requesterEmail);
-        boolean isAdmin = isAdmin(requester);
-        if (!isAdmin && !payment.getOrder().getBuyer().getId().equals(requester.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        ensureRequesterCanAccess(payment, requester);
 
-        if (!paymentReceiptStorageService.isLocalStorageRef(payment.getReceiptUrl())) {
-            throw new AppException(ErrorCode.BAD_REQUEST);
-        }
+        Payment syncedPayment = syncPaymentFromGateway(payment);
+        return mapToResponse(syncedPayment);
+    }
 
-        return paymentReceiptStorageService.loadAsResource(payment.getReceiptUrl());
+    @Override
+    @Transactional
+    public PaymentStatusSummaryResponse getPaymentStatus(UUID orderId, String requesterEmail) {
+        PaymentResponse payment = getPaymentByOrder(orderId, requesterEmail);
+        return PaymentStatusSummaryResponse.builder()
+                .paymentId(payment.getId())
+                .orderId(payment.getOrderId())
+                .orderStatus(payment.getOrderStatus())
+                .paymentStatus(payment.getPaymentStatus())
+                .checkoutUrl(payment.getCheckoutUrl())
+                .downloadUrl(payment.getDownloadUrl())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> getAdminPayments() {
+        return paymentRepository.findTop50ByOrderByCreatedAtDesc().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     private Order createOrder(User buyer, MarketplaceItem item) {
         Order order = new Order();
         order.setBuyer(buyer);
         order.setMarketplaceItem(item);
-        order.setOrderType(OrderType.source_code_purchase);
+        order.setOrderType(resolveOrderType(item));
+        order.setOrderStatus(OrderStatus.PENDING);
         order.setPricePaid(item.getPrice());
         return orderRepository.save(order);
     }
@@ -285,8 +319,12 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    private void ensureBuyerOwnsPayment(Payment payment, User buyer) {
-        if (!payment.getOrder().getBuyer().getId().equals(buyer.getId())) {
+    private void ensureRequesterCanAccess(Payment payment, User requester) {
+        if (isAdmin(requester)) {
+            return;
+        }
+
+        if (!payment.getOrder().getBuyer().getId().equals(requester.getId())) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
     }
@@ -295,31 +333,185 @@ public class PaymentServiceImpl implements PaymentService {
         return "admin".equalsIgnoreCase(user.getRole().getName());
     }
 
-    private String buildTransferReference(UUID orderId) {
-        return "GL-" + orderId.toString().substring(0, 8).toUpperCase(Locale.ROOT);
+    private boolean isActiveCheckout(Payment payment) {
+        return (payment.getPaymentStatus() == PaymentStatus.PENDING || payment.getPaymentStatus() == PaymentStatus.PROCESSING)
+                && StringUtils.hasText(payment.getCheckoutUrl());
     }
 
-    private String uploadReceiptFile(org.springframework.web.multipart.MultipartFile receiptFile) {
-        try {
-            return storageRouter.upload(
-                    com.godotlaunch.backend.entity.enums.FileType.payment_receipt,
-                    receiptFile,
-                    "payments/receipts"
-            );
-        } catch (RuntimeException ex) {
-            if (isMissingStorageConfig(ex)) {
-                log.warn("Remote storage is not configured for payment receipts. Falling back to local receipt storage. Cause: {}", ex.getMessage());
-                return paymentReceiptStorageService.storeLocally(receiptFile);
-            }
-            throw ex;
+    private boolean isTerminalFailure(PaymentStatus status) {
+        return status == PaymentStatus.CANCELLED
+                || status == PaymentStatus.FAILED
+                || status == PaymentStatus.EXPIRED;
+    }
+
+    private boolean isCompletedPayment(Payment payment) {
+        return payment.getPaymentStatus() == PaymentStatus.PAID
+                && payment.getOrder().getOrderStatus() == OrderStatus.PAID;
+    }
+
+    @Transactional
+    protected Payment syncPaymentFromGateway(Payment payment) {
+        if (payment.getPayosOrderCode() == null || payment.getPaymentStatus() == PaymentStatus.PAID) {
+            return payment;
+        }
+
+        PaymentGatewayStatusResponse gatewayStatus = paymentGateway.getPaymentStatus(payment.getPayosOrderCode());
+
+        if (gatewayStatus.getStatus() == PaymentStatus.PAID) {
+            payment.setPaymentStatus(PaymentStatus.PROCESSING);
+        } else {
+            applyGatewayStatus(payment, gatewayStatus);
+        }
+
+        payment.setPayosPaymentLinkId(firstNonBlank(gatewayStatus.getPaymentLinkId(), payment.getPayosPaymentLinkId()));
+        return paymentRepository.save(payment);
+    }
+
+    private void applyGatewayStatus(Payment payment, PaymentGatewayStatusResponse gatewayStatus) {
+        payment.setPayosPaymentLinkId(firstNonBlank(gatewayStatus.getPaymentLinkId(), payment.getPayosPaymentLinkId()));
+
+        if (gatewayStatus.getStatus() == PaymentStatus.PAID) {
+            payment.setPaymentStatus(PaymentStatus.PROCESSING);
+            return;
+        }
+
+        payment.setPaymentStatus(gatewayStatus.getStatus());
+        if (isTerminalFailure(gatewayStatus.getStatus())) {
+            payment.setCheckoutUrl(null);
         }
     }
 
-    private boolean isMissingStorageConfig(RuntimeException ex) {
-        String message = ex.getMessage();
-        return message != null
-                && message.contains("payment_receipt")
-                && message.contains("chưa được gán bucket");
+    private Payment completePaidPayment(Payment payment, Instant paidAt, String transactionReference) {
+        Order order = payment.getOrder();
+        MarketplaceItem item = order.getMarketplaceItem();
+
+        if (order.getTransaction() == null) {
+            Wallet sellerWallet = walletRepository.findByUserId(item.getSeller().getId())
+                    .orElseGet(() -> createWallet(item.getSeller(), payment.getCurrency()));
+
+            Transaction transaction = new Transaction();
+            transaction.setWallet(sellerWallet);
+            transaction.setRelatedUser(order.getBuyer());
+            transaction.setGame(item.getSourceGame());
+            transaction.setAmount(payment.getAmount());
+            transaction.setPlatformCommission(BigDecimal.ZERO);
+            transaction.setNetAmount(payment.getAmount());
+            transaction.setType(resolveTransactionType(item));
+            transaction.setStatus(TxnStatus.completed);
+            transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+
+            Transaction savedTransaction = transactionRepository.save(transaction);
+            sellerWallet.setBalance(sellerWallet.getBalance().add(savedTransaction.getNetAmount()));
+            walletRepository.save(sellerWallet);
+
+            order.setTransaction(savedTransaction);
+        }
+
+        order.setOrderStatus(OrderStatus.PAID);
+        orderRepository.save(order);
+
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        payment.setPaidAt(payment.getPaidAt() != null ? payment.getPaidAt() : paidAt);
+        payment.setPayosTransactionId(firstNonBlank(transactionReference, payment.getPayosTransactionId()));
+        payment.setCheckoutUrl(null);
+
+        return paymentRepository.save(payment);
+    }
+
+    private long toPayOSAmount(BigDecimal amount) {
+        return amount.setScale(0, RoundingMode.HALF_UP).longValueExact();
+    }
+
+    private Long generatePayOSOrderCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            long raw = Math.abs(UUID.randomUUID().getMostSignificantBits());
+            long candidate = 1_000_000_000L + (raw % 900_000_000_000L);
+            if (!paymentRepository.existsByPayosOrderCode(candidate)) {
+                return candidate;
+            }
+        }
+
+        throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+    }
+
+    private PaymentStatus resolveCreatedPaymentStatus(PaymentStatus gatewayStatus) {
+        if (gatewayStatus == null || gatewayStatus == PaymentStatus.PAID) {
+            return PaymentStatus.PENDING;
+        }
+        return gatewayStatus;
+    }
+
+    private String buildPaymentReference(UUID paymentId) {
+        return "GL" + paymentId.toString().replace("-", "").substring(0, 10).toUpperCase(Locale.ROOT);
+    }
+
+    private String buildFreePaymentReference(UUID paymentId) {
+        return "FREE-" + paymentId.toString().substring(0, 8).toUpperCase(Locale.ROOT);
+    }
+
+    private String buildFrontendUrl(String path) {
+        String normalizedBase = frontendUrl != null ? frontendUrl.trim() : "http://localhost:3000";
+        if (normalizedBase.endsWith("/")) {
+            normalizedBase = normalizedBase.substring(0, normalizedBase.length() - 1);
+        }
+        return normalizedBase + path;
+    }
+
+    private String resolveBuyerName(User buyer) {
+        if (StringUtils.hasText(buyer.getFullName())) {
+            return buyer.getFullName().trim();
+        }
+        return buyer.getEmail();
+    }
+
+    private Instant resolvePaidAt(String... timestamps) {
+        for (String timestamp : timestamps) {
+            Instant parsed = parseInstant(timestamp);
+            if (parsed != null) {
+                return parsed;
+            }
+        }
+        return Instant.now();
+    }
+
+    private Instant parseInstant(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+
+        try {
+            return Instant.parse(value);
+        } catch (Exception ignored) {
+        }
+
+        try {
+            return OffsetDateTime.parse(value).toInstant();
+        } catch (Exception ignored) {
+        }
+
+        try {
+            return LocalDateTime.parse(value).toInstant(ZoneOffset.UTC);
+        } catch (Exception ignored) {
+        }
+
+        return null;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private OrderType resolveOrderType(MarketplaceItem item) {
+        return item.getItemType() == ItemType.asset ? OrderType.asset_purchase : OrderType.source_code_purchase;
+    }
+
+    private TxnType resolveTransactionType(MarketplaceItem item) {
+        return item.getItemType() == ItemType.asset ? TxnType.asset_purchase : TxnType.source_code_purchase;
     }
 
     private PaymentResponse mapToResponse(Payment payment) {
@@ -338,28 +530,68 @@ public class PaymentServiceImpl implements PaymentService {
                 .sellerId(item.getSeller().getId())
                 .sellerEmail(item.getSeller().getEmail())
                 .sellerFullName(item.getSeller().getFullName())
-                .paymentMethod(payment.getPaymentMethod())
+                .orderStatus(order.getOrderStatus())
+                .paymentProvider(payment.getPaymentProvider())
                 .paymentStatus(payment.getPaymentStatus())
                 .amount(payment.getAmount())
                 .currency(payment.getCurrency())
-                .receiptUrl(resolveReceiptUrl(payment))
-                .payerName(payment.getPayerName())
-                .payerBank(payment.getPayerBank())
-                .transferReference(payment.getTransferReference())
-                .verifiedById(payment.getVerifiedBy() != null ? payment.getVerifiedBy().getId() : null)
-                .verifiedByEmail(payment.getVerifiedBy() != null ? payment.getVerifiedBy().getEmail() : null)
-                .verifiedAt(payment.getVerifiedAt())
-                .rejectionReason(payment.getRejectionReason())
-                .downloadUrl(payment.getPaymentStatus() == PaymentStatus.PAID ? item.getFileUrl() : null)
+                .payosOrderCode(payment.getPayosOrderCode())
+                .payosPaymentLinkId(payment.getPayosPaymentLinkId())
+                .payosTransactionId(payment.getPayosTransactionId())
+                .checkoutUrl(payment.getCheckoutUrl())
+                .paymentReference(payment.getPaymentReference())
+                .paidAt(payment.getPaidAt())
+                .downloadUrl(resolveDownloadUrl(order, item, payment))
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();
     }
 
-    private String resolveReceiptUrl(Payment payment) {
-        if (paymentReceiptStorageService.isLocalStorageRef(payment.getReceiptUrl())) {
-            return "/api/v1/payments/" + payment.getId() + "/receipt-file";
+    private String resolveDownloadUrl(Order order, MarketplaceItem item, Payment payment) {
+        if (order.getOrderStatus() == OrderStatus.PAID && payment.getPaymentStatus() == PaymentStatus.PAID) {
+            if (item.getItemType() == ItemType.source_code) {
+                String latestBundleUrl = sourceSnapshotRepository.findByMarketplaceItemIdOrderByCreatedAtDesc(item.getId()).stream()
+                        .map(com.godotlaunch.backend.entity.SourceSnapshot::getBundleUrl)
+                        .filter(StringUtils::hasText)
+                        .findFirst()
+                        .orElse(null);
+                return toDownloadUrl(latestBundleUrl);
+            }
+
+            return toDownloadUrl(item.getFileUrl());
         }
-        return payment.getReceiptUrl();
+        return null;
+    }
+
+    private String toDownloadUrl(String rawUrl) {
+        if (!StringUtils.hasText(rawUrl) || "pending".equalsIgnoreCase(rawUrl)) {
+            return null;
+        }
+
+        String objectKey = extractObjectKeyFromUrl(rawUrl);
+        if (!StringUtils.hasText(objectKey)) {
+            return rawUrl;
+        }
+
+        try {
+            return awsS3Service.generatePresignedGetUrl(objectKey, Duration.ofHours(1));
+        } catch (Exception ex) {
+            log.warn("Failed to create presigned download URL for objectKey {}: {}", objectKey, ex.getMessage());
+            return rawUrl;
+        }
+    }
+
+    private String extractObjectKeyFromUrl(String rawUrl) {
+        String awsMarker = ".amazonaws.com/";
+        int awsIndex = rawUrl.indexOf(awsMarker);
+        if (awsIndex >= 0) {
+            return rawUrl.substring(awsIndex + awsMarker.length());
+        }
+
+        if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+            return null;
+        }
+
+        return rawUrl;
     }
 }

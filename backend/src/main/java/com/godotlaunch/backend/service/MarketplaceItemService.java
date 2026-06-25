@@ -11,9 +11,9 @@ import java.util.UUID;
 
 public interface MarketplaceItemService {
     UUID createMarketplaceItem(CreateMarketplaceItemRequest request, String sellerEmail);
-    MarketplaceItemResponse getMarketplaceItemById(UUID id);
-    List<MarketplaceItemResponse> getAllMarketplaceItems();
-    List<MarketplaceItemResponse> getMarketplaceItemsByStatus(ItemStatus status);
+    MarketplaceItemResponse getMarketplaceItemById(UUID id, String requesterEmail);
+    List<MarketplaceItemResponse> getAllMarketplaceItems(String requesterEmail);
+    List<MarketplaceItemResponse> getMarketplaceItemsByStatus(ItemStatus status, String requesterEmail);
     List<MarketplaceItemResponse> getMarketplaceItemsBySeller(String sellerEmail);
     MarketplaceItemResponse updateMarketplaceItem(UUID id, UpdateMarketplaceItemRequest request, String updaterEmail);
     String getPresignedUploadUrl(UUID itemId, String contentType);

@@ -48,6 +48,7 @@ public class SecurityConfig {
                     "/api/v1/auth/github",
                     "/api/v1/auth/github/callback",
                     "/api/v1/auth/**",
+                    "/api/v1/payments/webhook",
                     "/api/auth/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",

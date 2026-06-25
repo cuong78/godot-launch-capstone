@@ -77,6 +77,10 @@ public enum ErrorCode {
     PAYMENT_REJECTION_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "A rejection reason is required."),
     PAYMENT_NOT_AWAITING_VERIFICATION(HttpStatus.BAD_REQUEST, "This payment is not waiting for admin verification."),
     PAYMENT_NOT_READY_FOR_RECEIPT(HttpStatus.BAD_REQUEST, "This payment is already waiting for verification."),
+    PAYMENT_GATEWAY_ERROR(HttpStatus.BAD_GATEWAY, "Failed to create or verify the PayOS payment session."),
+    PAYMENT_WEBHOOK_INVALID(HttpStatus.BAD_REQUEST, "Invalid PayOS webhook payload."),
+    PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "Payment amount does not match the order total."),
+    PAYMENT_NOT_CANCELLABLE(HttpStatus.BAD_REQUEST, "This payment can no longer be cancelled."),
     
     // GitHub Linking
     GITHUB_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "GL-4070", "GitHub primary email does not match your registered email."),

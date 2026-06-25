@@ -2,8 +2,9 @@ package com.godotlaunch.backend.entity.enums;
 
 public enum PaymentStatus {
     PENDING,
-    WAITING_VERIFICATION,
+    PROCESSING,
     PAID,
-    REJECTED,
-    CANCELLED
+    FAILED,
+    CANCELLED,
+    EXPIRED
 }

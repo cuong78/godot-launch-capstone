@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 
 import { Header } from './components/Header';
 import { AdminHeader } from './components/AdminHeader';
@@ -13,7 +13,6 @@ import {
   ReactionType,
   MarketplaceItemResponse,
   PaymentResponse,
-  UploadReceiptRequest,
 } from './types';
 import { Button } from './components/Button';
 import { ShieldAlert, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
@@ -36,6 +35,7 @@ import { ProfileScreen } from './page/ProfileScreen';
 import { ChatScreen } from './page/ChatScreen';
 import { CheckoutPage } from './page/CheckoutPage';
 import { PaymentDetailPage } from './page/PaymentDetailPage';
+import { PaymentResultPage } from './page/PaymentResultPage';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
@@ -184,11 +184,11 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
       spritesCount: item.itemType === 'source_code'
         ? (item.sourceGameTitle || 'Standalone source package')
         : 'Ready-to-import resources',
-      propsCount: item.githubRepoUrl ? 'GitHub-linked package' : 'Marketplace file package',
+      propsCount: item.githubVerifiedAt ? 'GitHub-verified package' : 'Marketplace file package',
       featuresList: item.itemType === 'source_code'
         ? [
             'Real marketplace source listing from API',
-            item.githubRepoUrl ? 'GitHub repository linked for verification' : 'Direct source package download',
+            item.githubVerifiedAt ? 'GitHub repository verified before publishing' : 'Direct source package download',
             item.godotVersion ? `Built for ${item.godotVersion}` : 'Compatible Godot project structure'
           ]
         : [
@@ -432,7 +432,12 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   const primary = segments[0];
   if (primary === 'marketplace') return { screen: 'marketplace' };
   if (primary === 'checkout') return { screen: 'checkout' };
-  if (primary === 'payment') return { screen: 'payment' };
+  if (primary === 'payment') {
+    if (segments[1] === 'success') return { screen: 'payment-success' };
+    if (segments[1] === 'failed') return { screen: 'payment-failed' };
+    if (segments[1] === 'cancelled') return { screen: 'payment-cancelled' };
+    return { screen: 'payment' };
+  }
   if (primary === 'upload') return { screen: 'upload' };
   if (primary === 'path') return { screen: 'path' };
   if (primary === 'dashboard') return { screen: 'dashboard' };
@@ -466,6 +471,9 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
   if (screen === 'community-detail' && assetId) return `/community/detail/${assetId}`;
   if (screen === 'author-profile' && assetId) return `/profile/${assetId}`;
   if (screen === 'auth-callback') return '/auth/callback';
+  if (screen === 'payment-success') return '/payment/success';
+  if (screen === 'payment-failed') return '/payment/failed';
+  if (screen === 'payment-cancelled') return '/payment/cancelled';
   return `/${screen}`;
 };
 
@@ -482,9 +490,9 @@ export default function App() {
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
 
-  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+  const showToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
     setToast({ message, type });
-  };
+  }, []);
 
   useEffect(() => {
     if (toast) {
@@ -558,7 +566,6 @@ export default function App() {
   const [selectedPaymentOrderId, setSelectedPaymentOrderId] = useState<string | null>(() => readStoredSelectedPaymentOrder());
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
   const [isRefreshingPayments, setIsRefreshingPayments] = useState<boolean>(false);
-  const [isUploadingReceipt, setIsUploadingReceipt] = useState<boolean>(false);
   const [financeStats, setFinanceStats] = useState({
     totalRevenue: 12500000,
     activePlayers: 485,
@@ -576,6 +583,69 @@ export default function App() {
       sessionStorage.removeItem(PAYMENT_SELECTED_ORDER_STORAGE_KEY);
     }
   }, [selectedPaymentOrderId]);
+
+  const syncTrackedPayment = useCallback((payment: PaymentResponse) => {
+    setPaymentOrders(prev => {
+      const existingIndex = prev.findIndex(item => item.id === payment.id);
+      if (existingIndex === -1) {
+        return [payment, ...prev];
+      }
+
+      const next = [...prev];
+      next[existingIndex] = payment;
+      return next;
+    });
+    setSelectedPaymentOrderId(prev => (prev === payment.orderId ? prev : payment.orderId));
+  }, []);
+
+  const replaceTrackedPayments = useCallback((payments: PaymentResponse[], preferredOrderId?: string | null) => {
+    setPaymentOrders(payments);
+    setSelectedPaymentOrderId(prev => {
+      const nextOrderId = preferredOrderId ?? prev;
+      if (nextOrderId && payments.some(payment => payment.orderId === nextOrderId)) {
+        return nextOrderId;
+      }
+
+      return payments[0]?.orderId ?? null;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setPaymentOrders([]);
+      setSelectedPaymentOrderId(null);
+      return;
+    }
+
+    if (currentUser.role === 'admin') {
+      setPaymentOrders([]);
+      setSelectedPaymentOrderId(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadTrackedPaymentsFromServer = async () => {
+      try {
+        const response = await paymentApi.getMyPayments();
+        if (!response.success || !response.data || isCancelled) {
+          return;
+        }
+
+        replaceTrackedPayments(response.data);
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Failed to load payment history from backend:', error);
+        }
+      }
+    };
+
+    loadTrackedPaymentsFromServer();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentUser?.id, replaceTrackedPayments]);
 
   const mapGameToAsset = (game: any): Asset => ({
     id: game.id,
@@ -677,10 +747,44 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (currentScreen === 'payment' && paymentOrders.length > 0) {
+    if ((currentScreen === 'payment' || currentScreen === 'dashboard') && currentUser && currentUser.role !== 'admin') {
       refreshTrackedPayments();
     }
-  }, [currentScreen]);
+  }, [currentScreen, currentUser?.id]);
+
+  const handlePaymentOutcomeNotification = useCallback((
+    payment: PaymentResponse,
+    variant: 'success' | 'failed' | 'cancelled'
+  ) => {
+    if (payment.paymentStatus === 'PAID') {
+      showToast(`Mua hàng thành công: ${payment.marketplaceItemTitle}.`, 'success');
+      return;
+    }
+
+    if (payment.paymentStatus === 'FAILED') {
+      showToast(`Thanh toán thất bại cho ${payment.marketplaceItemTitle}.`, 'error');
+      return;
+    }
+
+    if (payment.paymentStatus === 'CANCELLED' || variant === 'cancelled') {
+      showToast(`Bạn đã hủy thanh toán cho ${payment.marketplaceItemTitle}.`, 'warning');
+      return;
+    }
+
+    if (payment.paymentStatus === 'EXPIRED') {
+      showToast(`Phiên thanh toán cho ${payment.marketplaceItemTitle} đã hết hạn.`, 'warning');
+      return;
+    }
+
+    if (variant === 'success') {
+      showToast(`Đơn hàng ${payment.marketplaceItemTitle} đang chờ PayOS xác nhận.`, 'info');
+      return;
+    }
+
+    if (variant === 'failed') {
+      showToast(`Thanh toán cho ${payment.marketplaceItemTitle} chưa hoàn tất.`, 'error');
+    }
+  }, [showToast]);
 
   // Switch to Detail Screen helper
   const handleViewAssetDetails = (asset: Asset) => {
@@ -765,15 +869,29 @@ export default function App() {
   };
 
   const refreshTrackedPayments = async () => {
-    if (!currentUser || paymentOrders.length === 0) {
+    if (!currentUser || currentUser.role === 'admin') {
       return;
     }
 
     setIsRefreshingPayments(true);
     try {
+      let trackedPayments = paymentOrders;
+      if (trackedPayments.length === 0) {
+        const historyResponse = await paymentApi.getMyPayments();
+        if (!historyResponse.success || !historyResponse.data) {
+          throw new Error(historyResponse.message || 'Không thể tải danh sách thanh toán của bạn.');
+        }
+
+        trackedPayments = historyResponse.data;
+        if (trackedPayments.length === 0) {
+          replaceTrackedPayments([]);
+          return;
+        }
+      }
+
       const refreshedPayments = await Promise.all(
-        paymentOrders.map(async (payment) => {
-          const response = await paymentApi.getPaymentByOrder(payment.orderId);
+        trackedPayments.map(async (payment) => {
+          const response = await paymentApi.confirmPayment(payment.id);
           if (!response.success || !response.data) {
             throw new Error(response.message || 'Không thể tải trạng thái thanh toán.');
           }
@@ -781,10 +899,7 @@ export default function App() {
         })
       );
 
-      setPaymentOrders(refreshedPayments);
-      if (!selectedPaymentOrderId && refreshedPayments[0]) {
-        setSelectedPaymentOrderId(refreshedPayments[0].orderId);
-      }
+      replaceTrackedPayments(refreshedPayments, selectedPaymentOrderId);
     } catch (err: any) {
       showToast(err.response?.data?.message || err.message || 'Không thể làm mới trạng thái thanh toán.', 'error');
     } finally {
@@ -811,6 +926,11 @@ export default function App() {
       return;
     }
 
+    if (cart.length > 1) {
+      showToast("Luồng PayOS hiện tại đang hỗ trợ 1 marketplace item cho mỗi checkout session. Bạn hãy giữ lại 1 item trong giỏ trước khi thanh toán.", "warning");
+      return;
+    }
+
     const nonPersistedMarketplaceItems = cart.filter((item) => !UUID_PATTERN.test(item.id));
     if (nonPersistedMarketplaceItems.length > 0) {
       showToast("Một số sản phẩm đang là dữ liệu demo cũ, chưa có record thật trong database nên chưa thể tạo payment.", "warning");
@@ -818,54 +938,45 @@ export default function App() {
     }
 
     setIsPlacingOrder(true);
-    const createdPayments: PaymentResponse[] = [];
     try {
-      for (const item of cart) {
-        const response = await paymentApi.createPayment({ marketplaceItemId: item.id });
-        if (!response.success || !response.data) {
-          throw new Error(response.message || `Không thể tạo đơn thanh toán cho ${item.title}.`);
-        }
-        createdPayments.push(response.data);
+      const checkoutItem = cart[0];
+      const response = await paymentApi.createPayment({ marketplaceItemId: checkoutItem.id });
+      if (!response.success || !response.data) {
+        throw new Error(response.message || `Không thể tạo đơn thanh toán cho ${checkoutItem.title}.`);
       }
 
-      setPaymentOrders(createdPayments);
-      setSelectedPaymentOrderId(createdPayments[0]?.orderId || null);
+      const createdPayment = response.data;
+      syncTrackedPayment(createdPayment);
       setCart([]);
       setIsCartOpen(false);
-      setCurrentScreen('payment');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      showToast("Đơn thanh toán đã được tạo. Bạn hãy chuyển khoản và tải biên lai lên để chờ admin xác minh.", "success");
-    } catch (err: any) {
-      if (createdPayments.length > 0) {
-        setPaymentOrders(createdPayments);
-        setSelectedPaymentOrderId(createdPayments[0]?.orderId || null);
+
+      if (createdPayment.paymentStatus === 'PAID' || !createdPayment.checkoutUrl) {
         setCurrentScreen('payment');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast("Đơn hàng đã sẵn sàng. Bạn có thể theo dõi trạng thái và tải file trong Payment Center.", "success");
+        return;
       }
-      showToast(err.response?.data?.message || err.message || 'Không thể tạo đơn thanh toán.', 'error');
+
+      window.location.href = createdPayment.checkoutUrl;
+    } catch (err: any) {
+      showToast(err.response?.data?.message || err.message || 'Không thể tạo PayOS checkout session.', 'error');
     } finally {
       setIsPlacingOrder(false);
     }
   };
 
-  const handleUploadPaymentReceipt = async (paymentId: string, data: UploadReceiptRequest) => {
-    setIsUploadingReceipt(true);
+  const handleCancelPayment = async (paymentId: string) => {
     try {
-      const response = await paymentApi.uploadReceipt(paymentId, data);
+      const response = await paymentApi.cancelPayment(paymentId);
       if (!response.success || !response.data) {
-        throw new Error(response.message || 'Không thể tải biên lai lên.');
+        throw new Error(response.message || 'Không thể hủy payment session.');
       }
 
-      setPaymentOrders(prev =>
-        prev.map(payment => payment.id === paymentId ? response.data : payment)
-      );
-      setSelectedPaymentOrderId(response.data.orderId);
-      showToast("Biên lai đã được tải lên. Hệ thống đang chờ admin xác minh.", "success");
+      syncTrackedPayment(response.data);
+      showToast("Payment session đã được hủy.", "success");
     } catch (err: any) {
-      showToast(err.response?.data?.message || err.message || 'Không thể tải biên lai lên.', 'error');
+      showToast(err.response?.data?.message || err.message || 'Không thể hủy payment session.', 'error');
       throw err;
-    } finally {
-      setIsUploadingReceipt(false);
     }
   };
 
@@ -1072,16 +1183,47 @@ export default function App() {
               payments={paymentOrders}
               selectedOrderId={selectedPaymentOrderId}
               setSelectedOrderId={setSelectedPaymentOrderId}
-              currentUser={currentUser}
               isRefreshing={isRefreshingPayments}
-              isUploadingReceipt={isUploadingReceipt}
               onBackToMarketplace={() => {
                 setCurrentScreen('marketplace');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onRefreshPayments={refreshTrackedPayments}
-              onUploadReceipt={handleUploadPaymentReceipt}
+              onCancelPayment={handleCancelPayment}
               setCurrentScreen={setCurrentScreen}
+            />
+          </ProtectedRoute>
+        )}
+
+        {currentScreen === 'payment-success' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <PaymentResultPage
+              variant="success"
+              setCurrentScreen={setCurrentScreen}
+              onPaymentLoaded={syncTrackedPayment}
+              onPaymentResolved={handlePaymentOutcomeNotification}
+            />
+          </ProtectedRoute>
+        )}
+
+        {currentScreen === 'payment-failed' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <PaymentResultPage
+              variant="failed"
+              setCurrentScreen={setCurrentScreen}
+              onPaymentLoaded={syncTrackedPayment}
+              onPaymentResolved={handlePaymentOutcomeNotification}
+            />
+          </ProtectedRoute>
+        )}
+
+        {currentScreen === 'payment-cancelled' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <PaymentResultPage
+              variant="cancelled"
+              setCurrentScreen={setCurrentScreen}
+              onPaymentLoaded={syncTrackedPayment}
+              onPaymentResolved={handlePaymentOutcomeNotification}
             />
           </ProtectedRoute>
         )}
@@ -1121,6 +1263,7 @@ export default function App() {
               financeStats={financeStats}
               assets={assets}
               projectRepositories={projectRepositories}
+              purchasedPayments={paymentOrders}
               setCurrentScreen={setCurrentScreen}
             />
           </ProtectedRoute>

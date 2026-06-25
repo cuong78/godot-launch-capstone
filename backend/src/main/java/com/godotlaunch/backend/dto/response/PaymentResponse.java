@@ -1,7 +1,8 @@
 package com.godotlaunch.backend.dto.response;
 
 import com.godotlaunch.backend.entity.enums.ItemType;
-import com.godotlaunch.backend.entity.enums.PaymentMethod;
+import com.godotlaunch.backend.entity.enums.OrderStatus;
+import com.godotlaunch.backend.entity.enums.PaymentProvider;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,18 +31,17 @@ public class PaymentResponse {
     private UUID sellerId;
     private String sellerEmail;
     private String sellerFullName;
-    private PaymentMethod paymentMethod;
+    private OrderStatus orderStatus;
+    private PaymentProvider paymentProvider;
     private PaymentStatus paymentStatus;
     private BigDecimal amount;
     private String currency;
-    private String receiptUrl;
-    private String payerName;
-    private String payerBank;
-    private String transferReference;
-    private UUID verifiedById;
-    private String verifiedByEmail;
-    private Instant verifiedAt;
-    private String rejectionReason;
+    private Long payosOrderCode;
+    private String payosPaymentLinkId;
+    private String payosTransactionId;
+    private String checkoutUrl;
+    private String paymentReference;
+    private Instant paidAt;
     private String downloadUrl;
     private Instant createdAt;
     private Instant updatedAt;

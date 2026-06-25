@@ -4,32 +4,31 @@ import {
   CreatePaymentRequest,
   PaymentResponse,
   PaymentStatusResponse,
-  PaymentVerificationRequest,
-  UploadReceiptRequest,
 } from '../types';
 
 export const paymentApi = {
   createPayment: async (data: CreatePaymentRequest): Promise<ApiResponse<PaymentResponse>> => {
-    const response = await api.post<ApiResponse<PaymentResponse>>('/api/v1/payments', data);
+    const response = await api.post<ApiResponse<PaymentResponse>>('/api/v1/payments/create', data);
     return response.data;
   },
 
-  uploadReceipt: async (paymentId: string, data: UploadReceiptRequest): Promise<ApiResponse<PaymentResponse>> => {
-    const formData = new FormData();
-    formData.append('payerName', data.payerName);
-    formData.append('payerBank', data.payerBank);
-    formData.append('transferReference', data.transferReference);
-    formData.append('receiptFile', data.receiptFile);
+  confirmPayment: async (paymentId: string): Promise<ApiResponse<PaymentResponse>> => {
+    const response = await api.post<ApiResponse<PaymentResponse>>(`/api/v1/payments/${paymentId}/confirm`);
+    return response.data;
+  },
 
-    const response = await api.post<ApiResponse<PaymentResponse>>(
-      `/api/v1/payments/${paymentId}/receipt`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
+  cancelPayment: async (paymentId: string): Promise<ApiResponse<PaymentResponse>> => {
+    const response = await api.post<ApiResponse<PaymentResponse>>(`/api/v1/payments/${paymentId}/cancel`);
+    return response.data;
+  },
+
+  getMyPayments: async (): Promise<ApiResponse<PaymentResponse[]>> => {
+    const response = await api.get<ApiResponse<PaymentResponse[]>>('/api/v1/payments/my-payments');
+    return response.data;
+  },
+
+  getPaymentById: async (paymentId: string): Promise<ApiResponse<PaymentResponse>> => {
+    const response = await api.get<ApiResponse<PaymentResponse>>(`/api/v1/payments/${paymentId}`);
     return response.data;
   },
 
@@ -39,33 +38,17 @@ export const paymentApi = {
   },
 
   getPaymentStatus: async (orderId: string): Promise<ApiResponse<PaymentStatusResponse>> => {
-    const response = await api.get<ApiResponse<PaymentStatusResponse>>(`/api/v1/payments/order/${orderId}/status`);
+    const response = await api.get<ApiResponse<PaymentStatusResponse>>(`/api/v1/payments/status/${orderId}`);
     return response.data;
   },
 
-  getPendingPayments: async (): Promise<ApiResponse<PaymentResponse[]>> => {
-    const response = await api.get<ApiResponse<PaymentResponse[]>>('/api/v1/admin/payments/pending');
+  getAdminPayments: async (): Promise<ApiResponse<PaymentResponse[]>> => {
+    const response = await api.get<ApiResponse<PaymentResponse[]>>('/api/v1/admin/payments');
     return response.data;
   },
 
-  getPaymentDetail: async (paymentId: string): Promise<ApiResponse<PaymentResponse>> => {
+  getAdminPaymentDetail: async (paymentId: string): Promise<ApiResponse<PaymentResponse>> => {
     const response = await api.get<ApiResponse<PaymentResponse>>(`/api/v1/admin/payments/${paymentId}`);
-    return response.data;
-  },
-
-  approvePayment: async (paymentId: string): Promise<ApiResponse<PaymentResponse>> => {
-    const response = await api.post<ApiResponse<PaymentResponse>>(`/api/v1/admin/payments/${paymentId}/approve`);
-    return response.data;
-  },
-
-  rejectPayment: async (
-    paymentId: string,
-    data: PaymentVerificationRequest
-  ): Promise<ApiResponse<PaymentResponse>> => {
-    const response = await api.post<ApiResponse<PaymentResponse>>(
-      `/api/v1/admin/payments/${paymentId}/reject`,
-      data
-    );
     return response.data;
   },
 };

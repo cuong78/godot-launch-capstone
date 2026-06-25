@@ -11,6 +11,7 @@ import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.ItemType;
+import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.CategoryRepository;
 import com.godotlaunch.backend.repository.GameRepository;
@@ -29,6 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -127,25 +129,27 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     @Override
     @Transactional(readOnly = true)
-    public MarketplaceItemResponse getMarketplaceItemById(UUID id) {
+    public MarketplaceItemResponse getMarketplaceItemById(UUID id, String requesterEmail) {
         MarketplaceItem item = marketplaceItemRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-        return mapToResponse(item);
+        return mapToResponse(item, canAccessPrivateItemFields(item, resolveRequester(requesterEmail).orElse(null)));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MarketplaceItemResponse> getAllMarketplaceItems() {
+    public List<MarketplaceItemResponse> getAllMarketplaceItems(String requesterEmail) {
+        User requester = resolveRequester(requesterEmail).orElse(null);
         return marketplaceItemRepository.findAll().stream()
-                .map(this::mapToResponse)
+                .map(item -> mapToResponse(item, canAccessPrivateItemFields(item, requester)))
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MarketplaceItemResponse> getMarketplaceItemsByStatus(ItemStatus status) {
+    public List<MarketplaceItemResponse> getMarketplaceItemsByStatus(ItemStatus status, String requesterEmail) {
+        User requester = resolveRequester(requesterEmail).orElse(null);
         return marketplaceItemRepository.findByStatus(status).stream()
-                .map(this::mapToResponse)
+                .map(item -> mapToResponse(item, canAccessPrivateItemFields(item, requester)))
                 .collect(Collectors.toList());
     }
 
@@ -155,7 +159,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         return marketplaceItemRepository.findBySellerId(seller.getId()).stream()
-                .map(this::mapToResponse)
+                .map(item -> mapToResponse(item, true))
                 .collect(Collectors.toList());
     }
 
@@ -211,7 +215,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         MarketplaceItem updatedItem = marketplaceItemRepository.save(item);
-        return mapToResponse(updatedItem);
+        return mapToResponse(updatedItem, true);
     }
 
     @Override
@@ -417,7 +421,8 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
         boolean isAdmin = "admin".equalsIgnoreCase(requester.getRole().getName());
         boolean isSeller = item.getSeller().getId().equals(requester.getId());
-        boolean hasPurchased = orderRepository.existsByBuyerIdAndMarketplaceItemId(requester.getId(), itemId);
+        boolean hasPurchased = orderRepository.existsByBuyerIdAndMarketplaceItemIdAndOrderStatus(
+                requester.getId(), itemId, OrderStatus.PAID);
 
         // Chỉ admin / seller / người đã mua được tải source bundle
         if (!isAdmin && !isSeller && !hasPurchased) {
@@ -432,7 +437,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         if (bundleUrl == null) {
             throw new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND);
         }
-        return bundleUrl;
+        return getPresignedGetUrl(bundleUrl);
     }
 
     /** Lưu snapshot bất biến cho marketplace item. */
@@ -580,7 +585,24 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
     }
 
-    private MarketplaceItemResponse mapToResponse(MarketplaceItem item) {
+    private Optional<User> resolveRequester(String requesterEmail) {
+        if (requesterEmail == null || requesterEmail.isBlank()) {
+            return Optional.empty();
+        }
+
+        return userRepository.findByEmail(requesterEmail);
+    }
+
+    private boolean canAccessPrivateItemFields(MarketplaceItem item, User requester) {
+        if (requester == null) {
+            return false;
+        }
+
+        return "admin".equalsIgnoreCase(requester.getRole().getName())
+                || item.getSeller().getId().equals(requester.getId());
+    }
+
+    private MarketplaceItemResponse mapToResponse(MarketplaceItem item, boolean includePrivateAccess) {
         // Load media 1 lần, tách theo loại (thumbnail/video/screenshot/asset_image)
         var mediaList = mediaRepository.findByOwnerTypeAndOwnerId(
                 com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item, item.getId());
@@ -603,11 +625,11 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .title(item.getTitle())
                 .description(item.getDescription())
                 .price(item.getPrice())
-                .fileUrl(getPresignedGetUrl(item.getFileUrl()))
+                .fileUrl(includePrivateAccess ? getPresignedGetUrl(item.getFileUrl()) : null)
                 .godotVersion(item.getGodotVersion())
                 .sourceGameId(item.getSourceGame() != null ? item.getSourceGame().getId() : null)
                 .sourceGameTitle(item.getSourceGame() != null ? item.getSourceGame().getTitle() : null)
-                .githubRepoUrl(item.getGithubRepoUrl())
+                .githubRepoUrl(includePrivateAccess ? item.getGithubRepoUrl() : null)
                 .githubVerifiedAt(item.getGithubVerifiedAt())
                 .status(item.getStatus())
                 .tags(item.getTags() == null ? java.util.List.of() :

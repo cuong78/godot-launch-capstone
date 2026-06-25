@@ -42,12 +42,13 @@ public class MarketplaceItemController {
     @GetMapping
     @Operation(summary = "Get all marketplace items", description = "Retrieves active or removed marketplace items (optionally filtered by status).")
     public ResponseEntity<ApiResponse<List<MarketplaceItemResponse>>> getAllMarketplaceItems(
-            @RequestParam(required = false) ItemStatus status) {
+            @RequestParam(required = false) ItemStatus status,
+            Principal principal) {
         List<MarketplaceItemResponse> items;
         if (status != null) {
-            items = marketplaceItemService.getMarketplaceItemsByStatus(status);
+            items = marketplaceItemService.getMarketplaceItemsByStatus(status, principal != null ? principal.getName() : null);
         } else {
-            items = marketplaceItemService.getAllMarketplaceItems();
+            items = marketplaceItemService.getAllMarketplaceItems(principal != null ? principal.getName() : null);
         }
         return ResponseEntity.ok(ApiResponse.success(items, "Marketplace items retrieved successfully"));
     }
@@ -63,8 +64,8 @@ public class MarketplaceItemController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get marketplace item by ID", description = "Retrieves details of a specific marketplace asset or project template.")
-    public ResponseEntity<ApiResponse<MarketplaceItemResponse>> getMarketplaceItemById(@PathVariable UUID id) {
-        MarketplaceItemResponse item = marketplaceItemService.getMarketplaceItemById(id);
+    public ResponseEntity<ApiResponse<MarketplaceItemResponse>> getMarketplaceItemById(@PathVariable UUID id, Principal principal) {
+        MarketplaceItemResponse item = marketplaceItemService.getMarketplaceItemById(id, principal != null ? principal.getName() : null);
         return ResponseEntity.ok(ApiResponse.success(item, "Marketplace item retrieved successfully"));
     }
 
