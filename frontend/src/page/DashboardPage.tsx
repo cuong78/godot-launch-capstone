@@ -17,15 +17,17 @@ import {
   FileText,
   ShoppingBag,
   Gamepad2,
-  Trash2
+  Trash2,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { DataTable } from '../components/DataTable';
 import { Input } from '../components/Input';
-import { Asset, Project, User, GameResponse, ContractResponse, MarketplaceItemResponse } from '../types';
+import { Asset, Project, User, GameResponse, ContractResponse, MarketplaceItemResponse, WalletResponse, TransactionResponse, WithdrawalRequestResponse } from '../types';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
+import { walletApi } from '../api/walletApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 
@@ -70,8 +72,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   projectRepositories,
   setCurrentScreen
 }) => {
-  // Tab control: 'my-games' | 'marketplace-items' | 'git-repos'
-  const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'git-repos'>('my-games');
+  // Tab control: 'my-games' | 'marketplace-items' | 'git-repos' | 'wallet'
+  const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'git-repos' | 'wallet'>('my-games');
+
+  // Wallet states
+  const [wallet, setWallet] = useState<WalletResponse | null>(null);
+  const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(false);
+  const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
+  const [totalPagesTxn, setTotalPagesTxn] = useState<number>(0);
+  const [currentTxnPage, setCurrentTxnPage] = useState<number>(0);
+  const [isLoadingTxns, setIsLoadingTxns] = useState<boolean>(false);
+
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequestResponse[]>([]);
+  const [isLoadingWithdrawals, setIsLoadingWithdrawals] = useState<boolean>(false);
+
+  // Form states for creating a withdrawal request
+  const [withdrawAmount, setWithdrawAmount] = useState<string>('');
+  const [bankName, setBankName] = useState<string>('');
+  const [bankAccount, setBankAccount] = useState<string>('');
+  const [accountHolder, setAccountHolder] = useState<string>('');
+  const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState<boolean>(false);
+  const [withdrawalError, setWithdrawalError] = useState<string | null>(null);
+  const [withdrawalSuccess, setWithdrawalSuccess] = useState<string | null>(null);
+
+  // Inner tab for Wallet section: 'transactions' | 'withdrawals'
+  const [walletSubTab, setWalletSubTab] = useState<'transactions' | 'withdrawals'>('transactions');
 
   // Real Game list state
   const [myGames, setMyGames] = useState<GameResponse[]>([]);
@@ -211,6 +236,111 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
+  const fetchWalletData = async () => {
+    setIsLoadingWallet(true);
+    try {
+      const res = await walletApi.getMyWallet();
+      if (res.success && res.data) {
+        setWallet(res.data);
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi tải thông tin ví:', err);
+    } finally {
+      setIsLoadingWallet(false);
+    }
+  };
+
+  const fetchTransactions = async (page = 0) => {
+    setIsLoadingTxns(true);
+    try {
+      const res = await walletApi.getMyTransactions(page, 10);
+      if (res.success && res.data) {
+        setTransactions(res.data.content);
+        setTotalPagesTxn(res.data.totalPages);
+        setCurrentTxnPage(res.data.number);
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi tải lịch sử giao dịch:', err);
+    } finally {
+      setIsLoadingTxns(false);
+    }
+  };
+
+  const fetchWithdrawals = async () => {
+    setIsLoadingWithdrawals(true);
+    try {
+      const res = await walletApi.getMyWithdrawals();
+      if (res.success && res.data) {
+        setWithdrawals(res.data);
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi tải danh sách rút tiền:', err);
+    } finally {
+      setIsLoadingWithdrawals(false);
+    }
+  };
+
+  const handleCreateWithdrawal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWithdrawalError(null);
+    setWithdrawalSuccess(null);
+
+    const amountNum = parseFloat(withdrawAmount);
+    if (isNaN(amountNum) || amountNum < 10000) {
+      setWithdrawalError('Số tiền rút tối thiểu là 10,000 VND.');
+      return;
+    }
+    if (!bankName.trim()) {
+      setWithdrawalError('Vui lòng nhập tên ngân hàng.');
+      return;
+    }
+    if (!bankAccount.trim()) {
+      setWithdrawalError('Vui lòng nhập số tài khoản.');
+      return;
+    }
+    if (!accountHolder.trim()) {
+      setWithdrawalError('Vui lòng nhập tên chủ tài khoản.');
+      return;
+    }
+
+    setIsSubmittingWithdrawal(true);
+    try {
+      const res = await walletApi.createWithdrawal({
+        amount: amountNum,
+        bankName: bankName.trim(),
+        bankAccount: bankAccount.trim(),
+        accountHolder: accountHolder.trim(),
+      });
+      if (res.success) {
+        setWithdrawalSuccess(`Yêu cầu rút tiền trị giá ${formatVND(amountNum)} đã được gửi thành công và đang chờ xét duyệt.`);
+        setWithdrawAmount('');
+        fetchWalletData();
+        fetchTransactions(0);
+        fetchWithdrawals();
+      } else {
+        setWithdrawalError(res.message || 'Lỗi khi tạo yêu cầu rút tiền');
+      }
+    } catch (err: any) {
+      setWithdrawalError(err.response?.data?.message || err.message || 'Lỗi hệ thống khi rút tiền');
+    } finally {
+      setIsSubmittingWithdrawal(false);
+    }
+  };
+
+  const formatVND = (value?: number | string) => {
+    if (value === undefined || value === null) return '0 VND';
+    const num = typeof value === 'number' ? value : parseFloat(value.toString());
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num).replace('₫', 'VND');
+  };
+
+  useEffect(() => {
+    if (activeTab === 'wallet' && currentUser) {
+      fetchWalletData();
+      fetchTransactions(0);
+      fetchWithdrawals();
+    }
+  }, [activeTab, currentUser]);
+
   useEffect(() => {
     fetchMyGames();
     fetchMyMarketplaceItems();
@@ -313,6 +443,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'git-repos' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
               <Calendar size={14} /> Dự án Git (Mock) ({projectRepositories.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('wallet')}
+              className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'wallet' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+            >
+              <DollarSign size={14} /> Ví & Rút Tiền
             </button>
           </div>
 
@@ -758,6 +894,317 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               data={projectRepositories} 
               onSelectRow={(row) => alert(`Opening advanced configuration options for project: ${row.projectName}. Running on engine ${row.engine}.`)} 
             />
+          )}
+
+          {/* Tab 4: Wallet & Withdrawals */}
+          {activeTab === 'wallet' && (
+            <div className="space-y-6">
+              {/* Wallet Balance Card */}
+              <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-md">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="space-y-1.5 text-white">
+                  <span className="text-[10px] font-mono tracking-widest text-sky-400 uppercase font-bold">DEVELOPER WALLET</span>
+                  <h3 className="text-3xl font-display font-black text-white pt-0.5">
+                    {isLoadingWallet ? (
+                      <span className="flex items-center gap-2 text-slate-500 text-lg">
+                        <RefreshCw className="animate-spin" size={20} /> Đang tải...
+                      </span>
+                    ) : (
+                      formatVND(wallet?.balance)
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-400">Đơn vị tiền tệ: {wallet?.currency || 'VND'}</p>
+                </div>
+                
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1 max-w-xs font-medium">
+                  <p>• Doanh thu bán sản phẩm sẽ được tự động cộng trực tiếp vào ví sau khi đã trừ 10% phí nền tảng.</p>
+                  <p>• Số tiền rút tối thiểu: 10.000 VND.</p>
+                </div>
+              </div>
+
+              {/* Submit a Withdrawal Request */}
+              <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl space-y-4 shadow-xs">
+                <div>
+                  <h3 className="font-display font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5 pb-1">
+                    <DollarSign size={15} className="text-sky-500" /> Tạo yêu cầu rút tiền
+                  </h3>
+                  <p className="text-[10px] text-slate-400">Chuyển doanh thu tích lũy của bạn về tài khoản ngân hàng cá nhân</p>
+                </div>
+
+                <form onSubmit={handleCreateWithdrawal} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500">Số tiền muốn rút (VND)</label>
+                    <Input 
+                      type="number"
+                      placeholder="VD: 50000"
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      disabled={isSubmittingWithdrawal}
+                      className="w-full text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500">Tên Ngân hàng</label>
+                    <Input 
+                      type="text"
+                      placeholder="VD: Techcombank, Vietcombank..."
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      disabled={isSubmittingWithdrawal}
+                      className="w-full text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500">Số tài khoản</label>
+                    <Input 
+                      type="text"
+                      placeholder="VD: 190352..."
+                      value={bankAccount}
+                      onChange={(e) => setBankAccount(e.target.value)}
+                      disabled={isSubmittingWithdrawal}
+                      className="w-full text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500">Tên chủ tài khoản</label>
+                    <Input 
+                      type="text"
+                      placeholder="VD: NGUYEN VAN A"
+                      value={accountHolder}
+                      onChange={(e) => setAccountHolder(e.target.value)}
+                      disabled={isSubmittingWithdrawal}
+                      className="w-full text-xs uppercase"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 pt-2 flex flex-col gap-2">
+                    {withdrawalError && (
+                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold flex items-center gap-2">
+                        <AlertTriangle size={14} /> {withdrawalError}
+                      </div>
+                    )}
+                    {withdrawalSuccess && (
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-xl text-xs font-semibold flex items-center gap-2">
+                        <Check size={14} /> {withdrawalSuccess}
+                      </div>
+                    )}
+                    <Button 
+                      type="submit" 
+                      variant="primary" 
+                      className="w-full sm:w-auto self-start"
+                      disabled={isSubmittingWithdrawal}
+                    >
+                      {isSubmittingWithdrawal ? (
+                        <span className="flex items-center gap-2 justify-center">
+                          <RefreshCw className="animate-spin" size={14} /> Đang xử lý...
+                        </span>
+                      ) : (
+                        'Gửi yêu cầu rút tiền'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Wallet Ledger and Log Sub Tabs */}
+              <div className="space-y-4">
+                {/* Sub Tab Headers */}
+                <div className="flex border-b border-slate-200 dark:border-slate-800/60 gap-1">
+                  <button
+                    onClick={() => setWalletSubTab('transactions')}
+                    className={`pb-2 px-3 text-[11px] font-semibold border-b-2 transition-studio cursor-pointer ${walletSubTab === 'transactions' ? 'border-sky-500 text-sky-500 font-bold' : 'border-transparent text-slate-500'}`}
+                  >
+                    Lịch sử Giao dịch
+                  </button>
+                  <button
+                    onClick={() => setWalletSubTab('withdrawals')}
+                    className={`pb-2 px-3 text-[11px] font-semibold border-b-2 transition-studio cursor-pointer ${walletSubTab === 'withdrawals' ? 'border-sky-500 text-sky-500 font-bold' : 'border-transparent text-slate-500'}`}
+                  >
+                    Yêu cầu Rút tiền ({withdrawals.length})
+                  </button>
+                </div>
+
+                {/* Sub Tab 1: Transaction list */}
+                {walletSubTab === 'transactions' && (
+                  <div className="space-y-4">
+                    {isLoadingTxns ? (
+                      <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
+                        <RefreshCw className="animate-spin" size={14} /> Đang tải lịch sử giao dịch...
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-mono">
+                              <th className="p-3">Ngày tạo</th>
+                              <th className="p-3">Loại</th>
+                              <th className="p-3">Số tiền</th>
+                              <th className="p-3">Phí hệ thống</th>
+                              <th className="p-3">Thực nhận/Thực trừ</th>
+                              <th className="p-3">Chi tiết</th>
+                              <th className="p-3 text-center">Trạng thái</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs font-medium">
+                            {transactions.length > 0 ? (
+                              transactions.map((txn) => (
+                                <tr key={txn.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
+                                  <td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[10px]">
+                                    {new Date(txn.createdAt).toLocaleString('vi-VN')}
+                                  </td>
+                                  <td className="p-3">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-mono uppercase ${
+                                      txn.type === 'revenue_share' ? 'bg-emerald-500/10 text-emerald-500' :
+                                      txn.type === 'withdrawal' ? 'bg-rose-500/10 text-rose-500' :
+                                      txn.type === 'refund' ? 'bg-sky-500/10 text-sky-500' : 'bg-slate-550/10 text-slate-500'
+                                    }`}>
+                                      {txn.type === 'revenue_share' ? 'DOANH THU' :
+                                       txn.type === 'withdrawal' ? 'RÚT TIỀN' :
+                                       txn.type === 'refund' ? 'HOÀN TIỀN' : txn.type}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 font-mono font-semibold text-slate-800 dark:text-slate-200">
+                                    {formatVND(txn.amount)}
+                                  </td>
+                                  <td className="p-3 font-mono text-slate-400 dark:text-slate-500 text-[11px]">
+                                    {txn.platformCommission > 0 ? formatVND(txn.platformCommission) : '—'}
+                                  </td>
+                                  <td className={`p-3 font-mono font-bold ${
+                                    txn.type === 'withdrawal' ? 'text-rose-500' : 'text-emerald-500'
+                                  }`}>
+                                    {txn.type === 'withdrawal' ? '-' : '+'}{formatVND(txn.netAmount)}
+                                  </td>
+                                  <td className="p-3 text-slate-550 dark:text-slate-400 text-[11px]">
+                                    {txn.referenceId || 'Giao dịch hệ thống'}
+                                    {txn.gameTitle && <span className="block text-[9px] text-slate-400 font-sans">Sản phẩm: {txn.gameTitle}</span>}
+                                    {txn.relatedUserFullName && <span className="block text-[9px] text-slate-400 font-sans">Khách hàng: {txn.relatedUserFullName}</span>}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                                      txn.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                      txn.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' :
+                                      txn.status === 'refunded' ? 'bg-sky-500/10 text-sky-500 border-sky-500/20' :
+                                      'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                                    }`}>
+                                      {txn.status === 'completed' ? 'Thành công' :
+                                       txn.status === 'pending' ? 'Đang xử lý' :
+                                       txn.status === 'refunded' ? 'Đã hoàn tiền' : 'Thất bại'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={7} className="p-6 text-center text-slate-400 dark:text-slate-650 bg-slate-50/50 dark:bg-slate-950/20">
+                                  Chưa có lịch sử giao dịch nào được ghi nhận.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {/* Pagination control */}
+                    {totalPagesTxn > 1 && (
+                      <div className="flex justify-end gap-2 text-xs">
+                        <button
+                          disabled={currentTxnPage === 0}
+                          onClick={(e) => { e.preventDefault(); fetchTransactions(currentTxnPage - 1); }}
+                          className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-350 disabled:opacity-50 cursor-pointer"
+                        >
+                          Trang trước
+                        </button>
+                        <span className="py-1.5 px-1 font-mono text-slate-400">
+                          {currentTxnPage + 1} / {totalPagesTxn}
+                        </span>
+                        <button
+                          disabled={currentTxnPage === totalPagesTxn - 1}
+                          onClick={(e) => { e.preventDefault(); fetchTransactions(currentTxnPage + 1); }}
+                          className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-350 disabled:opacity-50 cursor-pointer"
+                        >
+                          Trang sau
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Sub Tab 2: Withdrawal requests list */}
+                {walletSubTab === 'withdrawals' && (
+                  <div className="space-y-4">
+                    {isLoadingWithdrawals ? (
+                      <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
+                        <RefreshCw className="animate-spin" size={14} /> Đang tải lịch sử rút tiền...
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-mono">
+                              <th className="p-3">Ngày tạo</th>
+                              <th className="p-3">Số tiền</th>
+                              <th className="p-3">Thông tin nhận tiền</th>
+                              <th className="p-3 text-center">Trạng thái</th>
+                              <th className="p-3">Phản hồi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs font-medium">
+                            {withdrawals.length > 0 ? (
+                              withdrawals.map((wr) => (
+                                <tr key={wr.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
+                                  <td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[10px]">
+                                    {new Date(wr.createdAt).toLocaleString('vi-VN')}
+                                  </td>
+                                  <td className="p-3 font-mono font-bold text-slate-800 dark:text-slate-200">
+                                    {formatVND(wr.amount)}
+                                  </td>
+                                  <td className="p-3 text-[11px] space-y-0.5 text-slate-550 dark:text-slate-350 font-medium">
+                                    <div>Ngân hàng: <span className="font-semibold text-slate-850 dark:text-slate-250">{wr.bankName}</span></div>
+                                    <div>Số tài khoản: <span className="font-semibold font-mono text-slate-850 dark:text-slate-250">{wr.bankAccount}</span></div>
+                                    <div>Chủ tài khoản: <span className="font-semibold text-slate-850 dark:text-slate-250 uppercase">{wr.accountHolder}</span></div>
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
+                                      wr.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                      wr.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' :
+                                      wr.status === 'approved' ? 'bg-sky-500/10 text-sky-500 border-sky-500/20' :
+                                      'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                                    }`}>
+                                      {wr.status === 'completed' ? 'Hoàn thành' :
+                                       wr.status === 'pending' ? 'Chờ duyệt' :
+                                       wr.status === 'approved' ? 'Đã duyệt' : 'Bị từ chối'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-[11px] text-slate-500 dark:text-slate-400">
+                                    {wr.status === 'rejected' && wr.rejectReason && (
+                                      <div className="text-rose-500">
+                                        <span className="font-semibold">Lý do từ chối:</span> {wr.rejectReason}
+                                      </div>
+                                    )}
+                                    {wr.status === 'completed' && wr.reviewedByFullName && (
+                                      <div>
+                                        Duyệt bởi: <span className="font-semibold">{wr.reviewedByFullName}</span>
+                                        {wr.reviewedAt && <span className="block text-[9px] text-slate-400 font-mono">{new Date(wr.reviewedAt).toLocaleDateString('vi-VN')}</span>}
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-650 bg-slate-50/50 dark:bg-slate-950/20">
+                                  Chưa có yêu cầu rút tiền nào được tạo.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
         </div>

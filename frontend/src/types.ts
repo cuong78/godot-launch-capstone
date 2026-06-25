@@ -410,7 +410,16 @@ export interface AuditLogFilterParams {
   targetId?: string;
   ipAddress?: string;
 }
+export interface WalletResponse {
+  id: string;
+  userId: string;
+  balance: number;
+  currency: string;
+  updatedAt: string;
+}
 
+export type TxnType = 'source_code_purchase' | 'withdrawal' | 'revenue_share' | 'commission' | 'refund';
+export type TxnStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 
 // ── AI Review (multimodal) — báo cáo ĐỀ XUẤT cho admin ──
 export type AiRecommendation = 'approve' | 'review' | 'reject';
@@ -441,5 +450,65 @@ export interface AiReviewReport {
 }
 
 
+export interface TransactionResponse {
+  id: string;
+  walletId: string;
+  relatedUserId?: string;
+  relatedUserFullName?: string;
+  gameId?: string;
+  gameTitle?: string;
+  amount: number;
+  platformCommission: number;
+  netAmount: number;
+  type: TxnType;
+  status: TxnStatus;
+  referenceId?: string;
+  createdAt: string;
+}
 
+export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'completed';
 
+export interface WithdrawalRequestResponse {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userFullName: string;
+  walletId: string;
+  amount: number;
+  currency: string;
+  bankName: string;
+  bankAccount: string;
+  accountHolder: string;
+  status: WithdrawalStatus;
+  reviewedById?: string;
+  reviewedByFullName?: string;
+  reviewedAt?: string;
+  rejectReason?: string;
+  transactionId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWithdrawalRequest {
+  amount: number;
+  bankName: string;
+  bankAccount: string;
+  accountHolder: string;
+}
+
+export interface ReviewWithdrawalRequest {
+  approve: boolean;
+  rejectReason?: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  last: boolean;
+  first: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
