@@ -59,9 +59,9 @@ services:
       - seaweedfs-net
     restart: unless-stopped
 
-  face-service:
+  ai-service:
     build: ./python-face-service
-    container_name: godotlaunch-face-service
+    container_name: godotlaunch-ai-service
     ports:
       - "8001:8001"
     environment:
