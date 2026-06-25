@@ -5,7 +5,6 @@ import com.godotlaunch.backend.dto.response.AuditLogResponse;
 import com.godotlaunch.backend.entity.AuditLog;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
-import com.godotlaunch.backend.repository.AuditLogRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -13,14 +12,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.persistence.criteria.Predicate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,10 +30,9 @@ import java.util.UUID;
 @Tag(name = "Admin Audit Log API", description = "Endpoints for administrators to query and view system audit logs")
 public class AdminAuditLogController {
 
-    private final AuditLogRepository auditLogRepository;
+    private final MongoTemplate mongoTemplate;
 
     @GetMapping
-    @Transactional(readOnly = true)
     @Operation(summary = "Get audit logs with filtering", description = "Retrieves a paginated list of audit logs with optional filters. Requires ADMIN role.")
     public ResponseEntity<ApiResponse<Page<AuditLogResponse>>> getAuditLogs(
             @RequestParam(defaultValue = "0") int page,
@@ -47,29 +45,28 @@ public class AdminAuditLogController {
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        Specification<AuditLog> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
+        Query query = new Query();
 
-            if (actorId != null) {
-                predicates.add(cb.equal(root.get("actor").get("id"), actorId));
-            }
-            if (action != null) {
-                predicates.add(cb.equal(root.get("action"), action));
-            }
-            if (targetType != null) {
-                predicates.add(cb.equal(root.get("targetType"), targetType));
-            }
-            if (targetId != null) {
-                predicates.add(cb.equal(root.get("targetId"), targetId));
-            }
-            if (ipAddress != null && !ipAddress.trim().isEmpty()) {
-                predicates.add(cb.equal(root.get("ipAddress"), ipAddress.trim()));
-            }
+        if (actorId != null) {
+            query.addCriteria(Criteria.where("actorId").is(actorId));
+        }
+        if (action != null) {
+            query.addCriteria(Criteria.where("action").is(action));
+        }
+        if (targetType != null) {
+            query.addCriteria(Criteria.where("targetType").is(targetType));
+        }
+        if (targetId != null) {
+            query.addCriteria(Criteria.where("targetId").is(targetId));
+        }
+        if (ipAddress != null && !ipAddress.trim().isEmpty()) {
+            query.addCriteria(Criteria.where("ipAddress").is(ipAddress.trim()));
+        }
 
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
-        Page<AuditLog> logPage = auditLogRepository.findAll(spec, pageable);
+        long total = mongoTemplate.count(query, AuditLog.class);
+        query.with(pageable);
+        List<AuditLog> logs = mongoTemplate.find(query, AuditLog.class);
+        Page<AuditLog> logPage = PageableExecutionUtils.getPage(logs, pageable, () -> total);
         Page<AuditLogResponse> responsePage = logPage.map(this::mapToResponse);
 
         return ResponseEntity.ok(ApiResponse.success(responsePage, "Audit logs retrieved successfully."));
@@ -78,9 +75,9 @@ public class AdminAuditLogController {
     private AuditLogResponse mapToResponse(AuditLog log) {
         return AuditLogResponse.builder()
                 .id(log.getId())
-                .actorId(log.getActor() != null ? log.getActor().getId() : null)
-                .actorEmail(log.getActor() != null ? log.getActor().getEmail() : null)
-                .actorFullName(log.getActor() != null ? log.getActor().getFullName() : null)
+                .actorId(log.getActorId())
+                .actorEmail(log.getActorEmail())
+                .actorFullName(log.getActorFullName())
                 .actorRole(log.getActorRole())
                 .action(log.getAction())
                 .targetType(log.getTargetType())

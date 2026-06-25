@@ -206,6 +206,9 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        String oldAvatar = user.getAvatarUrl();
+        String oldName = user.getFullName();
+
         user.setFullName(request.getFullName());
         user.setAvatarUrl(request.getAvatarUrl());
 
@@ -214,6 +217,24 @@ public class UserServiceImpl implements UserService {
         }
 
         User updatedUser = userRepository.save(user);
+
+        // Ghi nhận Audit Log
+        String note = "Cập nhật thông tin tài khoản.";
+        if (oldAvatar == null && request.getAvatarUrl() != null) {
+            note = "Người dùng tải lên ảnh đại diện mới.";
+        } else if (oldAvatar != null && !oldAvatar.equals(request.getAvatarUrl())) {
+            note = "Người dùng thay đổi ảnh đại diện.";
+        }
+
+        auditLogService.publishAuto(
+                AuditAction.user_profile_updated,
+                AuditTarget.user,
+                user.getId(),
+                oldName,
+                request.getFullName(),
+                note
+        );
+
         return mapToUserResponse(updatedUser);
     }
 

@@ -123,12 +123,25 @@ services:
       timeout: 10s
       retries: 3
 
+  mongodb:
+    image: mongo:latest
+    container_name: godotlaunch-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - seaweedfs-net
+    restart: unless-stopped
+
 volumes:
   postgres-data:
     driver: local
   seaweedfs-data:
     driver: local
   hf-model-cache:
+    driver: local
+  mongodb-data:
     driver: local
 
 networks:

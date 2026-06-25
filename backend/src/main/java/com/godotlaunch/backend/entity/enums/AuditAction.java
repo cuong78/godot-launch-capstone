@@ -29,5 +29,6 @@ public enum AuditAction {
     user_registered,
     user_login_success,
     user_login_failed,
-    user_logged_out
+    user_logged_out,
+    user_profile_updated
 }
