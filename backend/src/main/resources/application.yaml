@@ -80,7 +80,7 @@ app:
         # Bot account (machine user) để clone private repo developer mời
         bot-username: ${GITHUB_BOT_USERNAME:}
         bot-token: ${GITHUB_BOT_TOKEN:}
-    payos:
-      client-id: ${PAYOS_CLIENT_ID:}
-      api-key: ${PAYOS_API_KEY:}
-      checksum-key: ${PAYOS_CHECKSUM_KEY:}
+  payos:
+    client-id: ${PAYOS_CLIENT_ID:}
+    api-key: ${PAYOS_API_KEY:}
+    checksum-key: ${PAYOS_CHECKSUM_KEY:}

@@ -27,11 +27,12 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
-import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType } from '../types';
+import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType, WithdrawalRequestResponse, ReviewWithdrawalRequest } from '../types';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
+import { walletApi } from '../api/walletApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { AdminStoragePanel } from '../components/AdminStoragePanel';
@@ -175,7 +176,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'logs' | 'settings' | 'storage' | 'disputes' | 'withdrawals'>('moderation');
+  
+  // Withdrawal requests moderation states
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequestResponse[]>([]);
+  const [isLoadingWithdrawals, setIsLoadingWithdrawals] = useState<boolean>(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState<boolean>(false);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequestResponse | null>(null);
+  const [rejectReason, setRejectReason] = useState<string>('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   
   // Real Game Moderation state
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
@@ -333,6 +343,49 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  const fetchAllWithdrawals = async () => {
+    setIsLoadingWithdrawals(true);
+    try {
+      const res = await walletApi.getAllWithdrawals();
+      if (res.success && res.data) {
+        setWithdrawals(res.data);
+      }
+    } catch (err: any) {
+      console.error('Lỗi khi lấy danh sách yêu cầu rút tiền:', err);
+    } finally {
+      setIsLoadingWithdrawals(false);
+    }
+  };
+
+  const handleReviewWithdrawal = async (id: string, approve: boolean) => {
+    setReviewError(null);
+    if (!approve && !rejectReason.trim()) {
+      setReviewError('Vui lòng nhập lý do từ chối.');
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const res = await walletApi.reviewWithdrawal(id, {
+        approve,
+        rejectReason: approve ? undefined : rejectReason.trim(),
+      });
+      if (res.success) {
+        alert(approve ? 'Đã duyệt yêu cầu rút tiền thành công!' : 'Đã từ chối và hoàn tiền thành công!');
+        setIsRejectModalOpen(false);
+        setRejectReason('');
+        setSelectedWithdrawal(null);
+        fetchAllWithdrawals();
+      } else {
+        setReviewError(res.message || 'Lỗi khi kiểm duyệt yêu cầu.');
+      }
+    } catch (err: any) {
+      setReviewError(err.response?.data?.message || err.message || 'Lỗi hệ thống khi kiểm duyệt yêu cầu.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -345,6 +398,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       fetchPendingMarketplaceItems();
     } else if (activeTab === 'logs') {
       fetchAuditLogs();
+    } else if (activeTab === 'withdrawals') {
+      fetchAllWithdrawals();
     }
   }, [activeTab, currentPage, pageSize, filterAction, filterTargetType]);
 
@@ -664,6 +719,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'disputes' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
           <AlertTriangle size={14} /> Disputes
+        </button>
+        <button
+          onClick={() => setActiveTab('withdrawals')}
+          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'withdrawals' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+        >
+          <DollarSign size={14} /> Rút Tiền
         </button>
       </div>
 
@@ -1637,6 +1698,143 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </form>
           </div>
         )}
+
+        {/* Tab 6: Withdrawal Requests Management */}
+        {activeTab === 'withdrawals' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Yêu cầu rút tiền của Developer</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Xem xét và phê duyệt hoặc từ chối các yêu cầu rút tiền từ ví của các nhà phát triển</p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchAllWithdrawals}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold cursor-pointer transition-studio active:scale-95 border border-slate-200 dark:border-slate-850"
+              >
+                <RefreshCw size={13} className={isLoadingWithdrawals ? 'animate-spin' : ''} /> Làm mới
+              </button>
+            </div>
+
+            {isLoadingWithdrawals ? (
+              <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
+                <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách rút tiền...
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                      <th className="p-3">Developer</th>
+                      <th className="p-3">Số tiền</th>
+                      <th className="p-3">Thông tin ngân hàng</th>
+                      <th className="p-3 text-center">Trạng thái</th>
+                      <th className="p-3">Thời gian tạo</th>
+                      <th className="p-3">Người kiểm duyệt</th>
+                      <th className="p-3 text-center">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                    {withdrawals.length > 0 ? (
+                      withdrawals.map((req) => (
+                        <tr key={req.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-955/5 transition-colors">
+                          <td className="p-3">
+                            <div className="font-semibold text-slate-800 dark:text-slate-100">{req.userFullName}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-450 font-mono">{req.userEmail}</div>
+                          </td>
+                          <td className="p-3 font-semibold text-slate-800 dark:text-amber-400 font-mono">
+                            {new Intl.NumberFormat('vi-VN').format(req.amount)} VND
+                          </td>
+                          <td className="p-3">
+                            <div className="font-semibold text-slate-805 dark:text-slate-200">{req.bankName}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-450 font-mono font-bold">STK: {req.bankAccount}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-455 uppercase">Chủ TK: {req.accountHolder}</div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-mono border ${
+                              req.status === 'pending'
+                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse'
+                                : req.status === 'approved'
+                                ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                                : req.status === 'completed'
+                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                            }`}>
+                              {req.status === 'pending' ? 'Chờ duyệt' : 
+                               req.status === 'approved' ? 'Đã duyệt' : 
+                               req.status === 'completed' ? 'Hoàn tất' : 'Từ chối'}
+                            </span>
+                            {req.status === 'rejected' && req.rejectReason && (
+                              <div className="text-[10px] text-rose-500 italic mt-1 max-w-[200px] break-words mx-auto">
+                                Lý do: "{req.rejectReason}"
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-3 text-slate-550 dark:text-slate-400 font-mono">
+                            {req.createdAt ? new Date(req.createdAt).toLocaleString('vi-VN') : 'N/A'}
+                          </td>
+                          <td className="p-3 text-slate-550 dark:text-slate-400">
+                            {req.reviewedByFullName ? (
+                              <div>
+                                <span className="font-semibold">{req.reviewedByFullName}</span>
+                                {req.reviewedAt && (
+                                  <div className="text-[9px] font-mono text-slate-500 mt-0.5">
+                                    {new Date(req.reviewedAt).toLocaleString('vi-VN')}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 dark:text-slate-600 italic">Chưa duyệt</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            {req.status === 'pending' ? (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (window.confirm(`Bạn có chắc chắn muốn DUYỆT yêu cầu rút ${new Intl.NumberFormat('vi-VN').format(req.amount)} VND của ${req.userFullName} không?`)) {
+                                      handleReviewWithdrawal(req.id, true);
+                                    }
+                                  }}
+                                  className="p-1.5 bg-emerald-550/10 hover:bg-emerald-100/20 text-emerald-605 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                  title="Phê duyệt"
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedWithdrawal(req);
+                                    setIsRejectModalOpen(true);
+                                    setRejectReason('');
+                                    setReviewError(null);
+                                  }}
+                                  className="p-1.5 bg-rose-550/10 hover:bg-rose-100/20 text-rose-605 dark:text-rose-450 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                  title="Từ chối"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                          Chưa có yêu cầu rút tiền nào trong hệ thống.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
 
@@ -1834,6 +2032,111 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             />
           </div>
         </div>
+      )}
+
+      {/* Withdrawal Rejection Modal */}
+      {isRejectModalOpen && selectedWithdrawal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex justify-center items-start bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl w-full max-w-md my-8 space-y-6 relative overflow-hidden">
+            
+            <button 
+              type="button"
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-studio cursor-pointer"
+              onClick={() => {
+                setIsRejectModalOpen(false);
+                setRejectReason('');
+                setSelectedWithdrawal(null);
+                setReviewError(null);
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div className="p-3 bg-gradient-to-tr from-rose-500 to-rose-600 text-white rounded-2xl shadow-md shadow-rose-500/20">
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <span className="text-[10px] font-mono tracking-widest text-rose-600 dark:text-rose-455 uppercase font-bold px-2 py-0.5 bg-rose-500/10 rounded">
+                  YÊU CẦU RÚT TIỀN
+                </span>
+                <h2 className="font-display font-bold text-lg text-slate-800 dark:text-white mt-1">
+                  Từ chối yêu cầu rút tiền
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Bạn đang chuẩn bị từ chối yêu cầu rút tiền này
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-100 dark:bg-slate-955/40 border border-slate-200/50 dark:border-slate-850 rounded-2xl text-xs space-y-2 text-slate-700 dark:text-slate-300">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Developer:</span>
+                <span className="font-semibold">{selectedWithdrawal.userFullName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Email:</span>
+                <span className="font-mono">{selectedWithdrawal.userEmail}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Số tiền rút:</span>
+                <span className="font-semibold text-rose-500">{new Intl.NumberFormat('vi-VN').format(selectedWithdrawal.amount)} VND</span>
+              </div>
+              <div className="border-t border-slate-200 dark:border-slate-800/60 my-2 pt-2">
+                <div className="font-semibold mb-1 text-slate-600 dark:text-slate-450">Thông tin Ngân hàng:</div>
+                <div className="grid grid-cols-2 gap-1 text-[11px]">
+                  <div>Ngân hàng:</div>
+                  <div className="text-right font-semibold">{selectedWithdrawal.bankName}</div>
+                  <div>Số tài khoản:</div>
+                  <div className="text-right font-mono font-bold">{selectedWithdrawal.bankAccount}</div>
+                  <div>Chủ tài khoản:</div>
+                  <div className="text-right font-semibold uppercase">{selectedWithdrawal.accountHolder}</div>
+                </div>
+              </div>
+            </div>
+
+            {reviewError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                {reviewError}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Lý do từ chối <span className="text-rose-500">*</span></label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Nhập lý do từ chối (ví dụ: Thông tin tài khoản ngân hàng sai lệch, số tiền không khớp...)"
+                className="w-full px-3 py-2 bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/60 rounded-xl text-xs outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 text-slate-800 dark:text-slate-200 transition-studio shadow-sm min-h-[80px]"
+                required
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-850">
+              <button 
+                type="button"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-studio"
+                onClick={() => {
+                  setIsRejectModalOpen(false);
+                  setRejectReason('');
+                  setSelectedWithdrawal(null);
+                  setReviewError(null);
+                }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingReview || !rejectReason.trim()}
+                onClick={() => handleReviewWithdrawal(selectedWithdrawal.id, false)}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs cursor-pointer transition-studio flex items-center gap-1.5"
+              >
+                {isSubmittingReview ? 'Đang từ chối...' : 'Từ chối & Hoàn tiền'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
     </>
