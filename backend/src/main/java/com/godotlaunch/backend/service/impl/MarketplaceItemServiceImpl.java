@@ -52,6 +52,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     private final com.godotlaunch.backend.repository.MediaRepository mediaRepository;
     private final com.godotlaunch.backend.repository.OrderRepository orderRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
 
     /** ObjectKey cố định cho zip của 1 marketplace item. */
     private String buildObjectKey(UUID itemId) {
@@ -246,6 +247,12 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, objectKey);
         log.info("Marketplace item {} uploaded via StorageRouter ({}) with key {}, virus scan started",
                 itemId, storageRouter.getProvider(fileType), objectKey);
+
+        // Asset (upload file, không repo): AI review media-only (CLIP + NSFW). Fail-soft.
+        // source_code chạy AI review ở submitItemRepo (sau snapshot), không lặp ở đây.
+        if (item.getItemType() == ItemType.asset) {
+            aiReviewService.reviewMarketplaceItemAsync(itemId);
+        }
     }
 
     @Override
@@ -310,6 +317,9 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
         saveSnapshotForItem(item, seller, repoUrl, result);
         log.info("Marketplace source_code item {} submit qua repo, verified & snapshot. Chờ duyệt.", itemId);
+
+        // AI review async (code + media) — tạo report đề xuất cho admin. Fail-soft.
+        aiReviewService.reviewMarketplaceItemAsync(itemId);
     }
 
     @Override

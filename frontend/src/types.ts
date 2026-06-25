@@ -412,5 +412,34 @@ export interface AuditLogFilterParams {
 }
 
 
+// ── AI Review (multimodal) — báo cáo ĐỀ XUẤT cho admin ──
+export type AiRecommendation = 'approve' | 'review' | 'reject';
+
+export interface AiReviewFlag {
+  type: string;
+  severity: 'low' | 'medium' | 'high';
+  detail: string;
+  evidenceIndex?: number;   // index ảnh/frame vi phạm (NSFW)
+}
+
+export interface AiReviewReport {
+  id: string;
+  gameId?: string | null;
+  marketplaceItemId?: string | null;
+  codeQualityScore?: number | null;
+  mediaMatchScore?: number | null;
+  descriptionMatchScore?: number | null;
+  nsfwFlag: boolean;
+  overallRecommendation: AiRecommendation;
+  // khuyến nghị giá (đề xuất, admin quyết định)
+  suggestedPrice?: number | null;
+  suggestedRevenueSplit?: number | null;   // % chia doanh thu 0-100
+  pricingRationale?: string | null;
+  flags?: AiReviewFlag[] | null;
+  rawOutput?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+
 
 

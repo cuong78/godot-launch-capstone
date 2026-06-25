@@ -11,6 +11,12 @@ from face_service import extract_embedding
 from db import find_duplicate_face, save_face_embedding, delete_face_embedding
 from ocr_service import ocr_document
 import source_service
+import frame_extractor
+import clip_service
+import nsfw_service
+import code_analyzer
+import base64 as _b64
+import requests as _requests
 
 app = FastAPI(title="GodotLaunch Face Service", version="1.0.0")
 
@@ -68,6 +74,34 @@ class SourceProcessResponse(BaseModel):
     secrets: list = []
     fileHashes: dict = {}
     bundleBase64: Optional[str] = None  # zip source (base64) — backend upload storage
+
+
+class AiReviewRequest(BaseModel):
+    # Loại nội dung: 'code' (game/marketplace source từ repo) | 'asset' (chỉ media)
+    contentType: str = "code"
+    repoUrl: Optional[str] = None       # với code: clone để analyze (bỏ qua nếu asset)
+    token: Optional[str] = None
+    branch: Optional[str] = None
+    title: str = ""
+    description: str = ""
+    category: Optional[str] = None
+    videoUrl: Optional[str] = None      # video intro → cắt frame
+    screenshotUrls: list[str] = []      # ảnh đã upload (URL) → tải về quét
+    frameCount: int = 8
+
+
+class AiReviewResponse(BaseModel):
+    codeQualityScore: Optional[int] = None
+    mediaMatchScore: Optional[int] = None
+    descriptionMatchScore: Optional[int] = None
+    nsfwFlag: bool = False
+    overallRecommendation: str = "review"   # 'approve' | 'review' | 'reject'
+    # khuyến nghị giá (chỉ có với code + DeepSeek bật)
+    suggestedPrice: Optional[float] = None
+    suggestedRevenueSplit: Optional[int] = None
+    pricingRationale: Optional[str] = None
+    flags: list = []                         # [{type, severity, detail, evidenceIndex?}]
+    raw: dict = {}                           # output thô từng module (debug/admin)
 
 
 @app.get("/health")
@@ -189,6 +223,132 @@ def process_source(req: SourceProcessRequest):
         raise HTTPException(status_code=500, detail=f"Lỗi xử lý source: {str(e)}")
     finally:
         source_service.cleanup(tmp_dir)
+
+
+def _url_to_b64(url: str) -> Optional[str]:
+    """Tải ảnh từ URL → base64. None nếu lỗi (fail-soft, không crash review)."""
+    try:
+        r = _requests.get(url, timeout=30)
+        r.raise_for_status()
+        if len(r.content) > 15 * 1024 * 1024:  # bỏ ảnh > 15MB
+            return None
+        return _b64.b64encode(r.content).decode("ascii")
+    except Exception:
+        return None
+
+
+@app.post("/ai/review", response_model=AiReviewResponse)
+def ai_review(req: AiReviewRequest):
+    """
+    Orchestrator AI review (multimodal): tạo report ĐỀ XUẤT cho admin.
+      - CODE: clone repo → rule-based + DeepSeek (chất lượng + mô tả đối chiếu code)
+      - MEDIA (cả code & asset): cắt frame video + screenshots → CLIP match + NSFW
+    AI KHÔNG quyết định cuối — admin xem điểm + flags + bằng chứng rồi quyết định.
+    Mọi module fail-soft: lỗi 1 phần → vẫn trả các phần còn lại.
+    """
+    flags = []
+    raw = {}
+    code_quality = None
+    description_match = None
+    suggested_price = None
+    revenue_split = None
+    pricing_rationale = None
+
+    # ── 1. Thu thập ảnh: frame video + screenshots ──
+    images_b64: list[str] = []
+    frame_count = 0
+    if req.videoUrl:
+        frames = frame_extractor.extract_frames(req.videoUrl, req.frameCount)
+        frame_count = len(frames)
+        images_b64.extend(frames)
+        raw["frames"] = {"count": frame_count}
+    for url in (req.screenshotUrls or []):
+        b = _url_to_b64(url)
+        if b:
+            images_b64.append(b)
+    raw["imageCount"] = len(images_b64)
+
+    # ── 2. Code analyzer (chỉ CODE từ repo) ──
+    if req.contentType == "code" and req.repoUrl:
+        tmp_dir = None
+        try:
+            cloned = source_service.clone_repo(req.repoUrl, req.token, req.branch)
+            tmp_dir = cloned["tmpDir"]
+            code_res = code_analyzer.analyze(tmp_dir, req.title, req.description)
+            raw["code"] = code_res
+            code_quality = code_res.get("codeQualityScore")
+            description_match = code_res.get("descriptionMatchScore")
+            suggested_price = code_res.get("suggestedPrice")
+            revenue_split = code_res.get("suggestedRevenueSplit")
+            pricing_rationale = code_res.get("pricingRationale")
+            for s in code_res.get("rule", {}).get("secrets", []):
+                flags.append({"type": "secret_hardcoded", "severity": "high",
+                              "detail": f"Secret nghi ngờ trong {s['file']} ({s['type']})"})
+            ds = code_res.get("deepseek") or {}
+            for issue in ds.get("issues", []):
+                flags.append({"type": "code_" + str(issue.get("type", "issue")),
+                              "severity": issue.get("severity", "low"),
+                              "detail": issue.get("detail", "")})
+            if ds.get("skipped"):
+                raw["deepseekSkipped"] = ds.get("reason")
+        except Exception as e:
+            raw["codeError"] = str(e)[:200]
+        finally:
+            source_service.cleanup(tmp_dir)
+
+    # ── 3. CLIP media-match ──
+    clip_res = clip_service.match(
+        images_b64, [req.title, req.description, req.category or ""])
+    raw["clip"] = clip_res
+    media_match = clip_res.get("score")
+    if media_match is not None and media_match < 35:
+        flags.append({"type": "media_mismatch", "severity": "medium",
+                      "detail": f"Ảnh/video khớp mô tả thấp (CLIP score={media_match})"})
+
+    # ── 4. NSFW scan ──
+    nsfw_res = nsfw_service.scan(images_b64)
+    raw["nsfw"] = nsfw_res
+    nsfw_flag = bool(nsfw_res.get("flagged"))
+    for idx in nsfw_res.get("flaggedIndexes", []):
+        flags.append({"type": "nsfw", "severity": "high",
+                      "detail": f"Ảnh #{idx} vượt ngưỡng NSFW "
+                                f"({nsfw_res.get('maxNsfwScore')})",
+                      "evidenceIndex": idx})
+
+    # ── 5. Tổng hợp đề xuất ──
+    recommendation = _recommend(code_quality, media_match, description_match, nsfw_flag, flags)
+
+    return AiReviewResponse(
+        codeQualityScore=code_quality,
+        mediaMatchScore=media_match,
+        descriptionMatchScore=description_match,
+        nsfwFlag=nsfw_flag,
+        overallRecommendation=recommendation,
+        suggestedPrice=suggested_price,
+        suggestedRevenueSplit=revenue_split,
+        pricingRationale=pricing_rationale,
+        flags=flags,
+        raw=raw,
+    )
+
+
+def _recommend(code_q, media, desc, nsfw_flag, flags) -> str:
+    """
+    Đề xuất tổng (KHÔNG phải phán quyết). Admin luôn quyết định cuối.
+      - reject: NSFW vi phạm, hoặc secret high, hoặc điểm rất thấp
+      - approve: tất cả điểm cao + không flag nghiêm trọng
+      - review: còn lại (mặc định — cần người xem)
+    """
+    has_high = any(f.get("severity") == "high" for f in flags)
+    if nsfw_flag or has_high:
+        return "reject"
+
+    scores = [s for s in (code_q, media, desc) if s is not None]
+    if scores and all(s >= 70 for s in scores) and not flags:
+        return "approve"
+    if scores and any(s < 30 for s in scores):
+        return "reject"
+    return "review"
 
 
 if __name__ == "__main__":

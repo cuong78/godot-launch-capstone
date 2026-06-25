@@ -1,0 +1,80 @@
+package com.godotlaunch.backend.entity;
+
+import com.godotlaunch.backend.entity.enums.AiRecommendation;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * Báo cáo AI review multimodal (code + media) — ĐỀ XUẤT cho admin.
+ * AI KHÔNG quyết định cuối: admin xem điểm + flags + bằng chứng rồi tự duyệt/từ chối.
+ * Gắn với 1 trong 2: game HOẶC marketplace item.
+ */
+@Entity
+@Table(name = "ai_review_reports")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class AiReviewReport {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "game_id")
+    private Game game;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "marketplace_item_id")
+    private MarketplaceItem marketplaceItem;
+
+    // điểm từng tiêu chí (0-100, null = module bị skip/lỗi)
+    @Column(name = "code_quality_score")
+    private Integer codeQualityScore;
+
+    @Column(name = "media_match_score")
+    private Integer mediaMatchScore;
+
+    @Column(name = "description_match_score")
+    private Integer descriptionMatchScore;
+
+    @Column(name = "nsfw_flag", nullable = false)
+    private boolean nsfwFlag = false;
+
+    // VARCHAR(20) trong DB — enum String thường, không phải Postgres named enum
+    @Enumerated(EnumType.STRING)
+    @Column(name = "overall_recommendation", nullable = false, length = 20)
+    private AiRecommendation overallRecommendation = AiRecommendation.review;
+
+    // Khuyến nghị giá (gộp từ bảng ai_reports cũ) — đề xuất, admin quyết định
+    @Column(name = "suggested_price", precision = 15, scale = 2)
+    private BigDecimal suggestedPrice;
+
+    @Column(name = "suggested_revenue_split")
+    private Short suggestedRevenueSplit;          // % chia doanh thu 0-100 (game co-publishing)
+
+    @Column(name = "pricing_rationale", columnDefinition = "TEXT")
+    private String pricingRationale;
+
+    // JSONB lưu text — serialize bằng Jackson ở tầng service
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "flags", columnDefinition = "jsonb")
+    private String flags;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "raw_output", columnDefinition = "jsonb")
+    private String rawOutput;
+
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    private Instant createdAt;
+}

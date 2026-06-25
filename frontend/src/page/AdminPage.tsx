@@ -36,6 +36,7 @@ import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { AdminStoragePanel } from '../components/AdminStoragePanel';
 import AdminDisputePanel from '../components/AdminDisputePanel';
+import AiReviewReportCard from '../components/AiReviewReportCard';
 import { auditLogApi } from '../api/auditLogApi';
 import {
   AdminUserManagementPanel,
@@ -898,6 +899,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                               {expandedGameId === game.id && (
                                 <tr>
                                   <td colSpan={7} className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
+                                    <div className="mb-6">
+                                      <AiReviewReportCard gameId={game.id} />
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
                                       {/* Left Column: Thumbnail, Description, ZIP */}
                                       <div className="space-y-4">
@@ -1120,6 +1124,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                               {expandedMarketplaceId === item.id && (
                                 <tr>
                                   <td colSpan={6} className="p-6 bg-slate-50/10 dark:bg-slate-900/20 border-t border-b border-slate-200/50 dark:border-slate-800/60">
+                                    <div className="mb-6">
+                                      <AiReviewReportCard itemId={item.id} />
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-700 dark:text-slate-300">
                                       {/* Left Column: Details & Description */}
                                       <div className="space-y-4">
