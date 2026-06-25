@@ -12,10 +12,6 @@ import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.exception.AppException;
-import com.godotlaunch.backend.entity.Tag;
-import com.godotlaunch.backend.entity.MarketplaceItemMedia;
-import com.godotlaunch.backend.repository.TagRepository;
-import com.godotlaunch.backend.repository.MarketplaceItemMediaRepository;
 import com.godotlaunch.backend.repository.CategoryRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.MarketplaceItemRepository;
@@ -24,9 +20,6 @@ import com.godotlaunch.backend.service.AsyncVirusScanService;
 import com.godotlaunch.backend.service.AwsS3Service;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.MarketplaceItemService;
-import com.godotlaunch.backend.entity.enums.AuditAction;
-import com.godotlaunch.backend.entity.enums.AuditTarget;
-import com.godotlaunch.backend.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,7 +28,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,44 +41,26 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final GameRepository gameRepository;
-    private final TagRepository tagRepository;
-    private final MarketplaceItemMediaRepository marketplaceItemMediaRepository;
+    private final com.godotlaunch.backend.repository.TagRepository tagRepository;
     private final AwsS3Service awsS3Service;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
     private final StorageRouter storageRouter;
-    private final AuditLogService auditLogService;
+    private final com.godotlaunch.backend.service.GitHubRepoService gitHubRepoService;
+    private final com.godotlaunch.backend.config.SourceProcessingClient sourceProcessingClient;
+    private final com.godotlaunch.backend.repository.SourceSnapshotRepository sourceSnapshotRepository;
+    private final com.godotlaunch.backend.repository.MediaRepository mediaRepository;
+    private final com.godotlaunch.backend.repository.OrderRepository orderRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     /** ObjectKey cố định cho zip của 1 marketplace item. */
     private String buildObjectKey(UUID itemId) {
         return "marketplace/items/" + itemId + "/project.zip";
     }
 
-    /** FileType dùng cho routing — derive từ itemType. */
+    /** FileType cho upload file. Chỉ asset upload file (source_code dùng repo) → asset_media. */
     private FileType resolveFileType(MarketplaceItem item) {
-        return item.getItemType() == ItemType.source_code
-                ? FileType.source_code_zip
-                : FileType.asset;
-    }
-
-    private Set<Tag> resolveTags(List<String> tagNames) {
-        if (tagNames == null || tagNames.isEmpty()) {
-            return new HashSet<>();
-        }
-        Set<Tag> resolvedTags = new HashSet<>();
-        for (String name : tagNames) {
-            String trimmed = name.trim();
-            if (trimmed.isEmpty()) continue;
-            Tag tag = tagRepository.findByNameIgnoreCase(trimmed)
-                    .orElseGet(() -> {
-                        Tag newTag = new Tag();
-                        newTag.setName(trimmed);
-                        newTag.setSlug(trimmed.toLowerCase().replaceAll("[^a-z0-9]+", "-"));
-                        return tagRepository.save(newTag);
-                    });
-            resolvedTags.add(tag);
-        }
-        return resolvedTags;
+        return FileType.asset_media;
     }
 
     @Override
@@ -104,18 +80,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
         item.setStatus(ItemStatus.pending);
-        
-        item.setThumbnailUrl(request.getThumbnailUrl());
-        item.setLicense(request.getLicense());
-        item.setLicenseTerms(request.getLicenseTerms());
-        item.setDocumentation(request.getDocumentation());
-        if (request.getVersion() != null && !request.getVersion().trim().isEmpty()) {
-            item.setVersion(request.getVersion());
-        }
-        item.setSupportedPlatforms(request.getSupportedPlatforms());
-        if (request.getTags() != null) {
-            item.setTags(resolveTags(request.getTags()));
-        }
 
         if (request.getCategoryId() != null) {
             Category category = categoryRepository.findById(request.getCategoryId())
@@ -139,7 +103,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             }
             item.setGodotVersion(request.getGodotVersion());
             item.setGithubRepoUrl(request.getGithubRepoUrl());
-            item.setGithubVerifiedAt(Instant.now()); // Auto-verify for now
+            // KHÔNG auto-verify — repo được clone/scan/snapshot thật ở submitItemRepo (Step 2)
         } else {
             item.setGodotVersion(request.getGodotVersion());
             item.setGithubRepoUrl(request.getGithubRepoUrl());
@@ -152,17 +116,12 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             item.setFileUrl("pending");
         }
 
+        // Tags (nhiều-nhiều)
+        if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
+            item.setTags(new java.util.HashSet<>(tagRepository.findByIdIn(request.getTagIds())));
+        }
+
         MarketplaceItem savedItem = marketplaceItemRepository.save(item);
-
-        auditLogService.publishAuto(
-                AuditAction.game_submitted,
-                AuditTarget.marketplace_item,
-                savedItem.getId(),
-                null,
-                null,
-                "Marketplace item '" + savedItem.getTitle() + "' (" + savedItem.getItemType() + ") draft initialized by developer."
-        );
-
         return savedItem.getId();
     }
 
@@ -227,27 +186,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         if (request.getFileUrl() != null) {
             item.setFileUrl(request.getFileUrl());
         }
-        if (request.getThumbnailUrl() != null) {
-            item.setThumbnailUrl(request.getThumbnailUrl());
-        }
-        if (request.getLicense() != null) {
-            item.setLicense(request.getLicense());
-        }
-        if (request.getLicenseTerms() != null) {
-            item.setLicenseTerms(request.getLicenseTerms());
-        }
-        if (request.getDocumentation() != null) {
-            item.setDocumentation(request.getDocumentation());
-        }
-        if (request.getVersion() != null) {
-            item.setVersion(request.getVersion());
-        }
-        if (request.getSupportedPlatforms() != null) {
-            item.setSupportedPlatforms(request.getSupportedPlatforms());
-        }
-        if (request.getTags() != null) {
-            item.setTags(resolveTags(request.getTags()));
-        }
 
         if (item.getItemType() == ItemType.source_code) {
             if (request.getGodotVersion() != null) {
@@ -273,16 +211,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         MarketplaceItem updatedItem = marketplaceItemRepository.save(item);
-
-        auditLogService.publishAuto(
-                AuditAction.game_updated,
-                AuditTarget.marketplace_item,
-                id,
-                null,
-                null,
-                "Marketplace item '" + updatedItem.getTitle() + "' updated by developer."
-        );
-
         return mapToResponse(updatedItem);
     }
 
@@ -318,15 +246,242 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, objectKey);
         log.info("Marketplace item {} uploaded via StorageRouter ({}) with key {}, virus scan started",
                 itemId, storageRouter.getProvider(fileType), objectKey);
+    }
 
-        auditLogService.publishAuto(
-                AuditAction.game_submitted,
-                AuditTarget.marketplace_item,
-                itemId,
-                null,
-                null,
-                "Marketplace project ZIP package uploaded for '" + item.getTitle() + "'. Virus scan triggered."
-        );
+    @Override
+    @Transactional
+    public void submitItemRepo(UUID itemId, String repoUrl, String branch, String sellerEmail) {
+        User seller = userRepository.findByEmail(sellerEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+
+        if (!item.getSeller().getId().equals(seller.getId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        if (item.getItemType() != ItemType.source_code) {
+            throw new AppException(ErrorCode.INVALID_INPUT); // asset dùng upload file, không repo
+        }
+        if (repoUrl == null || repoUrl.isBlank()) {
+            throw new AppException(ErrorCode.REPO_URL_REQUIRED);
+        }
+
+        // 1. Verify owner TRƯỚC — repo phải thuộc về chính seller (chống đánh cắp repo người khác).
+        //    Chạy trước checkAccess để A submit repo của B bị chặn ngay (không nhảy vào "mời bot").
+        gitHubRepoService.verifyOwnership(seller, repoUrl);
+
+        // 2. Repo của họ nhưng private chưa cấp quyền bot → báo mời bot
+        com.godotlaunch.backend.service.GitHubRepoService.RepoAccess access =
+                gitHubRepoService.checkAccess(repoUrl);
+        if (access == com.godotlaunch.backend.service.GitHubRepoService.RepoAccess.PRIVATE_NO_ACCESS) {
+            throw new AppException(ErrorCode.REPO_NEEDS_BOT);
+        }
+
+        // 3. clone + scan + snapshot
+        String token = gitHubRepoService.getCloneToken(repoUrl);
+        com.godotlaunch.backend.dto.response.SourceProcessResult result;
+        try {
+            result = sourceProcessingClient.process(repoUrl, token, branch);
+        } catch (com.godotlaunch.backend.config.SourceProcessingClient.SourceProcessingException e) {
+            throw new AppException(ErrorCode.SOURCE_PROCESSING_FAILED);
+        }
+
+        // 4. Mã độc → removed
+        if (!result.isClean()) {
+            item.setStatus(ItemStatus.removed);
+            marketplaceItemRepository.save(item);
+            saveSnapshotForItem(item, seller, repoUrl, result);
+            throw new AppException(ErrorCode.SOURCE_MALWARE_DETECTED);
+        }
+
+        // Không phải Godot project hợp lệ → từ chối
+        if (!result.isGodotProject()) {
+            log.warn("Marketplace repo {} không phải Godot project (hasProjectGodot={}, hasGodotSource={})",
+                    repoUrl, result.isHasProjectGodot(), result.isHasGodotSource());
+            throw new AppException(ErrorCode.NOT_GODOT_PROJECT);
+        }
+
+        // 5. Sạch → lưu repo + snapshot → pending (chờ admin duyệt)
+        item.setGithubRepoUrl(repoUrl);
+        item.setGithubVerifiedAt(Instant.now());
+        item.setFileUrl(repoUrl); // fileUrl NOT NULL — dùng repoUrl làm nguồn
+        item.setStatus(ItemStatus.pending);
+        marketplaceItemRepository.save(item);
+
+        saveSnapshotForItem(item, seller, repoUrl, result);
+        log.info("Marketplace source_code item {} submit qua repo, verified & snapshot. Chờ duyệt.", itemId);
+    }
+
+    @Override
+    public boolean acceptBotInvitation(String repoUrl, String sellerEmail) {
+        userRepository.findByEmail(sellerEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        if (repoUrl == null || repoUrl.isBlank()) {
+            throw new AppException(ErrorCode.REPO_URL_REQUIRED);
+        }
+        return gitHubRepoService.acceptBotInvitation(repoUrl);
+    }
+
+    @Override
+    @Transactional
+    public String uploadItemMedia(UUID itemId, String mediaType, MultipartFile file, String uploaderEmail) {
+        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+        if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // Chuẩn hóa media_type: thumbnail | screenshot | video | asset_image
+        String type = switch (mediaType == null ? "" : mediaType.toLowerCase()) {
+            case "thumbnail" -> "thumbnail";
+            case "video"     -> "video";
+            case "screenshot", "image" -> "screenshot";
+            default -> "asset_image";
+        };
+
+        var ownerType = com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item;
+        // thumbnail & video chỉ 1 cái/item → thay thế cái cũ
+        if ("thumbnail".equals(type) || "video".equals(type)) {
+            deleteItemMediaByType(itemId, type);
+        }
+
+        String objectKey = "marketplace/items/" + itemId + "/media/" + UUID.randomUUID();
+        String mediaUrl = storageRouter.uploadWithKey(FileType.asset_media, file, objectKey);
+
+        com.godotlaunch.backend.entity.Media media = new com.godotlaunch.backend.entity.Media();
+        media.setOwnerType(ownerType);
+        media.setOwnerId(itemId);
+        media.setMediaType(type);
+        media.setMediaUrl(mediaUrl);
+        mediaRepository.save(media);
+
+        return objectKey;
+    }
+
+    @Override
+    @Transactional
+    public void deleteAssetMedia(UUID itemId, String mediaUrl, String uploaderEmail) {
+        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+        if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        String targetKey = extractObjectKeyFromUrl(mediaUrl);
+        mediaRepository.findByOwnerTypeAndOwnerId(
+                        com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item, itemId).stream()
+                .filter(m -> targetKey != null && targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
+                .findFirst()
+                .ifPresent(m -> {
+                    mediaRepository.delete(m);
+                    try {
+                        storageRouter.delete(FileType.asset_media, targetKey);
+                    } catch (Exception e) {
+                        log.warn("Đã xóa record asset media nhưng không xóa được file: {}", targetKey, e);
+                    }
+                });
+    }
+
+    @Override
+    @Transactional
+    public String uploadMarketplaceItemMedia(UUID id, String fileType, MultipartFile file, String uploaderEmail) {
+        return uploadItemMedia(id, fileType, file, uploaderEmail);
+    }
+
+    @Override
+    @Transactional
+    public void deleteMarketplaceItemMediaByUrl(UUID id, String mediaUrl, String uploaderEmail) {
+        deleteAssetMedia(id, mediaUrl, uploaderEmail);
+    }
+
+    /** Xóa toàn bộ media 1 loại của item (dùng khi thay thumbnail/video). */
+    private void deleteItemMediaByType(UUID itemId, String mediaType) {
+        var ownerType = com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item;
+        mediaRepository.findByOwnerTypeAndOwnerIdAndMediaType(ownerType, itemId, mediaType)
+                .forEach(m -> {
+                    String key = extractObjectKeyFromUrl(m.getMediaUrl());
+                    if (key != null) {
+                        try { storageRouter.delete(FileType.asset_media, key); } catch (Exception ignored) {}
+                    }
+                    mediaRepository.delete(m);
+                });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getSourceBundleUrl(UUID itemId, String requesterEmail) {
+        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+        User requester = userRepository.findByEmail(requesterEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        boolean isAdmin = "admin".equalsIgnoreCase(requester.getRole().getName());
+        boolean isSeller = item.getSeller().getId().equals(requester.getId());
+        boolean hasPurchased = orderRepository.existsByBuyerIdAndMarketplaceItemId(requester.getId(), itemId);
+
+        // Chỉ admin / seller / người đã mua được tải source bundle
+        if (!isAdmin && !isSeller && !hasPurchased) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        String bundleUrl = sourceSnapshotRepository.findByMarketplaceItemIdOrderByCreatedAtDesc(itemId).stream()
+                .map(com.godotlaunch.backend.entity.SourceSnapshot::getBundleUrl)
+                .filter(u -> u != null && !u.isBlank())
+                .findFirst()
+                .orElse(null);
+        if (bundleUrl == null) {
+            throw new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND);
+        }
+        return bundleUrl;
+    }
+
+    /** Lưu snapshot bất biến cho marketplace item. */
+    private void saveSnapshotForItem(MarketplaceItem item, User seller, String repoUrl,
+                                     com.godotlaunch.backend.dto.response.SourceProcessResult result) {
+        try {
+            com.godotlaunch.backend.entity.SourceSnapshot snap = new com.godotlaunch.backend.entity.SourceSnapshot();
+            snap.setMarketplaceItem(item);
+            snap.setSubmittedBy(seller);
+            snap.setRepoUrl(repoUrl);
+            snap.setCommitSha(result.getCommitSha());
+            snap.setBundleHash(result.getBundleHash());
+            snap.setFileCount(result.getFileCount());
+            snap.setGodotProject(result.isGodotProject());
+            snap.setVirusClean(result.isClean());
+            snap.setVirusScanned(result.isScanned());
+            snap.setFileHashes(toJson(result.getFileHashes()));
+            snap.setSecretsFound(toJson(result.getSecrets()));
+            // Upload source bundle lên storage cho AI đọc lại + admin/người mua tải
+            snap.setBundleUrl(uploadSourceBundle(result, "marketplace/items/" + item.getId()));
+            sourceSnapshotRepository.save(snap);
+        } catch (Exception e) {
+            log.warn("Không lưu được snapshot cho marketplace item {}: {}", item.getId(), e.getMessage());
+        }
+    }
+
+    private String toJson(Object obj) {
+        try {
+            return obj == null ? null : objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Upload source bundle (base64 zip từ Python) lên storage qua StorageRouter(source_bundle). */
+    private String uploadSourceBundle(com.godotlaunch.backend.dto.response.SourceProcessResult result, String prefix) {
+        if (result.getBundleBase64() == null || result.getBundleBase64().isBlank()) {
+            return null;
+        }
+        try {
+            byte[] zipBytes = java.util.Base64.getDecoder().decode(result.getBundleBase64());
+            String objectKey = prefix + "/source-bundle.zip";
+            var file = new com.godotlaunch.backend.util.ByteArrayMultipartFile(
+                    zipBytes, "file", "source-bundle.zip", "application/zip");
+            return storageRouter.uploadWithKey(FileType.source_bundle, file, objectKey);
+        } catch (Exception e) {
+            log.warn("Không upload được source bundle (prefix={}): {}", prefix, e.getMessage());
+            return null;
+        }
     }
 
     @Override
@@ -342,15 +497,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
         asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, actualKey);
         log.info("Marketplace item {} upload confirmed with key {} and virus scan started", itemId, actualKey);
-
-        auditLogService.publishAuto(
-                AuditAction.game_submitted,
-                AuditTarget.marketplace_item,
-                itemId,
-                null,
-                null,
-                "Marketplace project ZIP upload confirmed for '" + item.getTitle() + "'. Virus scan triggered."
-        );
     }
 
     @Override
@@ -373,15 +519,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 "Your marketplace asset has been approved by the admin and is now active on the marketplace."
         );
         log.info("Marketplace item {} approved and email sent to {}", id, item.getSeller().getEmail());
-
-        auditLogService.publishAuto(
-                AuditAction.game_approved,
-                AuditTarget.marketplace_item,
-                id,
-                ItemStatus.pending.name(),
-                ItemStatus.active.name(),
-                "Marketplace item '" + item.getTitle() + "' approved and activated by administrator."
-        );
     }
 
     @Override
@@ -413,15 +550,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 reason != null ? reason : "Violated store policies"
         );
         log.info("Marketplace item {} rejected and email sent to {}", id, item.getSeller().getEmail());
-
-        auditLogService.publishAuto(
-                AuditAction.game_rejected,
-                AuditTarget.marketplace_item,
-                id,
-                ItemStatus.pending.name(),
-                ItemStatus.rejected.name(),
-                "Marketplace item '" + item.getTitle() + "' rejected by administrator. Reason: " + reason
-        );
     }
 
     @Override
@@ -450,33 +578,20 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         } catch (Exception e) {
             log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
         }
-
-        auditLogService.publishAuto(
-                AuditAction.marketplace_item_removed,
-                AuditTarget.marketplace_item,
-                id,
-                item.getStatus().name(),
-                ItemStatus.removed.name(),
-                "Marketplace item '" + item.getTitle() + "' removed by " + (isAdmin ? "administrator" : "owner") + "."
-        );
     }
 
     private MarketplaceItemResponse mapToResponse(MarketplaceItem item) {
-        List<String> tags = item.getTags() != null
-                ? item.getTags().stream().map(Tag::getName).collect(Collectors.toList())
-                : Collections.emptyList();
-        List<String> screenshots = item.getMediaFiles() != null
-                ? item.getMediaFiles().stream()
-                        .filter(m -> "image".equalsIgnoreCase(m.getMediaType()))
-                        .map(m -> getPresignedGetUrl(m.getMediaUrl()))
-                        .collect(Collectors.toList())
-                : Collections.emptyList();
-        String videoUrl = item.getMediaFiles() != null
-                ? item.getMediaFiles().stream()
-                        .filter(m -> "video".equalsIgnoreCase(m.getMediaType()))
-                        .map(m -> getPresignedGetUrl(m.getMediaUrl()))
-                        .findFirst().orElse(null)
-                : null;
+        // Load media 1 lần, tách theo loại (thumbnail/video/screenshot/asset_image)
+        var mediaList = mediaRepository.findByOwnerTypeAndOwnerId(
+                com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item, item.getId());
+        String thumbUrl = mediaList.stream().filter(m -> "thumbnail".equals(m.getMediaType()))
+                .map(m -> getPresignedGetUrl(m.getMediaUrl())).findFirst().orElse(null);
+        String vidUrl = mediaList.stream().filter(m -> "video".equals(m.getMediaType()))
+                .map(m -> getPresignedGetUrl(m.getMediaUrl())).findFirst().orElse(null);
+        java.util.List<String> shots = mediaList.stream().filter(m -> "screenshot".equals(m.getMediaType()))
+                .map(m -> getPresignedGetUrl(m.getMediaUrl())).toList();
+        java.util.List<String> assetImgs = mediaList.stream().filter(m -> "asset_image".equals(m.getMediaType()))
+                .map(m -> getPresignedGetUrl(m.getMediaUrl())).toList();
 
         return MarketplaceItemResponse.builder()
                 .id(item.getId())
@@ -489,144 +604,27 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .description(item.getDescription())
                 .price(item.getPrice())
                 .fileUrl(getPresignedGetUrl(item.getFileUrl()))
-                .thumbnailUrl(getPresignedGetUrl(item.getThumbnailUrl()))
-                .license(item.getLicense())
-                .licenseTerms(item.getLicenseTerms())
-                .documentation(item.getDocumentation())
-                .version(item.getVersion())
-                .supportedPlatforms(item.getSupportedPlatforms())
-                .tags(tags)
-                .screenshots(screenshots)
-                .videoUrl(videoUrl)
                 .godotVersion(item.getGodotVersion())
                 .sourceGameId(item.getSourceGame() != null ? item.getSourceGame().getId() : null)
                 .sourceGameTitle(item.getSourceGame() != null ? item.getSourceGame().getTitle() : null)
                 .githubRepoUrl(item.getGithubRepoUrl())
                 .githubVerifiedAt(item.getGithubVerifiedAt())
                 .status(item.getStatus())
+                .tags(item.getTags() == null ? java.util.List.of() :
+                        item.getTags().stream()
+                                .map(com.godotlaunch.backend.entity.Tag::getName)
+                                .toList())
+                .mediaUrls(assetImgs)
+                .thumbnailUrl(thumbUrl)
+                .videoUrl(vidUrl)
+                .screenshots(shots)
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
     }
 
-    @Override
-    @Transactional
-    public String uploadMarketplaceItemMedia(UUID itemId, String fileType, MultipartFile file, String uploaderEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
-                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-
-        if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        FileType ft = resolveMediaFileType(fileType);
-        String objectKey = buildMarketplaceMediaObjectKey(itemId, fileType);
-
-        String mediaUrl = storageRouter.uploadWithKey(ft, file, objectKey);
-
-        if ("thumbnail".equalsIgnoreCase(fileType)) {
-            item.setThumbnailUrl(mediaUrl);
-            marketplaceItemRepository.save(item);
-        } else {
-            boolean isVideo = "video".equalsIgnoreCase(fileType);
-            if (isVideo) {
-                deleteMarketplaceMediaFilesAndRecords(itemId, "video");
-            }
-            MarketplaceItemMedia media = new MarketplaceItemMedia();
-            media.setMarketplaceItem(item);
-            media.setMediaType(isVideo ? "video" : "image");
-            media.setMediaUrl(mediaUrl);
-            marketplaceItemMediaRepository.save(media);
-        }
-
-        auditLogService.publishAuto(
-                AuditAction.game_updated,
-                AuditTarget.marketplace_item,
-                itemId,
-                null,
-                null,
-                "Uploaded " + fileType + " for marketplace item '" + item.getTitle() + "'."
-        );
-
-        return objectKey;
-    }
-
-    @Override
-    @Transactional
-    public void deleteMarketplaceItemMediaByUrl(UUID itemId, String mediaUrl, String uploaderEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
-                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-
-        if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        String targetKey = extractObjectKeyFromUrl(mediaUrl);
-        if (targetKey == null) {
-            throw new IllegalArgumentException("Không xác định được objectKey từ mediaUrl");
-        }
-
-        marketplaceItemMediaRepository.findByMarketplaceItemId(itemId).stream()
-                .filter(m -> targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
-                .findFirst()
-                .ifPresent(m -> {
-                    marketplaceItemMediaRepository.delete(m);
-                    FileType ft = "video".equalsIgnoreCase(m.getMediaType())
-                            ? FileType.video : FileType.screenshot;
-                    try {
-                        storageRouter.delete(ft, targetKey);
-                    } catch (Exception e) {
-                        log.warn("Đã xóa record media nhưng không xóa được file storage: {}", targetKey, e);
-                    }
-                });
-    }
-
-    private FileType resolveMediaFileType(String fileType) {
-        if ("thumbnail".equalsIgnoreCase(fileType)) return FileType.thumbnail;
-        if ("video".equalsIgnoreCase(fileType)) return FileType.video;
-        return FileType.screenshot;
-    }
-
-    private String buildMarketplaceMediaObjectKey(UUID itemId, String fileType) {
-        if ("thumbnail".equalsIgnoreCase(fileType)) {
-            return "marketplace/items/" + itemId + "/thumbnail";
-        }
-        if ("video".equalsIgnoreCase(fileType)) {
-            return "marketplace/items/" + itemId + "/video";
-        }
-        return "marketplace/items/" + itemId + "/screenshots/" + UUID.randomUUID().toString();
-    }
-
-    private void deleteMarketplaceMediaFilesAndRecords(UUID itemId, String mediaType) {
-        FileType ft = "video".equalsIgnoreCase(mediaType) ? FileType.video : FileType.screenshot;
-        marketplaceItemMediaRepository.findByMarketplaceItemId(itemId).stream()
-                .filter(m -> mediaType.equalsIgnoreCase(m.getMediaType()))
-                .forEach(m -> {
-                    String key = extractObjectKeyFromUrl(m.getMediaUrl());
-                    if (key != null) {
-                        try {
-                            storageRouter.delete(ft, key);
-                        } catch (Exception e) {
-                            log.warn("Không xóa được file media trên storage: {}", key, e);
-                        }
-                    }
-                });
-        marketplaceItemMediaRepository.deleteByMarketplaceItemIdAndMediaType(itemId, mediaType);
-    }
-
     private String getPresignedGetUrl(String rawUrl) {
         if (rawUrl == null || "pending".equalsIgnoreCase(rawUrl)) return rawUrl;
-        boolean isS3 = rawUrl.contains(".amazonaws.com");
-        if (!isS3) {
-            try {
-                String provider = storageRouter.getProvider(FileType.asset);
-                if ("seaweedfs".equalsIgnoreCase(provider)) {
-                    return rawUrl;
-                }
-            } catch (Exception e) {
-                // Fallback to S3 presigning if provider check fails
-            }
-        }
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
@@ -639,14 +637,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-        int idx = url.indexOf("marketplace/items/");
-        if (idx != -1) {
-            return url.substring(idx);
-        }
-        idx = url.indexOf("games/");
-        if (idx != -1) {
-            return url.substring(idx);
-        }
         String prefix = ".amazonaws.com/";
         int index = url.indexOf(prefix);
         if (index != -1) {

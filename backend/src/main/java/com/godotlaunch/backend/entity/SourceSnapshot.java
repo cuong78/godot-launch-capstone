@@ -69,6 +69,10 @@ public class SourceSnapshot {
     @Column(name = "secrets_found", columnDefinition = "jsonb")
     private String secretsFound;
 
+    // Link source code đã zip lên storage (AI đọc lại + admin/người mua tải)
+    @Column(name = "bundle_url", columnDefinition = "TEXT")
+    private String bundleUrl;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 }

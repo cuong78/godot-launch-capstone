@@ -92,13 +92,71 @@ public class MarketplaceItemController {
 
     @PostMapping(value = "/{id}/upload", consumes = "multipart/form-data")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @Operation(summary = "Upload item ZIP qua proxy", description = "Upload file zip qua backend → StorageRouter (S3 hoặc SeaweedFS theo routing config). Dùng cho SeaweedFS vì không hỗ trợ presigned URL.")
+    @Operation(summary = "Upload item ZIP qua proxy", description = "Upload file (ASSET) qua backend → StorageRouter. Source_code dùng submit-repo thay vì upload.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadItemFile(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,
             Principal principal) {
         marketplaceItemService.uploadItemFile(id, file, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "File uploaded successfully"), "Success"));
+    }
+
+    @PostMapping(value = "/{id}/media", consumes = "multipart/form-data")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Upload media cho item", description = "mediaType: thumbnail | screenshot | video | asset_image. Upload qua StorageRouter.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadItemMedia(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "asset_image") String mediaType,
+            Principal principal) {
+        String objectKey = marketplaceItemService.uploadItemMedia(id, mediaType, file, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("message", "Media uploaded", "objectKey", objectKey), "Success"));
+    }
+
+    @DeleteMapping("/{id}/media")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Xóa 1 ảnh preview của asset")
+    public ResponseEntity<ApiResponse<Map<String, String>>> deleteAssetMedia(
+            @PathVariable UUID id,
+            @RequestParam String mediaUrl,
+            Principal principal) {
+        marketplaceItemService.deleteAssetMedia(id, mediaUrl, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Media deleted"), "Success"));
+    }
+
+    @GetMapping("/{id}/source-bundle")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Lấy URL tải source bundle", description = "Chỉ admin / seller / người đã mua được tải. Trả URL bundle zip.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getSourceBundle(
+            @PathVariable UUID id, Principal principal) {
+        String url = marketplaceItemService.getSourceBundleUrl(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("bundleUrl", url), "Source bundle URL"));
+    }
+
+    @PostMapping("/{id}/submit-repo")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Submit source_code bằng repo GitHub",
+            description = "Verify owner → clone → virus scan → snapshot (như game). Private chưa cấp quyền → 403 REPO_NEEDS_BOT.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> submitItemRepo(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
+            Principal principal) {
+        marketplaceItemService.submitItemRepo(id, request.getRepoUrl(), request.getBranch(), principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("message", "Repo verified và submit thành công. Đang chờ duyệt."), "Success"));
+    }
+
+    @PostMapping("/accept-bot")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Bot accept invitation repo private (marketplace)")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> acceptBot(
+            @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
+            Principal principal) {
+        boolean granted = marketplaceItemService.acceptBotInvitation(request.getRepoUrl(), principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("granted", granted),
+                granted ? "Đã cấp quyền cho bot. Bạn có thể submit lại." : "Chưa tìm thấy lời mời."));
     }
 
     @PostMapping("/{id}/upload-complete")

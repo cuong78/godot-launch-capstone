@@ -3,7 +3,8 @@ package com.godotlaunch.backend.service.impl;
 import com.godotlaunch.backend.dto.request.UpdateGameRequest;
 import com.godotlaunch.backend.dto.response.GameResponse;
 import com.godotlaunch.backend.entity.Game;
-import com.godotlaunch.backend.entity.GameMedia;
+import com.godotlaunch.backend.entity.Media;
+import com.godotlaunch.backend.entity.enums.MediaOwnerType;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.SourceSnapshot;
@@ -25,7 +26,7 @@ import com.godotlaunch.backend.service.GameService;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.CategoryRepository;
-import com.godotlaunch.backend.repository.GameMediaRepository;
+import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.entity.enums.AuditAction;
@@ -50,7 +51,12 @@ public class GameServiceImpl implements GameService {
     private final GameRepository gameRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
-    private final GameMediaRepository gameMediaRepository;
+    private final MediaRepository mediaRepository;
+
+    /** Helper: tìm media của game này. */
+    private List<Media> gameMedia(UUID gameId) {
+        return mediaRepository.findByOwnerTypeAndOwnerId(MediaOwnerType.game, gameId);
+    }
     private final AwsS3Service awsS3Service;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
@@ -61,12 +67,10 @@ public class GameServiceImpl implements GameService {
     private final SourceSnapshotRepository sourceSnapshotRepository;
     private final ObjectMapper objectMapper;
 
-    /** Map fileType string (từ frontend) → FileType enum cho StorageRouter routing. */
+    /** Map fileType string → FileType cho routing. Mọi media của game đều route qua game_media. */
     private FileType resolveMediaFileType(String fileType) {
-        if ("thumbnail".equalsIgnoreCase(fileType)) return FileType.thumbnail;
-        if ("video".equalsIgnoreCase(fileType)) return FileType.video;
-        // "screenshot" | "image"
-        return FileType.screenshot;
+        // thumbnail / screenshot / video / image — tất cả là media của game
+        return FileType.game_media;
     }
 
     /** Build objectKey cố định/random theo loại media. */
@@ -104,16 +108,6 @@ public class GameServiceImpl implements GameService {
         }
 
         Game savedGame = gameRepository.save(game);
-
-        auditLogService.publishAuto(
-                AuditAction.game_updated,
-                AuditTarget.game,
-                savedGame.getId(),
-                null,
-                null,
-                "Game draft '" + savedGame.getTitle() + "' initialized by creator."
-        );
-
         return savedGame.getId();
     }
 
@@ -132,15 +126,16 @@ public class GameServiceImpl implements GameService {
             throw new AppException(ErrorCode.REPO_URL_REQUIRED);
         }
 
-        // 1. Kiểm tra hệ thống có truy cập được repo không
+        // 1. Verify owner TRƯỚC — repo phải thuộc về chính creator (chống đánh cắp repo người khác).
+        //    Chạy trước checkAccess để A submit repo của B bị chặn ngay (không nhảy vào "mời bot").
+        gitHubRepoService.verifyOwnership(creator, repoUrl);
+
+        // 2. Kiểm tra hệ thống có truy cập được repo không (repo của chính họ nhưng private)
         GitHubRepoService.RepoAccess access = gitHubRepoService.checkAccess(repoUrl);
         if (access == GitHubRepoService.RepoAccess.PRIVATE_NO_ACCESS) {
-            // Private mà bot chưa có quyền → báo frontend hiện hướng dẫn mời bot
+            // Repo của họ nhưng private → mời bot để hệ thống pull được
             throw new AppException(ErrorCode.REPO_NEEDS_BOT);
         }
-
-        // 2. Verify owner repo khớp account GitHub + không fork
-        gitHubRepoService.verifyOwnership(creator, repoUrl);
 
         // 3. Clone + virus scan + snapshot — token null nếu public, bot token nếu private
         String token = gitHubRepoService.getCloneToken(repoUrl);
@@ -161,6 +156,13 @@ public class GameServiceImpl implements GameService {
                     AuditTarget.game, gameId, null, null,
                     "Phát hiện mã độc trong repo của game: " + game.getTitle(), null);
             throw new AppException(ErrorCode.SOURCE_MALWARE_DETECTED);
+        }
+
+        // 3b. Không phải Godot project hợp lệ (framework khác / repo bừa) → từ chối
+        if (!result.isGodotProject()) {
+            log.warn("Repo {} không phải Godot project (hasProjectGodot={}, hasGodotSource={})",
+                    repoUrl, result.isHasProjectGodot(), result.isHasGodotSource());
+            throw new AppException(ErrorCode.NOT_GODOT_PROJECT);
         }
 
         // 4. Sạch → lưu repo + verified + snapshot → chuyển pending
@@ -208,9 +210,31 @@ public class GameServiceImpl implements GameService {
             snap.setVirusScanned(result.isScanned());
             snap.setFileHashes(toJson(result.getFileHashes()));
             snap.setSecretsFound(toJson(result.getSecrets()));
+            // Upload source bundle (zip) lên storage cho AI đọc lại + admin/người mua tải
+            snap.setBundleUrl(uploadSourceBundle(result, "games/" + game.getId()));
             sourceSnapshotRepository.save(snap);
         } catch (Exception e) {
             log.warn("Không lưu được source snapshot cho game {}: {}", game.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Upload source bundle (base64 zip từ Python) lên storage qua StorageRouter(source_bundle).
+     * @return URL bundle, hoặc null nếu không có bundle / upload lỗi.
+     */
+    private String uploadSourceBundle(SourceProcessResult result, String prefix) {
+        if (result.getBundleBase64() == null || result.getBundleBase64().isBlank()) {
+            return null;
+        }
+        try {
+            byte[] zipBytes = java.util.Base64.getDecoder().decode(result.getBundleBase64());
+            String objectKey = prefix + "/source-bundle.zip";
+            var file = new com.godotlaunch.backend.util.ByteArrayMultipartFile(
+                    zipBytes, "file", "source-bundle.zip", "application/zip");
+            return storageRouter.uploadWithKey(FileType.source_bundle, file, objectKey);
+        } catch (Exception e) {
+            log.warn("Không upload được source bundle (prefix={}): {}", prefix, e.getMessage());
+            return null;
         }
     }
 
@@ -319,16 +343,13 @@ public class GameServiceImpl implements GameService {
             throw new IllegalArgumentException("Không xác định được objectKey từ mediaUrl");
         }
 
-        gameMediaRepository.findByGameId(gameId).stream()
+        gameMedia(gameId).stream()
                 .filter(m -> targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
                 .findFirst()
                 .ifPresent(m -> {
-                    gameMediaRepository.delete(m);
-                    // Route đúng provider theo loại media (image→screenshot, video→video)
-                    FileType ft = "video".equalsIgnoreCase(m.getMediaType())
-                            ? FileType.video : FileType.screenshot;
+                    mediaRepository.delete(m);
                     try {
-                        storageRouter.delete(ft, targetKey);
+                        storageRouter.delete(FileType.game_media, targetKey);
                     } catch (Exception e) {
                         log.warn("Đã xóa record media nhưng không xóa được file storage: {}", targetKey, e);
                     }
@@ -336,18 +357,14 @@ public class GameServiceImpl implements GameService {
     }
 
     private String getPresignedGetUrl(String rawUrl) {
-        if (rawUrl == null || "pending".equalsIgnoreCase(rawUrl)) return rawUrl;
-        boolean isS3 = rawUrl.contains(".amazonaws.com");
-        if (!isS3) {
-            try {
-                String provider = storageRouter.getProvider(FileType.game_zip);
-                if ("seaweedfs".equalsIgnoreCase(provider)) {
-                    return rawUrl;
-                }
-            } catch (Exception e) {
-                // Fallback to S3 presigning if provider check fails
-            }
+        if (rawUrl == null) return null;
+
+        // File trên SeaweedFS (hoặc storage khác) đã là public URL → trả thẳng,
+        // chỉ S3 mới cần presigned GET URL.
+        if (!rawUrl.contains(".amazonaws.com/")) {
+            return rawUrl;
         }
+
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
@@ -359,7 +376,7 @@ public class GameServiceImpl implements GameService {
     }
 
     private GameResponse mapToResponse(Game game) {
-        List<GameMedia> mediaList = gameMediaRepository.findByGameId(game.getId());
+        List<Media> mediaList = gameMedia(game.getId());
         List<String> screenshots = mediaList.stream()
                 .filter(m -> "image".equalsIgnoreCase(m.getMediaType()))
                 .map(m -> getPresignedGetUrl(m.getMediaUrl()))
@@ -423,14 +440,6 @@ public class GameServiceImpl implements GameService {
             String thumbnailUrl = awsS3Service.getFileUrl(actualKey);
             game.setThumbnailUrl(thumbnailUrl);
             gameRepository.save(game);
-            auditLogService.publishAuto(
-                    AuditAction.game_updated,
-                    AuditTarget.game,
-                    gameId,
-                    null,
-                    null,
-                    "Uploaded thumbnail for game '" + game.getTitle() + "'."
-            );
         } else if ("screenshot".equalsIgnoreCase(fileType) || "image".equalsIgnoreCase(fileType) || "video".equalsIgnoreCase(fileType)) {
             if (objectKey == null) {
                 throw new IllegalArgumentException("objectKey is required to confirm media uploads (screenshots or videos)");
@@ -440,22 +449,15 @@ public class GameServiceImpl implements GameService {
 
             // Video chỉ có 1 cái/game → upload mới thay thế cái cũ (không giữ lịch sử).
             if (isVideo) {
-                gameMediaRepository.deleteByGameIdAndMediaType(gameId, "video");
+                mediaRepository.deleteByOwnerTypeAndOwnerIdAndMediaType(MediaOwnerType.game, gameId, "video");
             }
 
-            GameMedia media = new GameMedia();
-            media.setGame(game);
+            Media media = new Media();
+            media.setOwnerType(MediaOwnerType.game);
+            media.setOwnerId(gameId);
             media.setMediaType(isVideo ? "video" : "image");
             media.setMediaUrl(mediaUrl);
-            gameMediaRepository.save(media);
-            auditLogService.publishAuto(
-                    AuditAction.game_updated,
-                    AuditTarget.game,
-                    gameId,
-                    null,
-                    null,
-                    "Uploaded " + fileType + " for game '" + game.getTitle() + "'."
-            );
+            mediaRepository.save(media);
         } else {
             String actualKey = objectKey != null ? objectKey : "games/" + gameId.toString() + "/game.zip";
             String fileUrl = awsS3Service.getFileUrl(actualKey);
@@ -464,14 +466,6 @@ public class GameServiceImpl implements GameService {
             gameRepository.save(game);
 
             asyncVirusScanService.scanAndProcessGame(gameId, actualKey);
-            auditLogService.publishAuto(
-                    AuditAction.game_submitted,
-                    AuditTarget.game,
-                    gameId,
-                    null,
-                    null,
-                    "Game package ZIP uploaded for '" + game.getTitle() + "'. Virus scan triggered."
-            );
         }
     }
 
@@ -500,41 +494,32 @@ public class GameServiceImpl implements GameService {
             if (isVideo) {
                 deleteMediaFilesAndRecords(gameId, "video");
             }
-            GameMedia media = new GameMedia();
-            media.setGame(game);
+            Media media = new Media();
+            media.setOwnerType(MediaOwnerType.game);
+            media.setOwnerId(gameId);
             media.setMediaType(isVideo ? "video" : "image");
             media.setMediaUrl(mediaUrl);
-            gameMediaRepository.save(media);
+            mediaRepository.save(media);
         }
-
-        auditLogService.publishAuto(
-                AuditAction.game_updated,
-                AuditTarget.game,
-                gameId,
-                null,
-                null,
-                "Uploaded " + fileType + " for game '" + game.getTitle() + "' via proxy."
-        );
 
         return objectKey;
     }
 
     /** Xóa cả file storage (đúng provider) lẫn record DB cho 1 loại media. */
     private void deleteMediaFilesAndRecords(UUID gameId, String mediaType) {
-        FileType ft = "video".equalsIgnoreCase(mediaType) ? FileType.video : FileType.screenshot;
-        gameMediaRepository.findByGameId(gameId).stream()
+        gameMedia(gameId).stream()
                 .filter(m -> mediaType.equalsIgnoreCase(m.getMediaType()))
                 .forEach(m -> {
                     String key = extractObjectKeyFromUrl(m.getMediaUrl());
                     if (key != null) {
                         try {
-                            storageRouter.delete(ft, key);
+                            storageRouter.delete(FileType.game_media, key);
                         } catch (Exception e) {
                             log.warn("Không xóa được file media trên storage: {}", key, e);
                         }
                     }
                 });
-        gameMediaRepository.deleteByGameIdAndMediaType(gameId, mediaType);
+        mediaRepository.deleteByOwnerTypeAndOwnerIdAndMediaType(MediaOwnerType.game, gameId, mediaType);
     }
 
     @Override
@@ -611,15 +596,15 @@ public class GameServiceImpl implements GameService {
             game.setFileUrl(null);
             game.setThumbnailUrl(null);
 
-            // Xóa toàn bộ screenshots và videos trong game_media
-            List<GameMedia> mediaList = gameMediaRepository.findByGameId(gameId);
-            for (GameMedia media : mediaList) {
+            // Xóa toàn bộ screenshots và videos trong media
+            List<Media> mediaList = gameMedia(gameId);
+            for (Media media : mediaList) {
                 String mediaKey = extractObjectKeyFromUrl(media.getMediaUrl());
                 if (mediaKey != null) {
                     awsS3Service.deleteObject(mediaKey);
                 }
             }
-            gameMediaRepository.deleteByGameId(gameId);
+            mediaRepository.deleteByOwnerTypeAndOwnerId(MediaOwnerType.game, gameId);
             log.info("Đã xóa tệp ZIP, Thumbnail và {} tệp screenshots/video trên S3 cho game bị từ chối: gameId = {}", mediaList.size(), gameId);
         } catch (Exception e) {
             log.warn("Không thể xóa hoàn toàn tệp tin trên S3 của game bị từ chối: gameId = {}, lỗi = {}", gameId, e.getMessage());
@@ -646,14 +631,6 @@ public class GameServiceImpl implements GameService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-        int idx = url.indexOf("marketplace/items/");
-        if (idx != -1) {
-            return url.substring(idx);
-        }
-        idx = url.indexOf("games/");
-        if (idx != -1) {
-            return url.substring(idx);
-        }
         String prefix = ".amazonaws.com/";
         int index = url.indexOf(prefix);
         if (index != -1) {

@@ -1,14 +1,15 @@
 package com.godotlaunch.backend.repository;
 
-import com.godotlaunch.backend.entity.Tag;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-import java.util.UUID;
+import com.godotlaunch.backend.entity.Tag;
 
 @Repository
 public interface TagRepository extends JpaRepository<Tag, UUID> {
-    Optional<Tag> findByNameIgnoreCase(String name);
-    Optional<Tag> findBySlug(String slug);
+    List<Tag> findAllByOrderByNameAsc();
+    List<Tag> findByIdIn(List<UUID> ids);
 }

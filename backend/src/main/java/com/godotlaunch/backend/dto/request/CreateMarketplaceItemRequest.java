@@ -1,13 +1,15 @@
 package com.godotlaunch.backend.dto.request;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
 import com.godotlaunch.backend.entity.enums.ItemType;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
-import java.math.BigDecimal;
-import java.util.UUID;
 
 @Data
 public class CreateMarketplaceItemRequest {
@@ -45,5 +47,7 @@ public class CreateMarketplaceItemRequest {
 
     private String supportedPlatforms;
 
-    private java.util.List<String> tags;
+    private List<UUID> tagIds;
+
+    private List<String> tags;
 }

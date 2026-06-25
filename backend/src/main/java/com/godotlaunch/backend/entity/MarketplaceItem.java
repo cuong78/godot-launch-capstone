@@ -1,18 +1,34 @@
 package com.godotlaunch.backend.entity;
 
-import com.godotlaunch.backend.entity.enums.ItemStatus;
-import com.godotlaunch.backend.entity.enums.ItemType;
-import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.godotlaunch.backend.entity.enums.ItemStatus;
+import com.godotlaunch.backend.entity.enums.ItemType;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "marketplace_items")
@@ -82,19 +98,16 @@ public class MarketplaceItem {
     @Column(name = "github_verified_at")
     private Instant githubVerifiedAt;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "marketplace_item_tags",
+            joinColumns = @JoinColumn(name = "item_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<Tag> tags = new HashSet<>();
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "item_status_enum")
     private ItemStatus status = ItemStatus.active;
-
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "marketplace_item_tags",
-            joinColumns = @JoinColumn(name = "marketplace_item_id"),
-            inverseJoinColumns = @JoinColumn(name = "tag_id"))
-    private Set<Tag> tags = new HashSet<>();
-
-    @OneToMany(mappedBy = "marketplaceItem", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MarketplaceItemMedia> mediaFiles = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

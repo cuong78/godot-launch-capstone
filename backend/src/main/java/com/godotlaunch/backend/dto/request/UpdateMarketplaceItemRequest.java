@@ -3,6 +3,7 @@ package com.godotlaunch.backend.dto.request;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -20,5 +21,6 @@ public class UpdateMarketplaceItemRequest {
     private String documentation;
     private String version;
     private String supportedPlatforms;
-    private java.util.List<String> tags;
+    private List<UUID> tagIds;
+    private List<String> tags;
 }

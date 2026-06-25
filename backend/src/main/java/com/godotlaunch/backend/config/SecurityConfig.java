@@ -55,6 +55,7 @@ public class SecurityConfig {
                     "/ws/**"
                 ).permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/tags/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/community/posts/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/games/**").permitAll()
                 .anyRequest().authenticated()

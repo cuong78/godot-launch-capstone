@@ -8,6 +8,8 @@ import os
 import re
 import shutil
 import hashlib
+import base64
+import zipfile
 import subprocess
 import tempfile
 from pathlib import Path
@@ -19,6 +21,7 @@ IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".godot", ".import"}
 # Giới hạn an toàn
 MAX_CLONE_MB = 500          # repo quá lớn → từ chối
 CLONE_TIMEOUT_SEC = 120     # clone quá lâu → hủy
+MAX_BUNDLE_MB = 50          # bundle zip quá lớn → bỏ qua (chỉ giữ snapshot)
 
 
 def _safe_repo_url(repo_url: str, token: str | None, branch: str | None):
@@ -94,7 +97,11 @@ def snapshot(tmp_dir: str) -> dict:
     root = Path(tmp_dir)
     file_hashes: dict[str, str] = {}
     bundle_hasher = hashlib.sha256()
-    is_godot = False
+
+    # project.godot PHẢI ở thư mục gốc (không phải sub-folder bừa)
+    has_project_godot_root = (root / "project.godot").is_file()
+    # phải có ít nhất 1 file source Godot thật (.gd script hoặc .tscn scene)
+    has_godot_source = False
 
     for path in sorted(root.rglob("*")):
         if not path.is_file():
@@ -102,8 +109,8 @@ def snapshot(tmp_dir: str) -> dict:
         rel = path.relative_to(root)
         if any(part in IGNORE_DIRS for part in rel.parts):
             continue
-        if rel.name == "project.godot":
-            is_godot = True
+        if path.suffix.lower() in (".gd", ".tscn", ".scn"):
+            has_godot_source = True
 
         h = _hash_file(path)
         rel_str = str(rel).replace("\\", "/")
@@ -112,12 +119,17 @@ def snapshot(tmp_dir: str) -> dict:
         bundle_hasher.update(rel_str.encode())
         bundle_hasher.update(h.encode())
 
+    # Godot project hợp lệ = project.godot ở root VÀ có file .gd/.tscn
+    is_godot = has_project_godot_root and has_godot_source
+
     return {
         "commitSha": _current_commit(tmp_dir),
         "bundleHash": bundle_hasher.hexdigest(),
         "fileHashes": file_hashes,
         "fileCount": len(file_hashes),
         "isGodotProject": is_godot,
+        "hasProjectGodot": has_project_godot_root,
+        "hasGodotSource": has_godot_source,
     }
 
 
@@ -149,6 +161,40 @@ def scan_secrets(tmp_dir: str) -> list[dict]:
             if pat.search(text):
                 findings.append({"file": str(rel).replace("\\", "/"), "type": name})
     return findings
+
+
+def bundle_source(tmp_dir: str) -> str | None:
+    """
+    Zip toàn bộ source (bỏ .git, build dirs) → trả base64 để backend upload storage.
+    Bundle này để AI service đọc lại sau (giải nén, phân tích).
+    Bỏ qua nếu zip > MAX_BUNDLE_MB (chỉ giữ snapshot làm bằng chứng).
+    Trả về: base64 string của zip, hoặc None nếu vượt giới hạn.
+    """
+    root = Path(tmp_dir)
+    tmp_zip = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+    tmp_zip_path = tmp_zip.name
+    tmp_zip.close()
+    try:
+        with zipfile.ZipFile(tmp_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for path in sorted(root.rglob("*")):
+                if not path.is_file():
+                    continue
+                rel = path.relative_to(root)
+                if any(part in IGNORE_DIRS for part in rel.parts):
+                    continue
+                zf.write(path, arcname=str(rel).replace("\\", "/"))
+
+        size_mb = os.path.getsize(tmp_zip_path) / (1024 * 1024)
+        if size_mb > MAX_BUNDLE_MB:
+            return None  # quá lớn → không bundle, chỉ giữ snapshot
+
+        with open(tmp_zip_path, "rb") as f:
+            return base64.b64encode(f.read()).decode("ascii")
+    finally:
+        try:
+            os.remove(tmp_zip_path)
+        except OSError:
+            pass
 
 
 def scan_virus(tmp_dir: str) -> dict:

@@ -15,8 +15,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -106,8 +107,11 @@ public class AuditLogServiceImpl implements AuditLogService {
     }
 
     @Async("auditLogExecutor")
-    @EventListener
-    @Transactional
+    // AFTER_COMMIT: chỉ ghi audit SAU KHI transaction nghiệp vụ (vd signUp) đã commit
+    // → tránh FK violation khi actor_id trỏ tới user vừa tạo nhưng chưa commit.
+    // fallbackExecution=true: vẫn chạy khi publish ngoài transaction (vd OAuth login).
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleAuditLogEvent(AuditLogEvent event) {
         writeDebugLog("handleAuditLogEvent started for action=" + event.getAction());
         try {

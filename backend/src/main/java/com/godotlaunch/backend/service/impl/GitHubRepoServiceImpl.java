@@ -33,22 +33,31 @@ public class GitHubRepoServiceImpl implements GitHubRepoService {
         }
 
         String[] ownerRepo = parseOwnerRepo(repoUrl);
-        Map<String, Object> repoData = fetchRepoMetadata(ownerRepo[0], ownerRepo[1]);
-        if (repoData == null) {
-            throw new AppException(ErrorCode.REPO_NOT_FOUND);
-        }
+        String urlOwner = ownerRepo[0];
 
-        // Owner repo phải khớp github_username của user
-        @SuppressWarnings("unchecked")
-        Map<String, Object> ownerObj = (Map<String, Object>) repoData.get("owner");
-        String repoOwnerLogin = ownerObj != null ? (String) ownerObj.get("login") : null;
-        if (repoOwnerLogin == null
-                || !repoOwnerLogin.equalsIgnoreCase(user.getGithubUsername())) {
+        // TẦNG 1 — so owner trong URL với github_username (KHÔNG cần API).
+        // Chặn ngay user A submit repo của user B, KỂ CẢ repo private chưa cấp quyền bot.
+        // Đây là check QUAN TRỌNG NHẤT về chống đánh cắp — chạy TRƯỚC mọi thứ.
+        if (!urlOwner.equalsIgnoreCase(user.getGithubUsername())) {
             throw new AppException(ErrorCode.REPO_OWNER_MISMATCH);
         }
-        // Không chấp nhận fork
-        if (Boolean.TRUE.equals(repoData.get("fork"))) {
-            throw new AppException(ErrorCode.REPO_IS_FORK);
+
+        // TẦNG 2 — verify qua GitHub API (chỉ khi đọc được metadata: public / bot có quyền).
+        // Private chưa cấp quyền → API 404 → bỏ qua tầng này (tầng 1 đã chặn owner sai rồi).
+        Map<String, Object> repoData = fetchRepoMetadata(urlOwner, ownerRepo[1]);
+        if (repoData != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> ownerObj = (Map<String, Object>) repoData.get("owner");
+            String repoOwnerLogin = ownerObj != null ? (String) ownerObj.get("login") : null;
+            // double-check owner thật từ API (phòng URL bị giả mạo redirect)
+            if (repoOwnerLogin != null
+                    && !repoOwnerLogin.equalsIgnoreCase(user.getGithubUsername())) {
+                throw new AppException(ErrorCode.REPO_OWNER_MISMATCH);
+            }
+            // Không chấp nhận fork
+            if (Boolean.TRUE.equals(repoData.get("fork"))) {
+                throw new AppException(ErrorCode.REPO_IS_FORK);
+            }
         }
     }
 

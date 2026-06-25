@@ -1,13 +1,10 @@
 package com.godotlaunch.backend.entity.enums;
 
 public enum FileType {
-    avatar,
-    thumbnail,
-    pdf_contract,
-    game_zip,
-    source_code_zip,
-    screenshot,
-    video,
-    asset,
-    payment_receipt
+    avatar,          // ảnh đại diện user
+    pdf_contract,    // file hợp đồng PDF
+    game_media,      // thumbnail + screenshot + video CỦA GAME
+    asset_media,     // ảnh resource của marketplace asset
+    source_bundle,   // source code đã bundle zip (game + marketplace source_code)
+    payment_receipt  // ảnh/biên lai chuyển khoản người mua upload
 }

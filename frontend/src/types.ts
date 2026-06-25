@@ -6,12 +6,17 @@ export interface Asset {
   reviewedCount: number;
   author: string;
   authorAvatar: string;
-  category: '3D Models' | '2D Assets' | 'Shaders & VFX' | 'Audio & SFX' | 'Scripts & Plugins';
+  category:
+    | "3D Models"
+    | "2D Assets"
+    | "Shaders & VFX"
+    | "Audio & SFX"
+    | "Scripts & Plugins";
   description: string;
   image: string;
   tag: string;
   tagList: string[];
-  itemType?: 'source_code' | 'asset';
+  itemType?: "source_code" | "asset";
   isBestseller?: boolean;
   version?: string;
   lastUpdated?: string;
@@ -34,7 +39,7 @@ export interface Project {
   projectName: string;
   version: string;
   date: string;
-  status: 'LIVE' | 'BETA' | 'ALPHA';
+  status: "LIVE" | "BETA" | "ALPHA";
   engine: string;
   downloads: string;
 }
@@ -45,13 +50,30 @@ export interface User {
   email: string;
   fullName?: string;
   avatarUrl: string;
-  role?: 'user' | 'admin' | 'developer' | 'customer' | 'guest';
+  role?: "user" | "admin" | "developer" | "customer" | "guest";
   roleName?: string;
   status?: string;
   createdAt?: string;
 }
 
-export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin' | 'auth-callback' | 'profile' | 'community-detail' | 'author-profile' | 'chat' | 'checkout' | 'payment';
+export type ScreenType =
+  | "explore"
+  | "marketplace"
+  | "upload"
+  | "path"
+  | "dashboard"
+  | "detail"
+  | "community"
+  | "signin"
+  | "signup"
+  | "admin"
+  | "auth-callback"
+  | "profile"
+  | "community-detail"
+  | "author-profile"
+  | "chat"
+  | "checkout"
+  | "payment";
 
 export interface SignUpRequest {
   email: string;
@@ -123,7 +145,7 @@ export interface Page<T> {
 }
 
 // --- Community Chat Feature ---
-export type ReactionType = 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry';
+export type ReactionType = "like" | "love" | "haha" | "wow" | "sad" | "angry";
 
 export interface UserSummary {
   id: string;
@@ -133,7 +155,7 @@ export interface UserSummary {
 
 export interface ChatMediaResponse {
   url: string;
-  mediaType: 'image' | 'video';
+  mediaType: "image" | "video";
 }
 
 export interface CommunityChatResponse {
@@ -208,7 +230,7 @@ export interface CreateGameRequest {
   description?: string;
   priceProposed?: number;
   categoryId?: string;
-  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+  publishingType?: "full_acquisition" | "co_publishing" | "marketplace_listing";
   githubRepoUrl?: string;
   githubBranch?: string;
 }
@@ -218,7 +240,7 @@ export interface UpdateGameRequest {
   description?: string;
   priceProposed?: number;
   categoryId?: string;
-  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+  publishingType?: "full_acquisition" | "co_publishing" | "marketplace_listing";
   status?: string;
 }
 
@@ -234,7 +256,7 @@ export interface GameResponse {
   creatorName?: string;
   creatorFullName?: string;
   categoryName?: string;
-  publishingType?: 'full_acquisition' | 'co_publishing' | 'marketplace_listing';
+  publishingType?: "full_acquisition" | "co_publishing" | "marketplace_listing";
   screenshots?: string[];
   videoUrl?: string;
   fileUrl?: string;
@@ -248,10 +270,16 @@ export interface ContractResponse {
   sellerName: string;
   sellerEmail?: string;
   buyerId?: string;
-  contractType: 'full_acquisition' | 'co_publishing';
+  contractType: "full_acquisition" | "co_publishing";
   termsHash: string;
   pdfUrl?: string;
-  status: 'pending' | 'signed' | 'expired' | 'cancelled' | 'negotiating' | 're_issued';
+  status:
+    | "pending"
+    | "signed"
+    | "expired"
+    | "cancelled"
+    | "negotiating"
+    | "re_issued";
   revenueSplit?: number;
   lumpSumAmount?: string;
   disputeResolutionClause?: string;
@@ -273,7 +301,7 @@ export interface CreateMarketplaceItemRequest {
   title: string;
   description?: string;
   price: number;
-  itemType: 'source_code' | 'asset';
+  itemType: "source_code" | "asset";
   categoryId?: string;
   godotVersion?: string;
   githubRepoUrl?: string;
@@ -285,6 +313,7 @@ export interface CreateMarketplaceItemRequest {
   documentation?: string;
   version?: string;
   supportedPlatforms?: string;
+  tagIds?: string[];
   tags?: string[];
 }
 
@@ -302,6 +331,7 @@ export interface UpdateMarketplaceItemRequest {
   documentation?: string;
   version?: string;
   supportedPlatforms?: string;
+  tagIds?: string[];
   tags?: string[];
 }
 
@@ -311,7 +341,7 @@ export interface MarketplaceItemResponse {
   sellerFullName?: string;
   categoryId?: string;
   categoryName?: string;
-  itemType: 'source_code' | 'asset';
+  itemType: "source_code" | "asset";
   title: string;
   description?: string;
   price: number;
@@ -330,14 +360,19 @@ export interface MarketplaceItemResponse {
   sourceGameTitle?: string;
   githubRepoUrl?: string;
   githubVerifiedAt?: string;
-  status: 'active' | 'removed' | 'pending' | 'rejected';
+  status: "active" | "removed" | "pending" | "rejected";
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type PaymentMethod = 'MANUAL_BANK_TRANSFER';
+export type PaymentMethod = "MANUAL_BANK_TRANSFER";
 
-export type PaymentStatus = 'PENDING' | 'WAITING_VERIFICATION' | 'PAID' | 'REJECTED' | 'CANCELLED';
+export type PaymentStatus =
+  | "PENDING"
+  | "WAITING_VERIFICATION"
+  | "PAID"
+  | "REJECTED"
+  | "CANCELLED";
 
 export interface CreatePaymentRequest {
   marketplaceItemId: string;
@@ -359,7 +394,7 @@ export interface PaymentResponse {
   orderId: string;
   marketplaceItemId: string;
   marketplaceItemTitle: string;
-  marketplaceItemType: 'source_code' | 'asset';
+  marketplaceItemType: "source_code" | "asset";
   buyerId: string;
   buyerEmail: string;
   buyerFullName: string;
@@ -391,7 +426,11 @@ export interface PaymentStatusResponse {
 }
 
 // --- WebSocket Notifications & Chat DM ---
-export type NotificationType = 'COMMENT' | 'REACTION' | 'SHARE' | 'CHAT_MESSAGE';
+export type NotificationType =
+  | "COMMENT"
+  | "REACTION"
+  | "SHARE"
+  | "CHAT_MESSAGE";
 
 export interface NotificationResponse {
   id: string;
@@ -420,50 +459,50 @@ export interface ConversationResponse {
 }
 
 // --- Audit Log Types ---
-export type ActorRoleType = 'admin' | 'developer' | 'customer';
+export type ActorRoleType = "admin" | "developer" | "customer";
 
 export type AuditActionType =
-  | 'game_submitted'
-  | 'game_approved'
-  | 'game_rejected'
-  | 'game_published'
-  | 'game_community_enabled'
-  | 'game_updated'
-  | 'user_banned'
-  | 'user_unbanned'
-  | 'user_role_changed'
-  | 'contract_created'
-  | 'contract_signed'
-  | 'contract_cancelled'
-  | 'transaction_completed'
-  | 'transaction_failed'
-  | 'withdrawal_approved'
-  | 'withdrawal_rejected'
-  | 'marketplace_item_removed'
-  | 'review_removed'
-  | 'chat_removed'
-  | 'ai_report_generated'
-  | 'security_alert'
-  | 'post_created'
-  | 'comment_created'
-  | 'reaction_created'
-  | 'chat_message_sent'
-  | 'user_registered'
-  | 'user_login_success'
-  | 'user_login_failed'
-  | 'user_logged_out';
+  | "game_submitted"
+  | "game_approved"
+  | "game_rejected"
+  | "game_published"
+  | "game_community_enabled"
+  | "game_updated"
+  | "user_banned"
+  | "user_unbanned"
+  | "user_role_changed"
+  | "contract_created"
+  | "contract_signed"
+  | "contract_cancelled"
+  | "transaction_completed"
+  | "transaction_failed"
+  | "withdrawal_approved"
+  | "withdrawal_rejected"
+  | "marketplace_item_removed"
+  | "review_removed"
+  | "chat_removed"
+  | "ai_report_generated"
+  | "security_alert"
+  | "post_created"
+  | "comment_created"
+  | "reaction_created"
+  | "chat_message_sent"
+  | "user_registered"
+  | "user_login_success"
+  | "user_login_failed"
+  | "user_logged_out";
 
 export type AuditTargetType =
-  | 'user'
-  | 'game'
-  | 'contract'
-  | 'transaction'
-  | 'withdrawal'
-  | 'marketplace_item'
-  | 'review'
-  | 'community_chat'
-  | 'chat_message'
-  | 'ai_report';
+  | "user"
+  | "game"
+  | "contract"
+  | "transaction"
+  | "withdrawal"
+  | "marketplace_item"
+  | "review"
+  | "community_chat"
+  | "chat_message"
+  | "ai_report";
 
 export interface AuditLogResponse {
   id: string;
@@ -490,7 +529,3 @@ export interface AuditLogFilterParams {
   targetId?: string;
   ipAddress?: string;
 }
-
-
-
-
