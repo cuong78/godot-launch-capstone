@@ -66,6 +66,7 @@ public class GameServiceImpl implements GameService {
     private final SourceProcessingClient sourceProcessingClient;
     private final SourceSnapshotRepository sourceSnapshotRepository;
     private final ObjectMapper objectMapper;
+    private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
 
     /** Map fileType string → FileType cho routing. Mọi media của game đều route qua game_media. */
     private FileType resolveMediaFileType(String fileType) {
@@ -178,6 +179,9 @@ public class GameServiceImpl implements GameService {
                 creator.getId(), ActorRole.developer, AuditAction.game_submitted,
                 AuditTarget.game, gameId, GameStatus.draft.name(), GameStatus.pending.name(),
                 "Game '" + game.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
+
+        // AI review async (sau snapshot sạch, trước admin) — tạo report đề xuất. Fail-soft.
+        aiReviewService.reviewGameAsync(gameId);
     }
 
     @Override

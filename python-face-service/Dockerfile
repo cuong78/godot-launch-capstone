@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# dlib build dependencies
+# dlib build dependencies + ffmpeg (cắt frame video cho AI review)
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -8,11 +8,16 @@ RUN apt-get update && apt-get install -y \
     liblapack-dev \
     libx11-dev \
     libgtk-3-dev \
+    ffmpeg \
     curl \
     git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Cache model Hugging Face (CLIP, NSFW) vào /models — mount volume để khỏi tải lại mỗi lần restart
+ENV HF_HOME=/models
+ENV TRANSFORMERS_OFFLINE=0
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

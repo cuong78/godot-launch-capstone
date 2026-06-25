@@ -39,7 +39,7 @@ public class WithdrawalRequest {
 
     @JdbcTypeCode(Types.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
-    private String currency = "USD";
+    private String currency = "VND";
 
     @Column(name = "bank_name", nullable = false, length = 200)
     private String bankName;
