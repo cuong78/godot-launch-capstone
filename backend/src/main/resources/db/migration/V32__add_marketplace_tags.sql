@@ -43,8 +43,10 @@ CREATE INDEX IF NOT EXISTS idx_marketplace_item_tags_tag ON marketplace_item_tag
 COMMENT ON TABLE marketplace_item_tags IS 'Nhiều-nhiều: marketplace item ↔ tags';
 
 -- ── Seed tags mẫu (từ khóa mô tả, khác với category) ──────────
--- Dùng ON CONFLICT để idempotent (tags.name + slug UNIQUE)
-INSERT INTO tags (name, slug) VALUES
+-- Tránh trùng lặp trên cả cột name và slug (cả hai đều có ràng buộc UNIQUE)
+INSERT INTO tags (name, slug)
+SELECT val.name, val.slug
+FROM (VALUES
     ('Pixel Art',        'pixel-art'),
     ('Low Poly',         'low-poly'),
     ('Top Down',         'top-down'),
@@ -65,4 +67,9 @@ INSERT INTO tags (name, slug) VALUES
     ('Tileset',          'tileset'),
     ('GDScript',         'gdscript'),
     ('CSharp',           'csharp')
-ON CONFLICT (name) DO NOTHING;
+) AS val(name, slug)
+WHERE NOT EXISTS (
+    SELECT 1 FROM tags t 
+    WHERE LOWER(t.name) = LOWER(val.name) 
+       OR LOWER(t.slug) = LOWER(val.slug)
+);

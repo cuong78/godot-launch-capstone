@@ -124,6 +124,15 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             item.setTags(new java.util.HashSet<>(tagRepository.findByIdIn(request.getTagIds())));
         }
 
+        // Map licensing and specifications fields
+        item.setLicense(request.getLicense());
+        item.setLicenseTerms(request.getLicenseTerms());
+        item.setDocumentation(request.getDocumentation());
+        if (request.getVersion() != null && !request.getVersion().trim().isEmpty()) {
+            item.setVersion(request.getVersion());
+        }
+        item.setSupportedPlatforms(request.getSupportedPlatforms());
+
         MarketplaceItem savedItem = marketplaceItemRepository.save(item);
         return savedItem.getId();
     }
@@ -213,6 +222,23 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             if (request.getGithubRepoUrl() != null) {
                 item.setGithubRepoUrl(request.getGithubRepoUrl());
             }
+        }
+
+        // Map licensing and specifications fields
+        if (request.getLicense() != null) {
+            item.setLicense(request.getLicense());
+        }
+        if (request.getLicenseTerms() != null) {
+            item.setLicenseTerms(request.getLicenseTerms());
+        }
+        if (request.getDocumentation() != null) {
+            item.setDocumentation(request.getDocumentation());
+        }
+        if (request.getVersion() != null) {
+            item.setVersion(request.getVersion());
+        }
+        if (request.getSupportedPlatforms() != null) {
+            item.setSupportedPlatforms(request.getSupportedPlatforms());
         }
 
         MarketplaceItem updatedItem = marketplaceItemRepository.save(item);
@@ -650,6 +676,11 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .thumbnailUrl(thumbUrl)
                 .videoUrl(vidUrl)
                 .screenshots(shots)
+                .license(item.getLicense())
+                .licenseTerms(item.getLicenseTerms())
+                .documentation(item.getDocumentation())
+                .version(item.getVersion())
+                .supportedPlatforms(item.getSupportedPlatforms())
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();

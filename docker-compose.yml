@@ -27,6 +27,11 @@ services:
     command: master -ip=seaweedfs-master -port=9333
     ports:
       - "9333:9333"
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+    volumes:
+      - ./localtime:/etc/localtime:ro
+      - ./localtime:/usr/share/zoneinfo/Asia/Ho_Chi_Minh:ro
     networks:
       - seaweedfs-net
     restart: unless-stopped
@@ -39,6 +44,10 @@ services:
       - "8081:8081"
     volumes:
       - seaweedfs-data:/data
+      - ./localtime:/etc/localtime:ro
+      - ./localtime:/usr/share/zoneinfo/Asia/Ho_Chi_Minh:ro
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
     depends_on:
       - seaweedfs-master
     networks:
@@ -52,6 +61,11 @@ services:
     ports:
       - "8888:8888"
       - "18888:18888"
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+    volumes:
+      - ./localtime:/etc/localtime:ro
+      - ./localtime:/usr/share/zoneinfo/Asia/Ho_Chi_Minh:ro
     depends_on:
       - seaweedfs-master
       - seaweedfs-volume

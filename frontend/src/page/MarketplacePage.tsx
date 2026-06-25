@@ -138,7 +138,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               setSearchText("");
               setSelectedCategories([]);
               setGodotVersion("All Versions");
-              setMaxPrice(2000000);
+              setMaxPrice(200000000);
             }}
             className="text-xs"
           >
@@ -233,16 +233,16 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
             <input
               type="range"
               min="0"
-              max="2000000"
-              step="50000"
+              max="200000000"
+              step="1000000"
               value={maxPrice}
               onChange={(e) => setMaxPrice(parseInt(e.target.value))}
               className="w-full accent-amber-400 h-1 bg-slate-100 dark:bg-slate-950 rounded-lg appearance-none cursor-pointer"
             />
             <div className="flex justify-between text-[9px] font-mono text-slate-500">
               <span>0đ (Miễn phí)</span>
-              <span>1.000.000 đ</span>
-              <span>2.000.000 đ+</span>
+              <span>100.000.000 đ</span>
+              <span>200.000.000 đ+</span>
             </div>
           </div>
 
@@ -283,7 +283,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   setSearchText("");
                   setSelectedCategories([]);
                   setGodotVersion("All Versions");
-                  setMaxPrice(2000000);
+                  setMaxPrice(200000000);
                 }}
               >
                 Reset Marketplace Search
