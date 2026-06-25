@@ -38,9 +38,12 @@ public class Order {
     @JoinColumn(name = "marketplace_item_id", nullable = false)
     private MarketplaceItem marketplaceItem;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "transaction_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id")
     private Transaction transaction;
+
+    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
+    private Payment payment;
 
     @Column(name = "price_paid", nullable = false, precision = 15, scale = 2)
     private BigDecimal pricePaid;

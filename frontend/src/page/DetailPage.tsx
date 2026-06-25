@@ -13,6 +13,7 @@ interface DetailPageProps {
   setActiveDetailTab: (tab: "overview" | "tech" | "documentation") => void;
   handleAddToCart: (asset: Asset) => void;
   handleCheckout: () => void;
+  handleBuyNow: (asset: Asset) => void;
   assets: Asset[];
   handleViewAssetDetails: (asset: Asset) => void;
 }
@@ -26,6 +27,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   setActiveDetailTab,
   handleAddToCart,
   handleCheckout,
+  handleBuyNow,
   assets,
   handleViewAssetDetails
 }) => {
@@ -257,10 +259,10 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 Add To Creators Cart
               </Button>
               <button
-                onClick={() => handlePurchaseAction(() => { handleAddToCart(focusedAsset); handleCheckout(); })}
+                onClick={() => handlePurchaseAction(() => handleBuyNow(focusedAsset))}
                 className="w-full py-2.5 px-4 bg-transparent border border-sky-400 dark:border-sky-800 hover:bg-sky-500/20 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-sky-600 dark:text-white font-display text-center transition-studio cursor-pointer"
               >
-                Instant Purchase Sandbox
+                Buy Now via Bank Transfer
               </button>
             </div>
 

@@ -241,7 +241,7 @@ export function Header({
                       onClick={handleCheckout}
                       className="w-full mt-2 py-2 px-4 bg-sky-500 hover:bg-sky-400 text-white font-display text-xs font-bold rounded-lg shadow-[0_4px_0_0_#025272] hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none transition-studio text-center"
                     >
-                      Complete Order & Download
+                      Proceed to Checkout
                     </button>
                   </div>
                 ) : (

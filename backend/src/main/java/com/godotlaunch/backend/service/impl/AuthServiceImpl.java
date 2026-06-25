@@ -74,6 +74,9 @@ public class AuthServiceImpl implements AuthService {
     @Value("${app.security.recaptcha.secret-key:}")
     private String recaptchaSecretKey;
 
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     @Override
     @Transactional
     public UserResponse signUp(SignUpRequest request) {
@@ -570,6 +573,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void verifyRecaptcha(String token) {
+        if (isLocalDevRecaptchaBypass(token)) {
+            log.info("Skipping reCAPTCHA verification for local development bypass token");
+            return;
+        }
         if (!StringUtils.hasText(recaptchaSecretKey)) {
             log.warn("reCAPTCHA secret key not configured, skipping verification");
             return;
@@ -589,6 +596,24 @@ public class AuthServiceImpl implements AuthService {
             log.error("reCAPTCHA verification error", e);
             throw new AppException(ErrorCode.INVALID_RECAPTCHA);
         }
+    }
+
+    private boolean isLocalDevRecaptchaBypass(String token) {
+        if (!"local-dev-bypass".equals(token)) {
+            return false;
+        }
+
+        String serverName = httpServletRequest.getServerName();
+        return isLocalHost(serverName) || isLocalHost(frontendUrl);
+    }
+
+    private boolean isLocalHost(String value) {
+        if (!StringUtils.hasText(value)) {
+            return false;
+        }
+
+        String normalized = value.toLowerCase(Locale.ROOT);
+        return normalized.contains("localhost") || normalized.contains("127.0.0.1");
     }
 
     private UserResponse mapToUserResponse(User user) {

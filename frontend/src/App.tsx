@@ -3,7 +3,18 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { AdminHeader } from './components/AdminHeader';
 import { Footer } from './components/Footer';
-import { Asset, Project, User, ScreenType, CommunityChatResponse, UserSummary, ReactionType, MarketplaceItemResponse } from './types';
+import {
+  Asset,
+  Project,
+  User,
+  ScreenType,
+  CommunityChatResponse,
+  UserSummary,
+  ReactionType,
+  MarketplaceItemResponse,
+  PaymentResponse,
+  UploadReceiptRequest,
+} from './types';
 import { Button } from './components/Button';
 import { ShieldAlert, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 
@@ -23,6 +34,8 @@ import { ProfilePage } from './page/ProfilePage';
 import { CommunityDetailScreen } from './page/CommunityDetailScreen';
 import { ProfileScreen } from './page/ProfileScreen';
 import { ChatScreen } from './page/ChatScreen';
+import { CheckoutPage } from './page/CheckoutPage';
+import { PaymentDetailPage } from './page/PaymentDetailPage';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
@@ -30,11 +43,34 @@ import { useWebSocket } from './context/WebSocketContext';
 import { gameApi } from './api/gameApi';
 import { communityApi } from './api/communityApi';
 import { marketplaceApi } from './api/marketplaceApi';
+import { paymentApi } from './api/paymentApi';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
 
 const DEFAULT_AUTHOR_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80';
+const PAYMENT_SESSION_STORAGE_KEY = 'godotlaunch-payment-orders';
+const PAYMENT_SELECTED_ORDER_STORAGE_KEY = 'godotlaunch-selected-payment-order';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const readStoredPayments = (): PaymentResponse[] => {
+  try {
+    const raw = sessionStorage.getItem(PAYMENT_SESSION_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    console.warn('Failed to read stored payments from sessionStorage:', error);
+    return [];
+  }
+};
+
+const readStoredSelectedPaymentOrder = () => {
+  try {
+    return sessionStorage.getItem(PAYMENT_SELECTED_ORDER_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Failed to read selected payment order from sessionStorage:', error);
+    return null;
+  }
+};
 
 const normalizeMarketplaceCategory = (
   categoryName?: string,
@@ -395,6 +431,8 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   }
   const primary = segments[0];
   if (primary === 'marketplace') return { screen: 'marketplace' };
+  if (primary === 'checkout') return { screen: 'checkout' };
+  if (primary === 'payment') return { screen: 'payment' };
   if (primary === 'upload') return { screen: 'upload' };
   if (primary === 'path') return { screen: 'path' };
   if (primary === 'dashboard') return { screen: 'dashboard' };
@@ -516,11 +554,28 @@ export default function App() {
 
   const [cart, setCart] = useState<Asset[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [paymentOrders, setPaymentOrders] = useState<PaymentResponse[]>(() => readStoredPayments());
+  const [selectedPaymentOrderId, setSelectedPaymentOrderId] = useState<string | null>(() => readStoredSelectedPaymentOrder());
+  const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
+  const [isRefreshingPayments, setIsRefreshingPayments] = useState<boolean>(false);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState<boolean>(false);
   const [financeStats, setFinanceStats] = useState({
     totalRevenue: 12500000,
     activePlayers: 485,
     listedCount: 8
   });
+
+  useEffect(() => {
+    sessionStorage.setItem(PAYMENT_SESSION_STORAGE_KEY, JSON.stringify(paymentOrders));
+  }, [paymentOrders]);
+
+  useEffect(() => {
+    if (selectedPaymentOrderId) {
+      sessionStorage.setItem(PAYMENT_SELECTED_ORDER_STORAGE_KEY, selectedPaymentOrderId);
+    } else {
+      sessionStorage.removeItem(PAYMENT_SELECTED_ORDER_STORAGE_KEY);
+    }
+  }, [selectedPaymentOrderId]);
 
   const mapGameToAsset = (game: any): Asset => ({
     id: game.id,
@@ -553,7 +608,7 @@ export default function App() {
     const fetchActiveMarketplaceItems = async () => {
       try {
         const res = await marketplaceApi.getAllMarketplaceItems('active');
-        if (!res.success || !res.data || res.data.length === 0 || isCancelled) {
+        if (!res.success || !res.data || isCancelled) {
           return;
         }
 
@@ -621,6 +676,12 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  useEffect(() => {
+    if (currentScreen === 'payment' && paymentOrders.length > 0) {
+      refreshTrackedPayments();
+    }
+  }, [currentScreen]);
+
   // Switch to Detail Screen helper
   const handleViewAssetDetails = (asset: Asset) => {
     setSelectedAssetId(asset.id);
@@ -645,19 +706,46 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (!cart.some(item => item.id === asset.id)) {
-      setCart([...cart, asset]);
-      setIsCartOpen(true);
-    }
+    setCart(prev => {
+      if (prev.some(item => item.id === asset.id)) {
+        return prev;
+      }
+      return [...prev, asset];
+    });
+    setIsCartOpen(true);
   };
 
   // Remove Item from Cart
-  const handleRemoveFromCart = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCart(cart.filter(item => item.id !== id));
+  const handleRemoveFromCart = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  // Simulating standard checkout action which completes and increments stats!
+  const handleBuyNow = (asset: Asset) => {
+    if (!currentUser) {
+      showToast("Bạn cần đăng nhập để mua hàng!", "warning");
+      setCurrentScreen('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!asset.itemType) {
+      showToast("Chỉ marketplace item mới hỗ trợ luồng thanh toán mới ở thời điểm hiện tại.", "warning");
+      return;
+    }
+
+    setCart(prev => {
+      if (prev.some(item => item.id === asset.id)) {
+        return prev;
+      }
+      return [...prev, asset];
+    });
+    setIsCartOpen(false);
+    setCurrentScreen('checkout');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Navigate to checkout instead of simulating an immediate completed purchase
   const handleCheckout = () => {
     if (!currentUser) {
       showToast("Bạn cần đăng nhập để mua hàng!", "warning");
@@ -665,16 +753,120 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (cart.length === 0) return;
-    const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
-    setFinanceStats(prev => ({
-      ...prev,
-      totalRevenue: prev.totalRevenue + cartTotal,
-      activePlayers: prev.activePlayers + Math.floor(Math.random() * 5) + 1
-    }));
-    setCart([]);
+
+    if (cart.length === 0) {
+      showToast("Giỏ hàng của bạn đang trống.", "info");
+      return;
+    }
+
     setIsCartOpen(false);
-    showToast("Cảm ơn bạn đã mua hàng! Giao dịch đã hoàn tất và doanh thu đã cập nhật thành công.", "success");
+    setCurrentScreen('checkout');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const refreshTrackedPayments = async () => {
+    if (!currentUser || paymentOrders.length === 0) {
+      return;
+    }
+
+    setIsRefreshingPayments(true);
+    try {
+      const refreshedPayments = await Promise.all(
+        paymentOrders.map(async (payment) => {
+          const response = await paymentApi.getPaymentByOrder(payment.orderId);
+          if (!response.success || !response.data) {
+            throw new Error(response.message || 'Không thể tải trạng thái thanh toán.');
+          }
+          return response.data;
+        })
+      );
+
+      setPaymentOrders(refreshedPayments);
+      if (!selectedPaymentOrderId && refreshedPayments[0]) {
+        setSelectedPaymentOrderId(refreshedPayments[0].orderId);
+      }
+    } catch (err: any) {
+      showToast(err.response?.data?.message || err.message || 'Không thể làm mới trạng thái thanh toán.', 'error');
+    } finally {
+      setIsRefreshingPayments(false);
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!currentUser) {
+      showToast("Bạn cần đăng nhập để mua hàng!", "warning");
+      setCurrentScreen('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (cart.length === 0) {
+      showToast("Giỏ hàng của bạn đang trống.", "info");
+      return;
+    }
+
+    const unsupportedItems = cart.filter((item) => !item.itemType);
+    if (unsupportedItems.length > 0) {
+      showToast("Giỏ hàng đang có item chưa thuộc marketplace payment flow. Vui lòng xóa chúng trước khi checkout.", "warning");
+      return;
+    }
+
+    const nonPersistedMarketplaceItems = cart.filter((item) => !UUID_PATTERN.test(item.id));
+    if (nonPersistedMarketplaceItems.length > 0) {
+      showToast("Một số sản phẩm đang là dữ liệu demo cũ, chưa có record thật trong database nên chưa thể tạo payment.", "warning");
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    const createdPayments: PaymentResponse[] = [];
+    try {
+      for (const item of cart) {
+        const response = await paymentApi.createPayment({ marketplaceItemId: item.id });
+        if (!response.success || !response.data) {
+          throw new Error(response.message || `Không thể tạo đơn thanh toán cho ${item.title}.`);
+        }
+        createdPayments.push(response.data);
+      }
+
+      setPaymentOrders(createdPayments);
+      setSelectedPaymentOrderId(createdPayments[0]?.orderId || null);
+      setCart([]);
+      setIsCartOpen(false);
+      setCurrentScreen('payment');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast("Đơn thanh toán đã được tạo. Bạn hãy chuyển khoản và tải biên lai lên để chờ admin xác minh.", "success");
+    } catch (err: any) {
+      if (createdPayments.length > 0) {
+        setPaymentOrders(createdPayments);
+        setSelectedPaymentOrderId(createdPayments[0]?.orderId || null);
+        setCurrentScreen('payment');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      showToast(err.response?.data?.message || err.message || 'Không thể tạo đơn thanh toán.', 'error');
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
+
+  const handleUploadPaymentReceipt = async (paymentId: string, data: UploadReceiptRequest) => {
+    setIsUploadingReceipt(true);
+    try {
+      const response = await paymentApi.uploadReceipt(paymentId, data);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Không thể tải biên lai lên.');
+      }
+
+      setPaymentOrders(prev =>
+        prev.map(payment => payment.id === paymentId ? response.data : payment)
+      );
+      setSelectedPaymentOrderId(response.data.orderId);
+      showToast("Biên lai đã được tải lên. Hệ thống đang chờ admin xác minh.", "success");
+    } catch (err: any) {
+      showToast(err.response?.data?.message || err.message || 'Không thể tải biên lai lên.', 'error');
+      throw err;
+    } finally {
+      setIsUploadingReceipt(false);
+    }
   };
 
   // Community Actions for Detail Screen
@@ -859,6 +1051,41 @@ export default function App() {
           />
         )}
 
+        {currentScreen === 'checkout' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <CheckoutPage
+              cart={cart}
+              isPlacingOrder={isPlacingOrder}
+              onBackToMarketplace={() => {
+                setCurrentScreen('marketplace');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onPlaceOrder={handlePlaceOrder}
+              onRemoveItem={(id) => handleRemoveFromCart(id)}
+            />
+          </ProtectedRoute>
+        )}
+
+        {currentScreen === 'payment' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <PaymentDetailPage
+              payments={paymentOrders}
+              selectedOrderId={selectedPaymentOrderId}
+              setSelectedOrderId={setSelectedPaymentOrderId}
+              currentUser={currentUser}
+              isRefreshing={isRefreshingPayments}
+              isUploadingReceipt={isUploadingReceipt}
+              onBackToMarketplace={() => {
+                setCurrentScreen('marketplace');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onRefreshPayments={refreshTrackedPayments}
+              onUploadReceipt={handleUploadPaymentReceipt}
+              setCurrentScreen={setCurrentScreen}
+            />
+          </ProtectedRoute>
+        )}
+
         {currentScreen === 'detail' && focusedAsset && (
           <DetailPage
             focusedAsset={focusedAsset}
@@ -869,6 +1096,7 @@ export default function App() {
             setActiveDetailTab={setActiveDetailTab}
             handleAddToCart={handleAddToCart}
             handleCheckout={handleCheckout}
+            handleBuyNow={handleBuyNow}
             assets={assets}
             handleViewAssetDetails={handleViewAssetDetails}
           />

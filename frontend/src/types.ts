@@ -51,7 +51,7 @@ export interface User {
   createdAt?: string;
 }
 
-export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin' | 'auth-callback' | 'profile' | 'community-detail' | 'author-profile' | 'chat';
+export type ScreenType = 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community' | 'signin' | 'signup' | 'admin' | 'auth-callback' | 'profile' | 'community-detail' | 'author-profile' | 'chat' | 'checkout' | 'payment';
 
 export interface SignUpRequest {
   email: string;
@@ -333,6 +333,61 @@ export interface MarketplaceItemResponse {
   status: 'active' | 'removed' | 'pending' | 'rejected';
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type PaymentMethod = 'MANUAL_BANK_TRANSFER';
+
+export type PaymentStatus = 'PENDING' | 'WAITING_VERIFICATION' | 'PAID' | 'REJECTED' | 'CANCELLED';
+
+export interface CreatePaymentRequest {
+  marketplaceItemId: string;
+}
+
+export interface UploadReceiptRequest {
+  payerName: string;
+  payerBank: string;
+  transferReference: string;
+  receiptFile: File;
+}
+
+export interface PaymentVerificationRequest {
+  rejectionReason: string;
+}
+
+export interface PaymentResponse {
+  id: string;
+  orderId: string;
+  marketplaceItemId: string;
+  marketplaceItemTitle: string;
+  marketplaceItemType: 'source_code' | 'asset';
+  buyerId: string;
+  buyerEmail: string;
+  buyerFullName: string;
+  sellerId: string;
+  sellerEmail: string;
+  sellerFullName: string;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  amount: number;
+  currency: string;
+  receiptUrl?: string | null;
+  payerName?: string | null;
+  payerBank?: string | null;
+  transferReference: string;
+  verifiedById?: string | null;
+  verifiedByEmail?: string | null;
+  verifiedAt?: string | null;
+  rejectionReason?: string | null;
+  downloadUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PaymentStatusResponse {
+  paymentId: string;
+  orderId: string;
+  paymentStatus: PaymentStatus;
+  downloadUrl: string;
 }
 
 // --- WebSocket Notifications & Chat DM ---

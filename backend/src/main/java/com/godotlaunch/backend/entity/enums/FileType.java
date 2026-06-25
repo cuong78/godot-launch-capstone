@@ -8,5 +8,6 @@ public enum FileType {
     source_code_zip,
     screenshot,
     video,
-    asset
+    asset,
+    payment_receipt
 }

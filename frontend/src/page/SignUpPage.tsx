@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
 import {
   BadgeCheck,
@@ -82,6 +82,23 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   const [otpLoading, setOtpLoading] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
+  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY?.trim();
+  const isLocalDevRecaptchaBypass = !recaptchaSiteKey && (
+    import.meta.env.DEV ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  );
+
+  useEffect(() => {
+    if (isLocalDevRecaptchaBypass) {
+      setRecaptchaToken('local-dev-bypass');
+      return;
+    }
+
+    if (!recaptchaSiteKey) {
+      setRecaptchaToken(null);
+    }
+  }, [isLocalDevRecaptchaBypass, recaptchaSiteKey]);
 
   const handleSendOtp = async () => {
     clearApiError(null);
@@ -432,6 +449,15 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                       src={avatarUrl} 
                       alt="Selected Avatar" 
                       className="w-12 h-12 rounded-full object-cover border-2 border-amber-400 shrink-0"
+                      onError={(event) => {
+                        const fallbackUrl = PROFILE_AVATAR_YOU;
+                        if (event.currentTarget.src !== fallbackUrl) {
+                          event.currentTarget.src = fallbackUrl;
+                        }
+                        if (avatarUrl !== fallbackUrl) {
+                          setAvatarUrl(fallbackUrl);
+                        }
+                      }}
                     />
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-[#ece1d1] truncate">Avatar Preview</p>
@@ -491,7 +517,17 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                               borderColor: isSelected ? '#fbbf24' : 'transparent'
                             }}
                           >
-                            <img referrerPolicy="no-referrer" src={preset} alt={`Preset ${index + 1}`} className="w-full h-full object-cover" />
+                            <img
+                              referrerPolicy="no-referrer"
+                              src={preset}
+                              alt={`Preset ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(event) => {
+                                if (event.currentTarget.src !== PROFILE_AVATAR_YOU) {
+                                  event.currentTarget.src = PROFILE_AVATAR_YOU;
+                                }
+                              }}
+                            />
                             {isSelected && (
                               <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                                 <Check className="text-amber-400" size={11} />
@@ -625,13 +661,19 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                 </div>
 
                 <div className="flex justify-center">
-                  <ReCAPTCHA
-                    ref={recaptchaRef}
-                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                    onChange={(token) => setRecaptchaToken(token)}
-                    onExpired={() => setRecaptchaToken(null)}
-                    theme="dark"
-                  />
+                  {recaptchaSiteKey ? (
+                    <ReCAPTCHA
+                      ref={recaptchaRef}
+                      sitekey={recaptchaSiteKey}
+                      onChange={(token) => setRecaptchaToken(token)}
+                      onExpired={() => setRecaptchaToken(null)}
+                      theme="dark"
+                    />
+                  ) : isLocalDevRecaptchaBypass ? null : (
+                    <div className="w-full max-w-md rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                      Thiếu `VITE_RECAPTCHA_SITE_KEY` nên không thể hoàn tất đăng ký.
+                    </div>
+                  )}
                 </div>
 
                 <button

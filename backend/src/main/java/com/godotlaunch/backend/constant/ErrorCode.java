@@ -33,6 +33,8 @@ public enum ErrorCode {
     WISHLIST_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Game is not in your wishlist."),
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested category does not exist."),
     MARKETPLACE_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested marketplace item does not exist."),
+    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested order does not exist."),
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested payment does not exist."),
     DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy khiếu nại."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ."),
     IDENTITY_BANNED(HttpStatus.FORBIDDEN, "Danh tính này đã bị cấm khỏi hệ thống do vi phạm trước đó."),
@@ -66,6 +68,14 @@ public enum ErrorCode {
     SOURCE_PROCESSING_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Xử lý source code thất bại. Vui lòng kiểm tra lại repo."),
     SOURCE_MALWARE_DETECTED(HttpStatus.UNPROCESSABLE_ENTITY, "Phát hiện mã độc trong source code."),
     REPO_NEEDS_BOT(HttpStatus.FORBIDDEN, "Repo này đang ở chế độ private hoặc sai link. Vui lòng mời tài khoản hệ thống vào repo để cấp quyền."),
+
+    // Payment
+    OWN_PRODUCT_PURCHASE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "You cannot purchase your own marketplace item."),
+    PAYMENT_ALREADY_PAID(HttpStatus.BAD_REQUEST, "This payment has already been approved."),
+    PAYMENT_RECEIPT_REQUIRED(HttpStatus.BAD_REQUEST, "A payment receipt file is required."),
+    PAYMENT_REJECTION_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "A rejection reason is required."),
+    PAYMENT_NOT_AWAITING_VERIFICATION(HttpStatus.BAD_REQUEST, "This payment is not waiting for admin verification."),
+    PAYMENT_NOT_READY_FOR_RECEIPT(HttpStatus.BAD_REQUEST, "This payment is already waiting for verification."),
     
     // GitHub Linking
     GITHUB_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "GL-4070", "GitHub primary email does not match your registered email."),

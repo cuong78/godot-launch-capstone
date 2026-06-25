@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -46,6 +47,19 @@ public class GlobalExceptionHandler {
         log.warn("DTO Validation failed: {}", errors);
         
         ApiResponse<Void> response = ApiResponse.validationError(errors);
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMessageNotReadableException(HttpMessageNotReadableException ex) {
+        log.warn("Request body could not be parsed: {}", ex.getMessage());
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(false)
+                .status(HttpStatus.BAD_REQUEST.value())
+                .code(ErrorCode.INVALID_INPUT.name())
+                .message("Request body contains invalid or incorrectly formatted data.")
+                .build();
         return ResponseEntity.badRequest().body(response);
     }
 

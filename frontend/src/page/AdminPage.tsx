@@ -43,6 +43,7 @@ import {
   AdminUserStatus,
   AdminUserUpdateInput,
 } from '../components/admin/AdminUserManagementPanel';
+import { AdminPaymentVerificationPanel } from '../components/admin/AdminPaymentVerificationPanel';
 
 interface PendingAsset {
   id: string;
@@ -175,7 +176,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
   
   // Real Game Moderation state
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
@@ -640,6 +641,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'users' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
           <Users size={14} /> User Directory
+        </button>
+        <button
+          onClick={() => setActiveTab('payments')}
+          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'payments' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+        >
+          <DollarSign size={14} /> Payments
         </button>
         <button
           onClick={() => setActiveTab('logs')}
@@ -1318,6 +1325,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             )}
           </div>
         )}
+        {activeTab === 'payments' && <AdminPaymentVerificationPanel />}
+
         {/* Tab 2: User Directory */}
         {activeTab === 'users' && (
           <AdminUserManagementPanel
