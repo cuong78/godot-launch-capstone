@@ -12,6 +12,8 @@ import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -63,6 +65,12 @@ public class MarketplaceItem {
 
     @Column(name = "github_verified_at")
     private Instant githubVerifiedAt;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "marketplace_item_tags",
+            joinColumns = @JoinColumn(name = "item_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<Tag> tags = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

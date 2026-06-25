@@ -54,6 +54,59 @@ export const marketplaceApi = {
     return response.data;
   },
 
+  // Submit source_code bằng repo GitHub: verify owner → clone → scan → snapshot
+  submitItemRepo: async (
+    id: string,
+    repoUrl: string,
+    branch?: string
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.post<ApiResponse<{ message: string }>>(
+      `/api/v1/marketplace-items/${id}/submit-repo`,
+      { repoUrl, branch }
+    );
+    return response.data;
+  },
+
+  // Bot accept invitation cho repo private (marketplace)
+  acceptBot: async (repoUrl: string): Promise<ApiResponse<{ granted: boolean }>> => {
+    const response = await api.post<ApiResponse<{ granted: boolean }>>(
+      '/api/v1/marketplace-items/accept-bot',
+      { repoUrl }
+    );
+    return response.data;
+  },
+
+  // Upload media cho item: thumbnail | screenshot | video | asset_image
+  uploadItemMedia: async (
+    id: string,
+    mediaType: 'thumbnail' | 'screenshot' | 'video' | 'asset_image',
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<{ message: string; objectKey: string }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<ApiResponse<{ message: string; objectKey: string }>>(
+      `/api/v1/marketplace-items/${id}/media`,
+      formData,
+      {
+        params: { mediaType },
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
+        },
+      }
+    );
+    return response.data;
+  },
+
+  deleteAssetMedia: async (id: string, mediaUrl: string): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.delete<ApiResponse<{ message: string }>>(
+      `/api/v1/marketplace-items/${id}/media`,
+      { params: { mediaUrl } }
+    );
+    return response.data;
+  },
+
   // Proxy upload: gửi file zip lên backend → StorageRouter (S3 hoặc SeaweedFS theo routing config)
   uploadItemFile: async (
     id: string,

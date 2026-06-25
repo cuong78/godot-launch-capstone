@@ -61,10 +61,13 @@ class SourceProcessResponse(BaseModel):
     commitSha: str
     bundleHash: str
     fileCount: int
-    isGodotProject: bool
+    isGodotProject: bool              # project.godot ở root VÀ có .gd/.tscn
+    hasProjectGodot: bool = False     # có project.godot ở root
+    hasGodotSource: bool = False      # có file .gd/.tscn
     infected: list = []
     secrets: list = []
     fileHashes: dict = {}
+    bundleBase64: Optional[str] = None  # zip source (base64) — backend upload storage
 
 
 @app.get("/health")
@@ -157,6 +160,11 @@ def process_source(req: SourceProcessRequest):
         snap = source_service.snapshot(tmp_dir)
         secrets = source_service.scan_secrets(tmp_dir)
 
+        # Chỉ bundle khi sạch + là Godot project (không lưu repo bẩn/non-Godot)
+        bundle = None
+        if virus["clean"] and snap["isGodotProject"]:
+            bundle = source_service.bundle_source(tmp_dir)
+
         return SourceProcessResponse(
             clean=virus["clean"],
             scanned=virus["scanned"],
@@ -164,9 +172,12 @@ def process_source(req: SourceProcessRequest):
             bundleHash=snap["bundleHash"],
             fileCount=snap["fileCount"],
             isGodotProject=snap["isGodotProject"],
+            hasProjectGodot=snap["hasProjectGodot"],
+            hasGodotSource=snap["hasGodotSource"],
             infected=virus["infected"],
             secrets=secrets,
             fileHashes=snap["fileHashes"],
+            bundleBase64=bundle,
         )
     except ValueError as e:
         # URL không hợp lệ / không phải github

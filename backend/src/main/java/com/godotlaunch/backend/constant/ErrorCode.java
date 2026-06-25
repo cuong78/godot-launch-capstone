@@ -65,6 +65,7 @@ public enum ErrorCode {
     REPO_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy repo hoặc bạn không có quyền truy cập."),
     SOURCE_PROCESSING_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Xử lý source code thất bại. Vui lòng kiểm tra lại repo."),
     SOURCE_MALWARE_DETECTED(HttpStatus.UNPROCESSABLE_ENTITY, "Phát hiện mã độc trong source code."),
+    NOT_GODOT_PROJECT(HttpStatus.UNPROCESSABLE_ENTITY, "Repo không phải là dự án Godot hợp lệ. Cần có file project.godot ở thư mục gốc và các file mã nguồn .gd/.tscn."),
     REPO_NEEDS_BOT(HttpStatus.FORBIDDEN, "Repo này đang ở chế độ private hoặc sai link. Vui lòng mời tài khoản hệ thống vào repo để cấp quyền."),
     
     // GitHub Linking

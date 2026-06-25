@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFaceVerify } from '../context/FaceVerifyContext';
 import BotInviteModal from '../components/BotInviteModal';
+import { tagApi, TagResponse } from '../api/tagApi';
 import {
   CheckCircle2, 
   Upload, 
@@ -78,6 +79,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [githubRepoUrl, setGithubRepoUrl] = useState('');
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [tags, setTags] = useState<TagResponse[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   // File State (Step 2)
   const [gameFile, setGameFile] = useState<File | null>(null);
@@ -96,6 +99,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [showBotInvite, setShowBotInvite] = useState(false);
   const [botUsername, setBotUsername] = useState('');
   const [botChecking, setBotChecking] = useState(false);
+
+  // Ảnh preview cho marketplace asset
+  const [assetImages, setAssetImages] = useState<{ file: File; objectKey?: string }[]>([]);
 
   // Upload progress & status states
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
@@ -124,8 +130,23 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setIsLoadingCategories(false);
       }
     };
+    const loadTags = async () => {
+      try {
+        const res = await tagApi.getAllTags();
+        if (res.success && res.data) setTags(res.data);
+      } catch (err) {
+        console.error("Failed to load tags:", err);
+      }
+    };
     loadCategories();
+    loadTags();
   }, []);
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTagIds(prev =>
+      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
+    );
+  };
 
   // Sync categoryId when publishProgram or categories list changes
   useEffect(() => {
@@ -212,8 +233,16 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         categoryId: categoryId || undefined,
         godotVersion: itemType === 'source_code' ? godotVersion : undefined,
         githubRepoUrl: itemType === 'source_code' ? githubRepoUrl : undefined,
+        tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       });
-      if (res.success && res.data?.itemId) { setGameId(res.data.itemId); setStep(2); }
+      if (res.success && res.data?.itemId) {
+        setGameId(res.data.itemId);
+        // source_code: pre-fill repo từ Step 1 để Step 2 submit (verify + clone + scan)
+        if (itemType === 'source_code' && githubRepoUrl.trim()) {
+          setGameRepoUrl(githubRepoUrl.trim());
+        }
+        setStep(2);
+      }
       else alert(res.message || 'Failed to create marketplace item');
     } else {
       const res = await gameApi.createGameDraft({
@@ -355,7 +384,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     }
   };
 
-  // Game submit qua repo GitHub (verify owner → clone → scan → snapshot)
+  // Submit repo GitHub (verify owner → clone → scan → snapshot) — dùng cho game & marketplace source_code
   const handleSubmitRepo = async () => {
     if (!gameId) return;
     if (!gameRepoUrl.trim()) {
@@ -367,12 +396,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     setScanStatus('scanning');
     setScanMessage('Đang verify repo, clone và quét bảo mật source code...');
     try {
-      const res = await gameApi.submitGameRepo(gameId, gameRepoUrl.trim(), gameRepoBranch.trim() || undefined);
+      const res = publishProgram === 'marketplace'
+        ? await marketplaceApi.submitItemRepo(gameId, gameRepoUrl.trim(), gameRepoBranch.trim() || undefined)
+        : await gameApi.submitGameRepo(gameId, gameRepoUrl.trim(), gameRepoBranch.trim() || undefined);
       if (res.success) {
         setRepoSubmitted(true);
         setUploadStatus(prev => ({ ...prev, game: 'completed' }));
         setScanStatus('clean');
-        setScanMessage('Repo đã verify và quét sạch. Game đang chờ duyệt.');
+        setScanMessage('Repo đã verify và quét sạch. Đang chờ duyệt.');
       } else {
         setScanStatus('failed');
         setUploadError(res.message || 'Submit repo thất bại.');
@@ -401,7 +432,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     setBotChecking(true);
     setUploadError(null);
     try {
-      const res = await gameApi.acceptBot(gameRepoUrl.trim());
+      const res = publishProgram === 'marketplace'
+        ? await marketplaceApi.acceptBot(gameRepoUrl.trim())
+        : await gameApi.acceptBot(gameRepoUrl.trim());
       if (res.success && res.data.granted) {
         setShowBotInvite(false);
         await handleSubmitRepo(); // bot đã có quyền → submit lại
@@ -412,6 +445,57 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       setUploadError(err.response?.data?.message || 'Không kết nối được. Thử lại sau.');
     } finally {
       setBotChecking(false);
+    }
+  };
+
+  // Upload ảnh preview cho asset (asset_image)
+  const handleAssetImageAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !gameId) return;
+    const files = Array.from(e.target.files);
+    for (const file of files) {
+      const idx = assetImages.length;
+      setAssetImages(prev => [...prev, { file }]);
+      try {
+        const res = await marketplaceApi.uploadItemMedia(gameId, 'asset_image', file);
+        if (res.success && res.data?.objectKey) {
+          setAssetImages(prev => prev.map((it, i) => i === idx ? { ...it, objectKey: res.data!.objectKey } : it));
+        }
+      } catch (err: any) {
+        setUploadError(err.response?.data?.message || 'Upload ảnh thất bại.');
+        setAssetImages(prev => prev.filter((_, i) => i !== idx));
+      }
+    }
+  };
+
+  const removeAssetImage = async (idx: number) => {
+    const img = assetImages[idx];
+    setAssetImages(prev => prev.filter((_, i) => i !== idx));
+    if (gameId && img?.objectKey) {
+      try { await marketplaceApi.deleteAssetMedia(gameId, img.objectKey); } catch { /* ignore */ }
+    }
+  };
+
+  // Upload thumbnail/screenshot/video cho marketplace item (như game)
+  const handleMarketplaceMedia = async (
+    mediaType: 'thumbnail' | 'screenshot' | 'video',
+    file: File,
+    statusKey: string
+  ) => {
+    if (!gameId) return;
+    setUploadStatus(prev => ({ ...prev, [statusKey]: 'uploading' }));
+    setUploadProgress(prev => ({ ...prev, [statusKey]: 0 }));
+    try {
+      const res = await marketplaceApi.uploadItemMedia(gameId, mediaType, file, (p) =>
+        setUploadProgress(prev => ({ ...prev, [statusKey]: p })));
+      if (res.success) {
+        setUploadStatus(prev => ({ ...prev, [statusKey]: 'completed' }));
+      } else {
+        setUploadStatus(prev => ({ ...prev, [statusKey]: 'failed' }));
+        setUploadError(res.message || 'Upload thất bại.');
+      }
+    } catch (err: any) {
+      setUploadStatus(prev => ({ ...prev, [statusKey]: 'failed' }));
+      setUploadError(err.response?.data?.message || 'Upload thất bại.');
     }
   };
 
@@ -554,7 +638,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                Asset Classification Category
+                {publishProgram === 'game' ? 'Game Category' : 'Category'}
               </label>
               {isLoadingCategories ? (
                 <div className="text-xs text-slate-500 animate-pulse py-2.5">Fetching categories...</div>
@@ -574,6 +658,39 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     ))
                   }
                 </select>
+              )}
+            </div>
+
+            {/* Tags (chọn nhiều) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                Tags <span className="text-xs font-normal text-slate-500">(chọn nhiều — mô tả từ khóa cho game/asset)</span>
+              </label>
+              {tags.length === 0 ? (
+                <div className="text-xs text-slate-500 py-2">Đang tải tags...</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map(tag => {
+                    const active = selectedTagIds.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-studio cursor-pointer ${
+                          active
+                            ? 'bg-amber-500 border-amber-500 text-black'
+                            : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-amber-400'
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {selectedTagIds.length > 0 && (
+                <span className="text-[11px] text-slate-500 mt-0.5">{selectedTagIds.length} tag đã chọn</span>
               )}
             </div>
 
@@ -698,14 +815,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
 
-            {/* 1. GAME → submit qua repo GitHub | MARKETPLACE → upload ZIP */}
-            {publishProgram === 'game' ? (
+            {/* CODE (game + marketplace source_code) → repo GitHub | ASSET → upload ZIP */}
+            {(publishProgram === 'game' || (publishProgram === 'marketplace' && itemType === 'source_code')) ? (
               <div className="space-y-2.5">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <FileText size={16} className="text-amber-500" /> Repository GitHub của Game *
+                  <FileText size={16} className="text-amber-500" /> Repository GitHub {publishProgram === 'game' ? 'của Game' : 'Source Code'} *
                 </label>
                 <p className="text-xs text-slate-500">
-                  Hệ thống sẽ verify repo thuộc tài khoản GitHub của bạn, clone về, quét bảo mật và lưu bằng chứng (commit snapshot). Không cần upload file zip.
+                  Hệ thống sẽ verify repo thuộc tài khoản GitHub của bạn, clone về, quét bảo mật và lưu bằng chứng (commit snapshot).
                 </p>
                 <input
                   type="text"
@@ -783,6 +900,93 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1"><AlertTriangle size={13} /> Upload Failed</span>
                 )}
               </div>
+            )}
+
+            {/* Ảnh preview cho ASSET (asset_media) */}
+            {publishProgram === 'marketplace' && itemType === 'asset' && (
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Image size={16} className="text-amber-500" /> Ảnh preview <span className="text-xs font-normal text-slate-500">(để buyer xem trước asset)</span>
+                </label>
+                <input type="file" accept="image/*" multiple onChange={handleAssetImageAdd} className="hidden" id="asset-img-input" />
+                <label htmlFor="asset-img-input" className="inline-flex px-4 py-2.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer items-center gap-1.5">
+                  <Upload size={14} /> Thêm ảnh
+                </label>
+                {assetImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {assetImages.map((img, idx) => (
+                      <div key={idx} className="relative">
+                        <img src={URL.createObjectURL(img.file)} alt="preview" className="w-20 h-20 object-cover rounded-lg border border-slate-300 dark:border-slate-800" />
+                        <button type="button" onClick={() => removeAssetImage(idx)} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>
+                        {!img.objectKey && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded-lg">...</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Media cho MARKETPLACE source_code: thumbnail + screenshots + video (như game) */}
+            {publishProgram === 'marketplace' && itemType === 'source_code' && (
+              <>
+                {/* Thumbnail */}
+                <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Image size={16} className="text-amber-500" /> Primary Cover Thumbnail *
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input type="file" accept="image/*" className="hidden" id="mp-thumb-input"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) { setThumbnailFile(f); handleMarketplaceMedia('thumbnail', f, 'thumbnail'); } }} />
+                    <label htmlFor="mp-thumb-input" className="px-4 py-2.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5">
+                      <Upload size={14} /> Select Thumbnail
+                    </label>
+                    <span className="text-xs text-slate-500 font-mono truncate max-w-xs">{thumbnailFile ? thumbnailFile.name : 'No image chosen'}</span>
+                  </div>
+                  {uploadStatus['thumbnail'] === 'completed' && <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1"><CheckCircle2 size={13} /> Uploaded</span>}
+                </div>
+
+                {/* Screenshots */}
+                <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between gap-1.5">
+                    <span className="flex items-center gap-1.5"><Image size={16} className="text-amber-500" /> Screenshots (Optional, Max 5)</span>
+                    <span className="text-xs font-mono text-slate-500">{screenshots.length} / 5</span>
+                  </label>
+                  <input type="file" accept="image/*" multiple className="hidden" id="mp-shots-input"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []).slice(0, 5 - screenshots.length);
+                      files.forEach((f) => { setScreenshots(prev => [...prev, f]); handleMarketplaceMedia('screenshot', f, getFileKey(f)); });
+                    }} />
+                  <label htmlFor="mp-shots-input" className={`inline-flex px-4 py-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 items-center gap-1.5 ${screenshots.length >= 5 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200 cursor-pointer'}`}>
+                    <Upload size={14} /> Add Screenshots
+                  </label>
+                  {screenshots.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {screenshots.map((f, i) => (
+                        <div key={i} className="relative">
+                          <img src={URL.createObjectURL(f)} alt="shot" className="w-20 h-20 object-cover rounded-lg border border-slate-300 dark:border-slate-800" />
+                          <button type="button" onClick={() => setScreenshots(prev => prev.filter((_, x) => x !== i))} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Video */}
+                <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Film size={16} className="text-amber-500" /> Demo Video Trailer (Optional)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input type="file" accept="video/*" className="hidden" id="mp-video-input"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) { setVideoFile(f); handleMarketplaceMedia('video', f, 'video'); } }} />
+                    <label htmlFor="mp-video-input" className="px-4 py-2.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5">
+                      <Upload size={14} /> Select Video
+                    </label>
+                    <span className="text-xs text-slate-500 font-mono truncate max-w-xs">{videoFile ? videoFile.name : 'No video chosen'}</span>
+                  </div>
+                  {uploadStatus['video'] === 'completed' && <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1"><CheckCircle2 size={13} /> Uploaded</span>}
+                </div>
+              </>
             )}
 
             {/* 2. Thumbnail image */}
@@ -980,7 +1184,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 size="md" 
                 disabled={
                   (publishProgram === 'game' && (!repoSubmitted || uploadStatus['thumbnail'] !== 'completed')) ||
-                  (publishProgram === 'marketplace' && uploadStatus['game'] !== 'completed') ||
+                  (publishProgram === 'marketplace' && itemType === 'source_code' && !repoSubmitted) ||
+                  (publishProgram === 'marketplace' && itemType === 'asset' && uploadStatus['game'] !== 'completed') ||
                   scanStatus === 'scanning'
                 }
                 onClick={() => {

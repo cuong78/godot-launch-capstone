@@ -10,6 +10,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -34,6 +35,11 @@ public class MarketplaceItemResponse {
     private String githubRepoUrl;
     private Instant githubVerifiedAt;
     private ItemStatus status;
+    private List<TagResponse> tags;
+    private List<String> mediaUrls;     // tất cả ảnh asset (asset_image)
+    private String thumbnailUrl;        // ảnh cover (thumbnail)
+    private String videoUrl;            // video trailer
+    private List<String> screenshots;   // ảnh chụp màn hình
     private Instant createdAt;
     private Instant updatedAt;
 }

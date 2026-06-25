@@ -271,6 +271,7 @@ export interface CreateMarketplaceItemRequest {
   githubRepoUrl?: string;
   sourceGameId?: string;
   fileUrl?: string;
+  tagIds?: string[];
 }
 
 export interface UpdateMarketplaceItemRequest {
@@ -300,6 +301,7 @@ export interface MarketplaceItemResponse {
   githubRepoUrl?: string;
   githubVerifiedAt?: string;
   status: 'active' | 'removed' | 'pending' | 'rejected';
+  mediaUrls?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
