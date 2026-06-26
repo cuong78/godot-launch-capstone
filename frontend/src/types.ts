@@ -76,7 +76,90 @@ export type ScreenType =
   | "payment"
   | "payment-success"
   | "payment-failed"
-  | "payment-cancelled";
+  | "payment-cancelled"
+  | "wallet";
+
+export interface WalletResponse {
+  id: string;
+  userId: string;
+  balance: number;
+  currency: string;
+  updatedAt?: string | null;
+}
+
+export interface TransactionResponse {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  referenceId?: string;
+  createdAt?: string;
+}
+
+export interface WithdrawalRequestResponse {
+  id: string;
+  userId: string;
+  userFullName?: string;
+  userEmail?: string;
+  amount: number;
+  bankName: string;
+  bankAccount: string;
+  accountHolder: string;
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  rejectReason?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateWithdrawalRequest {
+  amount: number;
+  bankName: string;
+  bankAccount: string;
+  accountHolder: string;
+}
+
+export interface ReviewWithdrawalRequest {
+  approve: boolean;
+  rejectReason?: string;
+}
+
+export type AiRecommendation = 'approve' | 'review' | 'reject';
+
+export interface AiReviewFlag {
+  type: string;
+  severity: string;
+  detail: string;
+  evidenceIndex?: number;
+}
+
+export interface AiReviewReport {
+  id: string;
+  gameId?: string | null;
+  marketplaceItemId?: string | null;
+  codeQualityScore?: number | null;
+  mediaMatchScore?: number | null;
+  descriptionMatchScore?: number | null;
+  nsfwFlag?: boolean;
+  overallRecommendation: AiRecommendation;
+  suggestedPrice?: number | null;
+  suggestedRevenueSplit?: number | null;
+  pricingRationale?: string | null;
+  flags?: AiReviewFlag[];
+  rawOutput?: any;
+  createdAt?: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
 
 export interface SignUpRequest {
   email: string;

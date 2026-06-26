@@ -74,7 +74,7 @@ public class WithdrawalRequestController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<WithdrawalRequestResponse>> reviewWithdrawal(
             @PathVariable UUID id,
-            @RequestBody ReviewWithdrawalRequest request,
+            @Valid @RequestBody ReviewWithdrawalRequest request,
             Principal principal) {
         WithdrawalRequestResponse response = withdrawalRequestService.reviewWithdrawalRequest(id, request, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal request reviewed successfully."));

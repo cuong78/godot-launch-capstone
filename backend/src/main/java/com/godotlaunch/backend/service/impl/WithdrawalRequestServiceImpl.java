@@ -16,7 +16,6 @@ import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
-import com.godotlaunch.backend.service.WalletService;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +37,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
-    private final WalletService walletService;
 
     @Override
     @Transactional
@@ -140,11 +138,17 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         User admin = userRepository.findByEmail(adminEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        WithdrawalRequest wr = withdrawalRequestRepository.findById(requestId)
+        WithdrawalRequest wr = withdrawalRequestRepository.findByIdWithLock(requestId)
                 .orElseThrow(() -> new AppException(ErrorCode.WITHDRAWAL_REQUEST_NOT_FOUND));
 
         if (wr.getStatus() != WithdrawalStatus.pending) {
             throw new AppException(ErrorCode.INVALID_WITHDRAWAL_STATUS);
+        }
+
+        if (!request.isApprove()) {
+            if (request.getRejectReason() == null || request.getRejectReason().trim().isEmpty()) {
+                throw new AppException(ErrorCode.REJECT_REASON_REQUIRED);
+            }
         }
 
         Transaction txn = wr.getTransaction();
@@ -165,8 +169,9 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 transactionRepository.save(txn);
             }
 
-            // Refund balance to developer's wallet
-            Wallet wallet = wr.getWallet();
+            // Refund balance to developer's wallet using locked wallet record
+            Wallet wallet = walletRepository.findByUserIdWithLock(wr.getUser().getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
             wallet.setBalance(wallet.getBalance().add(wr.getAmount()));
             walletRepository.save(wallet);
             log.info("Withdrawal request {} rejected by admin {} with reason: {}. Balance refunded.", requestId, adminEmail, request.getRejectReason());
