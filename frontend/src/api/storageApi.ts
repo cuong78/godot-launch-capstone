@@ -45,6 +45,26 @@ export interface StorageBucketRequest {
   publicUrl?: string;
 }
 
+export interface UploadedFileResponse {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  storageProvider: 'aws_s3' | 'seaweedfs' | 'unknown';
+  ownerId: string;
+  ownerType: string;
+  ownerName: string;
+  createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
 export const storageApi = {
   // Accounts
   listAccounts: async (): Promise<ApiResponse<StorageAccountResponse[]>> => {
@@ -99,4 +119,25 @@ export const storageApi = {
     const res = await api.put('/api/admin/storage/routing/batch', items);
     return res.data;
   },
+
+  // File management
+  listUploadedFiles: async (category: string, search: string, page: number, size: number): Promise<ApiResponse<PaginatedResponse<UploadedFileResponse>>> => {
+    const res = await api.get('/api/admin/storage/files', {
+      params: { category, search, page, size }
+    });
+    return res.data;
+  },
+  deleteUploadedFile: async (fileUrl: string, fileType: string, ownerType: string, ownerId: string): Promise<ApiResponse<void>> => {
+    const res = await api.delete('/api/admin/storage/files', {
+      params: { fileUrl, fileType, ownerType, ownerId }
+    });
+    return res.data;
+  },
+  downloadFile: async (fileUrl: string, fileType: string): Promise<Blob> => {
+    const res = await api.get('/api/admin/storage/files/download', {
+      params: { fileUrl, fileType },
+      responseType: 'blob'
+    });
+    return res.data;
+  }
 };

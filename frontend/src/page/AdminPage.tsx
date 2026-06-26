@@ -23,7 +23,8 @@ import {
   PenTool,
   Gamepad2,
   ShoppingBag,
-  Database
+  Database,
+  HardDrive
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
@@ -44,6 +45,7 @@ import {
   AdminUserUpdateInput,
 } from '../components/admin/AdminUserManagementPanel';
 import { AdminPaymentVerificationPanel } from '../components/admin/AdminPaymentVerificationPanel';
+import { AdminFileManagementPanel } from '../components/admin/AdminFileManagementPanel';
 
 interface PendingAsset {
   id: string;
@@ -176,7 +178,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'logs' | 'settings' | 'storage' | 'disputes' | 'files'>('moderation');
   
   // Real Game Moderation state
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
@@ -662,9 +664,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('storage')}
-          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'storage' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'storage' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-355'}`}
         >
           <Database size={14} /> Storage
+        </button>
+        <button
+          onClick={() => setActiveTab('files')}
+          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'files' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-355'}`}
+        >
+          <HardDrive size={14} /> Quản lý File
         </button>
         <button
           onClick={() => setActiveTab('disputes')}
@@ -1675,6 +1683,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
         {/* Tab 5: Storage Management */}
         {activeTab === 'storage' && <AdminStoragePanel />}
+        {activeTab === 'files' && <AdminFileManagementPanel />}
         {activeTab === 'disputes' && <AdminDisputePanel />}
 
         {/* Tab 4: Platform Settings */}

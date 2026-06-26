@@ -90,6 +90,21 @@ public class StorageRouter {
     }
 
     /**
+     * Đọc file về dạng InputStream tự động phát hiện provider qua URL.
+     */
+    public InputStream getInputStream(String fileUrl, FileType fileType, String objectKey) {
+        String provider = inferProvider(fileUrl);
+        StorageService adapter = resolveAdapterByProvider(provider);
+        if (adapter instanceof SeaweedFsAdapter seaweed) {
+            return seaweed.readFile(objectKey);
+        }
+        if (adapter instanceof AwsS3Adapter s3) {
+            return s3.readFile(objectKey);
+        }
+        throw new RuntimeException("getInputStream not supported for provider: " + provider);
+    }
+
+    /**
      * Public URL của file theo objectKey — dispatch đúng provider.
      */
     public String getPublicUrl(FileType fileType, String objectKey) {
@@ -114,6 +129,23 @@ public class StorageRouter {
     public void delete(FileType fileType, String objectKey) {
         resolveAdapter(fileType.name()).delete(objectKey);
     }
+
+    /**
+     * Xóa file tự động phát hiện provider qua URL.
+     */
+    public void delete(String fileUrl, FileType fileType, String objectKey) {
+        String provider = inferProvider(fileUrl);
+        resolveAdapterByProvider(provider).delete(objectKey);
+    }
+
+    private String inferProvider(String url) {
+        if (url == null) return "seaweedfs";
+        if (url.contains("s3.amazonaws.com") || url.contains(".s3.") || url.contains("amazonaws.com")) {
+            return "aws_s3";
+        }
+        return "seaweedfs";
+    }
+
 
     /**
      * Xóa cache — gọi sau khi admin cập nhật routing.
@@ -149,6 +181,27 @@ public class StorageRouter {
                             "File type '" + ft + "' chưa được gán bucket và không tìm thấy bất kỳ bucket nào khác để fallback. Admin cần config routing trong Storage Settings."));
                 log.info("StorageRouter: Fallback routing for file type '{}' to bucket '{}'", ft, bucket.getName());
             }
+            StorageAccount account = bucket.getAccount();
+            String decryptedConfig = encryptionUtils.decrypt(account.getConfig());
+            return buildAdapter(account.getProvider(), decryptedConfig);
+        });
+    }
+
+    public StorageService resolveAdapterByProvider(String provider) {
+        long now = System.currentTimeMillis();
+        if (now - cacheRefreshedAt > CACHE_TTL_MS) {
+            adapterCache.clear();
+            cacheRefreshedAt = now;
+        }
+
+        return adapterCache.computeIfAbsent("provider_" + provider, key -> {
+            StorageBucket bucket = routingRepository.findAllWithBucketAndAccount().stream()
+                    .map(StorageRouting::getBucket)
+                    .filter(java.util.Objects::nonNull)
+                    .filter(b -> b.getAccount().getProvider().equalsIgnoreCase(provider))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException(
+                        "Không tìm thấy bucket nào cấu hình cho provider: " + provider));
             StorageAccount account = bucket.getAccount();
             String decryptedConfig = encryptionUtils.decrypt(account.getConfig());
             return buildAdapter(account.getProvider(), decryptedConfig);
