@@ -1,46 +1,51 @@
-import i18next from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
+import i18next from "i18next";
+import { initReactI18next } from "react-i18next";
+import LanguageDetector from "i18next-browser-languagedetector";
 
 // Import locale files
-import viCommon from '../locales/vi/common.json';
-import viGame from '../locales/vi/game.json';
-import viMarketplace from '../locales/vi/marketplace.json';
-import viAuth from '../locales/vi/auth.json';
-import viAdmin from '../locales/vi/admin.json';
-import viPayment from '../locales/vi/payment.json';
-import viWallet from '../locales/vi/wallet.json';
+import viCommon from "../locales/vi/common.json";
+import viGame from "../locales/vi/game.json";
+import viMarketplace from "../locales/vi/marketplace.json";
+import viAuth from "../locales/vi/auth.json";
+import viAdmin from "../locales/vi/admin.json";
+import viPayment from "../locales/vi/payment.json";
+import viWallet from "../locales/vi/wallet.json";
+import viHome from "../locales/vi/home.json";
 
-import enCommon from '../locales/en/common.json';
-import enGame from '../locales/en/game.json';
-import enMarketplace from '../locales/en/marketplace.json';
-import enAuth from '../locales/en/auth.json';
-import enAdmin from '../locales/en/admin.json';
-import enPayment from '../locales/en/payment.json';
-import enWallet from '../locales/en/wallet.json';
+import enCommon from "../locales/en/common.json";
+import enGame from "../locales/en/game.json";
+import enMarketplace from "../locales/en/marketplace.json";
+import enAuth from "../locales/en/auth.json";
+import enAdmin from "../locales/en/admin.json";
+import enPayment from "../locales/en/payment.json";
+import enWallet from "../locales/en/wallet.json";
+import enHome from "../locales/en/home.json";
 
-import jaCommon from '../locales/ja/common.json';
-import jaGame from '../locales/ja/game.json';
-import jaMarketplace from '../locales/ja/marketplace.json';
-import jaAuth from '../locales/ja/auth.json';
-import jaAdmin from '../locales/ja/admin.json';
-import jaPayment from '../locales/ja/payment.json';
-import jaWallet from '../locales/ja/wallet.json';
+import jaCommon from "../locales/ja/common.json";
+import jaGame from "../locales/ja/game.json";
+import jaMarketplace from "../locales/ja/marketplace.json";
+import jaAuth from "../locales/ja/auth.json";
+import jaAdmin from "../locales/ja/admin.json";
+import jaPayment from "../locales/ja/payment.json";
+import jaWallet from "../locales/ja/wallet.json";
+import jaHome from "../locales/ja/home.json";
 
 export const LANGUAGE_OPTIONS = [
-  { code: 'vi', name: 'Tiếng Việt', flag: '🇻🇳' },
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: "vi", name: "Tiếng Việt", flag: "🇻🇳" },
+  { code: "en", name: "English", flag: "🇬🇧" },
+  { code: "ja", name: "日本語", flag: "🇯🇵" },
 ] as const;
 
-export type SupportedLanguage = (typeof LANGUAGE_OPTIONS)[number]['code'];
+export type SupportedLanguage = (typeof LANGUAGE_OPTIONS)[number]["code"];
 
-export const normalizeLanguageCode = (value?: string | null): SupportedLanguage => {
-  const normalized = value?.trim().toLowerCase().split('-')[0];
-  if (normalized === 'en' || normalized === 'ja' || normalized === 'vi') {
+export const normalizeLanguageCode = (
+  value?: string | null,
+): SupportedLanguage => {
+  const normalized = value?.trim().toLowerCase().split("-")[0];
+  if (normalized === "en" || normalized === "ja" || normalized === "vi") {
     return normalized;
   }
-  return 'vi';
+  return "vi";
 };
 
 // Resource structure
@@ -53,6 +58,7 @@ const resources = {
     admin: viAdmin,
     payment: viPayment,
     wallet: viWallet,
+    home: viHome,
   },
   en: {
     common: enCommon,
@@ -62,6 +68,7 @@ const resources = {
     admin: enAdmin,
     payment: enPayment,
     wallet: enWallet,
+    home: enHome,
   },
   ja: {
     common: jaCommon,
@@ -71,6 +78,7 @@ const resources = {
     admin: jaAdmin,
     payment: jaPayment,
     wallet: jaWallet,
+    home: jaHome,
   },
 };
 
@@ -80,24 +88,33 @@ i18next
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'vi',
+    fallbackLng: "vi",
     supportedLngs: LANGUAGE_OPTIONS.map((language) => language.code),
-    load: 'languageOnly',
-    defaultNS: 'common',
-    ns: ['common', 'game', 'marketplace', 'auth', 'admin', 'payment', 'wallet'],
+    load: "languageOnly",
+    defaultNS: "common",
+    ns: [
+      "common",
+      "game",
+      "marketplace",
+      "auth",
+      "admin",
+      "payment",
+      "wallet",
+      "home",
+    ],
     interpolation: {
       escapeValue: false, // React already escapes values
     },
     detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
-      caches: ['localStorage'],
+      order: ["localStorage", "navigator", "htmlTag"],
+      caches: ["localStorage"],
     },
     react: {
       useSuspense: false,
     },
   });
 
-i18next.on('languageChanged', (language) => {
+i18next.on("languageChanged", (language) => {
   document.documentElement.lang = normalizeLanguageCode(language);
 });
 
