@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,7 @@ public class AiReviewServiceImpl implements AiReviewService {
 
     @Override
     @Async
+    @Transactional
     public void reviewGameAsync(UUID gameId) {
         Game game = gameRepository.findById(gameId).orElse(null);
         if (game == null) {
@@ -87,6 +89,7 @@ public class AiReviewServiceImpl implements AiReviewService {
 
     @Override
     @Async
+    @Transactional
     public void reviewMarketplaceItemAsync(UUID itemId) {
         MarketplaceItem item = marketplaceItemRepository.findById(itemId).orElse(null);
         if (item == null) {

@@ -3,20 +3,18 @@ package com.godotlaunch.backend.entity;
 import com.godotlaunch.backend.entity.enums.ActorRole;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
-import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.ColumnTransformer;
-import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
-@Table(name = "audit_logs")
+@Document(collection = "audit_logs")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,46 +22,39 @@ import java.util.UUID;
 public class AuditLog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actor_id")
-    private User actor;
+    @Field("actor_id")
+    private UUID actorId;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "actor_role", nullable = false, columnDefinition = "actor_role_enum")
+    @Field("actor_email")
+    private String actorEmail;
+
+    @Field("actor_fullname")
+    private String actorFullName;
+
+    @Field("actor_role")
     private ActorRole actorRole;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "action", nullable = false, columnDefinition = "audit_action_enum")
     private AuditAction action;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "target_type", nullable = false, columnDefinition = "audit_target_enum")
+    @Field("target_type")
     private AuditTarget targetType;
 
-    @Column(name = "target_id", nullable = false)
+    @Field("target_id")
     private UUID targetId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "old_value", columnDefinition = "jsonb")
+    @Field("old_value")
     private String oldValue;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "new_value", columnDefinition = "jsonb")
+    @Field("new_value")
     private String newValue;
 
-    @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
-    @Column(name = "ip_address", columnDefinition = "inet")
-    @ColumnTransformer(write = "?::inet")
+    @Field("ip_address")
     private String ipAddress;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    @Field("created_at")
     private Instant createdAt;
 }

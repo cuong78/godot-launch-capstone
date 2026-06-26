@@ -36,7 +36,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   const [pendingAction, setPendingAction] = React.useState<(() => void) | null>(null);
 
   const handlePurchaseAction = (action: () => void) => {
-    if (focusedAsset.license === 'Proprietary' && focusedAsset.licenseTerms) {
+    if ((focusedAsset.license === 'Proprietary' || focusedAsset.license === 'Custom') && focusedAsset.licenseTerms) {
       setPendingAction(() => action);
       setAcceptedTerms(false);
       setShowLicenseModal(true);

@@ -10,18 +10,17 @@ import com.godotlaunch.backend.repository.AuditLogRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -37,8 +36,7 @@ public class AuditLogServiceImpl implements AuditLogService {
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
-    private final EntityManager entityManager;
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final ObjectMapper objectMapper;
 
     private void writeDebugLog(String message) {
         try {
@@ -107,8 +105,7 @@ public class AuditLogServiceImpl implements AuditLogService {
     }
 
     @Async("auditLogExecutor")
-    // AFTER_COMMIT: chỉ ghi audit SAU KHI transaction nghiệp vụ (vd signUp) đã commit
-    // → tránh FK violation khi actor_id trỏ tới user vừa tạo nhưng chưa commit.
+    // AFTER_COMMIT: chỉ ghi audit SAU KHI transaction nghiệp vụ đã commit
     // fallbackExecution=true: vẫn chạy khi publish ngoài transaction (vd OAuth login).
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
@@ -116,20 +113,31 @@ public class AuditLogServiceImpl implements AuditLogService {
         writeDebugLog("handleAuditLogEvent started for action=" + event.getAction());
         try {
             AuditLog logEntity = new AuditLog();
+            logEntity.setId(UUID.randomUUID());
             
-            User actor = null;
+            UUID actorId = null;
+            String actorEmail = null;
+            String actorFullName = null;
             ActorRole role = event.getActorRole();
 
-            // 1. Resolve user actor
+            // 1. Resolve user actor denormalized details
+            User actor = null;
             if (event.getActorId() != null) {
-                // Highly performant: uses JPA proxy, avoids SELECT query
-                actor = entityManager.getReference(User.class, event.getActorId());
+                actor = userRepository.findWithRoleById(event.getActorId()).orElse(null);
             } else if (event.getActorEmail() != null) {
-                // If only email is present (auto-resolved from security context), fetch user
-                actor = userRepository.findByEmail(event.getActorEmail()).orElse(null);
-                if (actor != null && role == null) {
+                actor = userRepository.findWithRoleByEmail(event.getActorEmail()).orElse(null);
+            }
+
+            if (actor != null) {
+                actorId = actor.getId();
+                actorEmail = actor.getEmail();
+                actorFullName = actor.getFullName();
+                if (role == null) {
                     role = mapToActorRole(actor.getRole().getName());
                 }
+            } else {
+                actorId = event.getActorId();
+                actorEmail = event.getActorEmail();
             }
 
             // Fallback for role if not resolved
@@ -137,7 +145,9 @@ public class AuditLogServiceImpl implements AuditLogService {
                 role = ActorRole.customer;
             }
 
-            logEntity.setActor(actor);
+            logEntity.setActorId(actorId);
+            logEntity.setActorEmail(actorEmail);
+            logEntity.setActorFullName(actorFullName);
             logEntity.setActorRole(role);
             logEntity.setAction(event.getAction());
             logEntity.setTargetType(event.getTargetType());
@@ -150,6 +160,7 @@ public class AuditLogServiceImpl implements AuditLogService {
             logEntity.setNewValue(event.getNewValue());
             logEntity.setNote(event.getNote());
             logEntity.setIpAddress(event.getIpAddress());
+            logEntity.setCreatedAt(event.getCreatedAt() != null ? event.getCreatedAt() : Instant.now());
             
             auditLogRepository.save(logEntity);
             writeDebugLog("handleAuditLogEvent success: saved audit log id=" + logEntity.getId());

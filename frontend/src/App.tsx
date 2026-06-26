@@ -560,7 +560,7 @@ export default function App() {
   
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [godotVersion, setGodotVersion] = useState<string>('All Versions');
-  const [maxPrice, setMaxPrice] = useState<number>(2000000);
+  const [maxPrice, setMaxPrice] = useState<number>(200000000);
   const [sortOrder, setSortOrder] = useState<'popular' | 'price-low' | 'price-high'>('popular');
 
   const [cart, setCart] = useState<Asset[]>([]);
