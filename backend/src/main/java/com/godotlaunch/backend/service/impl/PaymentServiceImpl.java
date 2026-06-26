@@ -104,12 +104,13 @@ public class PaymentServiceImpl implements PaymentService {
             payment = paymentRepository.save(payment);
         } else {
             payment = syncPaymentFromGateway(payment);
+            payment.setCurrency(DEFAULT_CURRENCY);
             if (payment.getPaymentStatus() == PaymentStatus.PAID) {
-                return mapToResponse(payment);
+                return mapToResponse(paymentRepository.save(payment));
             }
 
             if (isActiveCheckout(payment)) {
-                return mapToResponse(payment);
+                return mapToResponse(paymentRepository.save(payment));
             }
         }
 
@@ -294,11 +295,11 @@ public class PaymentServiceImpl implements PaymentService {
         return orderRepository.save(order);
     }
 
-    private Wallet createWallet(User seller, String currency) {
+    private Wallet createWallet(User seller) {
         Wallet wallet = new Wallet();
         wallet.setUser(seller);
         wallet.setBalance(BigDecimal.ZERO);
-        wallet.setCurrency(currency);
+        wallet.setCurrency(DEFAULT_CURRENCY);
         return walletRepository.save(wallet);
     }
 
@@ -387,7 +388,11 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (order.getTransaction() == null) {
             Wallet sellerWallet = walletRepository.findByUserId(item.getSeller().getId())
-                    .orElseGet(() -> createWallet(item.getSeller(), payment.getCurrency()));
+                    .orElseGet(() -> createWallet(item.getSeller()));
+
+            if (!DEFAULT_CURRENCY.equalsIgnoreCase(sellerWallet.getCurrency())) {
+                sellerWallet.setCurrency(DEFAULT_CURRENCY);
+            }
 
             Transaction transaction = new Transaction();
             transaction.setWallet(sellerWallet);

@@ -87,6 +87,21 @@ export interface WalletResponse {
   updatedAt?: string | null;
 }
 
+export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'rejected' | 'cancelled';
+
+export interface DeveloperWalletSummaryResponse {
+  walletId: string;
+  developerId: string;
+  developerEmail?: string;
+  developerFullName?: string;
+  currency: string;
+  walletBalance: number;
+  availableBalance: number;
+  pendingBalance: number;
+  totalRevenue: number;
+  updatedAt?: string | null;
+}
+
 export interface TransactionResponse {
   id: string;
   type: string;
@@ -96,26 +111,53 @@ export interface TransactionResponse {
   createdAt?: string;
 }
 
-export interface WithdrawalRequestResponse {
+export interface WithdrawalResponse {
   id: string;
-  userId: string;
-  userFullName?: string;
-  userEmail?: string;
+  developerId: string;
+  developerFullName?: string;
+  developerEmail?: string;
+  walletId: string;
   amount: number;
+  currency?: string;
   bankName: string;
   bankAccount: string;
   accountHolder: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
-  rejectReason?: string;
+  transferReference?: string;
+  status: WithdrawalStatus;
+  processedById?: string;
+  processedByFullName?: string;
+  processedAt?: string;
+  remark?: string;
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface WithdrawalDetailResponse extends WithdrawalResponse {
+  walletBalance: number;
+  availableBalance: number;
+  pendingBalance: number;
+  totalRevenue: number;
+  qrPayload?: string;
+  standardQrImageUrl?: string;
+  preferredQrImageUrl?: string;
+}
+
+export type WithdrawalRequestResponse = WithdrawalResponse;
 
 export interface CreateWithdrawalRequest {
   amount: number;
   bankName: string;
   bankAccount: string;
   accountHolder: string;
+}
+
+export interface ApproveWithdrawalRequest {
+  transferReference?: string;
+  remark?: string;
+}
+
+export interface RejectWithdrawalRequest {
+  remark: string;
 }
 
 export interface ReviewWithdrawalRequest {
@@ -555,6 +597,9 @@ export type AuditActionType =
   | "contract_cancelled"
   | "transaction_completed"
   | "transaction_failed"
+  | "withdrawal_created"
+  | "withdrawal_processing"
+  | "withdrawal_completed"
   | "withdrawal_approved"
   | "withdrawal_rejected"
   | "marketplace_item_removed"
@@ -577,6 +622,7 @@ export type AuditTargetType =
   | "contract"
   | "transaction"
   | "withdrawal"
+  | "withdrawal_request"
   | "marketplace_item"
   | "review"
   | "community_chat"

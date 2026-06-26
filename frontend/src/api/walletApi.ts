@@ -4,8 +4,12 @@ import {
   WalletResponse, 
   PageResponse, 
   TransactionResponse, 
-  WithdrawalRequestResponse, 
+  DeveloperWalletSummaryResponse,
+  WithdrawalResponse,
+  WithdrawalDetailResponse,
   CreateWithdrawalRequest, 
+  ApproveWithdrawalRequest,
+  RejectWithdrawalRequest,
   ReviewWithdrawalRequest 
 } from '../types';
 
@@ -22,28 +26,53 @@ export const walletApi = {
     return response.data;
   },
 
-  createWithdrawal: async (data: CreateWithdrawalRequest): Promise<ApiResponse<WithdrawalRequestResponse>> => {
-    const response = await api.post<ApiResponse<WithdrawalRequestResponse>>('/api/v1/withdrawals', data);
+  getDeveloperWalletSummary: async (): Promise<ApiResponse<DeveloperWalletSummaryResponse>> => {
+    const response = await api.get<ApiResponse<DeveloperWalletSummaryResponse>>('/api/v1/developer/wallet');
     return response.data;
   },
 
-  getMyWithdrawals: async (): Promise<ApiResponse<WithdrawalRequestResponse[]>> => {
-    const response = await api.get<ApiResponse<WithdrawalRequestResponse[]>>('/api/v1/withdrawals/me');
+  createDeveloperWithdrawal: async (data: CreateWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
+    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>('/api/v1/developer/withdrawals', data);
     return response.data;
   },
 
-  getWithdrawalDetail: async (id: string): Promise<ApiResponse<WithdrawalRequestResponse>> => {
-    const response = await api.get<ApiResponse<WithdrawalRequestResponse>>(`/api/v1/withdrawals/${id}`);
+  getDeveloperWithdrawals: async (): Promise<ApiResponse<WithdrawalResponse[]>> => {
+    const response = await api.get<ApiResponse<WithdrawalResponse[]>>('/api/v1/developer/withdrawals');
     return response.data;
   },
 
-  getAllWithdrawals: async (): Promise<ApiResponse<WithdrawalRequestResponse[]>> => {
-    const response = await api.get<ApiResponse<WithdrawalRequestResponse[]>>('/api/v1/withdrawals/admin');
+  getDeveloperWithdrawalDetail: async (id: string): Promise<ApiResponse<WithdrawalDetailResponse>> => {
+    const response = await api.get<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/developer/withdrawals/${id}`);
     return response.data;
   },
 
-  reviewWithdrawal: async (id: string, data: ReviewWithdrawalRequest): Promise<ApiResponse<WithdrawalRequestResponse>> => {
-    const response = await api.post<ApiResponse<WithdrawalRequestResponse>>(`/api/v1/withdrawals/admin/${id}/review`, data);
+  getAdminWithdrawals: async (): Promise<ApiResponse<WithdrawalResponse[]>> => {
+    const response = await api.get<ApiResponse<WithdrawalResponse[]>>('/api/v1/admin/withdrawals');
+    return response.data;
+  },
+
+  getAdminWithdrawalDetail: async (id: string): Promise<ApiResponse<WithdrawalDetailResponse>> => {
+    const response = await api.get<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}`);
+    return response.data;
+  },
+
+  markWithdrawalProcessing: async (id: string): Promise<ApiResponse<WithdrawalDetailResponse>> => {
+    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/processing`);
+    return response.data;
+  },
+
+  completeWithdrawal: async (id: string, data?: ApproveWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
+    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/complete`, data ?? {});
+    return response.data;
+  },
+
+  rejectWithdrawal: async (id: string, data: RejectWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
+    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/reject`, data);
+    return response.data;
+  },
+
+  reviewWithdrawal: async (id: string, data: ReviewWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
+    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/withdrawals/admin/${id}/review`, data);
     return response.data;
   }
 };

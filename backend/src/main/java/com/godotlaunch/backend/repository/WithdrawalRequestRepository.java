@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,4 +23,8 @@ public interface WithdrawalRequestRepository extends JpaRepository<WithdrawalReq
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT w FROM WithdrawalRequest w WHERE w.id = :id")
     Optional<WithdrawalRequest> findByIdWithLock(@Param("id") UUID id);
+
+    @Query("SELECT COALESCE(SUM(w.amount), 0) FROM WithdrawalRequest w WHERE w.user.id = :userId AND w.status IN :statuses")
+    java.math.BigDecimal sumAmountByUserIdAndStatusIn(@Param("userId") UUID userId,
+                                                      @Param("statuses") Set<WithdrawalStatus> statuses);
 }

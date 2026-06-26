@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '../Button';
-import { RefreshCw, Check, X } from 'lucide-react';
+import { Eye, RefreshCw } from 'lucide-react';
 import { walletApi } from '../../api/walletApi';
-import { WithdrawalRequestResponse } from '../../types';
+import { WithdrawalDetailResponse, WithdrawalResponse, WithdrawalStatus } from '../../types';
+import { AdminWithdrawalDetailModal } from './AdminWithdrawalDetailModal';
 
-const formatMoney = (value?: number) => {
+const formatMoney = (value?: number, currency = 'VND') => {
   if (value == null) return 'N/A';
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
-    currency: 'VND',
+    currency,
+    maximumFractionDigits: 0,
   }).format(value);
 };
 
@@ -25,33 +27,40 @@ const formatTimestamp = (value?: string | null) => {
   }).format(parsed);
 };
 
-const getStatusBadge = (status: WithdrawalRequestResponse['status']) => {
+const getStatusMeta = (status: WithdrawalStatus) => {
   switch (status) {
     case 'pending':
-      return 'bg-amber-100 text-amber-700 border border-amber-200';
-    case 'approved':
-      return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
-    case 'rejected':
-      return 'bg-rose-100 text-rose-700 border border-rose-200';
+      return { label: 'Pending', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
+    case 'processing':
+      return { label: 'Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
     case 'completed':
-      return 'bg-slate-100 text-slate-700 border border-slate-200';
+      return { label: 'Completed', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+    case 'rejected':
+      return { label: 'Rejected', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
+    case 'cancelled':
+      return { label: 'Cancelled', className: 'bg-slate-100 text-slate-700 border border-slate-200' };
     default:
-      return 'bg-slate-100 text-slate-700 border border-slate-200';
+      return { label: status, className: 'bg-slate-100 text-slate-700 border border-slate-200' };
   }
 };
 
 export const AdminWithdrawalPanel: React.FC = () => {
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequestResponse[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalDetailResponse | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [completionRemark, setCompletionRemark] = useState('');
+  const [rejectRemark, setRejectRemark] = useState('');
 
   const loadWithdrawals = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await walletApi.getAllWithdrawals();
+      const response = await walletApi.getAdminWithdrawals();
       if (response.success && response.data) {
         setWithdrawals(response.data);
       } else {
@@ -68,132 +77,209 @@ export const AdminWithdrawalPanel: React.FC = () => {
     loadWithdrawals();
   }, []);
 
-  const handleReview = async (requestId: string, approve: boolean) => {
-    if (isProcessing) return;
-
-    let rejectReason = '';
-    if (!approve) {
-      rejectReason = window.prompt('Vui lòng nhập lý do từ chối:')?.trim() || '';
-      if (!rejectReason) {
-        window.alert('Lý do từ chối là bắt buộc khi từ chối yêu cầu.');
-        return;
-      }
-    }
-
-    setIsProcessing(true);
-    setError(null);
-    setSuccessMessage(null);
+  const openDetail = async (requestId: string) => {
+    setIsBusy(true);
+    setDetailError(null);
+    setCompletionRemark('');
+    setRejectRemark('');
     try {
-      const response = await walletApi.reviewWithdrawal(requestId, { approve, rejectReason });
-      if (response.success) {
-        setSuccessMessage(`Yêu cầu đã được ${approve ? 'duyệt' : 'từ chối'} thành công.`);
-        loadWithdrawals();
+      const response = await walletApi.getAdminWithdrawalDetail(requestId);
+      if (response.success && response.data) {
+        setSelectedWithdrawal(response.data);
+        setCompletionRemark(response.data.remark || '');
+        setIsModalOpen(true);
       } else {
-        setError(response.message || 'Không thể xử lý yêu cầu.');
+        setDetailError(response.message || 'Không thể tải chi tiết yêu cầu rút tiền.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Không thể xử lý yêu cầu.');
+      setDetailError(err.response?.data?.message || err.message || 'Không thể tải chi tiết yêu cầu rút tiền.');
     } finally {
-      setIsProcessing(false);
+      setIsBusy(false);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedWithdrawal(null);
+    setDetailError(null);
+    setCompletionRemark('');
+    setRejectRemark('');
+  };
+
+  const syncAfterAction = async (detail?: WithdrawalDetailResponse | null, successText?: string) => {
+    if (detail) {
+      setSelectedWithdrawal(detail);
+    }
+    if (successText) {
+      setSuccessMessage(successText);
+    }
+    await loadWithdrawals();
+  };
+
+  const handleMarkProcessing = async () => {
+    if (!selectedWithdrawal) return;
+    setIsBusy(true);
+    setDetailError(null);
+    try {
+      const response = await walletApi.markWithdrawalProcessing(selectedWithdrawal.id);
+      if (response.success) {
+        await syncAfterAction(response.data, 'Withdrawal đã được chuyển sang trạng thái processing.');
+      } else {
+        setDetailError(response.message || 'Không thể cập nhật trạng thái processing.');
+      }
+    } catch (err: any) {
+      setDetailError(err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái processing.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!selectedWithdrawal) return;
+    setIsBusy(true);
+    setDetailError(null);
+    try {
+      const response = await walletApi.completeWithdrawal(selectedWithdrawal.id, {
+        remark: completionRemark.trim() || undefined,
+      });
+      if (response.success) {
+        await syncAfterAction(response.data, 'Withdrawal đã được complete thành công.');
+      } else {
+        setDetailError(response.message || 'Không thể complete withdrawal.');
+      }
+    } catch (err: any) {
+      setDetailError(err.response?.data?.message || err.message || 'Không thể complete withdrawal.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedWithdrawal) return;
+    if (!rejectRemark.trim()) {
+      setDetailError('Vui lòng nhập lý do từ chối trước khi reject.');
+      return;
+    }
+
+    setIsBusy(true);
+    setDetailError(null);
+    try {
+      const response = await walletApi.rejectWithdrawal(selectedWithdrawal.id, {
+        remark: rejectRemark.trim(),
+      });
+      if (response.success) {
+        await syncAfterAction(response.data, 'Withdrawal đã được reject.');
+      } else {
+        setDetailError(response.message || 'Không thể reject withdrawal.');
+      }
+    } catch (err: any) {
+      setDetailError(err.response?.data?.message || err.message || 'Không thể reject withdrawal.');
+    } finally {
+      setIsBusy(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Yêu cầu rút tiền</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Duyệt, từ chối và phản hồi các yêu cầu rút tiền của người dùng.
-          </p>
+      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">Withdrawal Queue</h3>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Xử lý hàng đợi rút tiền theo flow thủ công: pending, processing, complete hoặc reject.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              {withdrawals.length} requests
+            </span>
+            <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={loadWithdrawals}>
+              Refresh
+            </Button>
+          </div>
         </div>
-        <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={loadWithdrawals}>
-          Refresh
-        </Button>
-      </div>
 
-      {error && (
-        <div className="rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
-          {error}
-        </div>
-      )}
-      {successMessage && (
-        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">
-          {successMessage}
-        </div>
-      )}
+        {error && (
+          <div className="mt-4 rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="mt-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">
+            {successMessage}
+          </div>
+        )}
 
-      <div className="overflow-x-auto rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-slate-50 dark:bg-slate-950/30 text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-[0.16em] font-semibold font-display">
-            <tr>
-              <th className="p-3">Tài khoản</th>
-              <th className="p-3">Số tiền</th>
-              <th className="p-3">Ngân hàng</th>
-              <th className="p-3">Trạng thái</th>
-              <th className="p-3">Tạo</th>
-              <th className="p-3">Hành động</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
-            {isLoading ? (
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">
               <tr>
-                <td colSpan={6} className="p-6 text-center text-slate-500 dark:text-slate-400">Đang tải yêu cầu rút tiền...</td>
+                <th className="p-4">Developer</th>
+                <th className="p-4">Amount</th>
+                <th className="p-4">Status</th>
+                <th className="p-4">Created Date</th>
+                <th className="p-4">Actions</th>
               </tr>
-            ) : withdrawals.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-6 text-center text-slate-400 dark:text-slate-500">Không có yêu cầu rút tiền.</td>
-              </tr>
-            ) : (
-              withdrawals.map((request) => (
-                <tr key={request.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
-                  <td className="p-3">
-                    <div className="font-semibold text-slate-800 dark:text-slate-100">{request.userFullName || 'User'}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{request.userEmail}</div>
-                  </td>
-                  <td className="p-3 font-medium text-amber-700">{formatMoney(Number(request.amount))}</td>
-                  <td className="p-3">
-                    <div className="font-semibold">{request.bankName}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{request.bankAccount}</div>
-                  </td>
-                  <td className="p-3">
-                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(request.status)}`}>
-                      {request.status}
-                    </span>
-                  </td>
-                  <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(request.createdAt?.toString())}</td>
-                  <td className="p-3 space-x-2">
-                    {request.status === 'pending' ? (
-                      <>
-                        <Button
-                          variant="secondary-flat"
-                          size="sm"
-                          icon={<Check size={14} />}
-                          onClick={() => handleReview(request.id, true)}
-                          disabled={isProcessing}
-                        >
-                          Duyệt
-                        </Button>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-sm text-slate-700 dark:divide-slate-800 dark:text-slate-300">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-slate-500 dark:text-slate-400">Đang tải withdrawal queue...</td>
+                </tr>
+              ) : withdrawals.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">Không có yêu cầu rút tiền nào.</td>
+                </tr>
+              ) : (
+                withdrawals.map((withdrawal) => {
+                  const statusMeta = getStatusMeta(withdrawal.status);
+                  return (
+                    <tr key={withdrawal.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/30">
+                      <td className="p-4">
+                        <div className="font-semibold text-slate-900 dark:text-white">{withdrawal.developerFullName || 'Developer'}</div>
+                        <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{withdrawal.developerEmail}</div>
+                      </td>
+                      <td className="p-4 font-semibold text-amber-600">{formatMoney(Number(withdrawal.amount), withdrawal.currency || 'VND')}</td>
+                      <td className="p-4">
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusMeta.className}`}>
+                          {statusMeta.label}
+                        </span>
+                      </td>
+                      <td className="p-4 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(withdrawal.createdAt?.toString())}</td>
+                      <td className="p-4">
                         <Button
                           variant="ghost"
                           size="sm"
-                          icon={<X size={14} />}
-                          onClick={() => handleReview(request.id, false)}
-                          disabled={isProcessing}
+                          icon={<Eye size={14} />}
+                          onClick={() => openDetail(withdrawal.id)}
+                          disabled={isBusy}
                         >
-                          Từ chối
+                          View
                         </Button>
-                      </>
-                    ) : (
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Đã xử lý</span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <AdminWithdrawalDetailModal
+        withdrawal={selectedWithdrawal}
+        isBusy={isBusy}
+        isOpen={isModalOpen}
+        error={detailError}
+        completionRemark={completionRemark}
+        rejectRemark={rejectRemark}
+        onCompletionRemarkChange={setCompletionRemark}
+        onRejectRemarkChange={setRejectRemark}
+        onClose={closeModal}
+        onMarkProcessing={handleMarkProcessing}
+        onComplete={handleComplete}
+        onReject={handleReject}
+      />
     </div>
   );
 };
