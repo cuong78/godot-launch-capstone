@@ -80,6 +80,9 @@ public class User {
     @Column(name = "kyc_verified_at")
     private Instant kycVerifiedAt;
 
+    @Column(name = "preferred_language", nullable = false, length = 10)
+    private String preferredLanguage = "vi";
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 

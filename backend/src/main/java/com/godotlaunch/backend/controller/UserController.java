@@ -3,10 +3,12 @@ package com.godotlaunch.backend.controller;
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
 import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
+import com.godotlaunch.backend.dto.request.UpdateLanguagePreferenceRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.GitHubStatusResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
+import com.godotlaunch.backend.dto.response.LanguagePreferenceResponse;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.service.UserService;
@@ -60,6 +62,24 @@ public class UserController {
         String email = principal.getName();
         UserResponse updatedUser = userService.updateMyProfile(email, request);
         return ResponseEntity.ok(ApiResponse.success(updatedUser, "Profile updated successfully."));
+    }
+
+    @GetMapping("/me/language")
+    @Operation(summary = "Get current user language preference", description = "Retrieves the preferred UI language for the currently authenticated user.")
+    public ResponseEntity<ApiResponse<LanguagePreferenceResponse>> getCurrentUserLanguagePreference(Principal principal) {
+        String email = principal.getName();
+        LanguagePreferenceResponse response = userService.getLanguagePreference(email);
+        return ResponseEntity.ok(ApiResponse.success(response, "Language preference retrieved successfully."));
+    }
+
+    @PutMapping("/me/language")
+    @Operation(summary = "Update current user language preference", description = "Allows the currently authenticated user to update their preferred UI language.")
+    public ResponseEntity<ApiResponse<LanguagePreferenceResponse>> updateCurrentUserLanguagePreference(
+            Principal principal,
+            @Valid @RequestBody UpdateLanguagePreferenceRequest request) {
+        String email = principal.getName();
+        LanguagePreferenceResponse response = userService.updateLanguagePreference(email, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Language preference updated successfully."));
     }
 
     @GetMapping

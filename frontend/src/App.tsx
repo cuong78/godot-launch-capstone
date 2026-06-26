@@ -1267,6 +1267,11 @@ export default function App() {
               assets={assets}
               projectRepositories={projectRepositories}
               purchasedPayments={paymentOrders}
+              selectedPaymentOrderId={selectedPaymentOrderId}
+              setSelectedPaymentOrderId={(orderId) => setSelectedPaymentOrderId(orderId)}
+              isRefreshingPayments={isRefreshingPayments}
+              onRefreshPayments={refreshTrackedPayments}
+              onCancelPayment={handleCancelPayment}
               setCurrentScreen={setCurrentScreen}
             />
           </ProtectedRoute>

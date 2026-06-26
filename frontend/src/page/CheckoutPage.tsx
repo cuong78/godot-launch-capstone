@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Landmark, ReceiptText, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Asset } from '../types';
@@ -11,10 +12,22 @@ interface CheckoutPageProps {
   onRemoveItem: (id: string) => void;
 }
 
-const formatMoney = (amount: number) =>
+const resolveLocale = (language: string) => {
+  switch (language) {
+    case 'en':
+      return 'en-US';
+    case 'ja':
+      return 'ja-JP';
+    case 'vi':
+    default:
+      return 'vi-VN';
+  }
+};
+
+const formatMoney = (amount: number, locale = 'vi-VN', freeLabel = 'FREE') =>
   amount === 0
-    ? 'FREE'
-    : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    ? freeLabel
+    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'VND' }).format(amount);
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   cart,
@@ -23,6 +36,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   onPlaceOrder,
   onRemoveItem,
 }) => {
+  const { t, i18n } = useTranslation(['payment']);
+  const locale = resolveLocale(i18n.resolvedLanguage || i18n.language || 'vi');
   const totalAmount = cart.reduce((sum, item) => sum + item.price, 0);
   const unsupportedItems = cart.filter((item) => !item.itemType);
   const hasMultipleItems = cart.length > 1;
@@ -36,18 +51,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             onClick={onBackToMarketplace}
             className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-studio"
           >
-            <ArrowLeft size={14} /> Back to Marketplace
+            <ArrowLeft size={14} /> {t('payment:center.backToMarketplace')}
           </button>
           <h1 className="mt-3 font-display font-bold text-2xl text-slate-850 dark:text-white flex items-center gap-2">
-            <ShoppingBag size={20} className="text-amber-400" /> Checkout
+            <ShoppingBag size={20} className="text-amber-400" /> {t('payment:checkout.title')}
           </h1>
           <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
-            Review your marketplace order before creating a secure PayOS checkout session.
+            {t('payment:checkout.subtitle')}
           </p>
         </div>
         <div className="rounded-xl border border-amber-500/20 bg-amber-400/10 px-4 py-3">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500 font-mono">Total payment</p>
-          <p className="mt-1 font-display text-xl font-bold text-slate-850 dark:text-white">{formatMoney(totalAmount)}</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500 font-mono">{t('payment:checkout.totalPayment')}</p>
+          <p className="mt-1 font-display text-xl font-bold text-slate-850 dark:text-white">{formatMoney(totalAmount, locale, t('payment:common.free'))}</p>
         </div>
       </div>
 
@@ -55,22 +70,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         <section className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 pb-4 dark:border-slate-800/70">
             <div>
-              <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">Order Summary</h2>
+              <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">{t('payment:checkout.orderSummary')}</h2>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {cart.length} marketplace item{cart.length === 1 ? '' : 's'} selected
+                {t('payment:checkout.itemsSelected', { count: cart.length })}
               </p>
             </div>
             <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400">
-              PayOS checkout
+              {t('payment:checkout.payosCheckout')}
             </span>
           </div>
 
           <div className="mt-5 space-y-3">
             {cart.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/30">
-                <p className="font-display text-sm font-semibold text-slate-800 dark:text-slate-200">Your cart is empty.</p>
+                <p className="font-display text-sm font-semibold text-slate-800 dark:text-slate-200">{t('payment:checkout.emptyTitle')}</p>
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  Add a marketplace package before placing a payment.
+                  {t('payment:checkout.emptyDescription')}
                 </p>
               </div>
             ) : (
@@ -94,20 +109,24 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                           {item.category}
                         </span>
                         <span className="rounded-full bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400">
-                          {item.itemType === 'source_code' ? 'Source Code' : item.itemType === 'asset' ? 'Asset' : 'Unsupported'}
+                          {item.itemType === 'source_code'
+                            ? t('payment:checkout.itemType.sourceCode')
+                            : item.itemType === 'asset'
+                              ? t('payment:checkout.itemType.asset')
+                              : t('payment:checkout.itemType.unsupported')}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-4 md:flex-col md:items-end">
-                    <span className="font-display text-lg font-bold text-amber-500">{formatMoney(item.price)}</span>
+                    <span className="font-display text-lg font-bold text-amber-500">{formatMoney(item.price, locale, t('payment:common.free'))}</span>
                     <button
                       type="button"
                       onClick={() => onRemoveItem(item.id)}
                       className="text-xs font-semibold text-rose-500 hover:text-rose-600 transition-studio"
                     >
-                      Remove
+                      {t('payment:checkout.remove')}
                     </button>
                   </div>
                 </article>
@@ -123,8 +142,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <Landmark size={18} />
                 </div>
                 <div>
-                  <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">Payment Method</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Redirect customers to PayOS and unlock downloads only after webhook confirmation.</p>
+                  <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">{t('payment:checkout.paymentMethodTitle')}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('payment:checkout.paymentMethodSubtitle')}</p>
                 </div>
               </div>
 
@@ -134,7 +153,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <div>
                     <p className="text-sm font-semibold text-slate-850 dark:text-white">PayOS</p>
                     <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                      We will create a PayOS payment link and redirect you to the hosted checkout page.
+                      {t('payment:checkout.paymentMethodDescription')}
                     </p>
                   </div>
                 </label>
@@ -142,28 +161,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
             <div className="mt-5 space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Products</span>
+                <span className="text-slate-500 dark:text-slate-400">{t('payment:checkout.products')}</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{cart.length}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Payment Method</span>
+                <span className="text-slate-500 dark:text-slate-400">{t('payment:checkout.paymentMethod')}</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">PayOS</span>
               </div>
               <div className="flex items-center justify-between border-t border-slate-200/80 pt-3 text-sm font-bold dark:border-slate-800/80">
-                <span className="text-slate-800 dark:text-white">Total Amount</span>
-                <span className="text-amber-500">{formatMoney(totalAmount)}</span>
+                <span className="text-slate-800 dark:text-white">{t('payment:checkout.totalAmount')}</span>
+                <span className="text-amber-500">{formatMoney(totalAmount, locale, t('payment:common.free'))}</span>
               </div>
             </div>
 
             {unsupportedItems.length > 0 && (
               <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-400">
-                Some items in your cart are not marketplace payment items yet. Remove them before placing the order.
+                {t('payment:checkout.unsupportedItems')}
               </div>
             )}
 
             {hasMultipleItems && (
               <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-400/10 p-4 text-xs text-amber-600 dark:text-amber-400">
-                The current PayOS flow supports one marketplace item per checkout session. Please keep only one item in the cart before continuing.
+                {t('payment:checkout.singleItemWarning')}
               </div>
             )}
 
@@ -175,7 +194,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               onClick={onPlaceOrder}
               disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder}
             >
-              {isPlacingOrder ? 'Creating PayOS Session...' : 'Pay with PayOS'}
+              {isPlacingOrder ? t('payment:checkout.creatingSession') : t('payment:checkout.payWithPayos')}
             </Button>
           </section>
 
@@ -183,9 +202,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <div className="flex items-start gap-3">
               <ShieldCheck size={18} className="mt-0.5 text-emerald-500" />
               <div>
-                <h3 className="font-display text-sm font-bold text-slate-850 dark:text-white">Webhook Confirmation</h3>
+                <h3 className="font-display text-sm font-bold text-slate-850 dark:text-white">{t('payment:checkout.webhookTitle')}</h3>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                  Orders remain locked until the backend receives a valid PayOS webhook and marks the payment as paid.
+                  {t('payment:checkout.webhookDescription')}
                 </p>
               </div>
             </div>

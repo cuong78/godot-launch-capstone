@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Clock3, Landmark, ReceiptText, RefreshCw, TrendingUp, Wallet2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -14,20 +15,32 @@ import {
 
 const resolveCurrency = () => 'VND';
 
-const formatMoney = (value?: number, currency?: string | null) => {
-  if (value == null) return 'N/A';
-  return new Intl.NumberFormat('vi-VN', {
+const resolveLocale = (language: string) => {
+  switch (language) {
+    case 'en':
+      return 'en-US';
+    case 'ja':
+      return 'ja-JP';
+    case 'vi':
+    default:
+      return 'vi-VN';
+  }
+};
+
+const formatMoney = (value?: number, currency?: string | null, locale = 'vi-VN', fallback = 'N/A') => {
+  if (value == null) return fallback;
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currency || resolveCurrency(),
     maximumFractionDigits: 0,
   }).format(value);
 };
 
-const formatTimestamp = (value?: string | null) => {
-  if (!value) return 'N/A';
+const formatTimestamp = (value?: string | null, locale = 'vi-VN', fallback = 'N/A') => {
+  if (!value) return fallback;
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'N/A';
-  return new Intl.DateTimeFormat('en-US', {
+  if (Number.isNaN(parsed.getTime())) return fallback;
+  return new Intl.DateTimeFormat(locale, {
     month: 'short',
     day: '2-digit',
     year: 'numeric',
@@ -36,24 +49,26 @@ const formatTimestamp = (value?: string | null) => {
   }).format(parsed);
 };
 
-const getStatusMeta = (status: WithdrawalStatus) => {
+const getStatusMeta = (status: WithdrawalStatus, t: any) => {
   switch (status) {
     case 'pending':
-      return { label: 'Pending', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
+      return { label: t('wallet:status.pending'), className: 'bg-amber-100 text-amber-700 border border-amber-200' };
     case 'processing':
-      return { label: 'Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
+      return { label: t('wallet:status.processing'), className: 'bg-sky-100 text-sky-700 border border-sky-200' };
     case 'completed':
-      return { label: 'Completed', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+      return { label: t('wallet:status.completed'), className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
     case 'rejected':
-      return { label: 'Rejected', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
+      return { label: t('wallet:status.rejected'), className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'cancelled':
-      return { label: 'Cancelled', className: 'bg-slate-100 text-slate-700 border border-slate-200' };
+      return { label: t('wallet:status.cancelled'), className: 'bg-slate-100 text-slate-700 border border-slate-200' };
     default:
       return { label: status, className: 'bg-slate-100 text-slate-700 border border-slate-200' };
   }
 };
 
 export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => void }> = ({ setCurrentScreen }) => {
+  const { t, i18n } = useTranslation(['wallet']);
+  const locale = resolveLocale(i18n.resolvedLanguage || i18n.language || 'vi');
   const [walletSummary, setWalletSummary] = useState<DeveloperWalletSummaryResponse | null>(null);
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
@@ -121,12 +136,12 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
 
     const parsedAmount = Number(amount);
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setFormError('Vui lòng nhập số tiền rút hợp lệ.');
+      setFormError(t('wallet:messages.invalidAmount'));
       return;
     }
 
     if (walletSummary && parsedAmount > Number(walletSummary.availableBalance)) {
-      setFormError('Số tiền rút đang vượt quá số dư khả dụng.');
+      setFormError(t('wallet:messages.exceedsAvailable'));
       return;
     }
 
@@ -138,7 +153,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
     };
 
     if (!payload.bankName || !payload.bankAccount || !payload.accountHolder) {
-      setFormError('Vui lòng điền đầy đủ thông tin ngân hàng.');
+      setFormError(t('wallet:messages.missingBankInfo'));
       return;
     }
 
@@ -148,8 +163,8 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
       if (response.success) {
         setSuccessMessage(
           response.data?.transferReference
-            ? `Yêu cầu rút tiền đã được gửi. Mã chuyển khoản: ${response.data.transferReference}.`
-            : 'Yêu cầu rút tiền đã được gửi. Vui lòng chờ admin xử lý.'
+            ? t('wallet:messages.successWithReference', { reference: response.data.transferReference })
+            : t('wallet:messages.successWithoutReference')
         );
         setAmount('');
         setBankName('');
@@ -157,10 +172,10 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
         setAccountHolder('');
         await Promise.all([loadWalletSummary(), loadWithdrawals()]);
       } else {
-        setFormError(response.message || 'Không thể gửi yêu cầu rút tiền.');
+        setFormError(response.message || t('wallet:messages.submitFailed'));
       }
     } catch (error: any) {
-      setFormError(error.response?.data?.message || error.message || 'Không thể gửi yêu cầu rút tiền.');
+      setFormError(error.response?.data?.message || error.message || t('wallet:messages.submitFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -178,11 +193,11 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
               onClick={() => setCurrentScreen('dashboard')}
               className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
             >
-              <ArrowLeft size={14} className="mr-1 inline-block" /> Quay lại Dashboard
+              <ArrowLeft size={14} className="mr-1 inline-block" /> {t('wallet:page.backToDashboard')}
             </button>
-            <h1 className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">Withdrawal Center</h1>
+            <h1 className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">{t('wallet:page.title')}</h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-              Quản lý số dư khả dụng, theo dõi các yêu cầu đang chờ xử lý và gửi thông tin chuyển khoản cho admin bằng một flow rút tiền riêng biệt.
+              {t('wallet:page.subtitle')}
             </p>
           </div>
           <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={() => {
@@ -190,7 +205,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
             loadWithdrawals();
             loadTransactions();
           }}>
-            Refresh
+            {t('wallet:common.refresh')}
           </Button>
         </div>
 
@@ -201,13 +216,13 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                 <Wallet2 size={18} />
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-700/70 dark:text-emerald-300/70">Available Balance</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-700/70 dark:text-emerald-300/70">{t('wallet:cards.availableBalance')}</p>
                 <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
-                  {walletSummary ? formatMoney(Number(walletSummary.availableBalance), summaryCurrency) : 'Đang tải...'}
+                  {walletSummary ? formatMoney(Number(walletSummary.availableBalance), summaryCurrency, locale, t('wallet:common.notAvailable')) : t('wallet:common.loading')}
                 </p>
               </div>
             </div>
-            <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Số dư có thể tạo yêu cầu rút ngay lúc này.</p>
+            <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">{t('wallet:cards.availableDescription')}</p>
           </div>
 
           <div className="rounded-3xl border border-sky-200/70 bg-sky-50/80 p-5 dark:border-sky-900/50 dark:bg-sky-950/20">
@@ -216,13 +231,13 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                 <Clock3 size={18} />
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-700/70 dark:text-sky-300/70">Pending Withdrawal</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-700/70 dark:text-sky-300/70">{t('wallet:cards.pendingWithdrawal')}</p>
                 <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
-                  {walletSummary ? formatMoney(Number(walletSummary.pendingBalance), summaryCurrency) : 'Đang tải...'}
+                  {walletSummary ? formatMoney(Number(walletSummary.pendingBalance), summaryCurrency, locale, t('wallet:common.notAvailable')) : t('wallet:common.loading')}
                 </p>
               </div>
             </div>
-            <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Bao gồm các request đang ở trạng thái pending hoặc processing.</p>
+            <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">{t('wallet:cards.pendingDescription')}</p>
           </div>
 
           <div className="rounded-3xl border border-amber-200/70 bg-amber-50/80 p-5 dark:border-amber-900/50 dark:bg-amber-950/20">
@@ -231,24 +246,27 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                 <TrendingUp size={18} />
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-700/70 dark:text-amber-300/70">Total Revenue</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-700/70 dark:text-amber-300/70">{t('wallet:cards.totalRevenue')}</p>
                 <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
-                  {walletSummary ? formatMoney(Number(walletSummary.totalRevenue), summaryCurrency) : 'Đang tải...'}
+                  {walletSummary ? formatMoney(Number(walletSummary.totalRevenue), summaryCurrency, locale, t('wallet:common.notAvailable')) : t('wallet:common.loading')}
                 </p>
               </div>
             </div>
             <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
-              Tính theo tổng doanh thu đã ghi nhận trong ví, chưa bao gồm phần reserve đang chờ rút.
+              {t('wallet:cards.revenueDescription')}
             </p>
           </div>
         </div>
 
         <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
           {walletSummary
-            ? `Wallet ledger: ${formatMoney(Number(walletSummary.walletBalance), summaryCurrency)} · Cập nhật lúc ${formatTimestamp(walletSummary.updatedAt?.toString())}`
+            ? t('wallet:page.ledger', {
+                balance: formatMoney(Number(walletSummary.walletBalance), summaryCurrency, locale, t('wallet:common.notAvailable')),
+                updatedAt: formatTimestamp(walletSummary.updatedAt?.toString(), locale, t('wallet:common.notAvailable'))
+              })
             : isLoadingSummary
-              ? 'Đang tải dữ liệu ví...'
-              : 'Chưa có dữ liệu ví.'}
+              ? t('wallet:page.loadingLedger')
+              : t('wallet:page.emptyLedger')}
         </p>
       </div>
 
@@ -257,11 +275,11 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
           <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">Withdrawal History</h2>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Theo dõi trạng thái, số tiền và transfer reference của từng request.</p>
+                <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">{t('wallet:history.title')}</h2>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t('wallet:history.subtitle')}</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                {withdrawals.length} requests
+                {t('wallet:history.requestsCount', { count: withdrawals.length })}
               </div>
             </div>
 
@@ -269,21 +287,21 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
               <table className="w-full border-collapse text-left">
                 <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">
                   <tr>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Amount</th>
-                    <th className="p-3">Reference</th>
-                    <th className="p-3">Created</th>
-                    <th className="p-3">Processed</th>
+                    <th className="p-3">{t('wallet:history.columns.status')}</th>
+                    <th className="p-3">{t('wallet:history.columns.amount')}</th>
+                    <th className="p-3">{t('wallet:history.columns.reference')}</th>
+                    <th className="p-3">{t('wallet:history.columns.created')}</th>
+                    <th className="p-3">{t('wallet:history.columns.processed')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm text-slate-700 dark:divide-slate-800 dark:text-slate-300">
                   {withdrawals.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">Chưa có yêu cầu rút tiền nào.</td>
+                      <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">{t('wallet:history.empty')}</td>
                     </tr>
                   ) : (
                     withdrawals.map((withdrawal) => {
-                      const statusMeta = getStatusMeta(withdrawal.status);
+                      const statusMeta = getStatusMeta(withdrawal.status, t);
                       return (
                         <tr key={withdrawal.id}>
                           <td className="p-3">
@@ -291,10 +309,10 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                               {statusMeta.label}
                             </span>
                           </td>
-                          <td className="p-3 font-medium text-amber-600">{formatMoney(Number(withdrawal.amount), withdrawal.currency ?? summaryCurrency)}</td>
+                          <td className="p-3 font-medium text-amber-600">{formatMoney(Number(withdrawal.amount), withdrawal.currency ?? summaryCurrency, locale, t('wallet:common.notAvailable'))}</td>
                           <td className="p-3 font-mono text-xs text-slate-500 dark:text-slate-400">{withdrawal.transferReference || '—'}</td>
-                          <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(withdrawal.createdAt?.toString())}</td>
-                          <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(withdrawal.processedAt?.toString())}</td>
+                          <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(withdrawal.createdAt?.toString(), locale, t('wallet:common.notAvailable'))}</td>
+                          <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(withdrawal.processedAt?.toString(), locale, t('wallet:common.notAvailable'))}</td>
                         </tr>
                       );
                     })
@@ -307,11 +325,11 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
           <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">Revenue Transactions</h2>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Lịch sử ghi nhận doanh thu và các giao dịch của ví.</p>
+                <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">{t('wallet:transactions.title')}</h2>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t('wallet:transactions.subtitle')}</p>
               </div>
               <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={loadTransactions}>
-                Refresh
+                {t('wallet:common.refresh')}
               </Button>
             </div>
 
@@ -319,28 +337,28 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
               <table className="w-full border-collapse text-left">
                 <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">
                   <tr>
-                    <th className="p-3">Type</th>
-                    <th className="p-3">Amount</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Reference</th>
-                    <th className="p-3">Time</th>
+                    <th className="p-3">{t('wallet:transactions.columns.type')}</th>
+                    <th className="p-3">{t('wallet:transactions.columns.amount')}</th>
+                    <th className="p-3">{t('wallet:transactions.columns.status')}</th>
+                    <th className="p-3">{t('wallet:transactions.columns.reference')}</th>
+                    <th className="p-3">{t('wallet:transactions.columns.time')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm text-slate-700 dark:divide-slate-800 dark:text-slate-300">
                   {transactions.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">Không có giao dịch nào.</td>
+                      <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">{t('wallet:transactions.empty')}</td>
                     </tr>
                   ) : (
                     transactions.map((txn) => (
                       <tr key={txn.id}>
                         <td className="p-3 font-semibold capitalize">{txn.type || 'n/a'}</td>
                         <td className={`p-3 font-medium ${Number(txn.amount) < 0 ? 'text-rose-500' : 'text-amber-600'}`}>
-                          {formatMoney(Number(txn.amount), summaryCurrency)}
+                          {formatMoney(Number(txn.amount), summaryCurrency, locale, t('wallet:common.notAvailable'))}
                         </td>
                         <td className="p-3 text-xs uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{txn.status || 'N/A'}</td>
                         <td className="p-3 font-mono text-xs text-slate-500 dark:text-slate-400">{txn.referenceId || '—'}</td>
-                        <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(txn.createdAt?.toString())}</td>
+                        <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(txn.createdAt?.toString(), locale, t('wallet:common.notAvailable'))}</td>
                       </tr>
                     ))
                   )}
@@ -349,7 +367,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
             </div>
 
             <div className="mt-4 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <span>Trang {page + 1} / {totalPages}</span>
+              <span>{t('wallet:transactions.pageCounter', { page: page + 1, totalPages })}</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -357,7 +375,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                   onClick={() => setPage((prev) => Math.max(0, prev - 1))}
                   className="rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-600 disabled:opacity-40 dark:border-slate-800 dark:text-slate-300"
                 >
-                  Trước
+                  {t('wallet:transactions.previous')}
                 </button>
                 <button
                   type="button"
@@ -365,7 +383,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                   onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}
                   className="rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-600 disabled:opacity-40 dark:border-slate-800 dark:text-slate-300"
                 >
-                  Sau
+                  {t('wallet:transactions.next')}
                 </button>
               </div>
             </div>
@@ -379,8 +397,8 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                 <Landmark size={18} />
               </div>
               <div>
-                <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">Withdrawal Form</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Điền thông tin tài khoản nhận tiền để gửi request cho admin.</p>
+                <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">{t('wallet:form.title')}</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('wallet:form.subtitle')}</p>
               </div>
             </div>
 
@@ -398,17 +416,29 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
             <div className="mt-5 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 text-xs text-slate-600 dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-300">
               <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
                 <ReceiptText size={14} className="text-amber-500" />
-                <span className="font-semibold">Current limits</span>
+                <span className="font-semibold">{t('wallet:form.currentLimits')}</span>
               </div>
-              <p className="mt-2">Minimum withdrawal: 10.000 VND</p>
-              <p className="mt-1">Available to withdraw: {walletSummary ? formatMoney(Number(walletSummary.availableBalance), summaryCurrency) : 'Đang tải...'}</p>
-              <p className="mt-1">Pending reserve: {walletSummary ? formatMoney(Number(walletSummary.pendingBalance), summaryCurrency) : 'Đang tải...'}</p>
+              <p className="mt-2">{t('wallet:form.minimumWithdrawal')}</p>
+              <p className="mt-1">
+                {t('wallet:form.availableToWithdraw', {
+                  amount: walletSummary
+                    ? formatMoney(Number(walletSummary.availableBalance), summaryCurrency, locale, t('wallet:common.notAvailable'))
+                    : t('wallet:common.loading')
+                })}
+              </p>
+              <p className="mt-1">
+                {t('wallet:form.pendingReserve', {
+                  amount: walletSummary
+                    ? formatMoney(Number(walletSummary.pendingBalance), summaryCurrency, locale, t('wallet:common.notAvailable'))
+                    : t('wallet:common.loading')
+                })}
+              </p>
             </div>
 
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <Input
-                label="Amount (VND)"
-                placeholder="100000"
+                label={t('wallet:form.amountLabel')}
+                placeholder={t('wallet:form.amountPlaceholder')}
                 type="number"
                 min={10000}
                 value={amount}
@@ -416,38 +446,38 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                 required
               />
               <Input
-                label="Bank Name"
-                placeholder="TPBank / Vietcombank / BIDV..."
+                label={t('wallet:form.bankNameLabel')}
+                placeholder={t('wallet:form.bankNamePlaceholder')}
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
                 required
               />
               <Input
-                label="Account Number"
-                placeholder="0123456789"
+                label={t('wallet:form.accountNumberLabel')}
+                placeholder={t('wallet:form.accountNumberPlaceholder')}
                 value={bankAccount}
                 onChange={(e) => setBankAccount(e.target.value)}
                 required
               />
               <Input
-                label="Account Holder"
-                placeholder="Nguyen Van A"
+                label={t('wallet:form.accountHolderLabel')}
+                placeholder={t('wallet:form.accountHolderPlaceholder')}
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
                 required
               />
               <Button type="submit" variant="primary" size="md" className="w-full" disabled={isSubmitting || isLoadingSummary}>
-                {isSubmitting ? 'Đang gửi...' : 'Submit Withdrawal Request'}
+                {isSubmitting ? t('wallet:form.submitting') : t('wallet:form.submit')}
               </Button>
             </form>
           </div>
 
           <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
-            <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">Workflow</h3>
+            <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">{t('wallet:workflow.title')}</h3>
             <ul className="mt-3 space-y-3 text-sm text-slate-500 dark:text-slate-400">
-              <li>1. Developer gửi request với số tiền nhỏ hơn hoặc bằng Available Balance.</li>
-              <li>2. Admin mở detail, chuyển trạng thái sang Processing và quét QR động.</li>
-              <li>3. Chỉ khi admin Complete Transfer thì ví mới ghi nhận transaction rút tiền âm.</li>
+              <li>{t('wallet:workflow.step1')}</li>
+              <li>{t('wallet:workflow.step2')}</li>
+              <li>{t('wallet:workflow.step3')}</li>
             </ul>
           </div>
         </aside>

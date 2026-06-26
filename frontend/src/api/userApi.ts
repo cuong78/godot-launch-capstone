@@ -1,5 +1,11 @@
 import api from './axios';
-import { ApiResponse, User, UpdateProfileRequest, JwtAuthenticationResponse } from '../types';
+import {
+  ApiResponse,
+  JwtAuthenticationResponse,
+  LanguagePreferenceResponse,
+  UpdateProfileRequest,
+  User,
+} from '../types';
 
 export interface AdminUpdateUserRequest {
   fullName: string;
@@ -39,6 +45,16 @@ export const userApi = {
 
   unlinkGitHub: async (): Promise<ApiResponse<JwtAuthenticationResponse>> => {
     const response = await api.delete<ApiResponse<JwtAuthenticationResponse>>('/api/v1/users/me/github');
+    return response.data;
+  },
+
+  getLanguagePreference: async (): Promise<ApiResponse<LanguagePreferenceResponse>> => {
+    const response = await api.get<ApiResponse<LanguagePreferenceResponse>>('/api/v1/users/me/language');
+    return response.data;
+  },
+
+  updateLanguagePreference: async (language: string): Promise<ApiResponse<LanguagePreferenceResponse>> => {
+    const response = await api.put<ApiResponse<LanguagePreferenceResponse>>('/api/v1/users/me/language', { language });
     return response.data;
   }
 };

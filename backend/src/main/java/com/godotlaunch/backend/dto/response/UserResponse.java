@@ -22,5 +22,6 @@ public class UserResponse {
     private String roleName;
     private String status;
     private String avatarUrl;
+    private String preferredLanguage;
     private Instant createdAt;
 }

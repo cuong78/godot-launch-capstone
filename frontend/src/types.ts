@@ -53,6 +53,7 @@ export interface User {
   role?: "user" | "admin" | "developer" | "customer" | "guest";
   roleName?: string;
   status?: string;
+  preferredLanguage?: "vi" | "en" | "ja";
   createdAt?: string;
 }
 
@@ -241,6 +242,10 @@ export interface ApiResponse<T> {
   message: string;
   data: T;
   errors?: Record<string, string>;
+}
+
+export interface LanguagePreferenceResponse {
+  preferredLanguage: "vi" | "en" | "ja";
 }
 
 export interface JwtAuthenticationResponse {

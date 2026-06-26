@@ -11,6 +11,7 @@ import {
   Globe,
   Grid
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { User } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { loginWithGitHub } from '../api/authService';
@@ -39,28 +40,11 @@ const labelClassName = 'ml-1 block font-mono text-[10px] uppercase tracking-[0.2
 const inputClassName = 'w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-[#ece1d1] outline-none transition placeholder:text-[#d3c5ac]/30 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 disabled:cursor-not-allowed disabled:opacity-60';
 const socialButtonClassName = 'flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60';
 
-const featureItems = [
-  {
-    icon: BadgeCheck,
-    title: 'AI Verification',
-    description: 'Hệ thống xác thực mã nguồn tự động đảm bảo chất lượng tuyệt đối.'
-  },
-  {
-    icon: Rocket,
-    title: 'Publishing Wizard',
-    description: 'Quy trình xuất bản 3 bước đơn giản giúp sản phẩm của bạn sớm lên kệ.'
-  },
-  {
-    icon: Coins,
-    title: 'Doanh Thu Công Bằng',
-    description: 'Tỷ lệ chia sẻ doanh thu tốt nhất thị trường cho nhà phát triển.'
-  }
-];
-
 export const SignUpPage: React.FC<SignUpPageProps> = ({
   setCurrentScreen,
   setCurrentUser
 }) => {
+  const { t } = useTranslation(['auth']);
   const { signUp, error: apiError, setError: clearApiError } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -99,6 +83,25 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
       setRecaptchaToken(null);
     }
   }, [isLocalDevRecaptchaBypass, recaptchaSiteKey]);
+  const featureItems = [
+    {
+      icon: BadgeCheck,
+      title: t('auth:features.aiVerification'),
+      description: t('auth:signup.featureDescriptions.aiVerification')
+    },
+    {
+      icon: Rocket,
+      title: t('auth:features.publishingWizard'),
+      description: t('auth:signup.featureDescriptions.publishingWizard')
+    },
+    {
+      icon: Coins,
+      title: t('auth:features.fairRevenue'),
+      description: t('auth:signup.featureDescriptions.fairRevenue')
+    }
+  ];
+  const signupHeroTemplate = t('auth:signup.heroTitle', { highlight: '__HIGHLIGHT__' });
+  const [signupHeroBefore, signupHeroAfter] = signupHeroTemplate.split('__HIGHLIGHT__');
 
   const handleSendOtp = async () => {
     clearApiError(null);
@@ -106,12 +109,12 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     setSuccessMessage('');
 
     if (!email) {
-      setLocalError('Email Address is required.');
+      setLocalError(t('auth:validation.emailRequired'));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setLocalError('Please enter a valid email address.');
+      setLocalError(t('auth:validation.invalidEmail'));
       return;
     }
 
@@ -120,12 +123,12 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
       const res = await authApi.requestSignupOtp(email);
       if (res.success) {
         setIsEmailSent(true);
-        setSuccessMessage('Mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra hộp thư.');
+        setSuccessMessage(t('auth:messages.otpSent'));
       } else {
-        setLocalError(res.message || 'Gửi mã OTP thất bại.');
+        setLocalError(res.message || t('auth:validation.otpSendFailed'));
       }
     } catch (err: any) {
-      setLocalError(err.response?.data?.message || err.message || 'Gửi mã OTP thất bại.');
+      setLocalError(err.response?.data?.message || err.message || t('auth:validation.otpSendFailed'));
     } finally {
       setOtpLoading(false);
     }
@@ -137,7 +140,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     setSuccessMessage('');
 
     if (!otp) {
-      setLocalError('Mã OTP không được để trống.');
+      setLocalError(t('auth:validation.otpRequired'));
       return;
     }
 
@@ -146,12 +149,12 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
       const res = await authApi.verifySignupOtp(email, otp);
       if (res.success) {
         setIsEmailVerified(true);
-        setSuccessMessage('Xác thực OTP thành công! Vui lòng điền nốt thông tin đăng ký.');
+        setSuccessMessage(t('auth:messages.otpVerifySuccess'));
       } else {
-        setLocalError(res.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
+        setLocalError(res.message || t('auth:validation.otpInvalidOrExpired'));
       }
     } catch (err: any) {
-      setLocalError(err.response?.data?.message || err.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
+      setLocalError(err.response?.data?.message || err.message || t('auth:validation.otpInvalidOrExpired'));
     } finally {
       setOtpLoading(false);
     }
@@ -159,44 +162,44 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
   const validateFields = () => {
     if (!email) {
-      setLocalError('Email Address is required.');
+      setLocalError(t('auth:validation.emailRequired'));
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setLocalError('Please enter a valid email address.');
+      setLocalError(t('auth:validation.invalidEmail'));
       return false;
     }
     if (!isEmailVerified) {
-      setLocalError('Vui lòng xác thực mã OTP trước.');
+      setLocalError(t('auth:validation.verifyOtpFirst'));
       return false;
     }
     if (!otp) {
-      setLocalError('OTP verification code is required.');
+      setLocalError(t('auth:validation.otpRequired'));
       return false;
     }
     if (!fullName) {
-      setLocalError('Full Name is required.');
+      setLocalError(t('auth:validation.fullNameRequired'));
       return false;
     }
     if (!password) {
-      setLocalError('Password is required.');
+      setLocalError(t('auth:validation.passwordRequired'));
       return false;
     }
     if (password.length < 6) {
-      setLocalError('Password must be at least 6 characters.');
+      setLocalError(t('auth:validation.passwordMin'));
       return false;
     }
     if (!confirmPassword) {
-      setLocalError('Please confirm your password.');
+      setLocalError(t('auth:validation.confirmPasswordRequired'));
       return false;
     }
     if (password !== confirmPassword) {
-      setLocalError('Passwords do not match.');
+      setLocalError(t('auth:validation.passwordMismatch'));
       return false;
     }
     if (!recaptchaToken) {
-      setLocalError('Vui lòng xác nhận reCAPTCHA.');
+      setLocalError(t('auth:validation.recaptchaRequired'));
       return false;
     }
     return true;
@@ -213,7 +216,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     setLoading(true);
     try {
       await signUp({ email, password, confirmPassword, fullName, avatarUrl, otp, recaptchaToken: recaptchaToken! });
-      setSuccessMessage('Account created successfully! Redirecting to sign in...');
+      setSuccessMessage(t('auth:messages.signupSuccess'));
       localStorage.setItem("signup_email", email);
       setTimeout(() => {
         setCurrentScreen('signin');
@@ -232,7 +235,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     setLocalError('');
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!googleClientId) {
-      setLocalError('Google Client ID is not configured. Please check your .env file.');
+      setLocalError(t('auth:messages.googleConfigMissing'));
       return;
     }
     const redirectUri = window.location.origin + '/signin';
@@ -260,13 +263,15 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
         <section className="hidden lg:flex lg:flex-col lg:space-y-10 lg:py-8">
           <div>
             <span className="mb-6 inline-flex items-center rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.2em] text-amber-300">
-              ĐẶC QUYỀN THÀNH VIÊN
+              {t('auth:signup.memberBadge')}
             </span>
             <h1 className="mb-6 font-display text-5xl font-extrabold leading-tight text-white">
-              Xây Dựng <span className="text-amber-300">Di Sản</span> Godot Của Bạn.
+              {signupHeroBefore}
+              <span className="text-amber-300">{t('auth:signup.heroHighlight')}</span>
+              {signupHeroAfter}
             </h1>
             <p className="max-w-md text-lg leading-relaxed text-slate-300">
-              Tham gia hệ sinh thái lớn nhất dành cho nhà phát triển Godot. Nơi tài năng gặp gỡ cơ hội.
+              {t('auth:signup.heroSubtitle')}
             </p>
           </div>
 
@@ -295,13 +300,13 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             <div>
               <div className="text-2xl font-bold text-amber-300">10K+</div>
               <div className="font-mono text-xs uppercase text-[#d3c5ac]">
-                Devs
+                {t('auth:signup.stats.devs')}
               </div>
             </div>
             <div>
               <div className="text-2xl font-bold text-amber-300">500K+</div>
               <div className="font-mono text-xs uppercase text-[#d3c5ac]">
-                Assets
+                {t('auth:signup.stats.assets')}
               </div>
             </div>
           </div>
@@ -313,10 +318,10 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
             <div className="relative z-10 mb-8 text-center">
               <h2 className="mb-2 font-display text-3xl font-extrabold text-[#ece1d1] sm:text-4xl">
-                Tạo Tài Khoản
+                {t('auth:signup.title')}
               </h2>
               <p className="text-sm text-[#d3c5ac]/80 sm:text-base">
-                Tham gia GodotLaunch chỉ trong vài phút.
+                {t('auth:signup.subtitle')}
               </p>
             </div>
 
@@ -336,7 +341,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               <div className="relative z-10 space-y-5">
                 <div className="space-y-1.5">
                   <label htmlFor="signup-email" className={labelClassName}>
-                    Email Đăng Ký
+                    {t('auth:signup.emailLabel')}
                   </label>
                   <input
                     id="signup-email"
@@ -353,13 +358,13 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                 {isEmailSent && (
                   <div className="space-y-1.5 animate-fade-in">
                     <label htmlFor="signup-otp" className={labelClassName}>
-                      Mã Xác Thực OTP
+                      {t('auth:signup.otpLabel')}
                     </label>
                     <input
                       id="signup-otp"
                       type="text"
                       maxLength={6}
-                      placeholder="Nhập mã 6 chữ số"
+                      placeholder={t('auth:signup.otpPlaceholder')}
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                       disabled={otpLoading}
@@ -373,7 +378,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                         className="text-xs text-[#d3c5ac]/70 hover:text-amber-400 transition"
                         disabled={otpLoading}
                       >
-                        Thay đổi Email
+                        {t('auth:signup.changeEmail')}
                       </button>
                       <button
                         type="button"
@@ -381,7 +386,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                         className="text-xs text-[#d3c5ac]/70 hover:text-amber-400 transition"
                         disabled={otpLoading}
                       >
-                        Gửi lại mã OTP
+                        {t('auth:signup.resendOtp')}
                       </button>
                     </div>
                   </div>
@@ -395,7 +400,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-4 font-display text-lg font-extrabold text-[#6c4f00] shadow-[0_0_20px_rgba(251,191,36,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_35px_rgba(251,191,36,0.35)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {otpLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Rocket size={18} />}
-                    {otpLoading ? 'Đang gửi OTP...' : 'Nhận Mã OTP'}
+                    {otpLoading ? t('auth:signup.sendingOtp') : t('auth:signup.sendOtp')}
                   </button>
                 ) : (
                   <button
@@ -405,7 +410,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-4 font-display text-lg font-extrabold text-[#6c4f00] shadow-[0_0_20px_rgba(251,191,36,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_35px_rgba(251,191,36,0.35)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {otpLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check size={18} />}
-                    {otpLoading ? 'Đang xác thực...' : 'Xác Thực OTP'}
+                    {otpLoading ? t('auth:signup.verifyingOtp') : t('auth:signup.verifyOtp')}
                   </button>
                 )}
               </div>
@@ -413,23 +418,23 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               <form onSubmit={handleSubmit} className="relative z-10 space-y-5 animate-fade-in">
                 {/* Verified Email Indicator */}
                 <div className="space-y-1.5">
-                  <label className={labelClassName}>Email Đã Xác Thực</label>
+                  <label className={labelClassName}>{t('auth:signup.verifiedEmail')}</label>
                   <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-[#ece1d1]">
                     <span className="font-medium text-emerald-200">{email}</span>
                     <span className="flex items-center gap-1 text-xs font-bold text-emerald-400 font-mono uppercase tracking-wider">
-                      <Check size={12} /> Verified
+                      <Check size={12} /> {t('auth:signup.verified')}
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label htmlFor="signup-fullname" className={labelClassName}>
-                    Họ Và Tên
+                    {t('auth:signup.fullNameLabel')}
                   </label>
                   <input
                     id="signup-fullname"
                     type="text"
-                    placeholder="John Doe"
+                    placeholder={t('auth:signup.fullNamePlaceholder')}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     disabled={loading}
@@ -440,7 +445,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
                 {/* Avatar Selector Block */}
                 <div className="space-y-2">
-                  <label className={labelClassName}>Chọn Ảnh Đại Diện (Avatar)</label>
+                  <label className={labelClassName}>{t('auth:signup.avatar.label')}</label>
                   
                   {/* Preview and Selection Info */}
                   <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-3">
@@ -460,8 +465,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                       }}
                     />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[#ece1d1] truncate">Avatar Preview</p>
-                      <p className="text-[10px] text-[#d3c5ac]/70">Chọn từ kho ảnh có sẵn, tải lên, hoặc dán link ảnh.</p>
+                      <p className="text-xs font-semibold text-[#ece1d1] truncate">{t('auth:signup.avatar.previewTitle')}</p>
+                      <p className="text-[10px] text-[#d3c5ac]/70">{t('auth:signup.avatar.previewHint')}</p>
                     </div>
                   </div>
 
@@ -476,7 +481,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                           : 'text-[#d3c5ac] hover:text-[#ece1d1]'
                       }`}
                     >
-                      <Grid size={11} /> Có Sẵn
+                      <Grid size={11} /> {t('auth:signup.avatar.presets')}
                     </button>
                     <button
                       type="button"
@@ -487,7 +492,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                           : 'text-[#d3c5ac] hover:text-[#ece1d1]'
                       }`}
                     >
-                      {isUploading ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />} Tải Lên
+                      {isUploading ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />} {t('auth:signup.avatar.upload')}
                     </button>
                     <button
                       type="button"
@@ -498,7 +503,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                           : 'text-[#d3c5ac] hover:text-[#ece1d1]'
                       }`}
                     >
-                      <Globe size={11} /> Link Ảnh
+                      <Globe size={11} /> {t('auth:signup.avatar.url')}
                     </button>
                   </div>
 
@@ -550,11 +555,11 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                           const file = e.target.files?.[0];
                           if (!file) return;
                           if (!file.type.startsWith('image/')) {
-                            setLocalError('Hãy chọn một file ảnh hợp lệ.');
+                            setLocalError(t('auth:validation.invalidImageFile'));
                             return;
                           }
                           if (file.size > 5 * 1024 * 1024) {
-                            setLocalError('Dung lượng ảnh tối đa là 5MB.');
+                            setLocalError(t('auth:validation.imageTooLarge'));
                             return;
                           }
                           setIsUploading(true);
@@ -564,10 +569,10 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                             if (res.success && res.data) {
                               setAvatarUrl(res.data);
                             } else {
-                              setLocalError(res.message || 'Tải ảnh lên thất bại.');
+                              setLocalError(res.message || t('auth:messages.uploadAvatarFailed'));
                             }
                           } catch (err: any) {
-                            setLocalError(err.response?.data?.message || err.message || 'Tải ảnh lên thất bại.');
+                            setLocalError(err.response?.data?.message || err.message || t('auth:messages.uploadAvatarFailed'));
                           } finally {
                             setIsUploading(false);
                           }
@@ -577,9 +582,9 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                       <div className="flex flex-col items-center gap-1">
                         <Upload className="text-[#d3c5ac] mb-1" size={14} />
                         <p className="text-[11px] text-[#d3c5ac]">
-                          {isUploading ? 'Đang tải lên...' : 'Chọn file ảnh từ thiết bị'}
+                          {isUploading ? t('auth:signup.avatar.uploading') : t('auth:signup.avatar.uploadPrompt')}
                         </p>
-                        <p className="text-[9px] text-[#d3c5ac]/50">PNG, JPG tối đa 5MB</p>
+                        <p className="text-[9px] text-[#d3c5ac]/50">{t('auth:signup.avatar.uploadHint')}</p>
                       </div>
                     </div>
                   )}
@@ -591,7 +596,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                         type="url"
                         value={customUrl}
                         onChange={(e) => setCustomUrl(e.target.value)}
-                        placeholder="Dán link ảnh tại đây..."
+                        placeholder={t('auth:signup.avatar.pasteLinkPlaceholder')}
                         className="flex-1 rounded-xl border border-white/10 bg-[#17130a] px-3 py-2 text-xs text-[#ece1d1] outline-none"
                       />
                       <button
@@ -604,7 +609,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                         }}
                         className="rounded-xl bg-amber-400 px-3 py-2 text-xs font-bold text-slate-900 shrink-0"
                       >
-                        Áp Dụng
+                        {t('auth:signup.avatar.apply')}
                       </button>
                     </div>
                   )}
@@ -613,7 +618,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label htmlFor="signup-password" className={labelClassName}>
-                      Mật Khẩu
+                      {t('auth:signup.passwordLabel')}
                     </label>
                     <input
                       id="signup-password"
@@ -629,7 +634,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
                   <div className="space-y-1.5">
                     <label htmlFor="signup-confirm-password" className={labelClassName}>
-                      Xác Nhận
+                      {t('auth:signup.confirmLabel')}
                     </label>
                     <input
                       id="signup-confirm-password"
@@ -654,9 +659,9 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                     className="mt-1 h-4 w-4 cursor-pointer rounded border-white/10 bg-white/5 text-amber-300 focus:ring-amber-300"
                   />
                   <label htmlFor="terms" className="cursor-pointer text-xs leading-relaxed text-[#d3c5ac]">
-                    Tôi đồng ý với{' '}
-                    <span className="text-amber-300 hover:underline">Điều Khoản</span> và{' '}
-                    <span className="text-amber-300 hover:underline">Bảo Mật</span>.
+                    {t('auth:signup.termsPrefix')}{' '}
+                    <span className="text-amber-300 hover:underline">{t('auth:signup.termsOfUse')}</span> {t('auth:signup.and')}{' '}
+                    <span className="text-amber-300 hover:underline">{t('auth:signup.privacy')}</span>.
                   </label>
                 </div>
 
@@ -671,7 +676,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                     />
                   ) : isLocalDevRecaptchaBypass ? null : (
                     <div className="w-full max-w-md rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                      Thiếu `VITE_RECAPTCHA_SITE_KEY` nên không thể hoàn tất đăng ký.
+                      {t('auth:signup.missingRecaptcha')}
                     </div>
                   )}
                 </div>
@@ -682,7 +687,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-4 font-display text-lg font-extrabold text-[#6c4f00] shadow-[0_0_20px_rgba(251,191,36,0.15)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_35px_rgba(251,191,36,0.35)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserPlus size={18} />}
-                  {loading ? 'Creating Account...' : 'Tạo Tài Khoản'}
+                  {loading ? t('auth:signup.submitting') : t('auth:signup.submit')}
                 </button>
               </form>
             )}
@@ -690,7 +695,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
             <div className="relative z-10 mb-6 mt-8 flex items-center gap-4">
               <div className="h-px flex-grow bg-white/10" />
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#d3c5ac]/50">
-                Hoặc Đăng Ký Qua
+                {t('auth:signup.orSignupWith')}
               </span>
               <div className="h-px flex-grow bg-white/10" />
             </div>
@@ -730,7 +735,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
 
             <div className="relative z-10 mt-8 text-center">
               <p className="text-sm text-[#d3c5ac]">
-                Đã có tài khoản?{' '}
+                {t('auth:signup.hasAccount')}{' '}
                 <button
                   type="button"
                   onClick={() => {
@@ -739,7 +744,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                   className="font-bold text-amber-300 hover:underline"
                   disabled={loading}
                 >
-                  Đăng Nhập
+                  {t('auth:signup.signIn')}
                 </button>
               </p>
             </div>
