@@ -211,7 +211,7 @@ export const AdminFileManagementPanel: React.FC = () => {
   // Tree helper: Find categories routed to specific bucket
   const getAssignedCategories = (bucketId: string) => {
     const fileTypes = routings
-      .filter((r) => r.bucketId === bucketId)
+      .filter((r) => r.bucketId && r.bucketId.toString().toLowerCase() === bucketId.toString().toLowerCase())
       .map((r) => r.fileType);
     return categories.filter((cat) => {
       const mappedTypes = categoryToFileTypes[cat.value] || [];
@@ -222,7 +222,7 @@ export const AdminFileManagementPanel: React.FC = () => {
   // Tree helper: Find unrouted categories
   const getUnroutedCategories = () => {
     const assignedTypes = routings
-      .filter((r) => r.bucketId != null)
+      .filter((r) => r.bucketId != null && r.bucketId !== '')
       .map((r) => r.fileType);
     return categories.filter((cat) => {
       const mappedTypes = categoryToFileTypes[cat.value] || [];

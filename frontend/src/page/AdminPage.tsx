@@ -38,6 +38,7 @@ import { ContractViewerModal } from '../components/ContractViewerModal';
 import { AdminStoragePanel } from '../components/AdminStoragePanel';
 import AdminDisputePanel from '../components/AdminDisputePanel';
 import { auditLogApi } from '../api/auditLogApi';
+import AiReviewReportCard from '../components/AiReviewReportCard';
 import {
   AdminUserManagementPanel,
   AdminUserRecord,
@@ -182,8 +183,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'logs' | 'settings' | 'storage' | 'disputes' | 'withdrawal' | 'files'>('moderation');
   
   // Real Game Moderation state
+  const [allGames, setAllGames] = useState<GameResponse[]>([]);
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
   const [contracts, setContracts] = useState<ContractResponse[]>([]);
+  const pendingGamesCount = allGames.filter(g => g.status?.toLowerCase() === 'pending').length;
   const [isLoadingGames, setIsLoadingGames] = useState<boolean>(false);
   const [gamesError, setGamesError] = useState<string | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
@@ -191,11 +194,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
 
   // Real Marketplace Moderation state
+  const [allMarketplaceItems, setAllMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
   const [pendingMarketplaceItems, setPendingMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
+  const pendingMarketplaceCount = allMarketplaceItems.filter(item => item.status?.toLowerCase() === 'pending').length;
   const [isLoadingMarketplace, setIsLoadingMarketplace] = useState<boolean>(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [expandedMarketplaceId, setExpandedMarketplaceId] = useState<string | null>(null);
   const [moderationSubTab, setModerationSubTab] = useState<'games' | 'marketplace'>('games');
+  const [gameStatusFilter, setGameStatusFilter] = useState<'pending' | 'approved' | 'published' | 'rejected' | 'all'>('pending');
+  const [marketplaceStatusFilter, setMarketplaceStatusFilter] = useState<'pending' | 'active' | 'rejected' | 'removed' | 'all'>('pending');
 
   // Contract Offer states
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -229,11 +236,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       ]);
       
       if (gamesRes.success && gamesRes.data) {
-        const filtered = gamesRes.data.filter((game: GameResponse) => 
-          game.status?.toLowerCase() === 'pending' || 
-          game.status?.toLowerCase() === 'approved'
-        );
-        setPendingGames(filtered);
+        setAllGames(gamesRes.data);
       } else {
         setGamesError(gamesRes.message || 'Failed to load pending games');
       }
@@ -248,15 +251,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (gameStatusFilter === 'all') {
+      // Show all games except drafts (keep moderation clean)
+      setPendingGames(allGames.filter(g => g.status?.toLowerCase() !== 'draft'));
+    } else {
+      setPendingGames(allGames.filter(g => g.status?.toLowerCase() === gameStatusFilter));
+    }
+  }, [allGames, gameStatusFilter]);
+
   const fetchPendingMarketplaceItems = async () => {
     setIsLoadingMarketplace(true);
     setMarketplaceError(null);
     try {
-      const res = await marketplaceApi.getAllMarketplaceItems('pending');
+      const res = await marketplaceApi.getAllMarketplaceItems();
       if (res.success && res.data) {
-        setPendingMarketplaceItems(res.data);
+        setAllMarketplaceItems(res.data);
       } else {
-        setMarketplaceError(res.message || 'Failed to load pending marketplace items');
+        setMarketplaceError(res.message || 'Failed to load marketplace items');
       }
     } catch (err: any) {
       setMarketplaceError(err.response?.data?.message || err.message || 'Failed to fetch marketplace submissions');
@@ -264,6 +276,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setIsLoadingMarketplace(false);
     }
   };
+
+  useEffect(() => {
+    if (marketplaceStatusFilter === 'all') {
+      setPendingMarketplaceItems(allMarketplaceItems);
+    } else {
+      setPendingMarketplaceItems(allMarketplaceItems.filter(item => item.status?.toLowerCase() === marketplaceStatusFilter));
+    }
+  }, [allMarketplaceItems, marketplaceStatusFilter]);
 
 
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
@@ -607,14 +627,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-display font-bold dark:text-white">
-              {pendingGames.length + pendingMarketplaceItems.length} items
+              {pendingGamesCount + pendingMarketplaceCount} items
             </span>
-            {(pendingGames.length > 0 || pendingMarketplaceItems.length > 0) && (
+            {(pendingGamesCount > 0 || pendingMarketplaceCount > 0) && (
               <span className="text-[10px] text-amber-500 font-bold font-mono animate-pulse">Action required</span>
             )}
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">
-            {pendingGames.length} games / {pendingMarketplaceItems.length} marketplace assets
+          <p className="text-[9px] text-slate-500 dark:text-slate-455 leading-tight">
+            {pendingGamesCount} games / {pendingMarketplaceCount} marketplace assets
           </p>
         </div>
 
@@ -637,7 +657,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           onClick={() => setActiveTab('moderation')}
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'moderation' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
-          <FileCheck size={14} /> Moderation Queue ({pendingGames.length + pendingMarketplaceItems.length})
+          <FileCheck size={14} /> Moderation Queue ({pendingGamesCount + pendingMarketplaceCount})
         </button>
         <button
           onClick={() => setActiveTab('users')}
@@ -706,35 +726,155 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 onClick={() => setModerationSubTab('games')}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
                   moderationSubTab === 'games'
-                    ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
+                    ? 'bg-amber-400 text-slate-955 shadow-md font-bold'
                     : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 <Gamepad2 size={14} />
                 Game Submissions
                 <span className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
-                  moderationSubTab === 'games' ? 'bg-slate-950 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  moderationSubTab === 'games' ? 'bg-slate-955 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                 }`}>
-                  {pendingGames.length}
+                  {pendingGamesCount}
                 </span>
               </button>
               <button
                 onClick={() => setModerationSubTab('marketplace')}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
                   moderationSubTab === 'marketplace'
-                    ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
+                    ? 'bg-amber-400 text-slate-955 shadow-md font-bold'
                     : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 <ShoppingBag size={14} />
                 Marketplace Submissions
                 <span className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
-                  moderationSubTab === 'marketplace' ? 'bg-slate-950 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400'
+                  moderationSubTab === 'marketplace' ? 'bg-slate-955 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400'
                 }`}>
-                  {pendingMarketplaceItems.length}
+                  {pendingMarketplaceCount}
                 </span>
               </button>
             </div>
+
+            {moderationSubTab === 'games' && (
+              <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/40 rounded-xl w-fit mb-4 border border-slate-200/60 dark:border-slate-800/60 animate-fade-in">
+                <button
+                  type="button"
+                  onClick={() => setGameStatusFilter('pending')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    gameStatusFilter === 'pending'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Chờ duyệt ({allGames.filter(g => g.status?.toLowerCase() === 'pending').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGameStatusFilter('approved')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    gameStatusFilter === 'approved'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Đã duyệt ({allGames.filter(g => g.status?.toLowerCase() === 'approved').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGameStatusFilter('published')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    gameStatusFilter === 'published'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Đã xuất bản ({allGames.filter(g => g.status?.toLowerCase() === 'published').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGameStatusFilter('rejected')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    gameStatusFilter === 'rejected'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Đã từ chối ({allGames.filter(g => g.status?.toLowerCase() === 'rejected').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGameStatusFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    gameStatusFilter === 'all'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Tất cả ({allGames.filter(g => g.status?.toLowerCase() !== 'draft').length})
+                </button>
+              </div>
+            )}
+
+            {moderationSubTab === 'marketplace' && (
+              <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/40 rounded-xl w-fit mb-4 border border-slate-200/60 dark:border-slate-800/60 animate-fade-in">
+                <button
+                  type="button"
+                  onClick={() => setMarketplaceStatusFilter('pending')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    marketplaceStatusFilter === 'pending'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Chờ duyệt ({allMarketplaceItems.filter(i => i.status?.toLowerCase() === 'pending').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMarketplaceStatusFilter('active')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    marketplaceStatusFilter === 'active'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Đang hiển thị ({allMarketplaceItems.filter(i => i.status?.toLowerCase() === 'active').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMarketplaceStatusFilter('rejected')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    marketplaceStatusFilter === 'rejected'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Đã từ chối ({allMarketplaceItems.filter(i => i.status?.toLowerCase() === 'rejected').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMarketplaceStatusFilter('removed')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    marketplaceStatusFilter === 'removed'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Đã xóa ({allMarketplaceItems.filter(i => i.status?.toLowerCase() === 'removed').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMarketplaceStatusFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    marketplaceStatusFilter === 'all'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Tất cả ({allMarketplaceItems.length})
+                </button>
+              </div>
+            )}
 
             {moderationSubTab === 'games' ? (
               <>
@@ -777,13 +917,47 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 <td className="p-3">
                                   <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                     {game.title}
-                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
-                                      game.status?.toLowerCase() === 'pending'
-                                        ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse'
-                                        : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                    }`}>
-                                      {game.status?.toLowerCase() === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
-                                    </span>
+                                    {(() => {
+                                      const s = game.status?.toLowerCase();
+                                      switch (s) {
+                                        case 'pending':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse">
+                                              Chờ duyệt
+                                            </span>
+                                          );
+                                        case 'approved':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                              Đã duyệt
+                                            </span>
+                                          );
+                                        case 'published':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                              Đã xuất bản
+                                            </span>
+                                          );
+                                        case 'rejected':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                              Đã từ chối
+                                            </span>
+                                          );
+                                        case 'draft':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">
+                                              Bản nháp
+                                            </span>
+                                          );
+                                        default:
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">
+                                              {game.status}
+                                            </span>
+                                          );
+                                      }
+                                    })()}
                                     <button
                                       onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                       className="text-slate-400 hover:text-amber-500 transition-colors"
@@ -826,93 +1000,112 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   })()}
                                 </td>
                                 <td className="p-3 text-center">
-                                  {game.status?.toLowerCase() === 'pending' ? (
-                                    <div className="flex items-center justify-center gap-1.5">
-                                      <button
-                                        onClick={() => handleApproveGame(game)}
-                                        className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                        title="Duyệt game"
-                                      >
-                                        <Check size={14} />
-                                      </button>
-                                      <button
-                                        onClick={() => handleRejectGame(game.id, game.title)}
-                                        className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                        title="Từ chối game"
-                                      >
-                                        <X size={14} />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex flex-col items-center justify-center gap-1">
-                                      {(() => {
-                                        const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
-                                        if (!contract) {
-                                          return (
-                                            <button
-                                              onClick={() => handleOpenContractModal(game)}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                            >
-                                              <FileText size={12} />
-                                              Soạn Hợp đồng
-                                            </button>
-                                          );
-                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
-                                          return (
-                                            <button
-                                              onClick={() => {
-                                                setSelectedContract(contract);
-                                                setViewerMode('view');
-                                                setIsViewerOpen(true);
-                                              }}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                            >
-                                              <Eye size={12} />
-                                              Chờ Dev ký
-                                            </button>
-                                          );
-                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
-                                          return (
-                                            <button
-                                              onClick={() => {
-                                                setSelectedContract(contract);
-                                                setViewerMode('sign-admin');
-                                                setIsViewerOpen(true);
-                                              }}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer animate-pulse"
-                                            >
-                                              <PenTool size={12} />
-                                              Ký đối ứng
-                                            </button>
-                                          );
-                                        } else if (contract.status === 'negotiating') {
-                                          return (
-                                            <button
-                                              onClick={() => handleOpenContractModal(game)}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                            >
-                                              <Sliders size={12} />
-                                              Điều chỉnh HĐ
-                                            </button>
-                                          );
-                                        } else {
-                                          return (
-                                            <button
-                                              onClick={() => {
-                                                setSelectedContract(contract);
-                                                setViewerMode('view');
-                                                setIsViewerOpen(true);
-                                              }}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                            >
-                                              <FileText size={12} />
-                                              Đã hoàn tất
-                                            </button>
-                                          );
-                                        }
-                                      })()}
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    const status = game.status?.toLowerCase();
+                                    if (status === 'pending') {
+                                      return (
+                                        <div className="flex items-center justify-center gap-1.5">
+                                          <button
+                                            onClick={() => handleApproveGame(game)}
+                                            className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                            title="Duyệt game"
+                                          >
+                                            <Check size={14} />
+                                          </button>
+                                          <button
+                                            onClick={() => handleRejectGame(game.id, game.title)}
+                                            className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                            title="Từ chối game"
+                                          >
+                                            <X size={14} />
+                                          </button>
+                                        </div>
+                                      );
+                                    } else if (status === 'approved') {
+                                      return (
+                                        <div className="flex flex-col items-center justify-center gap-1">
+                                          {(() => {
+                                            const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+                                            if (!contract) {
+                                              return (
+                                                <button
+                                                  onClick={() => handleOpenContractModal(game)}
+                                                  className="flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                                >
+                                                  <FileText size={12} />
+                                                  Soạn Hợp đồng
+                                                </button>
+                                              );
+                                            } else if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
+                                              return (
+                                                <button
+                                                  onClick={() => {
+                                                    setSelectedContract(contract);
+                                                    setViewerMode('view');
+                                                    setIsViewerOpen(true);
+                                                  }}
+                                                  className="flex items-center gap-1 px-3 py-1.5 bg-amber-505 bg-amber-500 hover:bg-amber-600 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                                >
+                                                  <Eye size={12} />
+                                                  Chờ Dev ký
+                                                </button>
+                                              );
+                                            } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
+                                              return (
+                                                <button
+                                                  onClick={() => {
+                                                    setSelectedContract(contract);
+                                                    setViewerMode('sign-admin');
+                                                    setIsViewerOpen(true);
+                                                  }}
+                                                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-505 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer animate-pulse"
+                                                >
+                                                  <PenTool size={12} />
+                                                  Ký đối ứng
+                                                </button>
+                                              );
+                                            } else if (contract.status === 'negotiating') {
+                                              return (
+                                                <button
+                                                  onClick={() => handleOpenContractModal(game)}
+                                                  className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                                >
+                                                  <Sliders size={12} />
+                                                  Điều chỉnh HĐ
+                                                </button>
+                                              );
+                                            } else {
+                                              return (
+                                                <button
+                                                  onClick={() => {
+                                                    setSelectedContract(contract);
+                                                    setViewerMode('view');
+                                                    setIsViewerOpen(true);
+                                                  }}
+                                                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                                >
+                                                  <FileText size={12} />
+                                                  Đã hoàn tất
+                                                </button>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                      );
+                                    } else if (status === 'published') {
+                                      return (
+                                        <span className="text-blue-500 dark:text-blue-400 font-bold text-[10px]">Đã xuất bản</span>
+                                      );
+                                    } else if (status === 'rejected') {
+                                      return (
+                                        <span className="text-rose-500 dark:text-rose-400 font-bold text-[10px]">Đã từ chối</span>
+                                      );
+                                    } else {
+                                      return (
+                                        <span className="text-slate-400 font-bold text-[10px]">-</span>
+                                      );
+                                    }
+                                  })()}
                                 </td>
                               </tr>
                               
@@ -1042,6 +1235,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         </div>
                                       </div>
                                     </div>
+                                    <div className="mt-6 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
+                                      <AiReviewReportCard gameId={game.id} />
+                                    </div>
                                   </td>
                                 </tr>
                               )}
@@ -1099,9 +1295,41 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 <td className="p-3">
                                   <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                     {item.title}
-                                    <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse">
-                                      Pending
-                                    </span>
+                                    {(() => {
+                                      const s = item.status?.toLowerCase();
+                                      switch (s) {
+                                        case 'pending':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse">
+                                              Chờ duyệt
+                                            </span>
+                                          );
+                                        case 'active':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                              Đang hiển thị
+                                            </span>
+                                          );
+                                        case 'rejected':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                              Đã từ chối
+                                            </span>
+                                          );
+                                        case 'removed':
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">
+                                              Đã xóa
+                                            </span>
+                                          );
+                                        default:
+                                          return (
+                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">
+                                              {item.status}
+                                            </span>
+                                          );
+                                      }
+                                    })()}
                                   </div>
                                   <div className="text-[10px] text-slate-500 dark:text-slate-455">by {item.sellerFullName || item.sellerEmail}</div>
                                 </td>
@@ -1119,22 +1347,45 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   {item.price === 0 ? 'Miễn phí' : `${item.price.toLocaleString('vi-VN')} đ`}
                                 </td>
                                 <td className="p-3 text-center">
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    <button
-                                      onClick={() => handleApproveMarketplaceItem(item)}
-                                      className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                      title="Approve Asset"
-                                    >
-                                      <Check size={14} />
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectMarketplaceItem(item.id, item.title)}
-                                      className="p-1.5 bg-rose-50 dark:bg-rose-955/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                      title="Reject Asset"
-                                    >
-                                      <X size={14} />
-                                    </button>
-                                  </div>
+                                  {(() => {
+                                    const s = item.status?.toLowerCase();
+                                    if (s === 'pending') {
+                                      return (
+                                        <div className="flex items-center justify-center gap-1.5">
+                                          <button
+                                            onClick={() => handleApproveMarketplaceItem(item)}
+                                            className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                            title="Approve Asset"
+                                          >
+                                            <Check size={14} />
+                                          </button>
+                                          <button
+                                            onClick={() => handleRejectMarketplaceItem(item.id, item.title)}
+                                            className="p-1.5 bg-rose-50 dark:bg-rose-955/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                            title="Reject Asset"
+                                          >
+                                            <X size={14} />
+                                          </button>
+                                        </div>
+                                      );
+                                    } else if (s === 'active') {
+                                      return (
+                                        <span className="text-emerald-555 dark:text-emerald-400 font-bold text-[10px]">Đã hiển thị</span>
+                                      );
+                                    } else if (s === 'rejected') {
+                                      return (
+                                        <span className="text-rose-555 dark:text-rose-400 font-bold text-[10px]">Đã từ chối</span>
+                                      );
+                                    } else if (s === 'removed') {
+                                      return (
+                                        <span className="text-slate-400 font-bold text-[10px]">Đã xóa</span>
+                                      );
+                                    } else {
+                                      return (
+                                        <span className="text-slate-400 font-bold text-[10px]">-</span>
+                                      );
+                                    }
+                                  })()}
                                 </td>
                               </tr>
                               
@@ -1294,6 +1545,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           </div>
                                         </div>
                                       </div>
+                                    </div>
+                                    <div className="mt-6 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
+                                      <AiReviewReportCard itemId={item.id} />
                                     </div>
                                   </td>
                                 </tr>
