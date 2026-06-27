@@ -17,7 +17,8 @@ import {
   FileText,
   ShoppingBag,
   Gamepad2,
-  Trash2
+  Trash2,
+  WalletCards
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { DataTable } from '../components/DataTable';
@@ -29,6 +30,7 @@ import { marketplaceApi } from '../api/marketplaceApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { PurchasedInventoryPanel } from '../components/PurchasedInventoryPanel';
+import { PaymentDetailPage } from './PaymentDetailPage';
 
 interface DashboardPageProps {
   currentUser: User | null;
@@ -40,6 +42,11 @@ interface DashboardPageProps {
   assets: Asset[];
   projectRepositories: Project[];
   purchasedPayments: PaymentResponse[];
+  selectedPaymentOrderId: string | null;
+  setSelectedPaymentOrderId: (orderId: string) => void;
+  isRefreshingPayments: boolean;
+  onRefreshPayments: () => void;
+  onCancelPayment: (paymentId: string) => Promise<void>;
   setCurrentScreen: (screen: any) => void;
 }
 
@@ -71,10 +78,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   assets,
   projectRepositories,
   purchasedPayments,
+  selectedPaymentOrderId,
+  setSelectedPaymentOrderId,
+  isRefreshingPayments,
+  onRefreshPayments,
+  onCancelPayment,
   setCurrentScreen
 }) => {
-  // Tab control: 'my-games' | 'marketplace-items' | 'git-repos'
-  const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'git-repos'>('my-games');
+  // Tab control: 'my-games' | 'marketplace-items' | 'git-repos' | 'payment-center'
+  const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'git-repos' | 'payment-center'>('my-games');
 
   // Real Game list state
   const [myGames, setMyGames] = useState<GameResponse[]>([]);
@@ -103,6 +115,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [sellerTaxCode, setSellerTaxCode] = useState<string>('');
   const [developerSignatureBase64, setDeveloperSignatureBase64] = useState<string | null>(null);
   const [isSubmittingSignature, setIsSubmittingSignature] = useState<boolean>(false);
+  const dashboardWorkspaceRef = React.useRef<HTMLDivElement | null>(null);
 
   const fetchMyGames = async () => {
     if (!currentUser?.email) return;
@@ -292,10 +305,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </div>
 
       {/* Split row: Reusable DataTable and Sidebar developer logs list */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3" ref={dashboardWorkspaceRef}>
         
         {/* Left Column: Switchable tabs for Real Games vs Mock Git Repos */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           
           {/* Tab headers */}
           <div className="flex border-b border-slate-200 dark:border-slate-800/60 gap-1.5 max-w-full overflow-x-auto">
@@ -316,6 +329,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'git-repos' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
               <Calendar size={14} /> Dự án Git (Mock) ({projectRepositories.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('payment-center')}
+              className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'payment-center' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+            >
+              <WalletCards size={14} /> Payment Center ({purchasedPayments.length})
             </button>
           </div>
 
@@ -763,13 +782,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             />
           )}
 
+          {/* Tab 4: Payment Center */}
+          {activeTab === 'payment-center' && (
+            <PaymentDetailPage
+              payments={purchasedPayments}
+              selectedOrderId={selectedPaymentOrderId}
+              setSelectedOrderId={setSelectedPaymentOrderId}
+              isRefreshing={isRefreshingPayments}
+              onBackToMarketplace={() => {
+                setCurrentScreen('marketplace');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onRefreshPayments={onRefreshPayments}
+              onCancelPayment={onCancelPayment}
+              setCurrentScreen={setCurrentScreen}
+              variant="dashboard"
+            />
+          )}
+
         </div>
 
-        {/* Right Column: Upcoming release tasks and support widgets */}
+        {/* Right Column: Support widgets */}
         <div className="space-y-6">
           <PurchasedInventoryPanel
             payments={purchasedPayments}
-            onOpenPaymentCenter={() => setCurrentScreen('payment')}
+            onOpenPaymentCenter={() => {
+              setActiveTab('payment-center');
+              dashboardWorkspaceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
           />
           
           {/* Release Schedule logging checklist */}

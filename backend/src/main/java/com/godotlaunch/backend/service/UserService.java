@@ -3,8 +3,10 @@ package com.godotlaunch.backend.service;
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
 import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
+import com.godotlaunch.backend.dto.request.UpdateLanguagePreferenceRequest;
 import com.godotlaunch.backend.dto.response.GitHubStatusResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
+import com.godotlaunch.backend.dto.response.LanguagePreferenceResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 
 import java.util.List;
@@ -21,4 +23,6 @@ public interface UserService {
     List<UserResponse> searchUsersByName(String query, String excludeEmail);
     GitHubStatusResponse getGitHubStatus(String email);
     JwtAuthenticationResponse unlinkGitHub(String email);
+    LanguagePreferenceResponse getLanguagePreference(String email);
+    LanguagePreferenceResponse updateLanguagePreference(String email, UpdateLanguagePreferenceRequest request);
 }

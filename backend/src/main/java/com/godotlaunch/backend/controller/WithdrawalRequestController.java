@@ -3,7 +3,8 @@ package com.godotlaunch.backend.controller;
 import com.godotlaunch.backend.dto.request.CreateWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.ReviewWithdrawalRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
-import com.godotlaunch.backend.dto.response.WithdrawalRequestResponse;
+import com.godotlaunch.backend.dto.response.WithdrawalDetailResponse;
+import com.godotlaunch.backend.dto.response.WithdrawalResponse;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,10 +32,10 @@ public class WithdrawalRequestController {
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
     @Operation(summary = "Submit a withdrawal request", description = "Submits a request to withdraw funds from the user's wallet. Wallet balance will be immediately deducted.")
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<WithdrawalRequestResponse>> createWithdrawal(
+    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> createWithdrawal(
             @Valid @RequestBody CreateWithdrawalRequest request,
             Principal principal) {
-        WithdrawalRequestResponse response = withdrawalRequestService.createWithdrawalRequest(request, principal.getName());
+        WithdrawalDetailResponse response = withdrawalRequestService.createDeveloperWithdrawal(request, principal.getName());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Withdrawal request submitted successfully."));
     }
@@ -43,8 +44,8 @@ public class WithdrawalRequestController {
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
     @Operation(summary = "Get current user's withdrawal requests", description = "Retrieves a history of withdrawal requests submitted by the logged-in user.")
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<List<WithdrawalRequestResponse>>> getMyWithdrawals(Principal principal) {
-        List<WithdrawalRequestResponse> response = withdrawalRequestService.getMyWithdrawalRequests(principal.getName());
+    public ResponseEntity<ApiResponse<List<WithdrawalResponse>>> getMyWithdrawals(Principal principal) {
+        List<WithdrawalResponse> response = withdrawalRequestService.getDeveloperWithdrawals(principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "My withdrawal requests retrieved successfully."));
     }
 
@@ -52,10 +53,10 @@ public class WithdrawalRequestController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get detailed withdrawal request", description = "Retrieves the details of a single withdrawal request by ID. Owner or Admin role required.")
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<WithdrawalRequestResponse>> getWithdrawalDetail(
+    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> getWithdrawalDetail(
             @PathVariable UUID id,
             Principal principal) {
-        WithdrawalRequestResponse response = withdrawalRequestService.getWithdrawalRequest(id, principal.getName());
+        WithdrawalDetailResponse response = withdrawalRequestService.getDeveloperWithdrawalDetail(id, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal request retrieved successfully."));
     }
 
@@ -63,8 +64,8 @@ public class WithdrawalRequestController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Get all withdrawal requests (Admin)", description = "Retrieves a list of all withdrawal requests in the system. Requires ADMIN role.")
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<List<WithdrawalRequestResponse>>> getAllWithdrawals() {
-        List<WithdrawalRequestResponse> response = withdrawalRequestService.getAllWithdrawalRequests();
+    public ResponseEntity<ApiResponse<List<WithdrawalResponse>>> getAllWithdrawals() {
+        List<WithdrawalResponse> response = withdrawalRequestService.getAdminWithdrawals();
         return ResponseEntity.ok(ApiResponse.success(response, "All withdrawal requests retrieved successfully."));
     }
 
@@ -72,11 +73,11 @@ public class WithdrawalRequestController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Review a withdrawal request (Admin)", description = "Approves or rejects a pending withdrawal request. If rejected, funds are refunded to the user's wallet balance. Requires ADMIN role.")
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<WithdrawalRequestResponse>> reviewWithdrawal(
+    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> reviewWithdrawal(
             @PathVariable UUID id,
-            @RequestBody ReviewWithdrawalRequest request,
+            @Valid @RequestBody ReviewWithdrawalRequest request,
             Principal principal) {
-        WithdrawalRequestResponse response = withdrawalRequestService.reviewWithdrawalRequest(id, request, principal.getName());
+        WithdrawalDetailResponse response = withdrawalRequestService.reviewWithdrawalRequest(id, request, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal request reviewed successfully."));
     }
 }

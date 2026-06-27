@@ -92,7 +92,8 @@ public enum ErrorCode {
     INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "GL-4080", "Insufficient wallet balance."),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy ví của người dùng."),
     WITHDRAWAL_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu rút tiền."),
-    INVALID_WITHDRAWAL_STATUS(HttpStatus.BAD_REQUEST, "Trạng thái yêu cầu rút tiền không hợp lệ để xử lý.");
+    INVALID_WITHDRAWAL_STATUS(HttpStatus.BAD_REQUEST, "Trạng thái yêu cầu rút tiền không hợp lệ để xử lý."),
+    REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do từ chối là bắt buộc khi từ chối yêu cầu rút tiền.");
 
     private final HttpStatus httpStatus;
     private final String code;

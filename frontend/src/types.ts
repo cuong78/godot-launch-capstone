@@ -53,6 +53,7 @@ export interface User {
   role?: "user" | "admin" | "developer" | "customer" | "guest";
   roleName?: string;
   status?: string;
+  preferredLanguage?: "vi" | "en" | "ja";
   createdAt?: string;
 }
 
@@ -76,7 +77,132 @@ export type ScreenType =
   | "payment"
   | "payment-success"
   | "payment-failed"
-  | "payment-cancelled";
+  | "payment-cancelled"
+  | "wallet";
+
+export interface WalletResponse {
+  id: string;
+  userId: string;
+  balance: number;
+  currency: string;
+  updatedAt?: string | null;
+}
+
+export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'rejected' | 'cancelled';
+
+export interface DeveloperWalletSummaryResponse {
+  walletId: string;
+  developerId: string;
+  developerEmail?: string;
+  developerFullName?: string;
+  currency: string;
+  walletBalance: number;
+  availableBalance: number;
+  pendingBalance: number;
+  totalRevenue: number;
+  updatedAt?: string | null;
+}
+
+export interface TransactionResponse {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  referenceId?: string;
+  createdAt?: string;
+}
+
+export interface WithdrawalResponse {
+  id: string;
+  developerId: string;
+  developerFullName?: string;
+  developerEmail?: string;
+  walletId: string;
+  amount: number;
+  currency?: string;
+  bankName: string;
+  bankAccount: string;
+  accountHolder: string;
+  transferReference?: string;
+  status: WithdrawalStatus;
+  processedById?: string;
+  processedByFullName?: string;
+  processedAt?: string;
+  remark?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface WithdrawalDetailResponse extends WithdrawalResponse {
+  walletBalance: number;
+  availableBalance: number;
+  pendingBalance: number;
+  totalRevenue: number;
+  qrPayload?: string;
+  standardQrImageUrl?: string;
+  preferredQrImageUrl?: string;
+}
+
+export type WithdrawalRequestResponse = WithdrawalResponse;
+
+export interface CreateWithdrawalRequest {
+  amount: number;
+  bankName: string;
+  bankAccount: string;
+  accountHolder: string;
+}
+
+export interface ApproveWithdrawalRequest {
+  transferReference?: string;
+  remark?: string;
+}
+
+export interface RejectWithdrawalRequest {
+  remark: string;
+}
+
+export interface ReviewWithdrawalRequest {
+  approve: boolean;
+  rejectReason?: string;
+}
+
+export type AiRecommendation = 'approve' | 'review' | 'reject';
+
+export interface AiReviewFlag {
+  type: string;
+  severity: string;
+  detail: string;
+  evidenceIndex?: number;
+}
+
+export interface AiReviewReport {
+  id: string;
+  gameId?: string | null;
+  marketplaceItemId?: string | null;
+  codeQualityScore?: number | null;
+  mediaMatchScore?: number | null;
+  descriptionMatchScore?: number | null;
+  nsfwFlag?: boolean;
+  overallRecommendation: AiRecommendation;
+  suggestedPrice?: number | null;
+  suggestedRevenueSplit?: number | null;
+  pricingRationale?: string | null;
+  flags?: AiReviewFlag[];
+  rawOutput?: any;
+  createdAt?: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
 
 export interface SignUpRequest {
   email: string;
@@ -116,6 +242,10 @@ export interface ApiResponse<T> {
   message: string;
   data: T;
   errors?: Record<string, string>;
+}
+
+export interface LanguagePreferenceResponse {
+  preferredLanguage: "vi" | "en" | "ja";
 }
 
 export interface JwtAuthenticationResponse {
@@ -472,6 +602,9 @@ export type AuditActionType =
   | "contract_cancelled"
   | "transaction_completed"
   | "transaction_failed"
+  | "withdrawal_created"
+  | "withdrawal_processing"
+  | "withdrawal_completed"
   | "withdrawal_approved"
   | "withdrawal_rejected"
   | "marketplace_item_removed"
@@ -494,6 +627,7 @@ export type AuditTargetType =
   | "contract"
   | "transaction"
   | "withdrawal"
+  | "withdrawal_request"
   | "marketplace_item"
   | "review"
   | "community_chat"

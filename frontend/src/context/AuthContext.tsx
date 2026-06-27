@@ -3,6 +3,7 @@ import { User, SignUpRequest, SignInRequest, GoogleLoginRequest, GitHubLoginRequ
 import { authApi } from '../api/authApi';
 import { tokenStorage } from '../utils/tokenStorage';
 import { isTokenExpired } from '../utils/jwtUtils';
+import i18n, { normalizeLanguageCode } from '../config/i18n';
 
 export interface AuthContextType {
   currentUser: User | null;
@@ -24,8 +25,22 @@ const mapBackendUserToFrontendUser = (backendUser: any): User => {
   return {
     ...backendUser,
     role: backendUser.roleName === 'admin' ? 'admin' : backendUser.roleName,
-    avatarUrl: backendUser.avatarUrl || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`
+    avatarUrl: backendUser.avatarUrl || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80`,
+    preferredLanguage: normalizeLanguageCode(backendUser.preferredLanguage),
   };
+};
+
+const applyUserLanguagePreference = async (user: User | null) => {
+  if (!user?.preferredLanguage) {
+    return;
+  }
+
+  const nextLanguage = normalizeLanguageCode(user.preferredLanguage);
+  localStorage.setItem('i18nextLng', nextLanguage);
+
+  if (normalizeLanguageCode(i18n.resolvedLanguage || i18n.language) !== nextLanguage) {
+    await i18n.changeLanguage(nextLanguage);
+  }
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -66,6 +81,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initializeAuth();
   }, []);
+
+  useEffect(() => {
+    applyUserLanguagePreference(currentUser).catch((error) => {
+      console.warn('Failed to apply user language preference:', error);
+    });
+  }, [currentUser]);
 
   const handleLogout = () => {
     authApi.logout().catch(err => {

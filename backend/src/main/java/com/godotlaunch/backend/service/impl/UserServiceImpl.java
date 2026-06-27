@@ -7,8 +7,10 @@ import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.dto.request.AdminCreateUserRequest;
 import com.godotlaunch.backend.dto.request.AdminUpdateUserRequest;
 import com.godotlaunch.backend.dto.request.UpdateProfileRequest;
+import com.godotlaunch.backend.dto.request.UpdateLanguagePreferenceRequest;
 import com.godotlaunch.backend.dto.response.GitHubStatusResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
+import com.godotlaunch.backend.dto.response.LanguagePreferenceResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
 import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.User;
@@ -296,6 +298,27 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public LanguagePreferenceResponse getLanguagePreference(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return new LanguagePreferenceResponse(resolvePreferredLanguage(user));
+    }
+
+    @Override
+    @Transactional
+    public LanguagePreferenceResponse updateLanguagePreference(String email, UpdateLanguagePreferenceRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        user.setPreferredLanguage(request.getLanguage().trim().toLowerCase());
+        User updatedUser = userRepository.save(user);
+
+        return new LanguagePreferenceResponse(resolvePreferredLanguage(updatedUser));
+    }
+
     private UserResponse mapToUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())
@@ -305,7 +328,14 @@ public class UserServiceImpl implements UserService {
                 .roleName(user.getRole().getName())
                 .status(user.getStatus())
                 .avatarUrl(user.getAvatarUrl())
+                .preferredLanguage(resolvePreferredLanguage(user))
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private String resolvePreferredLanguage(User user) {
+        return StringUtils.hasText(user.getPreferredLanguage())
+                ? user.getPreferredLanguage().trim().toLowerCase()
+                : "vi";
     }
 }

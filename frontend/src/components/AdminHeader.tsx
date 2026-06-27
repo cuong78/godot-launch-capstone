@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { Button } from './Button';
 import { User, ScreenType } from '../types';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 interface AdminHeaderProps {
   setCurrentScreen: (screen: ScreenType) => void;
@@ -26,6 +28,8 @@ export function AdminHeader({
   darkMode,
   setDarkMode
 }: AdminHeaderProps) {
+  const { t } = useTranslation('common');
+
   return (
     <header id="godotlaunch-admin-navbar" className="sticky top-0 bg-slate-900/95 dark:bg-slate-950/95 text-slate-100 border-b border-slate-800 backdrop-blur-md z-45 transition-colors duration-200 shadow-lg">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-6">
@@ -58,6 +62,7 @@ export function AdminHeader({
 
         {/* Right Section: Controls, Theme Toggle, View Storefront, Profile */}
         <div className="flex items-center gap-3">
+          <LanguageSwitcher className="hidden md:block" />
           
           {/* Exit to Storefront button */}
           <Button
@@ -68,7 +73,7 @@ export function AdminHeader({
             icon={<ArrowRight size={13} />}
             iconPosition="right"
           >
-            View Storefront
+            {t('view_storefront')}
           </Button>
 
           {/* Theme mode toggle button */}
@@ -100,7 +105,7 @@ export function AdminHeader({
                   }}
                   className="w-full text-left text-xs font-semibold text-slate-300 hover:text-amber-400 py-1.5 transition-colors cursor-pointer"
                 >
-                  My Profile
+                  {t('my_profile')}
                 </button>
                 <div className="border-t border-slate-800 my-1" />
                 <button
@@ -111,7 +116,7 @@ export function AdminHeader({
                   }}
                   className="w-full text-left text-xs font-semibold text-rose-400 hover:text-rose-300 py-1 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  <LogOut size={12} /> Sign Out
+                  <LogOut size={12} /> {t('sign_out')}
                 </button>
               </div>
             </div>
@@ -133,7 +138,7 @@ export function AdminHeader({
                   }}
                   className="w-full text-left text-xs font-semibold text-sky-400 hover:text-sky-300 py-1 transition-colors cursor-pointer"
                 >
-                  Sign In Account
+                  {t('sign_in_account')}
                 </button>
               </div>
             </div>

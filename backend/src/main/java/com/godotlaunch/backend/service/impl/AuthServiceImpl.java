@@ -625,6 +625,9 @@ public class AuthServiceImpl implements AuthService {
                 .roleName(user.getRole().getName())
                 .status(user.getStatus())
                 .avatarUrl(user.getAvatarUrl())
+                .preferredLanguage(StringUtils.hasText(user.getPreferredLanguage())
+                        ? user.getPreferredLanguage().trim().toLowerCase(Locale.ROOT)
+                        : "vi")
                 .createdAt(user.getCreatedAt())
                 .build();
     }

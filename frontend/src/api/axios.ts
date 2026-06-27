@@ -1,5 +1,6 @@
-import axios from 'axios';
+import axios, { AxiosHeaders } from 'axios';
 import { tokenStorage } from '../utils/tokenStorage';
+import { normalizeLanguageCode } from '../config/i18n';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
@@ -15,9 +16,22 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = tokenStorage.getToken() || localStorage.getItem("accessToken");
+    const preferredLanguage = normalizeLanguageCode(
+      localStorage.getItem('i18nextLng') || document.documentElement.lang
+    );
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    if (config.headers?.set) {
+      config.headers.set('Accept-Language', preferredLanguage);
+    } else if (config.headers) {
+      (config.headers as Record<string, string>)['Accept-Language'] = preferredLanguage;
+    } else {
+      config.headers = new AxiosHeaders({ 'Accept-Language': preferredLanguage });
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

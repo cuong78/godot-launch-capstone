@@ -12,6 +12,7 @@ import {
   Store,
   Users
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { User } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { authApi } from '../api/authApi';
@@ -27,17 +28,11 @@ const labelClassName = 'mb-2 ml-1 block font-display text-sm font-semibold text-
 const inputClassName = 'w-full rounded-2xl border border-[#4f4633] bg-[#201b11]/70 px-5 py-4 text-base text-[#ece1d1] outline-none transition placeholder:text-[#d3c5ac]/40 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 disabled:cursor-not-allowed disabled:opacity-60';
 const socialButtonClassName = 'group flex items-center justify-center gap-3 rounded-2xl border border-[#4f4633] px-4 py-3.5 text-sm font-semibold text-[#ece1d1] transition hover:border-white/20 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60';
 
-const featureItems = [
-  { icon: ShieldCheck, title: 'AI Verification' },
-  { icon: Sparkles, title: 'Publishing Wizard' },
-  { icon: Store, title: 'Marketplace' },
-  { icon: Users, title: 'Community' }
-];
-
 export const SignInPage: React.FC<SignInPageProps> = ({
   setCurrentScreen,
   setCurrentUser
 }) => {
+  const { t } = useTranslation(['auth']);
   const { signIn, loginWithGoogle, error: apiError, setError: clearApiError } = useAuth();
   const [email, setEmail] = useState(() => {
     const saved = localStorage.getItem("signup_email");
@@ -61,6 +56,14 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetSuccessMessage, setResetSuccessMessage] = useState('');
+  const featureItems = [
+    { icon: ShieldCheck, title: t('auth:features.aiVerification') },
+    { icon: Sparkles, title: t('auth:features.publishingWizard') },
+    { icon: Store, title: t('auth:features.marketplace') },
+    { icon: Users, title: t('auth:features.community') }
+  ];
+  const signinHeroTemplate = t('auth:signin.heroTitle', { highlight: '__HIGHLIGHT__' });
+  const [signinHeroBefore, signinHeroAfter] = signinHeroTemplate.split('__HIGHLIGHT__');
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -83,27 +86,27 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             window.scrollTo({ top: 0, behavior: 'smooth' });
           })
           .catch((err) => {
-            setLocalError(err.message || 'Google authentication failed.');
+            setLocalError(err.message || t('auth:messages.googleAuthFailed'));
           })
           .finally(() => {
             setIsOAuthLoading(false);
           });
       }
     }
-  }, []);
+  }, [clearApiError, loginWithGoogle, setCurrentScreen, setCurrentUser, t]);
 
   const validateFields = () => {
     if (!email) {
-      setLocalError('Email Address is required.');
+      setLocalError(t('auth:validation.emailRequired'));
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setLocalError('Please enter a valid email address.');
+      setLocalError(t('auth:validation.invalidEmail'));
       return false;
     }
     if (!password) {
-      setLocalError('Password is required.');
+      setLocalError(t('auth:validation.passwordRequired'));
       return false;
     }
     return true;
@@ -136,12 +139,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     setResetSuccessMessage('');
 
     if (!forgotEmail) {
-      setLocalError('Email Address is required.');
+      setLocalError(t('auth:validation.emailRequired'));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(forgotEmail)) {
-      setLocalError('Please enter a valid email address.');
+      setLocalError(t('auth:validation.invalidEmail'));
       return;
     }
 
@@ -149,17 +152,17 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     try {
       const response = await authApi.forgotPassword({ email: forgotEmail });
       if (response.success) {
-        setResetSuccessMessage(response.message || 'OTP verification code sent to your email.');
+        setResetSuccessMessage(response.message || t('auth:messages.forgotPasswordOtpSent'));
         setTimeout(() => {
           setViewMode('forgot_reset');
           setLocalError('');
           setResetSuccessMessage('');
         }, 1500);
       } else {
-        setLocalError(response.message || 'Failed to request password reset.');
+        setLocalError(response.message || t('auth:validation.forgotPasswordFailed'));
       }
     } catch (err: any) {
-      setLocalError(err.response?.data?.message || err.message || 'Failed to request password reset.');
+      setLocalError(err.response?.data?.message || err.message || t('auth:validation.forgotPasswordFailed'));
     } finally {
       setLoading(false);
     }
@@ -172,19 +175,19 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     setResetSuccessMessage('');
 
     if (!otpCode) {
-      setLocalError('OTP Code is required.');
+      setLocalError(t('auth:validation.otpRequired'));
       return;
     }
     if (!newPassword) {
-      setLocalError('New password is required.');
+      setLocalError(t('auth:validation.newPasswordRequired'));
       return;
     }
     if (newPassword.length < 6) {
-      setLocalError('New password must be at least 6 characters.');
+      setLocalError(t('auth:validation.newPasswordMin'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setLocalError('Passwords do not match.');
+      setLocalError(t('auth:validation.passwordMismatch'));
       return;
     }
 
@@ -197,7 +200,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
         confirmPassword
       });
       if (response.success) {
-        setResetSuccessMessage(response.message || 'Password reset successfully! Redirecting to login...');
+        setResetSuccessMessage(response.message || t('auth:messages.passwordResetSuccess'));
         setTimeout(() => {
           setViewMode('signin');
           setEmail(forgotEmail);
@@ -210,10 +213,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           setLocalError('');
         }, 2000);
       } else {
-        setLocalError(response.message || 'Failed to reset password.');
+        setLocalError(response.message || t('auth:validation.resetPasswordFailed'));
       }
     } catch (err: any) {
-      setLocalError(err.response?.data?.message || err.message || 'Failed to reset password.');
+      setLocalError(err.response?.data?.message || err.message || t('auth:validation.resetPasswordFailed'));
     } finally {
       setLoading(false);
     }
@@ -225,7 +228,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     localStorage.setItem("remember_me", keepSignedIn ? "true" : "false");
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!googleClientId) {
-      setLocalError('Google Client ID is not configured. Please check your .env file.');
+      setLocalError(t('auth:messages.googleConfigMissing'));
       return;
     }
     const redirectUri = window.location.origin + '/signin';
@@ -266,16 +269,16 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   );
 
   const renderOauthLoading = () => (
-    <div className="flex flex-col items-center justify-center gap-4 py-10 text-center">
+      <div className="flex flex-col items-center justify-center gap-4 py-10 text-center">
       <div className="rounded-full border border-amber-300/20 bg-amber-300/10 p-4">
         <Loader2 className="h-7 w-7 animate-spin text-amber-300" />
       </div>
       <div className="space-y-1">
         <p className="font-display text-xl font-bold text-[#ece1d1]">
-          Authenticating with {oauthProvider}
+          {t('auth:signin.authenticatingTitle', { provider: oauthProvider })}
         </p>
         <p className="text-sm text-[#d3c5ac]">
-          Please wait while we complete your sign-in.
+          {t('auth:signin.authenticatingSubtitle')}
         </p>
       </div>
     </div>
@@ -288,15 +291,17 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           <div className="max-w-2xl space-y-8">
             <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-amber-200">
               <span className="h-2 w-2 rounded-full bg-amber-300 animate-pulse" />
-              Welcome to GodotLaunch
+              {t('auth:signin.badge')}
             </span>
 
             <div className="space-y-5">
               <h1 className="font-display text-5xl font-extrabold leading-[1.1] tracking-tight text-white xl:text-6xl">
-                Nơi Godot Developer <span className="text-amber-300">Xây Dựng</span>, Xuất Bản Và Kiếm Tiền
+                {signinHeroBefore}
+                <span className="text-amber-300">{t('auth:signin.heroHighlight')}</span>
+                {signinHeroAfter}
               </h1>
               <p className="max-w-xl text-lg leading-relaxed text-slate-300">
-                Nền tảng tối ưu để bán source code, asset và plugin cho cộng đồng Godot trên toàn thế giới.
+                {t('auth:signin.heroSubtitle')}
               </p>
             </div>
 
@@ -324,10 +329,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <>
                 <div className="mb-8 text-center">
                   <h2 className="font-display text-3xl font-bold tracking-tight text-[#ece1d1] sm:text-4xl">
-                    Đăng Nhập
+                    {t('auth:signin.title')}
                   </h2>
                   <p className="mt-3 text-sm text-[#d3c5ac] sm:text-base">
-                    Tiếp tục hành trình phát triển của bạn.
+                    {t('auth:signin.subtitle')}
                   </p>
                 </div>
 
@@ -344,12 +349,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                     <form onSubmit={handleSubmit} className="space-y-6">
                       <div>
                         <label htmlFor="signin-email" className={labelClassName}>
-                          Email
+                          {t('auth:email')}
                         </label>
                         <input
                           id="signin-email"
                           type="email"
-                          placeholder="Nhập email của bạn"
+                          placeholder={t('auth:signin.emailPlaceholder')}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           disabled={isBusy}
@@ -361,7 +366,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                       <div>
                         <div className="mb-2 ml-1 flex items-center justify-between gap-3">
                           <label htmlFor="signin-password" className="font-display text-sm font-semibold text-[#d3c5ac]">
-                            Mật khẩu
+                            {t('auth:signin.passwordLabel')}
                           </label>
                           <button
                             type="button"
@@ -374,7 +379,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                             className="text-sm font-medium text-amber-200 transition hover:text-amber-100 hover:underline"
                             disabled={isBusy}
                           >
-                            Quên mật khẩu?
+                            {t('auth:forgot_password')}
                           </button>
                         </div>
 
@@ -382,7 +387,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                           <input
                             id="signin-password"
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="Nhập mật khẩu"
+                            placeholder={t('auth:signin.passwordPlaceholder')}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             disabled={isBusy}
@@ -393,7 +398,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                             type="button"
                             onClick={() => setShowPassword((current) => !current)}
                             className="absolute right-4 top-1/2 -translate-y-1/2 text-[#d3c5ac] transition hover:text-white"
-                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showPassword ? t('auth:signin.hidePassword') : t('auth:signin.showPassword')}
                             disabled={isBusy}
                           >
                             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -411,7 +416,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                           className="h-5 w-5 rounded-md border-[#4f4633] bg-[#201b11] text-amber-300 focus:ring-amber-300/50"
                         />
                         <label htmlFor="remember" className="ml-3 text-sm text-[#d3c5ac]">
-                          Ghi nhớ đăng nhập
+                          {t('auth:remember_me')}
                         </label>
                       </div>
 
@@ -421,7 +426,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                         className="flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-amber-400 px-5 py-4 font-display text-lg font-bold text-[#402d00] transition duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn size={18} />}
-                        {loading ? 'Đang đăng nhập...' : 'Đăng Nhập'}
+                        {loading ? t('auth:signin.submitting') : t('auth:signin.submit')}
                       </button>
                     </form>
 
@@ -431,7 +436,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                       </div>
                       <div className="relative flex justify-center">
                         <span className="bg-[#241f15]/80 px-6 font-mono text-[11px] uppercase tracking-[0.3em] text-[#d3c5ac]">
-                          Hoặc tiếp tục với
+                          {t('auth:signin.orContinueWith')}
                         </span>
                       </div>
                     </div>
@@ -471,14 +476,14 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
                     <div className="mt-8 text-center">
                       <p className="text-sm text-[#d3c5ac]">
-                        Chưa có tài khoản?{' '}
+                        {t('auth:signin.noAccount')}{' '}
                         <button
                           type="button"
                           onClick={() => setCurrentScreen('signup')}
                           className="font-bold text-amber-200 transition hover:text-amber-100 hover:underline"
                           disabled={isBusy}
                         >
-                          Tạo Tài Khoản
+                          {t('auth:signin.createAccount')}
                         </button>
                       </p>
                     </div>
@@ -491,10 +496,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <>
                 <div className="mb-8 text-center">
                   <h2 className="font-display text-3xl font-bold tracking-tight text-[#ece1d1]">
-                    Forgot Password
+                    {t('auth:forgot.title')}
                   </h2>
                   <p className="mt-3 text-sm text-[#d3c5ac]">
-                    Enter your email to receive a 6-digit OTP code.
+                    {t('auth:forgot.subtitle')}
                   </p>
                 </div>
 
@@ -504,12 +509,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   <form onSubmit={handleForgotPasswordSubmit} className="space-y-6">
                     <div>
                       <label htmlFor="forgot-email" className={labelClassName}>
-                        Email
+                        {t('auth:email')}
                       </label>
                       <input
                         id="forgot-email"
                         type="email"
-                        placeholder="hero@pixel.land"
+                        placeholder={t('auth:forgot.emailPlaceholder')}
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
                         disabled={loading}
@@ -524,7 +529,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-4 font-display text-lg font-bold text-[#402d00] transition duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mail size={18} />}
-                      {loading ? 'Sending Code...' : 'Send Verification Code'}
+                      {loading ? t('auth:forgot.sendingCode') : t('auth:forgot.sendCode')}
                     </button>
                   </form>
 
@@ -539,7 +544,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                     disabled={loading}
                   >
                     <ArrowLeft size={16} />
-                    Back to Sign In
+                    {t('auth:forgot.backToSignIn')}
                   </button>
                 </div>
               </>
@@ -549,10 +554,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <>
                 <div className="mb-8 text-center">
                   <h2 className="font-display text-3xl font-bold tracking-tight text-[#ece1d1]">
-                    Reset Password
+                    {t('auth:reset.title')}
                   </h2>
                   <p className="mt-3 text-sm text-[#d3c5ac]">
-                    Enter the OTP sent to <strong>{forgotEmail}</strong> and your new password.
+                    {t('auth:reset.subtitle', { email: forgotEmail })}
                   </p>
                 </div>
 
@@ -562,12 +567,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   <form onSubmit={handleResetPasswordSubmit} className="space-y-6">
                     <div>
                       <label htmlFor="otp-code" className={labelClassName}>
-                        OTP Verification Code
+                        {t('auth:reset.otpLabel')}
                       </label>
                       <input
                         id="otp-code"
                         type="text"
-                        placeholder="123456"
+                        placeholder={t('auth:reset.otpPlaceholder')}
                         maxLength={6}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value)}
@@ -579,7 +584,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
                     <div>
                       <label htmlFor="new-password" className={labelClassName}>
-                        New Password
+                        {t('auth:reset.newPasswordLabel')}
                       </label>
                       <input
                         id="new-password"
@@ -595,7 +600,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
                     <div>
                       <label htmlFor="confirm-password" className={labelClassName}>
-                        Confirm New Password
+                        {t('auth:reset.confirmPasswordLabel')}
                       </label>
                       <input
                         id="confirm-password"
@@ -615,7 +620,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-5 py-4 font-display text-lg font-bold text-[#402d00] transition duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <KeyRound size={18} />}
-                      {loading ? 'Resetting Password...' : 'Reset Password'}
+                      {loading ? t('auth:reset.submitting') : t('auth:reset.submit')}
                     </button>
                   </form>
 
@@ -630,7 +635,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                     disabled={loading}
                   >
                     <ArrowLeft size={16} />
-                    Back to Email Step
+                    {t('auth:reset.backToEmailStep')}
                   </button>
                 </div>
               </>

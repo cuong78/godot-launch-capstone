@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Boxes,
@@ -7,8 +8,11 @@ import {
   Code2,
   Download,
   ExternalLink,
+  ReceiptText,
   RefreshCw,
   ShieldCheck,
+  Sparkles,
+  WalletCards,
   XCircle,
 } from 'lucide-react';
 import { Button } from '../components/Button';
@@ -23,79 +27,111 @@ interface PaymentDetailPageProps {
   onRefreshPayments: () => void;
   onCancelPayment: (paymentId: string) => Promise<void>;
   setCurrentScreen: (screen: ScreenType) => void;
+  variant?: 'page' | 'dashboard';
 }
 
-const formatMoney = (amount: number) =>
-  amount === 0
-    ? 'FREE'
-    : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+const resolveLocale = (language: string) => {
+  switch (language) {
+    case 'en':
+      return 'en-US';
+    case 'ja':
+      return 'ja-JP';
+    case 'vi':
+    default:
+      return 'vi-VN';
+  }
+};
 
-const formatTimestamp = (value?: string | null) => {
+const formatMoney = (amount: number, currency = 'VND', locale = 'vi-VN', freeLabel = 'FREE') =>
+  amount === 0
+    ? freeLabel
+    : new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: currency || 'VND',
+        maximumFractionDigits: 0,
+      }).format(amount);
+
+const formatTimestamp = (value?: string | null, locale = 'vi-VN', fallback = 'N/A') => {
   if (!value) {
-    return 'Not available';
+    return fallback;
   }
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return 'Not available';
+    return fallback;
   }
 
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
+    month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   }).format(parsed);
 };
 
-const getStatusMeta = (status: PaymentResponse['paymentStatus']) => {
+const getStatusMeta = (status: PaymentResponse['paymentStatus'], t: any) => {
   switch (status) {
     case 'PAID':
       return {
-        label: 'Paid',
-        badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+        label: t('payment:status.paid.label'),
+        badgeClass: 'bg-emerald-500/12 text-emerald-500 border-emerald-500/25',
         icon: <CheckCircle2 size={14} />,
-        helper: 'Payment confirmed by webhook. Downloads are now unlocked.',
+        helper: t('payment:status.paid.helper'),
       };
     case 'PROCESSING':
       return {
-        label: 'Processing',
-        badgeClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+        label: t('payment:status.processing.label'),
+        badgeClass: 'bg-amber-500/12 text-amber-500 border-amber-500/25',
         icon: <Clock3 size={14} />,
-        helper: 'PayOS detected activity. Waiting for final webhook confirmation.',
+        helper: t('payment:status.processing.helper'),
       };
     case 'FAILED':
       return {
-        label: 'Failed',
-        badgeClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+        label: t('payment:status.failed.label'),
+        badgeClass: 'bg-rose-500/12 text-rose-500 border-rose-500/25',
         icon: <XCircle size={14} />,
-        helper: 'The payment did not complete successfully. Create a new PayOS session if needed.',
+        helper: t('payment:status.failed.helper'),
       };
     case 'CANCELLED':
       return {
-        label: 'Cancelled',
-        badgeClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+        label: t('payment:status.cancelled.label'),
+        badgeClass: 'bg-slate-500/12 text-slate-500 border-slate-500/25',
         icon: <XCircle size={14} />,
-        helper: 'This checkout session was cancelled before completion.',
+        helper: t('payment:status.cancelled.helper'),
       };
     case 'EXPIRED':
       return {
-        label: 'Expired',
-        badgeClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+        label: t('payment:status.expired.label'),
+        badgeClass: 'bg-slate-500/12 text-slate-500 border-slate-500/25',
         icon: <XCircle size={14} />,
-        helper: 'The PayOS checkout link expired. Create a new session from checkout if you want to continue.',
+        helper: t('payment:status.expired.helper'),
       };
     case 'PENDING':
     default:
       return {
-        label: 'Pending',
-        badgeClass: 'bg-sky-500/10 text-sky-600 border-sky-500/20 dark:text-sky-400',
+        label: t('payment:status.pending.label'),
+        badgeClass: 'bg-sky-500/12 text-sky-600 border-sky-500/25 dark:text-sky-400',
         icon: <Clock3 size={14} />,
-        helper: 'Your PayOS checkout link is ready. Complete the payment to unlock the order.',
+        helper: t('payment:status.pending.helper'),
       };
   }
 };
+
+const getItemMeta = (itemType: PaymentResponse['marketplaceItemType'], t: any) =>
+  itemType === 'source_code'
+    ? {
+        label: t('payment:itemType.sourceCode'),
+        icon: <Code2 size={18} />,
+        accentClass: 'border-amber-500/20 bg-amber-400/10 text-amber-500',
+        softClass: 'from-amber-400/14 via-amber-400/8 to-transparent',
+      }
+    : {
+        label: t('payment:itemType.asset'),
+        icon: <Boxes size={18} />,
+        accentClass: 'border-sky-500/20 bg-sky-500/10 text-sky-500',
+        softClass: 'from-sky-500/14 via-sky-500/8 to-transparent',
+      };
 
 export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
   payments,
@@ -106,7 +142,12 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
   onRefreshPayments,
   onCancelPayment,
   setCurrentScreen,
+  variant = 'page',
 }) => {
+  const { t, i18n } = useTranslation(['payment']);
+  const isEmbedded = variant === 'dashboard';
+  const locale = React.useMemo(() => resolveLocale(i18n.resolvedLanguage || i18n.language || 'vi'), [i18n.language, i18n.resolvedLanguage]);
+
   const activePayment = React.useMemo(() => {
     if (payments.length === 0) {
       return null;
@@ -119,77 +160,211 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
     return payments[0];
   }, [payments, selectedOrderId]);
 
-  const totalAmount = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const paidPayments = React.useMemo(
+    () => payments.filter((payment) => payment.paymentStatus === 'PAID' && payment.orderStatus === 'PAID'),
+    [payments]
+  );
+
+  const totalAmount = React.useMemo(
+    () => payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+    [payments]
+  );
+
+  const totalPaidAmount = React.useMemo(
+    () => paidPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+    [paidPayments]
+  );
+
+  const pendingCount = React.useMemo(
+    () =>
+      payments.filter(
+        (payment) => payment.paymentStatus === 'PENDING' || payment.paymentStatus === 'PROCESSING'
+      ).length,
+    [payments]
+  );
 
   if (!activePayment) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 border border-slate-250 dark:border-slate-800 p-6 rounded-2xl">
-          <h1 className="font-display font-bold text-2xl text-slate-850 dark:text-white">Payment Center</h1>
-          <p className="mt-2 text-xs text-slate-550 dark:text-slate-400">
-            No payment session is being tracked right now.
-          </p>
+      <div className={`space-y-4 ${isEmbedded ? '' : 'animate-fade-in'}`}>
+        <div className="relative overflow-hidden rounded-[28px] border border-slate-200/90 bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 p-6 shadow-sm dark:border-slate-800/80">
+          <div className="absolute -right-10 top-0 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
+          <div className="absolute -left-8 bottom-0 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl" />
+
+          <div className="relative">
+            {!isEmbedded && (
+              <button
+                type="button"
+                onClick={onBackToMarketplace}
+                className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition-studio hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                <ArrowLeft size={14} /> {t('payment:center.backToMarketplace')}
+              </button>
+            )}
+
+            <div className={`${isEmbedded ? '' : 'mt-4'} flex items-center gap-3`}>
+              <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-3 text-sky-600 shadow-sm dark:border-slate-800/80 dark:bg-slate-950/50 dark:text-sky-400">
+                <WalletCards size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500 font-mono">
+                  {t('payment:center.commandCenter')}
+                </p>
+                <h1 className="mt-1 font-display text-2xl font-bold text-slate-850 dark:text-white">
+                  {t('payment:center.emptyTitle')}
+                </h1>
+              </div>
+            </div>
+
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {t('payment:center.emptyIntro')}
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button variant="primary" size="md" onClick={onBackToMarketplace}>
+                {t('payment:center.emptyPrimaryAction')}
+              </Button>
+              {!isEmbedded && (
+                <Button variant="ghost" size="md" onClick={() => setCurrentScreen('dashboard')}>
+                  {t('payment:center.emptySecondaryAction')}
+                </Button>
+              )}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-dashed border-slate-200/80 bg-white/60 p-5 dark:border-slate-800/80 dark:bg-slate-950/35">
+              <div className="flex items-start gap-3">
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 p-3 text-slate-500 dark:border-slate-800/80 dark:bg-slate-950/55 dark:text-slate-400">
+                  <ReceiptText size={18} />
+                </div>
+                <div>
+                  <p className="font-display text-base font-bold text-slate-850 dark:text-white">
+                    {t('payment:center.emptyAutoTitle')}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    {t('payment:center.emptyAutoDescription')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <Button variant="primary" size="md" onClick={onBackToMarketplace}>
-          Return to Marketplace
-        </Button>
       </div>
     );
   }
 
-  const statusMeta = getStatusMeta(activePayment.paymentStatus);
+  const statusMeta = getStatusMeta(activePayment.paymentStatus, t);
+  const itemMeta = getItemMeta(activePayment.marketplaceItemType, t);
   const canContinuePayment =
     Boolean(activePayment.checkoutUrl) &&
     (activePayment.paymentStatus === 'PENDING' || activePayment.paymentStatus === 'PROCESSING');
   const canCancelPayment =
     activePayment.paymentStatus === 'PENDING' || activePayment.paymentStatus === 'PROCESSING';
+  const layoutClass = isEmbedded ? 'grid-cols-1' : 'xl:grid-cols-[0.92fr_1.25fr]';
+  const detailSplitClass = isEmbedded ? 'grid-cols-1' : 'lg:grid-cols-[1.05fr_0.95fr]';
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 border border-slate-250 dark:border-slate-800 p-6 rounded-2xl flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-        <div>
-          <button
-            type="button"
-            onClick={onBackToMarketplace}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-studio"
-          >
-            <ArrowLeft size={14} /> Back to Marketplace
-          </button>
-          <h1 className="mt-3 font-display font-bold text-2xl text-slate-850 dark:text-white">
-            Payment Center
-          </h1>
-          <p className="mt-1 text-xs text-slate-550 dark:text-slate-400">
-            Track hosted PayOS sessions, refresh payment status, and download paid marketplace items.
-          </p>
-        </div>
+    <div className={`space-y-4 ${isEmbedded ? '' : 'animate-fade-in'}`}>
+      <div className="relative overflow-hidden rounded-[28px] border border-slate-200/90 bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 p-6 shadow-sm dark:border-slate-800/80">
+        <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-sky-500/12 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-36 w-36 rounded-full bg-amber-400/10 blur-3xl" />
+        <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-slate-950/10 to-transparent" />
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-xl border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-slate-800/80 dark:bg-slate-950/40">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Tracked orders</p>
-            <p className="mt-1 font-display text-xl font-bold text-slate-850 dark:text-white">{payments.length}</p>
+        <div className="relative space-y-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              {!isEmbedded && (
+                <button
+                  type="button"
+                  onClick={onBackToMarketplace}
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition-studio hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  <ArrowLeft size={14} /> {t('payment:center.backToMarketplace')}
+                </button>
+              )}
+
+              <div className={`${isEmbedded ? '' : 'mt-4'} flex items-center gap-3`}>
+                <div className="rounded-2xl border border-slate-200/70 bg-white/75 p-3 text-sky-600 shadow-sm dark:border-slate-800/80 dark:bg-slate-950/50 dark:text-sky-400">
+                  <WalletCards size={18} />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500 font-mono">
+                    {t('payment:center.commandCenter')}
+                  </p>
+                  <h1 className="mt-1 font-display text-2xl font-bold text-slate-850 dark:text-white">
+                    {isEmbedded ? t('payment:center.embeddedTitle') : t('payment:center.title')}
+                  </h1>
+                </div>
+              </div>
+
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                {t('payment:center.intro')}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />}
+                onClick={onRefreshPayments}
+                className="border border-slate-200/80 bg-white/70 dark:border-slate-800/80 dark:bg-slate-950/35"
+              >
+                {t('payment:center.refresh')}
+              </Button>
+              <Button variant="primary" size="sm" onClick={onBackToMarketplace}>
+                {t('payment:center.browseMarketplace')}
+              </Button>
+            </div>
           </div>
-          <div className="rounded-xl border border-amber-500/20 bg-amber-400/10 px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500 font-mono">Total value</p>
-            <p className="mt-1 font-display text-xl font-bold text-slate-850 dark:text-white">{formatMoney(totalAmount)}</p>
+
+          <div className={`grid gap-3 ${isEmbedded ? 'grid-cols-2' : 'grid-cols-2 xl:grid-cols-4'}`}>
+            <div className="rounded-2xl border border-slate-200/80 bg-white/72 p-4 backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/40">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.stats.trackedOrders')}</p>
+              <p className="mt-2 font-display text-2xl font-bold text-slate-850 dark:text-white">{payments.length}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-600 font-mono dark:text-emerald-400">{t('payment:center.stats.settledOrders')}</p>
+              <p className="mt-2 font-display text-2xl font-bold text-slate-850 dark:text-white">{paidPayments.length}</p>
+            </div>
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-400/10 p-4 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-amber-600 font-mono dark:text-amber-400">{t('payment:center.stats.needAttention')}</p>
+              <p className="mt-2 font-display text-2xl font-bold text-slate-850 dark:text-white">{pendingCount}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200/80 bg-white/72 p-4 backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/40">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.stats.totalPaid')}</p>
+              <p className="mt-2 font-display text-lg font-bold text-slate-850 dark:text-white">
+                {formatMoney(totalPaidAmount, activePayment.currency, locale, t('payment:common.free'))}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                {t('payment:center.stats.trackedValue', {
+                  amount: formatMoney(totalAmount, activePayment.currency, locale, t('payment:common.free'))
+                })}
+              </p>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />}
-            onClick={onRefreshPayments}
-          >
-            Refresh
-          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.4fr] gap-6">
+      <div className={`grid gap-4 ${layoutClass}`}>
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-            <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">Tracked Payment Sessions</h2>
-            <div className="mt-4 space-y-3">
+          <div className="rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">
+                  {t('payment:center.sessions.title')}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t('payment:center.sessions.subtitle')}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-slate-50/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:border-slate-800/80 dark:bg-slate-950/45 dark:text-slate-400">
+                <Sparkles size={11} className="text-amber-500" /> {t('payment:common.live')}
+              </span>
+            </div>
+
+            <div className={`mt-4 space-y-3 ${isEmbedded ? 'max-h-[320px] overflow-y-auto pr-1' : ''}`}>
               {payments.map((payment) => {
-                const meta = getStatusMeta(payment.paymentStatus);
+                const meta = getStatusMeta(payment.paymentStatus, t);
+                const paymentItemMeta = getItemMeta(payment.marketplaceItemType, t);
                 const isActive = payment.orderId === activePayment.orderId;
 
                 return (
@@ -197,29 +372,38 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                     key={payment.orderId}
                     type="button"
                     onClick={() => setSelectedOrderId(payment.orderId)}
-                    className={`w-full rounded-2xl border p-4 text-left transition-studio ${
+                    className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-studio ${
                       isActive
-                        ? 'border-amber-400/60 bg-amber-400/10 shadow-sm'
-                        : 'border-slate-200/80 bg-slate-50/70 hover:border-sky-500/30 dark:border-slate-800/80 dark:bg-slate-950/45'
+                        ? 'border-amber-400/55 bg-gradient-to-r from-amber-400/14 via-white to-white shadow-sm dark:from-amber-400/14 dark:via-slate-900/75 dark:to-slate-900/75'
+                        : 'border-slate-200/80 bg-slate-50/75 hover:border-sky-500/30 dark:border-slate-800/80 dark:bg-slate-950/40'
                     }`}
                   >
+                    <div className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${paymentItemMeta.softClass}`} />
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-display text-sm font-bold text-slate-850 dark:text-white truncate">
+                        <p className="truncate font-display text-sm font-bold text-slate-850 dark:text-white">
                           {payment.marketplaceItemTitle}
                         </p>
-                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                          Order {payment.orderId.slice(0, 8).toUpperCase()}
+                        <p className="mt-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                          {t('payment:center.sessions.orderPrefix')} {payment.orderId.slice(0, 8).toUpperCase()}
                         </p>
                       </div>
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${meta.badgeClass}`}>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${meta.badgeClass}`}
+                      >
                         {meta.icon}
                         {meta.label}
                       </span>
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">{payment.marketplaceItemType === 'source_code' ? 'Source Code' : 'Asset'}</span>
-                      <span className="font-semibold text-amber-500">{formatMoney(payment.amount)}</span>
+
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${paymentItemMeta.accentClass}`}>
+                        {paymentItemMeta.icon}
+                        {paymentItemMeta.label}
+                      </span>
+                      <span className="text-sm font-bold text-amber-500">
+                        {formatMoney(payment.amount, payment.currency, locale, t('payment:common.free'))}
+                      </span>
                     </div>
                   </button>
                 );
@@ -228,113 +412,161 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
           </div>
         </aside>
 
-        <section className="space-y-6">
-          <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="font-display text-xl font-bold text-slate-850 dark:text-white">{activePayment.marketplaceItemTitle}</h2>
-                  <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-bold ${statusMeta.badgeClass}`}>
-                    {statusMeta.icon}
-                    {statusMeta.label}
-                  </span>
+        <section className="space-y-4">
+          <div className="relative overflow-hidden rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
+            <div className={`absolute inset-x-0 top-0 h-28 bg-gradient-to-r ${itemMeta.softClass}`} />
+
+            <div className="relative">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className={`rounded-2xl border p-3 ${itemMeta.accentClass}`}>
+                      {itemMeta.icon}
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-display text-xl font-bold text-slate-850 dark:text-white">
+                          {activePayment.marketplaceItemTitle}
+                        </h2>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-bold ${statusMeta.badgeClass}`}
+                        >
+                          {statusMeta.icon}
+                          {statusMeta.label}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        {t('payment:center.detail.createdBy', {
+                          time: formatTimestamp(activePayment.createdAt, locale, t('payment:common.notAvailable')),
+                          name: activePayment.buyerFullName
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                    {statusMeta.helper}
+                  </p>
                 </div>
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  Created {formatTimestamp(activePayment.createdAt)} by {activePayment.buyerFullName}
-                </p>
-                <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{statusMeta.helper}</p>
+
+                <div className="flex flex-wrap gap-3">
+                  {canContinuePayment && activePayment.checkoutUrl && (
+                    <a
+                      href={activePayment.checkoutUrl}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#025272] transition-studio hover:bg-sky-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
+                    >
+                      {t('payment:center.detail.continuePayos')} <ExternalLink size={15} />
+                    </a>
+                  )}
+                  {activePayment.downloadUrl && activePayment.paymentStatus === 'PAID' && (
+                    <a
+                      href={activePayment.downloadUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
+                    >
+                      <Download size={15} /> {t('payment:center.detail.downloadPackage')}
+                    </a>
+                  )}
+                </div>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                {canContinuePayment && activePayment.checkoutUrl && (
-                  <a
-                    href={activePayment.checkoutUrl}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#025272] transition-studio hover:bg-sky-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
-                  >
-                    Continue PayOS <ExternalLink size={15} />
-                  </a>
-                )}
-                {activePayment.downloadUrl && activePayment.paymentStatus === 'PAID' && (
-                  <a
-                    href={activePayment.downloadUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
-                  >
-                    <Download size={15} /> Download Package
-                  </a>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Amount</p>
-                <p className="mt-2 font-display text-lg font-bold text-amber-500">{formatMoney(activePayment.amount)}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Reference</p>
-                <p className="mt-2 font-display text-sm font-bold text-slate-850 dark:text-white">{activePayment.paymentReference || 'Pending assignment'}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Provider</p>
-                <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{activePayment.paymentProvider}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Order Status</p>
-                <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{activePayment.orderStatus}</p>
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.amount')}</p>
+                  <p className="mt-2 font-display text-lg font-bold text-amber-500">
+                    {formatMoney(activePayment.amount, activePayment.currency, locale, t('payment:common.free'))}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.provider')}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
+                    {activePayment.paymentProvider}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.reference')}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
+                    {activePayment.paymentReference || t('payment:common.waitingReference')}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.orderStatus')}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
+                    {activePayment.orderStatus}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_0.95fr]">
-            <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+          <div className={`grid gap-4 ${detailSplitClass}`}>
+            <div className="rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-3 text-sky-500">
                   <ShieldCheck size={18} />
                 </div>
                 <div>
-                  <h3 className="font-display text-lg font-bold text-slate-850 dark:text-white">PayOS Session</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Hosted checkout metadata stored by the backend for this order.</p>
+                  <h3 className="font-display text-lg font-bold text-slate-850 dark:text-white">
+                    {t('payment:center.payos.title')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {t('payment:center.payos.subtitle')}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">PayOS Order Code</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{activePayment.payosOrderCode ?? 'N/A'}</p>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.payos.orderCode')}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
+                    {activePayment.payosOrderCode ?? t('payment:common.notAvailable')}
+                  </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Payment Link ID</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white break-all">{activePayment.payosPaymentLinkId || 'N/A'}</p>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.payos.paymentLinkId')}</p>
+                  <p className="mt-2 break-all text-sm font-semibold text-slate-850 dark:text-white">
+                    {activePayment.payosPaymentLinkId || t('payment:common.notAvailable')}
+                  </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Transaction ID</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white break-all">{activePayment.payosTransactionId || 'Waiting webhook'}</p>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.payos.transactionId')}</p>
+                  <p className="mt-2 break-all text-sm font-semibold text-slate-850 dark:text-white">
+                    {activePayment.payosTransactionId || t('payment:common.waitingWebhook')}
+                  </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Paid At</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{formatTimestamp(activePayment.paidAt)}</p>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.payos.paidAt')}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
+                    {formatTimestamp(activePayment.paidAt, locale, t('payment:common.notAvailable'))}
+                  </p>
                 </div>
-                <div className="rounded-2xl border border-dashed border-slate-250 bg-gradient-to-br from-slate-50 to-slate-100 p-4 dark:border-slate-800 dark:from-slate-950/55 dark:to-slate-900/40 sm:col-span-2">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">How confirmation works</p>
-                  <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                    <p>1. Customer pays on PayOS.</p>
-                    <p>2. Backend waits for a verified PayOS webhook.</p>
-                    <p>3. Order becomes paid, transaction is created, and download unlocks.</p>
-                  </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-200/80 bg-gradient-to-br from-slate-50 to-slate-100 p-4 dark:border-slate-800 dark:from-slate-950/55 dark:to-slate-900/40">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">
+                  {t('payment:center.payos.flowTitle')}
+                </p>
+                <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                  <p>{t('payment:center.payos.flowStep1')}</p>
+                  <p>{t('payment:center.payos.flowStep2')}</p>
+                  <p>{t('payment:center.payos.flowStep3')}</p>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+            <div className="rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl border border-amber-500/20 bg-amber-400/10 p-3 text-amber-500">
-                  {activePayment.marketplaceItemType === 'source_code' ? <Code2 size={18} /> : <Boxes size={18} />}
+                <div className={`rounded-2xl border p-3 ${itemMeta.accentClass}`}>
+                  {itemMeta.icon}
                 </div>
                 <div>
-                  <h3 className="font-display text-lg font-bold text-slate-850 dark:text-white">Actions</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Use these controls to continue checkout, refresh status, or move back into the marketplace.</p>
+                  <h3 className="font-display text-lg font-bold text-slate-850 dark:text-white">
+                    {t('payment:center.actions.title')}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {t('payment:center.actions.subtitle')}
+                  </p>
                 </div>
               </div>
 
@@ -344,18 +576,18 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                     href={activePayment.checkoutUrl}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-semibold text-sky-600 transition-studio hover:border-sky-500 hover:bg-sky-500 hover:text-white dark:text-sky-400"
                   >
-                    Reopen PayOS Checkout <ExternalLink size={15} />
+                    {t('payment:center.actions.reopenCheckout')} <ExternalLink size={15} />
                   </a>
                 )}
 
                 <Button
                   variant="ghost"
                   size="md"
-                  className="w-full"
+                  className="w-full border border-slate-200/80 bg-slate-50/80 dark:border-slate-800/80 dark:bg-slate-950/40"
                   icon={<RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />}
                   onClick={onRefreshPayments}
                 >
-                  Refresh Payment Status
+                  {t('payment:center.actions.refreshStatus')}
                 </Button>
 
                 {canCancelPayment && (
@@ -365,34 +597,44 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                     className="w-full"
                     onClick={() => onCancelPayment(activePayment.id)}
                   >
-                    Cancel Payment Session
+                    {t('payment:center.actions.cancelSession')}
                   </Button>
                 )}
 
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="w-full"
+                  onClick={onBackToMarketplace}
+                >
+                  {t('payment:center.actions.browseMore')}
+                </Button>
               </div>
             </div>
           </div>
 
           {activePayment.downloadUrl && activePayment.paymentStatus === 'PAID' && (
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+            <div className="rounded-[26px] border border-emerald-500/20 bg-emerald-500/10 p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h3 className="font-display text-lg font-bold text-slate-850 dark:text-white">Download Unlocked</h3>
+                  <h3 className="font-display text-lg font-bold text-slate-850 dark:text-white">
+                    {t('payment:center.download.title')}
+                  </h3>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    The webhook confirmed your PayOS payment. You can now download the package or continue browsing the marketplace.
+                    {t('payment:center.download.subtitle')}
                   </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <a
                     href={activePayment.downloadUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
                   >
-                    <Download size={15} /> Download Now
+                    <Download size={15} /> {t('payment:center.download.downloadNow')}
                   </a>
                   <Button variant="ghost" size="md" onClick={() => setCurrentScreen('marketplace')}>
-                    Keep Browsing
+                    {t('payment:center.download.keepBrowsing')}
                   </Button>
                 </div>
               </div>

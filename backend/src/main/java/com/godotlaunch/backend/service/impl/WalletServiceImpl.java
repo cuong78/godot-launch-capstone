@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class WalletServiceImpl implements WalletService {
 
+    private static final String DEFAULT_CURRENCY = "VND";
+
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
@@ -41,18 +43,25 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public Wallet getOrCreateWallet(User user) {
-        return walletRepository.findByUserId(user.getId())
+        Wallet wallet = walletRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
-                    Wallet wallet = new Wallet();
-                    wallet.setUser(user);
-                    wallet.setBalance(BigDecimal.ZERO);
-                    wallet.setCurrency("VND");
-                    return walletRepository.save(wallet);
+                    Wallet newWallet = new Wallet();
+                    newWallet.setUser(user);
+                    newWallet.setBalance(BigDecimal.ZERO);
+                    newWallet.setCurrency(DEFAULT_CURRENCY);
+                    return walletRepository.save(newWallet);
                 });
+
+        if (!DEFAULT_CURRENCY.equalsIgnoreCase(wallet.getCurrency())) {
+            wallet.setCurrency(DEFAULT_CURRENCY);
+            wallet = walletRepository.save(wallet);
+        }
+
+        return wallet;
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public WalletResponse getWalletResponse(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -90,6 +99,9 @@ public class WalletServiceImpl implements WalletService {
         Game game = gameId != null ? gameRepository.findById(gameId).orElse(null) : null;
 
         Wallet wallet = getOrCreateWallet(seller);
+        if (!DEFAULT_CURRENCY.equalsIgnoreCase(wallet.getCurrency())) {
+            wallet.setCurrency(DEFAULT_CURRENCY);
+        }
         BigDecimal netAmount = amount.subtract(platformCommission);
         if (netAmount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Net amount cannot be negative");

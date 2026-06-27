@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.sql.Types;
 
 @Entity
@@ -50,19 +51,23 @@ public class WithdrawalRequest {
     @Column(name = "account_holder", nullable = false, length = 200)
     private String accountHolder;
 
+    @Column(name = "transfer_reference", length = 120)
+    private String transferReference;
+
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "withdrawal_status_enum")
     private WithdrawalStatus status = WithdrawalStatus.pending;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewed_by")
-    private User reviewedBy;
+    @JoinColumn(name = "processed_by")
+    private User processedBy;
 
-    @Column(name = "reviewed_at")
-    private Instant reviewedAt;
+    @Column(name = "processed_at")
+    private Instant processedAt;
 
-    @Column(name = "reject_reason", columnDefinition = "TEXT")
-    private String rejectReason;
+    @Column(name = "remark", columnDefinition = "TEXT")
+    private String remark;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id")

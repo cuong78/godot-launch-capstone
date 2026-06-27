@@ -24,6 +24,7 @@ import { DetailPage } from './page/DetailPage';
 import { UploadPage } from './page/UploadPage';
 import { PathPage } from './page/PathPage';
 import { DashboardPage } from './page/DashboardPage';
+import { WalletPage } from './page/WalletPage';
 import { CommunityPage } from './page/CommunityPage';
 import { SignInPage } from './page/SignInPage';
 import { SignUpPage } from './page/SignUpPage';
@@ -441,6 +442,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   if (primary === 'upload') return { screen: 'upload' };
   if (primary === 'path') return { screen: 'path' };
   if (primary === 'dashboard') return { screen: 'dashboard' };
+  if (primary === 'wallet') return { screen: 'wallet' };
   if (primary === 'community') {
     if (segments[1] === 'detail' && segments[2]) {
       return { screen: 'community-detail', assetId: segments[2] };
@@ -474,6 +476,7 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
   if (screen === 'payment-success') return '/payment/success';
   if (screen === 'payment-failed') return '/payment/failed';
   if (screen === 'payment-cancelled') return '/payment/cancelled';
+  if (screen === 'wallet') return '/wallet';
   return `/${screen}`;
 };
 
@@ -1264,8 +1267,19 @@ export default function App() {
               assets={assets}
               projectRepositories={projectRepositories}
               purchasedPayments={paymentOrders}
+              selectedPaymentOrderId={selectedPaymentOrderId}
+              setSelectedPaymentOrderId={(orderId) => setSelectedPaymentOrderId(orderId)}
+              isRefreshingPayments={isRefreshingPayments}
+              onRefreshPayments={refreshTrackedPayments}
+              onCancelPayment={handleCancelPayment}
               setCurrentScreen={setCurrentScreen}
             />
+          </ProtectedRoute>
+        )}
+
+        {currentScreen === 'wallet' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <WalletPage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
 
