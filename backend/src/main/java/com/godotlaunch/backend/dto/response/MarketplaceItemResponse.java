@@ -31,9 +31,8 @@ public class MarketplaceItemResponse {
     private BigDecimal price;
     private String fileUrl;
     private String thumbnailUrl;
-    private String license;
-    private String licenseTerms;
     private String documentation;
+
     private String version;
     private String supportedPlatforms;
     private List<String> tags;

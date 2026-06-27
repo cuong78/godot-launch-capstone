@@ -22,4 +22,14 @@ public interface MediaRepository extends JpaRepository<Media, UUID> {
            "LOWER(m.mediaUrl) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(m.mediaType) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Media> searchMedia(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT m FROM Media m WHERE m.mediaType = 'video' AND " +
+           "(:search IS NULL OR :search = '' OR LOWER(m.mediaUrl) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Media> searchMediaVideos(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT m FROM Media m WHERE m.mediaType <> 'video' AND " +
+           "(:search IS NULL OR :search = '' OR " +
+           "LOWER(m.mediaUrl) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(m.mediaType) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Media> searchMediaImages(@Param("search") String search, Pageable pageable);
 }

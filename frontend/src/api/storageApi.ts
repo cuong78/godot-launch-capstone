@@ -121,9 +121,9 @@ export const storageApi = {
   },
 
   // File management
-  listUploadedFiles: async (category: string, search: string, page: number, size: number): Promise<ApiResponse<PaginatedResponse<UploadedFileResponse>>> => {
+  listUploadedFiles: async (category: string, search: string, page: number, size: number, mediaType?: string): Promise<ApiResponse<PaginatedResponse<UploadedFileResponse>>> => {
     const res = await api.get('/api/admin/storage/files', {
-      params: { category, search, page, size }
+      params: { category, search, page, size, mediaType }
     });
     return res.data;
   },

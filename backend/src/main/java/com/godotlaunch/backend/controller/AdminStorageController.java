@@ -31,6 +31,7 @@ import com.godotlaunch.backend.service.impl.StorageRouter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -269,10 +270,11 @@ public class AdminStorageController {
     public ResponseEntity<ApiResponse<Page<UploadedFileResponse>>> listUploadedFiles(
             @RequestParam String category,
             @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) String mediaType,
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "20") int size) {
         
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         String cleanSearch = search.trim();
         Page<UploadedFileResponse> resultPage;
 
@@ -348,7 +350,14 @@ public class AdminStorageController {
                         .build());
             }
             case "media_file" -> {
-                Page<Media> mediaList = mediaRepo.searchMedia(cleanSearch, pageable);
+                Page<Media> mediaList;
+                if ("image".equalsIgnoreCase(mediaType)) {
+                    mediaList = mediaRepo.searchMediaImages(cleanSearch, pageable);
+                } else if ("video".equalsIgnoreCase(mediaType)) {
+                    mediaList = mediaRepo.searchMediaVideos(cleanSearch, pageable);
+                } else {
+                    mediaList = mediaRepo.searchMedia(cleanSearch, pageable);
+                }
                 resultPage = mediaList.map(med -> {
                     String ownerName = "Unknown";
                     String ownerType = "Unknown";

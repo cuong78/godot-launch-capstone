@@ -89,9 +89,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   // New Marketplace Fields
-  const [license, setLicense] = useState("MIT");
-  const [licenseTerms, setLicenseTerms] = useState("");
   const [documentation, setDocumentation] = useState("");
+
   const [version, setVersion] = useState("1.0.0");
   const [supportedPlatforms, setSupportedPlatforms] = useState<string[]>([
     "Windows",
@@ -304,10 +303,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         godotVersion: godotVersion.trim() || undefined,
         githubRepoUrl: itemType === "source_code" ? githubRepoUrl : undefined,
         tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-        license,
-        licenseTerms: license === "Custom" ? licenseTerms : undefined,
         documentation: documentation.trim() || undefined,
         version: version.trim() || undefined,
+
         supportedPlatforms: supportedPlatforms.length > 0 ? supportedPlatforms.join(", ") : undefined,
       });
       if (res.success && res.data?.itemId) {
@@ -793,6 +791,75 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             </button>
           </div>
 
+          {publishProgram === "marketplace" && (
+            <div className="flex flex-col gap-1.5 mb-6">
+              <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                Marketplace Item Type
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                  onClick={() => setItemType("source_code")}
+                  className={`cursor-pointer p-4 rounded-xl border flex flex-col gap-1 transition-all duration-200 ${
+                    itemType === "source_code"
+                      ? "border-amber-500 bg-amber-500/5 dark:bg-amber-500/10"
+                      : "border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-350 dark:hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                        itemType === "source_code"
+                          ? "border-amber-500"
+                          : "border-slate-400"
+                      }`}
+                    >
+                      {itemType === "source_code" && (
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      )}
+                    </div>
+                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">
+                      Source Code Project
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 pl-5 leading-normal">
+                    Complete project templates, plugins, scripts. Requires
+                    Godot version & GitHub Repo.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setItemType("asset")}
+                  className={`cursor-pointer p-4 rounded-xl border flex flex-col gap-1 transition-all duration-200 ${
+                    itemType === "asset"
+                      ? "border-amber-500 bg-amber-500/5 dark:bg-amber-500/10"
+                      : "border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-350 dark:hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                        itemType === "asset"
+                          ? "border-amber-500"
+                          : "border-slate-400"
+                      }`}
+                    >
+                      {itemType === "asset" && (
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      )}
+                    </div>
+                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">
+                      Resource Asset Pack
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 pl-5 leading-normal">
+                    Standalone resource files, sprites, sounds, 3D models. No
+                    GitHub/Godot version required.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
               label={
@@ -960,74 +1027,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
 
-            {publishProgram === "marketplace" && (
-              <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                  Marketplace Item Type
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div
-                    onClick={() => setItemType("source_code")}
-                    className={`cursor-pointer p-4 rounded-xl border flex flex-col gap-1 transition-all duration-200 ${
-                      itemType === "source_code"
-                        ? "border-amber-500 bg-amber-500/5 dark:bg-amber-500/10"
-                        : "border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-350 dark:hover:border-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                          itemType === "source_code"
-                            ? "border-amber-500"
-                            : "border-slate-400"
-                        }`}
-                      >
-                        {itemType === "source_code" && (
-                          <div className="w-2 h-2 rounded-full bg-amber-500" />
-                        )}
-                      </div>
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">
-                        Source Code Project
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 pl-5 leading-normal">
-                      Complete project templates, plugins, scripts. Requires
-                      Godot version & GitHub Repo.
-                    </p>
-                  </div>
 
-                  <div
-                    onClick={() => setItemType("asset")}
-                    className={`cursor-pointer p-4 rounded-xl border flex flex-col gap-1 transition-all duration-200 ${
-                      itemType === "asset"
-                        ? "border-amber-500 bg-amber-500/5 dark:bg-amber-500/10"
-                        : "border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-350 dark:hover:border-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                          itemType === "asset"
-                            ? "border-amber-500"
-                            : "border-slate-400"
-                        }`}
-                      >
-                        {itemType === "asset" && (
-                          <div className="w-2 h-2 rounded-full bg-amber-500" />
-                        )}
-                      </div>
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">
-                        Resource Asset Pack
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 pl-5 leading-normal">
-                      Standalone resource files, sprites, sounds, 3D models. No
-                      GitHub/Godot version required.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {publishProgram === "marketplace" && (
@@ -1054,69 +1054,17 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           {publishProgram === "marketplace" && (
             <div className="border-t border-slate-150 dark:border-slate-800 pt-6 space-y-6">
               <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                <ShieldCheck size={16} className="text-amber-500" /> Specifications & Licensing
+                <ShieldCheck size={16} className="text-amber-500" /> Specifications
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                    License Type
-                  </label>
-                  <select
-                    value={license}
-                    onChange={(e) => setLicense(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-850 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
-                  >
-                    <option value="MIT">MIT License (Open Source)</option>
-                    <option value="Apache-2.0">Apache 2.0 (Open Source)</option>
-                    <option value="GPL-3.0">GNU GPL v3 (Copyleft)</option>
-                    <option value="CC-BY-4.0">Creative Commons BY 4.0</option>
-                    <option value="Commercial">Commercial (Sử dụng thương mại)</option>
-                    <option value="Personal">Personal (Chỉ sử dụng cá nhân)</option>
-                    <option value="Custom">Custom License (Điều khoản tùy chỉnh)</option>
-                  </select>
-                </div>
-
                 <Input
                   label="Version"
                   placeholder="e.g. 1.0.0"
                   value={version}
                   onChange={(e) => setVersion(e.target.value)}
                 />
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                    Supported Platforms
-                  </label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {["Windows", "macOS", "Linux", "Web", "Android", "iOS"].map((platform) => {
-                      const active = supportedPlatforms.includes(platform);
-                      return (
-                        <button
-                          key={platform}
-                          type="button"
-                          onClick={() => {
-                            setSupportedPlatforms((prev) =>
-                              prev.includes(platform)
-                                ? prev.filter((p) => p !== platform)
-                                : [...prev, platform]
-                            );
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                            active
-                              ? "bg-amber-500 border-amber-500 text-black shadow-sm"
-                              : "bg-white dark:bg-slate-900 border-slate-350 dark:border-slate-850 text-slate-650 dark:text-slate-300 hover:border-amber-400"
-                          }`}
-                        >
-                          {platform}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                
                 <Input
                   label="Documentation Link"
                   placeholder="e.g. https://docs.example.com or wiki url"
@@ -1125,15 +1073,36 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 />
               </div>
 
-              {license === "Custom" && (
-                <TextArea
-                  label="Custom License Terms"
-                  placeholder="Describe your custom license terms here..."
-                  rows={3}
-                  value={licenseTerms}
-                  onChange={(e) => setLicenseTerms(e.target.value)}
-                />
-              )}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                  Supported Platforms
+                </label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {["Windows", "macOS", "Linux", "Web", "Android", "iOS"].map((platform) => {
+                    const active = supportedPlatforms.includes(platform);
+                    return (
+                      <button
+                        key={platform}
+                        type="button"
+                        onClick={() => {
+                          setSupportedPlatforms((prev) =>
+                            prev.includes(platform)
+                              ? prev.filter((p) => p !== platform)
+                              : [...prev, platform]
+                          );
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                          active
+                            ? "bg-amber-500 border-amber-500 text-black shadow-sm"
+                            : "bg-white dark:bg-slate-900 border-slate-350 dark:border-slate-850 text-slate-650 dark:text-slate-300 hover:border-amber-400"
+                        }`}
+                      >
+                        {platform}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

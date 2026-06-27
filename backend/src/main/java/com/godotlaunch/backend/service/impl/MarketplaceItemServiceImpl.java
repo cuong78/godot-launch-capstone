@@ -130,9 +130,8 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         // Map licensing and specifications fields
-        item.setLicense(request.getLicense());
-        item.setLicenseTerms(request.getLicenseTerms());
         item.setDocumentation(request.getDocumentation());
+
         if (request.getVersion() != null && !request.getVersion().trim().isEmpty()) {
             item.setVersion(request.getVersion());
         }
@@ -230,15 +229,10 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         // Map licensing and specifications fields
-        if (request.getLicense() != null) {
-            item.setLicense(request.getLicense());
-        }
-        if (request.getLicenseTerms() != null) {
-            item.setLicenseTerms(request.getLicenseTerms());
-        }
         if (request.getDocumentation() != null) {
             item.setDocumentation(request.getDocumentation());
         }
+
         if (request.getVersion() != null) {
             item.setVersion(request.getVersion());
         }
@@ -734,9 +728,9 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .thumbnailUrl(thumbUrl)
                 .videoUrl(vidUrl)
                 .screenshots(shots)
-                .license(item.getLicense())
-                .licenseTerms(item.getLicenseTerms())
                 .documentation(item.getDocumentation())
+
+
                 .version(item.getVersion())
                 .supportedPlatforms(item.getSupportedPlatforms())
                 .createdAt(item.getCreatedAt())

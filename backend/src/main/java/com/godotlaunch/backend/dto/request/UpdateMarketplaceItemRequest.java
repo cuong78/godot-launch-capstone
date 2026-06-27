@@ -13,12 +13,14 @@ public class UpdateMarketplaceItemRequest {
     private BigDecimal price;
     private UUID categoryId;
     private String godotVersion;
+
     private String githubRepoUrl;
     private String fileUrl;
+
     private String thumbnailUrl;
-    private String license;
-    private String licenseTerms;
+
     private String documentation;
+
     private String version;
     private String supportedPlatforms;
     private List<UUID> tagIds;

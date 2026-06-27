@@ -28,8 +28,6 @@ export interface Asset {
   };
   screenshots?: string[];
   videoUrl?: string;
-  license?: string;
-  licenseTerms?: string;
   documentation?: string;
   supportedPlatforms?: string;
 }
@@ -441,8 +439,6 @@ export interface CreateMarketplaceItemRequest {
   sourceGameId?: string;
   fileUrl?: string;
   thumbnailUrl?: string;
-  license?: string;
-  licenseTerms?: string;
   documentation?: string;
   version?: string;
   supportedPlatforms?: string;
@@ -459,8 +455,6 @@ export interface UpdateMarketplaceItemRequest {
   githubRepoUrl?: string;
   fileUrl?: string;
   thumbnailUrl?: string;
-  license?: string;
-  licenseTerms?: string;
   documentation?: string;
   version?: string;
   supportedPlatforms?: string;
@@ -480,8 +474,6 @@ export interface MarketplaceItemResponse {
   price: number;
   fileUrl?: string;
   thumbnailUrl?: string;
-  license?: string;
-  licenseTerms?: string;
   documentation?: string;
   version?: string;
   supportedPlatforms?: string;

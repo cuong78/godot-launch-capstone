@@ -70,13 +70,8 @@ public class MarketplaceItem {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
-    @Column(name = "license", length = 50)
-    private String license;
-
-    @Column(name = "license_terms", columnDefinition = "TEXT")
-    private String licenseTerms;
-
     @Column(name = "documentation", columnDefinition = "TEXT")
+
     private String documentation;
 
     @Column(name = "version", length = 50)

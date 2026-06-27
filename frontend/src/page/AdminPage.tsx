@@ -179,7 +179,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'logs' | 'settings' | 'storage' | 'disputes' | 'withdrawal' | 'files'>('moderation');
   
   // Real Game Moderation state
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
@@ -1293,31 +1293,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             </div>
                                           </div>
                                         </div>
-
-                                        {/* License Card */}
-                                        <div className="space-y-3 bg-white/30 dark:bg-slate-900/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
-                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1.5">
-                                            <FileText size={12} className="text-amber-500" /> License Information
-                                          </h4>
-                                          <div className="space-y-2 text-xs">
-                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                              <span className="text-slate-500">License Model</span>
-                                              <span className="font-semibold uppercase text-amber-500 font-mono">{item.license || 'N/A'}</span>
-                                            </div>
-                                            {item.licenseTerms ? (
-                                              <div className="space-y-1.5 pt-1.5">
-                                                <span className="text-slate-500 block font-semibold text-[10px] uppercase tracking-wider font-mono">Custom License Terms</span>
-                                                <div className="text-[11px] leading-relaxed max-h-32 overflow-y-auto bg-amber-500/5 dark:bg-amber-450/5 p-2.5 rounded-lg border border-amber-500/10 dark:border-amber-450/20 text-slate-700 dark:text-slate-300 font-sans italic whitespace-pre-wrap break-words">
-                                                  {item.licenseTerms}
-                                                </div>
-                                              </div>
-                                            ) : (
-                                              <div className="text-[10px] text-slate-500 italic mt-1">
-                                                No custom terms specified. Standard terms apply.
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
                                       </div>
                                     </div>
                                   </td>
@@ -1691,6 +1666,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         {/* Tab 5: Storage Management */}
         {activeTab === 'storage' && <AdminStoragePanel />}
         {activeTab === 'disputes' && <AdminDisputePanel />}
+        {activeTab === 'withdrawal' && <AdminWithdrawalPanel />}
+        {activeTab === 'files' && <AdminFileManagementPanel />}
+
 
         {/* Tab 4: Platform Settings */}
         {activeTab === 'settings' && (

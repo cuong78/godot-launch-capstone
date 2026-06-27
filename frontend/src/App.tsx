@@ -175,9 +175,8 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
     version: item.version || (item.itemType === 'source_code' ? (item.godotVersion || '1.0.0') : '1.0.0'),
     screenshots: item.screenshots || [],
     videoUrl: item.videoUrl,
-    license: item.license || 'MIT',
-    licenseTerms: item.licenseTerms,
     documentation: item.documentation || '',
+
     supportedPlatforms: item.supportedPlatforms || '',
     lastUpdated: formatMarketplaceDate(item.updatedAt || item.createdAt),
     details: {
