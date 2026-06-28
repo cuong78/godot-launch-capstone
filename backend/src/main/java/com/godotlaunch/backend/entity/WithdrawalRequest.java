@@ -69,8 +69,8 @@ public class WithdrawalRequest {
     @Column(name = "remark", columnDefinition = "TEXT")
     private String remark;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transaction_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id", unique = true)
     private Transaction transaction;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
