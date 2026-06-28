@@ -2,6 +2,7 @@ import React from 'react';
 import { Boxes, ChevronDown, ChevronUp, Code2, Download, ReceiptText, ShoppingBag } from 'lucide-react';
 import { Button } from './Button';
 import { PaymentResponse } from '../types';
+import { resolveApiUrl } from '../utils/apiUrl';
 
 interface PurchasedInventoryPanelProps {
   payments: PaymentResponse[];
@@ -102,69 +103,84 @@ export const PurchasedInventoryPanel: React.FC<PurchasedInventoryPanelProps> = (
             </div>
           ) : (
             <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
-              {paidPayments.map((payment) => (
-                <article
-                  key={payment.id}
-                  className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/35"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-850 dark:text-white truncate">
-                        {payment.marketplaceItemTitle}
-                      </p>
-                      <p className="mt-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                        Order {payment.orderId.slice(0, 8).toUpperCase()}
-                      </p>
+              {paidPayments.map((payment) => {
+                const downloadUrl = resolveApiUrl(payment.downloadUrl);
+                const isSourceCode = payment.marketplaceItemType === 'source_code';
+
+                return (
+                  <article
+                    key={payment.id}
+                    className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/35"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-850 dark:text-white truncate">
+                          {payment.marketplaceItemTitle}
+                        </p>
+                        <p className="mt-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                          Order {payment.orderId.slice(0, 8).toUpperCase()}
+                        </p>
+                      </div>
+                      <span className="text-sm font-bold text-amber-500">{formatMoney(payment.amount)}</span>
                     </div>
-                    <span className="text-sm font-bold text-amber-500">{formatMoney(payment.amount)}</span>
-                  </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                      payment.marketplaceItemType === 'source_code'
-                        ? 'border-amber-500/20 bg-amber-500/10 text-amber-500'
-                        : 'border-sky-500/20 bg-sky-500/10 text-sky-500'
-                    }`}>
-                      {payment.marketplaceItemType === 'source_code' ? <Code2 size={11} /> : <Boxes size={11} />}
-                      {payment.marketplaceItemType === 'source_code' ? 'Source Code' : 'Asset'}
-                    </span>
-                    <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
-                      Paid
-                    </span>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center justify-between gap-3">
-                      <span>Ngày mua</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 text-right">
-                        {formatTimestamp(payment.paidAt || payment.updatedAt || payment.createdAt)}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                        isSourceCode
+                          ? 'border-amber-500/20 bg-amber-500/10 text-amber-500'
+                          : 'border-sky-500/20 bg-sky-500/10 text-sky-500'
+                      }`}>
+                        {isSourceCode ? <Code2 size={11} /> : <Boxes size={11} />}
+                        {isSourceCode ? 'Source Code' : 'Asset'}
                       </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span>Người bán</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 text-right">
-                        {payment.sellerFullName || payment.sellerEmail}
+                      <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
+                        Paid
                       </span>
+                      {!isSourceCode && (
+                        <span className="inline-flex items-center rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-500">
+                          Owned
+                        </span>
+                      )}
                     </div>
-                  </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {payment.downloadUrl && (
-                      <a
-                        href={payment.downloadUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
-                      >
-                        <Download size={13} /> Download
-                      </a>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={onOpenPaymentCenter}>
-                      Open Payment Center
-                    </Button>
-                  </div>
-                </article>
-              ))}
+                    <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center justify-between gap-3">
+                        <span>Ngày mua</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 text-right">
+                          {formatTimestamp(payment.paidAt || payment.updatedAt || payment.createdAt)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span>Người bán</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 text-right">
+                          {payment.sellerFullName || payment.sellerEmail}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {isSourceCode && downloadUrl && (
+                        <a
+                          href={downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
+                        >
+                          <Download size={13} /> Download
+                        </a>
+                      )}
+                      {!isSourceCode && (
+                        <span className="inline-flex items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-[11px] font-bold text-sky-600 dark:text-sky-400">
+                          Purchased Successfully
+                        </span>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={onOpenPaymentCenter}>
+                        Open Payment Center
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </div>

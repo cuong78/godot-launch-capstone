@@ -11,4 +11,5 @@ public class PaymentGatewayWebhookResult {
     private final String paymentLinkId;
     private final String transactionReference;
     private final String occurredAt;
+    private final boolean validationRequest;
 }

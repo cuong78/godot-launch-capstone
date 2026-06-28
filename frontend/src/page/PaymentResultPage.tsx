@@ -13,6 +13,7 @@ import {
 import { Button } from '../components/Button';
 import { paymentApi } from '../api/paymentApi';
 import { PaymentResponse, ScreenType } from '../types';
+import { resolveApiUrl } from '../utils/apiUrl';
 
 interface PaymentResultPageProps {
   variant: 'success' | 'failed' | 'cancelled';
@@ -84,13 +85,19 @@ const getVariantMeta = (variant: PaymentResultPageProps['variant'], t: any) => {
   }
 };
 
-const getStatusMeta = (status: PaymentResponse['paymentStatus'] | undefined, t: any) => {
+const getStatusMeta = (
+  status: PaymentResponse['paymentStatus'] | undefined,
+  itemType: PaymentResponse['marketplaceItemType'] | undefined,
+  t: any
+) => {
   switch (status) {
     case 'PAID':
       return {
         label: t('payment:status.paid.label'),
         badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-        helper: t('payment:status.paid.helper'),
+        helper: itemType === 'source_code'
+          ? t('payment:status.paid.helperSource')
+          : t('payment:status.paid.helperAsset'),
       };
     case 'PROCESSING':
       return {
@@ -194,10 +201,15 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
     onPaymentResolved(payment, variant);
   }, [onPaymentResolved, payment, variant]);
 
-  const statusMeta = getStatusMeta(payment?.paymentStatus, t);
+  const statusMeta = getStatusMeta(payment?.paymentStatus, payment?.marketplaceItemType, t);
   const canContinuePayment =
     Boolean(payment?.checkoutUrl) &&
     (payment?.paymentStatus === 'PENDING' || payment?.paymentStatus === 'PROCESSING');
+  const resolvedDownloadUrl = React.useMemo(() => resolveApiUrl(payment?.downloadUrl), [payment?.downloadUrl]);
+  const isPaidSourcePurchase = payment?.paymentStatus === 'PAID'
+    && payment?.marketplaceItemType === 'source_code'
+    && Boolean(resolvedDownloadUrl);
+  const isPaidAssetPurchase = payment?.paymentStatus === 'PAID' && payment?.marketplaceItemType === 'asset';
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -360,15 +372,24 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
                   {t('payment:center.backToMarketplace')}
                 </Button>
 
-                {payment.downloadUrl && payment.paymentStatus === 'PAID' && (
+                {isPaidSourcePurchase && resolvedDownloadUrl && (
                   <a
-                    href={payment.downloadUrl}
+                    href={resolvedDownloadUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
                   >
                     <Download size={15} /> {t('payment:center.download.downloadNow')}
                   </a>
+                )}
+
+                {isPaidAssetPurchase && (
+                  <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-700 dark:text-sky-300">
+                    <p className="font-semibold">{t('payment:result.owned.title')}</p>
+                    <p className="mt-1 text-xs text-sky-600/90 dark:text-sky-300/80">
+                      {t('payment:result.owned.subtitle')}
+                    </p>
+                  </div>
                 )}
               </div>
             </section>

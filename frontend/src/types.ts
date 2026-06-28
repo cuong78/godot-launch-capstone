@@ -244,6 +244,19 @@ export interface ApiResponse<T> {
   errors?: Record<string, string>;
 }
 
+export interface PlatformSettingsResponse {
+  commissionRate: number;
+  maintenanceMode: boolean;
+  announcementBanner?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface UpdatePlatformSettingsRequest {
+  commissionRate: number;
+  maintenanceMode: boolean;
+  announcementBanner?: string | null;
+}
+
 export interface LanguagePreferenceResponse {
   preferredLanguage: "vi" | "en" | "ja";
 }

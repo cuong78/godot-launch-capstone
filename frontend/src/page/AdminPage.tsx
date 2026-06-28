@@ -27,11 +27,12 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
-import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType } from '../types';
+import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType, PlatformSettingsResponse } from '../types';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
+import { platformSettingsApi } from '../api/platformSettingsApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { AdminStoragePanel } from '../components/AdminStoragePanel';
@@ -193,6 +194,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isLoadingMarketplace, setIsLoadingMarketplace] = useState<boolean>(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [expandedMarketplaceId, setExpandedMarketplaceId] = useState<string | null>(null);
+  const [marketplaceItemDetails, setMarketplaceItemDetails] = useState<Record<string, MarketplaceItemResponse>>({});
+  const [marketplaceDetailLoadingId, setMarketplaceDetailLoadingId] = useState<string | null>(null);
   const [moderationSubTab, setModerationSubTab] = useState<'games' | 'marketplace'>('games');
 
   // Contract Offer states
@@ -261,6 +264,33 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     } finally {
       setIsLoadingMarketplace(false);
     }
+  };
+
+  const fetchMarketplaceItemDetail = async (itemId: string) => {
+    setMarketplaceDetailLoadingId(itemId);
+    try {
+      const res = await marketplaceApi.getMarketplaceItemById(itemId);
+      if (res.success && res.data) {
+        setMarketplaceItemDetails(prev => ({
+          ...prev,
+          [itemId]: res.data!
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to refresh marketplace item detail', err);
+    } finally {
+      setMarketplaceDetailLoadingId(current => current === itemId ? null : current);
+    }
+  };
+
+  const handleToggleMarketplaceDetail = async (itemId: string) => {
+    if (expandedMarketplaceId === itemId) {
+      setExpandedMarketplaceId(null);
+      return;
+    }
+
+    setExpandedMarketplaceId(itemId);
+    await fetchMarketplaceItemDetail(itemId);
   };
 
 
@@ -337,6 +367,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   useEffect(() => {
     fetchUsers();
+    fetchPlatformSettings();
   }, []);
 
   useEffect(() => {
@@ -347,6 +378,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       fetchPendingMarketplaceItems();
     } else if (activeTab === 'logs') {
       fetchAuditLogs();
+    } else if (activeTab === 'settings') {
+      fetchPlatformSettings();
     }
   }, [activeTab, currentPage, pageSize, filterAction, filterTargetType]);
 
@@ -368,11 +401,37 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }, 50);
   };
 
-  // Mock settings state
-  const [commission, setCommission] = useState(15);
+  const applyPlatformSettings = (settings: PlatformSettingsResponse) => {
+    setCommission(Number(settings.commissionRate) || 0);
+    setMaintenance(Boolean(settings.maintenanceMode));
+    setAnnouncement(settings.announcementBanner || '');
+  };
+
+  const fetchPlatformSettings = async () => {
+    setIsLoadingSettings(true);
+    setSettingsError(null);
+    try {
+      const response = await platformSettingsApi.getPlatformSettings();
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to load platform settings');
+      }
+
+      applyPlatformSettings(response.data);
+    } catch (err: any) {
+      setSettingsError(err.response?.data?.message || err.message || 'Failed to load platform settings');
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  // Platform settings state
+  const [commission, setCommission] = useState(10);
   const [maintenance, setMaintenance] = useState(false);
   const [announcement, setAnnouncement] = useState('GodotLaunch Matrix Engine Upgrade is complete!');
   const [settingsSuccess, setSettingsSuccess] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const handleApproveGame = async (game: GameResponse) => {
     if (!game.publishingType || game.publishingType === 'marketplace_listing') {
@@ -542,10 +601,31 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSettingsSuccess(true);
-    setTimeout(() => setSettingsSuccess(false), 2000);
+    setIsSavingSettings(true);
+    setSettingsError(null);
+    setSettingsSuccess(false);
+
+    try {
+      const response = await platformSettingsApi.updatePlatformSettings({
+        commissionRate: commission,
+        maintenanceMode: maintenance,
+        announcementBanner: announcement.trim() || null,
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to update platform settings');
+      }
+
+      applyPlatformSettings(response.data);
+      setSettingsSuccess(true);
+      window.setTimeout(() => setSettingsSuccess(false), 2000);
+    } catch (err: any) {
+      setSettingsError(err.response?.data?.message || err.message || 'Failed to update platform settings');
+    } finally {
+      setIsSavingSettings(false);
+    }
   };
 
   return (
@@ -1076,12 +1156,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
                         {pendingMarketplaceItems.length > 0 ? (
-                          pendingMarketplaceItems.map(item => (
+                          pendingMarketplaceItems.map(item => {
+                            const displayItem = marketplaceItemDetails[item.id] ?? item;
+
+                            return (
                             <React.Fragment key={item.id}>
                               <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-900/5 transition-colors ${expandedMarketplaceId === item.id ? 'bg-slate-50/50 dark:bg-slate-900/20' : ''}`}>
                                 <td className="p-3 w-10 text-center">
                                   <button
-                                    onClick={() => setExpandedMarketplaceId(expandedMarketplaceId === item.id ? null : item.id)}
+                                    onClick={() => handleToggleMarketplaceDetail(item.id)}
                                     className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
                                     title={expandedMarketplaceId === item.id ? "Hide Details" : "Show Details"}
                                   >
@@ -1137,15 +1220,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
                                       {/* Left Column: Thumbnail, Description, ZIP */}
                                       <div className="space-y-4">
+                                        {marketplaceDetailLoadingId === item.id && (
+                                          <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-[11px] font-semibold text-sky-500">
+                                            Refreshing latest media...
+                                          </div>
+                                        )}
                                         <div>
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
                                             <Image size={12} /> Thumbnail
                                           </h4>
                                           <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
-                                            {item.thumbnailUrl ? (
+                                            {displayItem.thumbnailUrl ? (
                                               <img 
-                                                src={item.thumbnailUrl} 
-                                                alt={item.title} 
+                                                src={displayItem.thumbnailUrl} 
+                                                alt={displayItem.title} 
                                                 className="object-cover w-full h-full"
                                               />
                                             ) : (
@@ -1160,13 +1248,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         <div className="space-y-1.5">
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Item Description</h4>
                                           <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                            {item.description || "No description provided."}
+                                            {displayItem.description || "No description provided."}
                                           </p>
                                         </div>
 
-                                        {item.fileUrl ? (
+                                        {displayItem.fileUrl ? (
                                           <a 
-                                            href={item.fileUrl} 
+                                            href={displayItem.fileUrl} 
                                             download 
                                             target="_blank" 
                                             rel="noopener noreferrer"
@@ -1187,9 +1275,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
                                             <Image size={12} className="text-amber-500" /> Screenshots
                                           </h4>
-                                          {item.screenshots && item.screenshots.length > 0 ? (
+                                          {displayItem.screenshots && displayItem.screenshots.length > 0 ? (
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                              {item.screenshots.map((url, index) => (
+                                              {displayItem.screenshots.map((url, index) => (
                                                 <div 
                                                   key={index} 
                                                   onClick={() => {
@@ -1222,10 +1310,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
                                             <Video size={12} className="text-amber-500" /> Video Demo
                                           </h4>
-                                          {item.videoUrl ? (
+                                          {displayItem.videoUrl ? (
                                             <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
                                               <video 
-                                                src={item.videoUrl} 
+                                                src={displayItem.videoUrl} 
                                                 controls 
                                                 className="w-full h-full object-contain"
                                               />
@@ -1246,42 +1334,42 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <div className="space-y-2 text-xs">
                                             <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                               <span className="text-slate-500">Creator Name</span>
-                                              <span className="font-semibold">{item.sellerFullName || 'N/A'}</span>
+                                              <span className="font-semibold">{displayItem.sellerFullName || 'N/A'}</span>
                                             </div>
                                             <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                               <span className="text-slate-500">Creator Email</span>
-                                              <span className="font-mono">{item.sellerEmail}</span>
+                                              <span className="font-mono">{displayItem.sellerEmail}</span>
                                             </div>
-                                            {item.itemType === 'source_code' && (
+                                            {displayItem.itemType === 'source_code' && (
                                               <>
                                                 <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                   <span className="text-slate-500">Godot Version</span>
-                                                  <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{item.godotVersion || 'N/A'}</span>
+                                                  <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{displayItem.godotVersion || 'N/A'}</span>
                                                 </div>
-                                                {item.githubRepoUrl && (
+                                                {displayItem.githubRepoUrl && (
                                                   <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                     <span className="text-slate-500">GitHub Repository</span>
                                                     <a 
-                                                      href={item.githubRepoUrl} 
+                                                      href={displayItem.githubRepoUrl} 
                                                       target="_blank" 
                                                       rel="noopener noreferrer" 
                                                       className="font-mono text-sky-500 hover:underline break-all max-w-[200px]"
                                                     >
-                                                      {item.githubRepoUrl}
+                                                      {displayItem.githubRepoUrl}
                                                     </a>
                                                   </div>
                                                 )}
                                               </>
                                             )}
-                                            {item.sourceGameTitle && (
+                                            {displayItem.sourceGameTitle && (
                                               <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                 <span className="text-slate-500">Linked Store Game</span>
-                                                <span className="font-semibold text-amber-500">{item.sourceGameTitle}</span>
+                                                <span className="font-semibold text-amber-500">{displayItem.sourceGameTitle}</span>
                                               </div>
                                             )}
                                             <div className="flex justify-between pb-0.5">
                                               <span className="text-slate-500">Submitted On</span>
-                                              <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                              <span>{displayItem.createdAt ? new Date(displayItem.createdAt).toLocaleDateString() : 'N/A'}</span>
                                             </div>
                                           </div>
                                         </div>
@@ -1294,13 +1382,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <div className="space-y-2 text-xs">
                                             <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                               <span className="text-slate-500">License Model</span>
-                                              <span className="font-semibold uppercase text-amber-500 font-mono">{item.license || 'N/A'}</span>
+                                              <span className="font-semibold uppercase text-amber-500 font-mono">{displayItem.license || 'N/A'}</span>
                                             </div>
-                                            {item.licenseTerms ? (
+                                            {displayItem.licenseTerms ? (
                                               <div className="space-y-1.5 pt-1.5">
                                                 <span className="text-slate-500 block font-semibold text-[10px] uppercase tracking-wider font-mono">Custom License Terms</span>
                                                 <div className="text-[11px] leading-relaxed max-h-32 overflow-y-auto bg-amber-500/5 dark:bg-amber-450/5 p-2.5 rounded-lg border border-amber-500/10 dark:border-amber-450/20 text-slate-700 dark:text-slate-300 font-sans italic whitespace-pre-wrap break-words">
-                                                  {item.licenseTerms}
+                                                  {displayItem.licenseTerms}
                                                 </div>
                                               </div>
                                             ) : (
@@ -1316,7 +1404,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 </tr>
                               )}
                             </React.Fragment>
-                          ))
+                          )})
                         ) : (
                           <tr>
                             <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
@@ -1699,6 +1787,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               </div>
             )}
 
+            {settingsError && (
+              <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-rose-500 text-xs font-semibold flex items-center gap-1.5">
+                <AlertTriangle size={14} /> {settingsError}
+              </div>
+            )}
+
+            {isLoadingSettings && (
+              <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-lg text-slate-500 dark:text-slate-400 text-xs font-semibold flex items-center gap-1.5">
+                <RefreshCw size={14} className="animate-spin" /> Loading platform settings...
+              </div>
+            )}
+
             <form onSubmit={handleSaveSettings} className="space-y-4 max-w-xl">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
@@ -1706,8 +1806,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   type="number"
                   min="0"
                   max="100"
+                  step="0.01"
                   value={commission}
-                  onChange={(e) => setCommission(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setCommission(parseFloat(e.target.value) || 0)}
                   helperText="Percentage kept by the platform from each marketplace transaction"
                   required
                 />
@@ -1752,8 +1853,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               )}
 
               <div className="flex justify-end pt-2">
-                <Button variant="primary" size="md" type="submit" icon={<Sliders size={16} />}>
-                  Save Platform Variable Config
+                <Button
+                  variant="primary"
+                  size="md"
+                  type="submit"
+                  icon={<Sliders size={16} />}
+                  disabled={isSavingSettings || isLoadingSettings}
+                >
+                  {isSavingSettings ? 'Saving Platform Config...' : 'Save Platform Variable Config'}
                 </Button>
               </div>
             </form>

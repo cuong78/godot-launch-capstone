@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: godotlaunch-postgres
     environment:
       POSTGRES_DB: godot_launch
-      POSTGRES_USER: user_godot_launch
-      POSTGRES_PASSWORD: "password_godot_launch"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "12345"
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -82,8 +80,8 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=godot_launch
-      - DB_USER=user_godot_launch
-      - DB_PASSWORD=password_godot_launch
+      - DB_USER=postgres
+      - DB_PASSWORD=12345
       - FACE_SIMILARITY_THRESHOLD=0.5
       - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-vision.json
       # AI review — DeepSeek text (đổ key thật vào .env hoặc shell env). Trống → module DeepSeek bị skip.

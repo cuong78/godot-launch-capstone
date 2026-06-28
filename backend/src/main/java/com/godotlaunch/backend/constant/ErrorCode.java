@@ -81,6 +81,7 @@ public enum ErrorCode {
     PAYMENT_WEBHOOK_INVALID(HttpStatus.BAD_REQUEST, "Invalid PayOS webhook payload."),
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "Payment amount does not match the order total."),
     PAYMENT_NOT_CANCELLABLE(HttpStatus.BAD_REQUEST, "This payment can no longer be cancelled."),
+    PLATFORM_COMMISSION_RATE_INVALID(HttpStatus.BAD_REQUEST, "Platform commission rate must be between 0 and 100."),
     
     // GitHub Linking
     GITHUB_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "GL-4070", "GitHub primary email does not match your registered email."),

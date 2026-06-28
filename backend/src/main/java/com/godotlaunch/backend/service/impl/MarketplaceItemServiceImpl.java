@@ -746,6 +746,13 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     private String getPresignedGetUrl(String rawUrl) {
         if (rawUrl == null || "pending".equalsIgnoreCase(rawUrl)) return rawUrl;
+
+        // File trên SeaweedFS (hoặc storage public khác) đã là URL đọc trực tiếp.
+        // Chỉ file AWS S3 mới cần generate presigned GET URL.
+        if (!rawUrl.contains(".amazonaws.com/")) {
+            return rawUrl;
+        }
+
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
