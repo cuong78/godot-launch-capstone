@@ -14,3 +14,5 @@ workspace.xml
 
 # Google Cloud credentials — KHÔNG commit
 *.json
+!frontend/src/locales/**/*.json
+
