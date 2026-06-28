@@ -88,7 +88,7 @@ export interface WalletResponse {
   updatedAt?: string | null;
 }
 
-export type WithdrawalStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'rejected' | 'cancelled';
+export type WithdrawalStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'failed' | 'rejected' | 'cancelled';
 
 export interface DeveloperWalletSummaryResponse {
   walletId: string;
@@ -124,6 +124,10 @@ export interface WithdrawalResponse {
   bankAccount: string;
   accountHolder: string;
   transferReference?: string;
+  payosPayoutId?: string;
+  payosReferenceId?: string;
+  payosStatus?: string;
+  payosCreatedAt?: string;
   status: WithdrawalStatus;
   processedById?: string;
   processedByFullName?: string;

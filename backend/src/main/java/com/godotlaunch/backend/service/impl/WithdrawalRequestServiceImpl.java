@@ -22,7 +22,12 @@ import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
+import com.godotlaunch.backend.service.payout.PayoutGatewayBalanceResponse;
+import com.godotlaunch.backend.service.payout.PayoutGatewayCreateRequest;
+import com.godotlaunch.backend.service.payout.PayoutGatewayCreateResponse;
+import com.godotlaunch.backend.service.payout.PayoutGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,6 +55,8 @@ import java.util.stream.Collectors;
 public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     private static final String DEFAULT_CURRENCY = "VND";
+    private static final List<String> PAYOUT_CATEGORY = List.of("payment");
+    private static final Set<String> PAYOUT_IMMEDIATE_FAILURE_STATUSES = Set.of("FAILED", "REJECTED", "CANCELLED");
     private static final Set<WithdrawalStatus> RESERVED_STATUSES = EnumSet.of(
             WithdrawalStatus.pending,
             WithdrawalStatus.processing,
@@ -67,6 +74,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final PayoutGateway payoutGateway;
+    private final WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
 
     @Override
     @Transactional(readOnly = true)
@@ -168,15 +177,36 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         User admin = getUserByEmail(adminEmail);
         WithdrawalRequest withdrawal = getWithdrawalForUpdate(requestId);
 
-        if (withdrawal.getStatus() != WithdrawalStatus.pending && withdrawal.getStatus() != WithdrawalStatus.processing) {
+        boolean isLegacyApprovedWithoutPayout =
+                withdrawal.getStatus() == WithdrawalStatus.approved
+                        && !StringUtils.hasText(withdrawal.getPayosPayoutId());
+
+        if (withdrawal.getStatus() != WithdrawalStatus.pending && !isLegacyApprovedWithoutPayout) {
             throw new AppException(ErrorCode.INVALID_WITHDRAWAL_STATUS);
         }
 
+        String transferReference = resolveTransferReference(withdrawal, request != null ? request.getTransferReference() : null);
+        PayoutGatewayBalanceResponse payoutBalance = payoutGateway.getBalance();
+        if (payoutBalance.getBalance().compareTo(withdrawal.getAmount()) < 0) {
+            throw new AppException(ErrorCode.INSUFFICIENT_PAYOUT_BALANCE);
+        }
+
+        PayoutGatewayCreateResponse payoutResponse = payoutGateway.createPayout(
+                buildPayoutCreateRequest(withdrawal, transferReference)
+        );
+        if (hasImmediatePayoutFailure(payoutResponse.getStatus())) {
+            throw new AppException(ErrorCode.PAYOUT_CREATE_FAILED);
+        }
+
         WithdrawalStatus previousStatus = withdrawal.getStatus();
-        withdrawal.setStatus(WithdrawalStatus.approved);
+        withdrawal.setStatus(WithdrawalStatus.processing);
         withdrawal.setProcessedBy(admin);
         withdrawal.setProcessedAt(Instant.now());
-        withdrawal.setTransferReference(resolveTransferReference(withdrawal, request != null ? request.getTransferReference() : null));
+        withdrawal.setTransferReference(transferReference);
+        withdrawal.setPayosPayoutId(payoutResponse.getPayoutId());
+        withdrawal.setPayosReferenceId(payoutResponse.getReferenceId());
+        withdrawal.setPayosStatus(payoutResponse.getStatus());
+        withdrawal.setPayosCreatedAt(payoutResponse.getCreatedAt());
         withdrawal.setRemark(mergeRemarkSections(
                 withdrawal.getRemark(),
                 "Admin approval note",
@@ -186,16 +216,19 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         WithdrawalRequest updated = withdrawalRequestRepository.save(withdrawal);
 
         auditLogService.publishAuto(
-                AuditAction.withdrawal_approved,
+                AuditAction.withdrawal_processing,
                 AuditTarget.withdrawal_request,
                 updated.getId(),
                 Map.of("status", previousStatus.name()),
                 Map.of(
                         "status", updated.getStatus().name(),
                         "transferReference", updated.getTransferReference(),
+                        "payosPayoutId", firstNonBlank(updated.getPayosPayoutId(), ""),
+                        "payosReferenceId", firstNonBlank(updated.getPayosReferenceId(), ""),
+                        "payosStatus", firstNonBlank(updated.getPayosStatus(), ""),
                         "remark", firstNonBlank(updated.getRemark(), "")
                 ),
-                "Admin approved a withdrawal request without executing payout yet."
+                "Admin created a PayOS payout order and moved the withdrawal into processing."
         );
 
         Wallet wallet = getOrCreateWallet(updated.getUser());
@@ -235,8 +268,16 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Override
     @Transactional
     public WithdrawalDetailResponse completeWithdrawal(UUID requestId, ApproveWithdrawalRequest request, String adminEmail) {
-        // Backward-compatible alias: in phase 1, "complete" means "approve only".
-        return approveWithdrawal(requestId, request, adminEmail);
+        return synchronizeWithdrawalStatus(requestId, adminEmail);
+    }
+
+    @Override
+    @Transactional
+    public WithdrawalDetailResponse synchronizeWithdrawalStatus(UUID requestId, String adminEmail) {
+        WithdrawalRequest updated = withdrawalStatusSynchronizer.synchronize(requestId, adminEmail);
+        Wallet wallet = getOrCreateWallet(updated.getUser());
+        WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
+        return mapToDetailResponse(updated, wallet, metrics);
     }
 
     @Override
@@ -383,6 +424,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .bankAccount(withdrawal.getBankAccount())
                 .accountHolder(withdrawal.getAccountHolder())
                 .transferReference(resolveTransferReference(withdrawal, null))
+                .payosPayoutId(withdrawal.getPayosPayoutId())
+                .payosReferenceId(withdrawal.getPayosReferenceId())
+                .payosStatus(withdrawal.getPayosStatus())
+                .payosCreatedAt(withdrawal.getPayosCreatedAt())
                 .status(withdrawal.getStatus())
                 .processedById(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy().getId() : null)
                 .processedByFullName(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy().getFullName() : null)
@@ -410,6 +455,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .bankAccount(withdrawal.getBankAccount())
                 .accountHolder(withdrawal.getAccountHolder())
                 .transferReference(resolveTransferReference(withdrawal, null))
+                .payosPayoutId(withdrawal.getPayosPayoutId())
+                .payosReferenceId(withdrawal.getPayosReferenceId())
+                .payosStatus(withdrawal.getPayosStatus())
+                .payosCreatedAt(withdrawal.getPayosCreatedAt())
                 .status(withdrawal.getStatus())
                 .processedById(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy().getId() : null)
                 .processedByFullName(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy().getFullName() : null)
@@ -429,6 +478,26 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     private String buildTransferReference(UUID withdrawalId) {
         return "GLWD-" + withdrawalId.toString().replace("-", "").substring(0, 10).toUpperCase(Locale.ROOT);
+    }
+
+    private PayoutGatewayCreateRequest buildPayoutCreateRequest(WithdrawalRequest withdrawal, String transferReference) {
+        return PayoutGatewayCreateRequest.builder()
+                .withdrawalRequestId(withdrawal.getId())
+                .amount(withdrawal.getAmount())
+                .currency(firstNonBlank(withdrawal.getCurrency(), DEFAULT_CURRENCY))
+                .bankName(withdrawal.getBankName())
+                .bankAccount(withdrawal.getBankAccount().replaceAll("\\s+", ""))
+                .accountHolder(withdrawal.getAccountHolder())
+                .toBankBin(resolveBankCodeOrThrow(withdrawal.getBankName()))
+                .categories(PAYOUT_CATEGORY)
+                .transferReference(transferReference)
+                .description(buildPayoutDescription(withdrawal))
+                .build();
+    }
+
+    private String buildPayoutDescription(WithdrawalRequest withdrawal) {
+        String compactId = withdrawal.getId().toString().replace("-", "").substring(0, 8).toUpperCase(Locale.ROOT);
+        return "Withdrawal #" + compactId;
     }
 
     private String buildRemarkSection(String label, String value) {
@@ -496,6 +565,14 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         return null;
     }
 
+    private String resolveBankCodeOrThrow(String bankName) {
+        String bankCode = resolveBankCode(bankName);
+        if (!StringUtils.hasText(bankCode)) {
+            throw new AppException(ErrorCode.PAYOUT_BANK_BIN_NOT_SUPPORTED);
+        }
+        return bankCode;
+    }
+
     private String normalizeBankName(String bankName) {
         String normalized = Normalizer.normalize(bankName == null ? "" : bankName, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "");
@@ -513,6 +590,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
             }
         }
         return null;
+    }
+
+    private boolean hasImmediatePayoutFailure(String status) {
+        return status != null && PAYOUT_IMMEDIATE_FAILURE_STATUSES.contains(status.trim().toUpperCase(Locale.ROOT));
     }
 
     private BigDecimal safeAmount(BigDecimal value) {

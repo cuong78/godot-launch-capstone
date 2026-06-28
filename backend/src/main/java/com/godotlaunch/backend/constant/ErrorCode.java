@@ -82,6 +82,14 @@ public enum ErrorCode {
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "Payment amount does not match the order total."),
     PAYMENT_NOT_CANCELLABLE(HttpStatus.BAD_REQUEST, "This payment can no longer be cancelled."),
     PLATFORM_COMMISSION_RATE_INVALID(HttpStatus.BAD_REQUEST, "Platform commission rate must be between 0 and 100."),
+    PAYOUT_BALANCE_FETCH_FAILED(HttpStatus.BAD_GATEWAY, "Failed to fetch the PayOS payout account balance."),
+    PAYOUT_BALANCE_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "Received an invalid response from the PayOS payout balance API."),
+    INSUFFICIENT_PAYOUT_BALANCE(HttpStatus.BAD_REQUEST, "Insufficient PayOS payout account balance."),
+    PAYOUT_CREATE_FAILED(HttpStatus.BAD_GATEWAY, "Failed to create the PayOS payout order."),
+    PAYOUT_CREATE_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "Received an invalid response from the PayOS payout create API."),
+    PAYOUT_STATUS_FETCH_FAILED(HttpStatus.BAD_GATEWAY, "Failed to fetch the PayOS payout status."),
+    PAYOUT_STATUS_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "Received an invalid response from the PayOS payout status API."),
+    PAYOUT_BANK_BIN_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "Unable to map the withdrawal bank to a supported PayOS BIN."),
     
     // GitHub Linking
     GITHUB_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "GL-4070", "GitHub primary email does not match your registered email."),

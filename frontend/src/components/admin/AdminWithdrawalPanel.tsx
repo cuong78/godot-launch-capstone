@@ -32,11 +32,13 @@ const getStatusMeta = (status: WithdrawalStatus) => {
     case 'pending':
       return { label: 'Pending', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
     case 'approved':
-      return { label: 'Approved', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+      return { label: 'Approved / Waiting Payout', className: 'bg-violet-100 text-violet-700 border border-violet-200' };
     case 'processing':
-      return { label: 'Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
+      return { label: 'Payout Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
     case 'completed':
       return { label: 'Completed', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+    case 'failed':
+      return { label: 'Payout Failed', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'rejected':
       return { label: 'Rejected', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'cancelled':
@@ -141,12 +143,59 @@ export const AdminWithdrawalPanel: React.FC = () => {
         remark: completionRemark.trim() || undefined,
       });
       if (response.success) {
-        await syncAfterAction(response.data, 'Withdrawal đã được approve thành công.');
+        let nextDetail = response.data;
+
+        if (nextDetail?.status === 'processing' && nextDetail.payosPayoutId) {
+          try {
+            const syncResponse = await walletApi.completeWithdrawal(selectedWithdrawal.id);
+            if (syncResponse.success && syncResponse.data) {
+              nextDetail = syncResponse.data;
+            }
+          } catch (syncError) {
+            console.warn('Initial payout sync after approve did not complete immediately.', syncError);
+          }
+        }
+
+        const successText =
+          nextDetail?.status === 'completed'
+            ? 'PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất.'
+            : nextDetail?.status === 'processing'
+              ? 'Payout order đã được tạo. Hãy bấm Sync PayOS Status để cập nhật trạng thái chuyển tiền.'
+              : 'Withdrawal đã được approve thành công.';
+
+        await syncAfterAction(nextDetail, successText);
       } else {
         setDetailError(response.message || 'Không thể approve withdrawal.');
       }
     } catch (err: any) {
       setDetailError(err.response?.data?.message || err.message || 'Không thể approve withdrawal.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleSyncStatus = async () => {
+    if (!selectedWithdrawal) return;
+
+    setIsBusy(true);
+    setDetailError(null);
+    try {
+      const response = await walletApi.completeWithdrawal(selectedWithdrawal.id);
+      if (response.success) {
+        const nextDetail = response.data;
+        const successText =
+          nextDetail?.status === 'completed'
+            ? 'PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất.'
+            : nextDetail?.status === 'failed'
+              ? 'PayOS báo payout thất bại. Wallet không bị trừ.'
+              : 'Đã sync trạng thái payout từ PayOS. Giao dịch vẫn đang được xử lý.';
+
+        await syncAfterAction(nextDetail, successText);
+      } else {
+        setDetailError(response.message || 'Không thể đồng bộ trạng thái payout.');
+      }
+    } catch (err: any) {
+      setDetailError(err.response?.data?.message || err.message || 'Không thể đồng bộ trạng thái payout.');
     } finally {
       setIsBusy(false);
     }
@@ -184,7 +233,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
           <div>
             <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">Withdrawal Queue</h3>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Xử lý hàng đợi rút tiền theo flow phase 1: pending, approve hoặc reject.
+              Tạo payout order, theo dõi PayOS status, rồi chỉ hoàn tất withdrawal khi PayOS xác nhận chuyển tiền thành công.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -212,9 +261,10 @@ export const AdminWithdrawalPanel: React.FC = () => {
           >
             <option value="all">All statuses</option>
             <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="processing">Processing</option>
+            <option value="approved">Approved / Waiting Payout</option>
+            <option value="processing">Payout Processing</option>
             <option value="completed">Completed</option>
+            <option value="failed">Payout Failed</option>
             <option value="rejected">Rejected</option>
             <option value="cancelled">Cancelled</option>
           </select>
@@ -298,6 +348,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
         onRejectRemarkChange={setRejectRemark}
         onClose={closeModal}
         onApprove={handleApprove}
+        onSyncStatus={handleSyncStatus}
         onReject={handleReject}
       />
     </div>

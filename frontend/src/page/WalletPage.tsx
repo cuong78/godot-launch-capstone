@@ -54,11 +54,13 @@ const getStatusMeta = (status: WithdrawalStatus, t: any) => {
     case 'pending':
       return { label: t('wallet:status.pending'), className: 'bg-amber-100 text-amber-700 border border-amber-200' };
     case 'approved':
-      return { label: t('wallet:status.approved'), className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+      return { label: t('wallet:status.approved'), className: 'bg-violet-100 text-violet-700 border border-violet-200' };
     case 'processing':
       return { label: t('wallet:status.processing'), className: 'bg-sky-100 text-sky-700 border border-sky-200' };
     case 'completed':
       return { label: t('wallet:status.completed'), className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+    case 'failed':
+      return { label: t('wallet:status.failed'), className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'rejected':
       return { label: t('wallet:status.rejected'), className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'cancelled':

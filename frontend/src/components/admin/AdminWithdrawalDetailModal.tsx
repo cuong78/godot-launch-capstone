@@ -14,6 +14,7 @@ interface AdminWithdrawalDetailModalProps {
   onRejectRemarkChange: (value: string) => void;
   onClose: () => void;
   onApprove: () => void;
+  onSyncStatus: () => void;
   onReject: () => void;
 }
 
@@ -44,11 +45,13 @@ const getStatusMeta = (status: WithdrawalStatus) => {
     case 'pending':
       return { label: 'Pending', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
     case 'approved':
-      return { label: 'Approved', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+      return { label: 'Approved / Waiting Payout', className: 'bg-violet-100 text-violet-700 border border-violet-200' };
     case 'processing':
-      return { label: 'Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
+      return { label: 'Payout Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
     case 'completed':
       return { label: 'Completed', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+    case 'failed':
+      return { label: 'Payout Failed', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'rejected':
       return { label: 'Rejected', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'cancelled':
@@ -78,6 +81,7 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
   onRejectRemarkChange,
   onClose,
   onApprove,
+  onSyncStatus,
   onReject,
 }) => {
   if (!isOpen || !withdrawal) {
@@ -85,8 +89,9 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
   }
 
   const statusMeta = getStatusMeta(withdrawal.status);
-  const canApprove = withdrawal.status === 'pending' || withdrawal.status === 'processing';
-  const canReject = withdrawal.status === 'pending' || withdrawal.status === 'processing';
+  const canCreatePayout = withdrawal.status === 'pending' || (withdrawal.status === 'approved' && !withdrawal.payosPayoutId);
+  const canSyncStatus = withdrawal.status === 'processing' || (withdrawal.status === 'approved' && !!withdrawal.payosPayoutId);
+  const canReject = withdrawal.status === 'pending' || withdrawal.status === 'approved' || withdrawal.status === 'processing';
   const currency = withdrawal.currency || 'VND';
 
   return (
@@ -237,7 +242,7 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
                 />
               </div>
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                QR được chuẩn bị từ bank info, amount và transfer reference để tương thích payout phase sau. Ở phase 1, approve chưa thực hiện chuyển khoản thật.
+                QR được dựng từ bank info, amount và transfer reference. Sau khi tạo payout order, admin cần sync PayOS status để biết tiền đã chuyển thành công hay vẫn đang xử lý.
               </p>
             </section>
 
@@ -250,7 +255,22 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
                 </div>
               )}
 
-              {canApprove && (
+              {(withdrawal.payosPayoutId || withdrawal.payosStatus) && (
+                <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 text-sm dark:border-slate-800/70 dark:bg-slate-900/60">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">PayOS Payout ID</p>
+                      <p className="mt-1 font-mono text-xs text-slate-800 dark:text-slate-200">{withdrawal.payosPayoutId || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">PayOS Status</p>
+                      <p className="mt-1 font-semibold text-slate-800 dark:text-slate-200">{withdrawal.payosStatus || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {canCreatePayout && (
                 <div className="mt-4">
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                     Approval Note
@@ -291,9 +311,14 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
               )}
 
               <div className="mt-6 flex flex-wrap gap-3">
-                {canApprove && (
+                {canCreatePayout && (
                   <Button variant="primary" size="sm" onClick={onApprove} disabled={isBusy}>
-                    Approve Withdrawal
+                    Create Payout Order
+                  </Button>
+                )}
+                {canSyncStatus && (
+                  <Button variant="secondary-flat" size="sm" onClick={onSyncStatus} disabled={isBusy}>
+                    Sync PayOS Status
                   </Button>
                 )}
                 {canReject && (
@@ -301,7 +326,7 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
                     Reject Request
                   </Button>
                 )}
-                {!canApprove && !canReject && (
+                {!canCreatePayout && !canSyncStatus && !canReject && (
                   <span className="text-sm text-slate-500 dark:text-slate-400">Withdrawal này đã ở trạng thái cuối và không thể chỉnh sửa thêm.</span>
                 )}
               </div>

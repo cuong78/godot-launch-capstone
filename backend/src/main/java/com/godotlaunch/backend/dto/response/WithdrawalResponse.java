@@ -28,6 +28,10 @@ public class WithdrawalResponse {
     private String bankAccount;
     private String accountHolder;
     private String transferReference;
+    private String payosPayoutId;
+    private String payosReferenceId;
+    private String payosStatus;
+    private String payosCreatedAt;
     private WithdrawalStatus status;
     private UUID processedById;
     private String processedByFullName;

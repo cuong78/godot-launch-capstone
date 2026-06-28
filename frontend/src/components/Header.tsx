@@ -6,7 +6,6 @@ import {
   Sun,
   Moon,
   Compass,
-  ChevronDown,
   ArrowUpRight,
   ShoppingCart,
   ShoppingBag,
@@ -418,23 +417,19 @@ export function Header({
               )}
               onClick={() => {
                 clearDesktopMenuCloseTimeout();
-                setOpenDesktopMenu((current) =>
-                  current === "discover" ? null : "discover",
-                );
+                setOpenDesktopMenu(null);
+                setCurrentScreen("explore");
+                setSearchText("");
               }}
               aria-expanded={openDesktopMenu === "discover"}
               aria-haspopup="true"
             >
-              {t("discover_menu")}
-              <ChevronDown
-                size={14}
-                className={`transition-transform ${openDesktopMenu === "discover" ? "rotate-180" : ""}`}
-              />
+              {t("explore")}
             </button>
 
             {renderDesktopMenuPanel(
               "discover",
-              t("discover_menu"),
+              t("explore"),
               t("discover_menu_subtitle"),
               discoverMenuItems,
             )}
@@ -461,10 +456,6 @@ export function Header({
               aria-haspopup="true"
             >
               {t("creator_hub")}
-              <ChevronDown
-                size={14}
-                className={`transition-transform ${openDesktopMenu === "creator" ? "rotate-180" : ""}`}
-              />
             </button>
 
             {renderDesktopMenuPanel(
@@ -497,10 +488,6 @@ export function Header({
                 aria-haspopup="true"
               >
                 {t("workspace_hub")}
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform ${openDesktopMenu === "workspace" ? "rotate-180" : ""}`}
-                />
               </button>
 
               {renderDesktopMenuPanel(
