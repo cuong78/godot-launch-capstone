@@ -228,6 +228,10 @@ def process_source(req: SourceProcessRequest):
 def _url_to_b64(url: str) -> Optional[str]:
     """Tải ảnh từ URL → base64. None nếu lỗi (fail-soft, không crash review)."""
     try:
+        if "localhost" in url:
+            url = url.replace("localhost", "host.docker.internal")
+        elif "127.0.0.1" in url:
+            url = url.replace("127.0.0.1", "host.docker.internal")
         r = _requests.get(url, timeout=30)
         r.raise_for_status()
         if len(r.content) > 15 * 1024 * 1024:  # bỏ ảnh > 15MB

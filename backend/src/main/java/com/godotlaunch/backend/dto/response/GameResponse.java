@@ -33,4 +33,7 @@ public class GameResponse {
     private String fileUrl;
     private String githubRepoUrl;
     private String githubBranch;
+    private java.time.Instant createdAt;
+    private java.time.Instant updatedAt;
 }
+

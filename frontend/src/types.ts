@@ -391,6 +391,8 @@ export interface GameResponse {
   screenshots?: string[];
   videoUrl?: string;
   fileUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ContractResponse {
@@ -486,6 +488,7 @@ export interface MarketplaceItemResponse {
   githubRepoUrl?: string;
   githubVerifiedAt?: string;
   status: "active" | "removed" | "pending" | "rejected";
+  mediaUrls?: string[];
   createdAt?: string;
   updatedAt?: string;
 }

@@ -13,6 +13,7 @@ export interface ContractRequestDto {
   sellerRepresentative?: string;
   sellerAddress?: string;
   sellerTaxCode?: string;
+  buyerSignatureBase64?: string;
 }
 
 export const contractApi = {

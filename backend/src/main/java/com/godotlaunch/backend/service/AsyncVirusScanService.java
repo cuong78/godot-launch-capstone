@@ -186,7 +186,7 @@ public class AsyncVirusScanService {
 
         // Marketplace virus scan giờ CHỈ cho asset (source_code dùng repo, scan ở Python).
         // FileType để StorageRouter resolve đúng provider (S3 / SeaweedFS) — khớp lúc upload.
-        FileType fileType = FileType.asset_media;
+        FileType fileType = FileType.source_bundle;
 
         Path tempDir = null;
         try {

@@ -88,6 +88,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   // Tab control: 'my-games' | 'marketplace-items' | 'git-repos' | 'payment-center'
   const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'git-repos' | 'payment-center'>('my-games');
 
+  // Game & Asset status filters
+  const [gameStatusFilter, setGameStatusFilter] = useState<string>('all');
+  const [assetStatusFilter, setAssetStatusFilter] = useState<string>('all');
+
   // Real Game list state
   const [myGames, setMyGames] = useState<GameResponse[]>([]);
   const [isLoadingGames, setIsLoadingGames] = useState<boolean>(false);
@@ -213,7 +217,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         sellerTaxCode
       );
       if (response.success) {
-        alert('Ký hợp đồng thành công! Đang chờ Admin ký đối ứng để hoàn tất.');
+        alert('Ký hợp đồng thành công! Hợp đồng đã hoàn tất và trò chơi đã được phê duyệt xuất bản.');
         setIsSignModalOpen(false);
         fetchMyGames();
         fetchMyContracts();
@@ -232,6 +236,71 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     fetchMyMarketplaceItems();
     fetchMyContracts();
   }, [currentUser]);
+
+  const gameFilterOptions = [
+    { label: 'Tất cả', value: 'all' },
+    { label: 'Đã xuất bản / Hoàn tất', value: 'published_signed' },
+    { label: 'Chờ ký / Chờ duyệt', value: 'pending_signing' },
+    { label: 'Thương lượng', value: 'negotiating' },
+    { label: 'Bị từ chối', value: 'rejected' },
+    { label: 'Bản nháp', value: 'draft' }
+  ];
+
+  const assetFilterOptions = [
+    { label: 'Tất cả', value: 'all' },
+    { label: 'Đang bán', value: 'active' },
+    { label: 'Chờ duyệt', value: 'pending' },
+    { label: 'Bị từ chối', value: 'rejected' },
+    { label: 'Gỡ bỏ', value: 'removed' }
+  ];
+
+  const filteredGames = myGames
+    .filter(game => {
+      if (gameStatusFilter === 'all') return true;
+
+      const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+
+      if (gameStatusFilter === 'published_signed') {
+        if (contract) return contract.status === 'signed';
+        return game.status?.toLowerCase() === 'published';
+      }
+
+      if (gameStatusFilter === 'pending_signing') {
+        if (contract) return contract.status === 'pending' || contract.status === 're_issued';
+        return game.status?.toLowerCase() === 'pending';
+      }
+
+      if (gameStatusFilter === 'negotiating') {
+        if (contract) return contract.status === 'negotiating';
+        return false;
+      }
+
+      if (gameStatusFilter === 'rejected') {
+        return game.status?.toLowerCase() === 'rejected';
+      }
+
+      if (gameStatusFilter === 'draft') {
+        return game.status?.toLowerCase() === 'draft';
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+
+  const filteredMarketplaceItems = myMarketplaceItems
+    .filter(item => {
+      if (assetStatusFilter === 'all') return true;
+      return item.status === assetStatusFilter;
+    })
+    .sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
 
   return (
     <>
@@ -341,6 +410,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {/* Tab 1: Developer's Real Uploaded Games */}
           {activeTab === 'my-games' && (
             <div className="space-y-4">
+              {/* Game Status Filter Chips */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Trạng thái game:
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {gameFilterOptions.map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setGameStatusFilter(option.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 cursor-pointer ${
+                        gameStatusFilter === option.value
+                          ? 'bg-sky-500/10 text-sky-500 border-sky-500/30 font-semibold'
+                          : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {isLoadingGames ? (
                 <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
                   <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách game...
@@ -363,8 +454,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
-                      {myGames.length > 0 ? (
-                        myGames.map(game => (
+                      {filteredGames.length > 0 ? (
+                        filteredGames.map(game => (
                           <React.Fragment key={game.id}>
                             <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? 'bg-slate-50/50 dark:bg-slate-950/20' : ''}`}>
                               <td className="p-3 w-10 text-center">
@@ -680,7 +771,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       ) : (
                         <tr>
                           <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20">
-                            Bạn chưa đăng tải game hoặc tài nguyên nào. Nhấn "Deploy Asset" ở trên để bắt đầu!
+                            {myGames.length === 0
+                              ? 'Bạn chưa đăng tải game hoặc tài nguyên nào. Nhấn "Deploy Asset" ở trên để bắt đầu!'
+                              : 'Không tìm thấy game nào có trạng thái đã chọn.'}
                           </td>
                         </tr>
                       )}
@@ -694,6 +787,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {/* Tab 2: Developer's Real Marketplace Items */}
           {activeTab === 'marketplace-items' && (
             <div className="space-y-4">
+              {/* Asset Status Filter Chips */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Trạng thái tài nguyên:
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {assetFilterOptions.map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setAssetStatusFilter(option.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 cursor-pointer ${
+                        assetStatusFilter === option.value
+                          ? 'bg-sky-500/10 text-sky-500 border-sky-500/30 font-semibold'
+                          : 'bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {isLoadingMarketplace ? (
                 <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
                   <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách tài nguyên...
@@ -716,8 +831,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
-                      {myMarketplaceItems.length > 0 ? (
-                        myMarketplaceItems.map(item => (
+                      {filteredMarketplaceItems.length > 0 ? (
+                        filteredMarketplaceItems.map(item => (
                           <tr key={item.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
                             <td className="p-3">
                               <div className="font-semibold text-slate-800 dark:text-slate-100">
@@ -763,7 +878,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       ) : (
                         <tr>
                           <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20">
-                            Bạn chưa đăng bán sản phẩm nào trên Creator Marketplace. Nhấn "Deploy Asset" ở trên để bắt đầu!
+                            {myMarketplaceItems.length === 0
+                              ? 'Bạn chưa đăng bán sản phẩm nào trên Creator Marketplace. Nhấn "Deploy Asset" ở trên để bắt đầu!'
+                              : 'Không tìm thấy tài nguyên nào có trạng thái đã chọn.'}
                           </td>
                         </tr>
                       )}

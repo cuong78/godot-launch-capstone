@@ -1153,28 +1153,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           </div>
                                         </div>
                                         
-                                        <div className="space-y-1.5">
-                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Mô tả chi tiết</h4>
-                                          <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                            {game.description || "Không có mô tả chi tiết từ developer."}
-                                          </p>
-                                        </div>
-                                        
-                                        {game.fileUrl ? (
-                                          <a 
-                                            href={game.fileUrl} 
-                                            download 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98]"
-                                          >
-                                            <Download size={14} /> Download Game Package (ZIP)
-                                          </a>
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                            <FileText size={12} className="text-amber-500" /> Mô tả chi tiết
+                                          </h4>
+                                          <div className="bg-slate-50/50 dark:bg-slate-955/20 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/80 shadow-inner">
+                                            {!game.description ? (
+                                              <div className="flex flex-col items-center justify-center py-4 text-slate-400 dark:text-slate-600 italic gap-1">
+                                                <FileText size={18} className="stroke-[1.5]" />
+                                                <span className="text-xs">Không có mô tả chi tiết từ developer.</span>
+                                              </div>
                                             ) : (
-                                          <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                                            Không tìm thấy tệp game ZIP để tải về
+                                              <p className="text-xs leading-relaxed max-h-36 overflow-y-auto whitespace-pre-wrap text-slate-600 dark:text-slate-300 pr-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                                                {game.description}
+                                              </p>
+                                            )}
                                           </div>
-                                        )}
+                                        </div>
                                       </div>
 
                                       {/* Middle & Right Column: Screenshots & Video */}

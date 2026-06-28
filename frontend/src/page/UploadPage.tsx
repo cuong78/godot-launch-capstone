@@ -375,7 +375,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     setUploadError(null);
 
     try {
-      if (publishProgram === "marketplace") {
+      if (publishProgram === "marketplace" && fileType === "game") {
         // Marketplace: upload proxy 1 bước qua backend → StorageRouter (S3 / SeaweedFS)
         const res = await marketplaceApi.uploadItemFile(
           gameId,
@@ -411,15 +411,24 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         const objectKey = extractObjectKey(uploadUrl);
         await gameApi.confirmUploadComplete(gameId, fileType, objectKey);
       } else {
-        // Game media (thumbnail/screenshot/video): proxy qua backend → StorageRouter (S3/SeaweedFS)
-        const res = await gameApi.uploadMedia(
-          gameId,
-          fileType,
-          file,
-          (percent) => {
-            setUploadProgress((prev) => ({ ...prev, [key]: percent }));
-          },
-        );
+        // Game / Marketplace media (thumbnail/screenshot/video): proxy qua backend → StorageRouter (S3/SeaweedFS)
+        const res = publishProgram === "marketplace"
+          ? await marketplaceApi.uploadMedia(
+              gameId,
+              fileType,
+              file,
+              (percent) => {
+                setUploadProgress((prev) => ({ ...prev, [key]: percent }));
+              },
+            )
+          : await gameApi.uploadMedia(
+              gameId,
+              fileType,
+              file,
+              (percent) => {
+                setUploadProgress((prev) => ({ ...prev, [key]: percent }));
+              },
+            );
         if (!res.success) {
           throw new Error(res.message || "Upload failed");
         }

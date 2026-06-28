@@ -30,4 +30,6 @@ public class ContractRequest {
     private String sellerAddress;
 
     private String sellerTaxCode;
+
+    private String buyerSignatureBase64;
 }
