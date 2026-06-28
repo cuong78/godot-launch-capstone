@@ -14,6 +14,7 @@ html {
 
 body {
   font-family: var(--font-sans);
+  line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -39,6 +40,10 @@ select {
 
 :where(h1, h2, h3, h4).font-display {
   letter-spacing: -0.035em;
+}
+
+:where(p, li, label, dd, dt) {
+  line-height: 1.55;
 }
 
 :where(button, [role="button"], a[role="button"]) {

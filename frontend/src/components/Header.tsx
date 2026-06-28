@@ -86,10 +86,10 @@ export function Header({
   const desktopMenuCloseTimeoutRef = React.useRef<number | null>(null);
   const { t } = useTranslation("common");
   const desktopSearchClassName = currentUser
-    ? "hidden md:flex shrink-0 w-[220px] xl:w-[280px] 2xl:w-[340px] relative"
-    : "hidden md:flex shrink-0 w-[260px] lg:w-[320px] xl:w-[380px] relative";
+    ? "hidden md:flex shrink-0 w-[210px] xl:w-[260px] 2xl:w-[320px] relative"
+    : "hidden md:flex shrink-0 w-[250px] lg:w-[310px] xl:w-[360px] relative";
   const navGroupButtonClassName = (isActive: boolean, isOpen: boolean) =>
-    `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 xl:px-3.5 py-2 text-xs xl:text-sm font-semibold rounded-lg transition-studio ${
+    `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 xl:px-3 py-1.5 text-sm font-medium rounded-lg transition-studio ${
       isActive || isOpen
         ? "bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400"
         : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white"
@@ -294,12 +294,12 @@ export function Header({
         onMouseEnter={clearDesktopMenuCloseTimeout}
         onMouseLeave={() => scheduleDesktopMenuClose(menu)}
       >
-        <div className="w-[min(92vw,21rem)] overflow-hidden rounded-[22px] border border-slate-700/80 bg-slate-800/96 p-2 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.78)] backdrop-blur-xl dark:border-slate-700/90 dark:bg-slate-850/96">
-          <div className="border-b border-slate-700/70 px-3 pb-2.5 pt-1.5">
-            <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-slate-400">
+        <div className="w-[min(92vw,20rem)] overflow-hidden rounded-[20px] border border-slate-700/80 bg-slate-800/96 p-2 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.78)] backdrop-blur-xl dark:border-slate-700/90 dark:bg-slate-850/96">
+          <div className="border-b border-slate-700/70 px-3 pb-2 pt-1.5">
+            <p className="text-[9px] font-mono uppercase tracking-[0.18em] text-slate-400">
               {title}
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
               {subtitle}
             </p>
           </div>
@@ -311,22 +311,22 @@ export function Header({
                 type="button"
                 onClick={item.onClick}
                 title={item.description}
-                className={`group flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-studio ${
+                className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-studio ${
                   item.isActive
                     ? "bg-slate-700/80 text-white shadow-[inset_0_0_0_1px_rgba(251,191,36,0.16)]"
                     : "text-slate-100 hover:bg-slate-700/72 hover:text-white"
                 }`}
               >
                 <span
-                  className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${item.iconClassName}`}
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${item.iconClassName}`}
                 >
                   {item.icon}
                 </span>
-                <span className="min-w-0 flex-1 font-display text-[15px] font-semibold tracking-tight">
+                <span className="min-w-0 flex-1 font-display text-sm font-semibold tracking-tight">
                   {item.title}
                 </span>
                 <ArrowUpRight
-                  size={15}
+                  size={14}
                   className={`shrink-0 transition-transform duration-300 ${
                     item.isActive
                       ? "text-amber-400"
@@ -346,7 +346,7 @@ export function Header({
       id="godotlaunch-navbar"
       className="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 z-40 transition-colors duration-200 shadow-sm"
     >
-      <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4 xl:gap-6">
+      <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3 xl:gap-5">
         {/* Logo & Small Engine version brand tag */}
         <div
           className="flex shrink-0 items-center gap-2 cursor-pointer"
@@ -356,17 +356,17 @@ export function Header({
             setSearchText("");
           }}
         >
-          <div className="w-9 h-9 rounded-xl bg-amber-400 flex items-center justify-center font-display shadow-[0_3px_0_0_#9a7d00] transition-transform active:scale-95">
-            <Play size={18} className="text-slate-900 fill-slate-900 ml-0.5" />
+          <div className="w-8 h-8 rounded-lg bg-amber-400 flex items-center justify-center font-display shadow-[0_3px_0_0_#9a7d00] transition-transform active:scale-95">
+            <Play size={16} className="text-slate-900 fill-slate-900 ml-0.5" />
           </div>
           <div>
-            <span className="font-display font-bold text-lg text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5 leading-none">
+            <span className="font-display font-bold text-xl text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5 leading-none">
               godotlaunch{" "}
-              <span className="bg-amber-400/20 text-amber-500 text-[10px] uppercase font-bold py-0.5 px-1.5 rounded border border-amber-500/30 font-mono">
+              <span className="bg-amber-400/20 text-amber-500 text-[9px] uppercase font-bold py-0.5 px-1.5 rounded border border-amber-500/30 font-mono">
                 v4
               </span>
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono tracking-wider">
+            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-mono tracking-[0.18em]">
               CREATORS MATRIX
             </span>
           </div>
@@ -375,7 +375,7 @@ export function Header({
         {/* Combined Quick Search input bar */}
         <div className={desktopSearchClassName}>
           <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-            <Search size={16} />
+            <Search size={15} />
           </span>
           <input
             type="text"
@@ -398,7 +398,7 @@ export function Header({
               onClick={() => setSearchText("")}
               className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-amber-400"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           )}
         </div>
@@ -514,17 +514,17 @@ export function Header({
         </nav>
 
         {/* Utility Action tools: Dark Mode, Cart Badge dropdown trigger, Publish Button */}
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <LanguageSwitcher className="hidden shrink-0 md:block" />
 
           {/* Dark mode custom click toggle */}
           <button
             id="theme-toggler"
             onClick={() => setDarkMode(!darkMode)}
-            className="shrink-0 p-2 text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-amber-400 transition-studio rounded-lg bg-slate-100/80 dark:bg-slate-950 border border-transparent dark:border-slate-850"
+            className="shrink-0 rounded-lg border border-transparent bg-slate-100/80 p-1.5 text-slate-500 transition-studio hover:text-slate-850 dark:border-slate-850 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-amber-400"
             title="Toggle theme mode"
           >
-            {darkMode ? <Sun size={17} /> : <Moon size={17} />}
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
           {/* Shopping Cart Trigger */}
@@ -536,12 +536,12 @@ export function Header({
                 setIsCartOpen(!isCartOpen);
                 setIsProfileOpen(false);
               }}
-              className="shrink-0 p-2 text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-amber-400 transition-studio rounded-lg bg-slate-100/80 dark:bg-slate-950 border border-transparent dark:border-slate-850 relative"
+              className="relative shrink-0 rounded-lg border border-transparent bg-slate-100/80 p-1.5 text-slate-500 transition-studio hover:text-slate-850 dark:border-slate-850 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-amber-400"
               title="View cart items"
             >
-              <ShoppingCart size={17} />
+              <ShoppingCart size={18} />
               {cart.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-sky-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-bounce">
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white animate-bounce">
                   {cart.length}
                 </span>
               )}
@@ -557,7 +557,7 @@ export function Header({
                 <div className="absolute right-0 mt-2.5 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-xl z-50 p-4 transition-colors duration-200">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2.5">
                     <span className="font-display font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 animate-pulse">
-                      <ShoppingBag size={15} /> {t("shopping_cart")}
+                      <ShoppingBag size={14} /> {t("shopping_cart")}
                     </span>
                     <button
                       onClick={() => setIsCartOpen(false)}
@@ -582,7 +582,7 @@ export function Header({
                               className="w-10 h-10 object-cover rounded border border-slate-100 dark:border-slate-800"
                             />
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold text-slate-800 dark:text-white truncate max-w-[140px]">
+                              <p className="text-sm font-semibold text-slate-800 dark:text-white truncate max-w-[140px]">
                                 {item.title}
                               </p>
                               <p className="text-[10px] text-slate-400">
@@ -591,7 +591,7 @@ export function Header({
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono font-bold dark:text-amber-400">
+                            <span className="text-sm font-mono font-bold dark:text-amber-400">
                               {item.price === 0
                                 ? "Free"
                                 : `$${item.price.toFixed(2)}`}
@@ -605,9 +605,9 @@ export function Header({
                           </div>
                         </div>
                       ))}
-                      <div className="flex items-center justify-between font-display font-semibold text-xs text-slate-800 dark:text-slate-200 pt-1">
+                      <div className="flex items-center justify-between font-display font-semibold text-sm text-slate-800 dark:text-slate-200 pt-1">
                         <span>Total Checkout Value:</span>
-                        <span className="text-sm font-mono font-bold text-sky-600 dark:text-amber-400">
+                        <span className="text-base font-mono font-bold text-sky-600 dark:text-amber-400">
                           $
                           {cart
                             .reduce((sum, item) => sum + item.price, 0)
@@ -616,7 +616,7 @@ export function Header({
                       </div>
                       <button
                         onClick={handleCheckout}
-                        className="w-full mt-2 py-2 px-4 bg-sky-500 hover:bg-sky-400 text-white font-display text-xs font-bold rounded-lg shadow-[0_4px_0_0_#025272] hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none transition-studio text-center"
+                        className="mt-2 w-full rounded-lg bg-sky-500 px-4 py-2 text-center font-display text-sm font-bold text-white shadow-[0_4px_0_0_#025272] transition-studio hover:translate-y-[1px] hover:bg-sky-400 active:translate-y-[3px] active:shadow-none"
                       >
                         {t("proceed_to_checkout")}
                       </button>
@@ -629,7 +629,7 @@ export function Header({
                           setCurrentScreen("marketplace");
                           setIsCartOpen(false);
                         }}
-                        className="text-xs text-amber-500 hover:underline mt-1 font-semibold"
+                        className="mt-1 text-sm font-semibold text-amber-500 hover:underline"
                       >
                         {t("browse_packages")}
                       </button>
@@ -673,10 +673,10 @@ export function Header({
                         onClick={() => setIsProfileOpen(false)}
                       />
                       <div className="absolute right-0 mt-2.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-xl p-3 z-50">
-                        <p className="text-xs font-bold text-slate-850 dark:text-white truncate">
+                        <p className="text-sm font-semibold text-slate-850 dark:text-white truncate">
                           {currentUser.username}
                         </p>
-                        <p className="text-[10px] text-slate-455 dark:text-slate-400 truncate mb-2">
+                        <p className="mb-2 text-xs text-slate-455 dark:text-slate-400 truncate">
                           {currentUser.email}
                         </p>
                         <div className="border-t border-slate-100 dark:border-slate-800 my-1.5" />
@@ -686,7 +686,7 @@ export function Header({
                             setCurrentScreen("profile");
                             window.scrollTo({ top: 0, behavior: "smooth" });
                           }}
-                          className="w-full text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-amber-500 dark:hover:text-amber-400 py-1.5 transition-colors cursor-pointer"
+                          className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-slate-700 transition-colors hover:text-amber-500 dark:text-slate-200 dark:hover:text-amber-400"
                         >
                           {t("my_profile")}
                         </button>
@@ -697,7 +697,7 @@ export function Header({
                             setCurrentScreen("chat");
                             window.scrollTo({ top: 0, behavior: "smooth" });
                           }}
-                          className="w-full text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-amber-500 dark:hover:text-amber-400 py-1.5 transition-colors cursor-pointer"
+                          className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-slate-700 transition-colors hover:text-amber-500 dark:text-slate-200 dark:hover:text-amber-400"
                         >
                           {t("direct_chat")}
                         </button>
@@ -709,7 +709,7 @@ export function Header({
                             setCurrentScreen("explore");
                             window.scrollTo({ top: 0, behavior: "smooth" });
                           }}
-                          className="w-full text-left text-xs font-semibold text-rose-500 hover:text-rose-650 dark:hover:text-rose-400 py-1 transition-colors cursor-pointer"
+                          className="w-full cursor-pointer py-1 text-left text-sm font-medium text-rose-500 transition-colors hover:text-rose-650 dark:hover:text-rose-400"
                         >
                           {t("sign_out")}
                         </button>
@@ -723,7 +723,7 @@ export function Header({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="shrink-0 whitespace-nowrap"
+                  className="shrink-0 whitespace-nowrap !text-sm"
                   onClick={() => {
                     setCurrentScreen("signin");
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -734,7 +734,7 @@ export function Header({
                 <Button
                   variant="primary"
                   size="sm"
-                  className="shrink-0 whitespace-nowrap"
+                  className="shrink-0 whitespace-nowrap !text-sm"
                   onClick={() => {
                     setCurrentScreen("signup");
                     window.scrollTo({ top: 0, behavior: "smooth" });

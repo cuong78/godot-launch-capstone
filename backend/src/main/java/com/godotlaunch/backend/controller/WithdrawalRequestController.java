@@ -30,7 +30,7 @@ public class WithdrawalRequestController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @Operation(summary = "Submit a withdrawal request", description = "Submits a request to withdraw funds from the user's wallet. Wallet balance will be immediately deducted.")
+    @Operation(summary = "Submit a withdrawal request", description = "Submits a request to withdraw funds from the user's wallet. The request reserves available balance but does not transfer or deduct funds yet.")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> createWithdrawal(
             @Valid @RequestBody CreateWithdrawalRequest request,
@@ -71,7 +71,7 @@ public class WithdrawalRequestController {
 
     @PostMapping("/admin/{id}/review")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    @Operation(summary = "Review a withdrawal request (Admin)", description = "Approves or rejects a pending withdrawal request. If rejected, funds are refunded to the user's wallet balance. Requires ADMIN role.")
+    @Operation(summary = "Review a withdrawal request (Admin)", description = "Approves or rejects a withdrawal request. Approval does not execute payout or deduct wallet funds yet. Requires ADMIN role.")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> reviewWithdrawal(
             @PathVariable UUID id,

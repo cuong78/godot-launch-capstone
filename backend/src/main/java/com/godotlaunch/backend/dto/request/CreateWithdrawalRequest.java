@@ -28,4 +28,6 @@ public class CreateWithdrawalRequest {
 
     @NotBlank(message = "Account holder is required")
     private String accountHolder;
+
+    private String note;
 }

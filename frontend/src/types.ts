@@ -88,7 +88,7 @@ export interface WalletResponse {
   updatedAt?: string | null;
 }
 
-export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'rejected' | 'cancelled';
+export type WithdrawalStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'rejected' | 'cancelled';
 
 export interface DeveloperWalletSummaryResponse {
   walletId: string;
@@ -150,6 +150,7 @@ export interface CreateWithdrawalRequest {
   bankName: string;
   bankAccount: string;
   accountHolder: string;
+  note?: string;
 }
 
 export interface ApproveWithdrawalRequest {

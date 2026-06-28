@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Clock3, Landmark, ReceiptText, RefreshCw, TrendingUp, Wallet2 } from 'lucide-react';
 import { Button } from '../components/Button';
-import { Input } from '../components/Input';
+import { Input, TextArea } from '../components/Input';
 import { walletApi } from '../api/walletApi';
 import {
   CreateWithdrawalRequest,
@@ -53,6 +53,8 @@ const getStatusMeta = (status: WithdrawalStatus, t: any) => {
   switch (status) {
     case 'pending':
       return { label: t('wallet:status.pending'), className: 'bg-amber-100 text-amber-700 border border-amber-200' };
+    case 'approved':
+      return { label: t('wallet:status.approved'), className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
     case 'processing':
       return { label: t('wallet:status.processing'), className: 'bg-sky-100 text-sky-700 border border-sky-200' };
     case 'completed':
@@ -76,6 +78,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [accountHolder, setAccountHolder] = useState('');
+  const [note, setNote] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,6 +153,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
       bankName: bankName.trim(),
       bankAccount: bankAccount.trim(),
       accountHolder: accountHolder.trim(),
+      note: note.trim() || undefined,
     };
 
     if (!payload.bankName || !payload.bankAccount || !payload.accountHolder) {
@@ -170,6 +174,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
         setBankName('');
         setBankAccount('');
         setAccountHolder('');
+        setNote('');
         await Promise.all([loadWalletSummary(), loadWithdrawals()]);
       } else {
         setFormError(response.message || t('wallet:messages.submitFailed'));
@@ -465,6 +470,13 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
                 required
+              />
+              <TextArea
+                label={t('wallet:form.noteLabel')}
+                placeholder={t('wallet:form.notePlaceholder')}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={4}
               />
               <Button type="submit" variant="primary" size="md" className="w-full" disabled={isSubmitting || isLoadingSummary}>
                 {isSubmitting ? t('wallet:form.submitting') : t('wallet:form.submit')}

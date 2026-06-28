@@ -8,7 +8,6 @@ import com.godotlaunch.backend.dto.request.ReviewWithdrawalRequest;
 import com.godotlaunch.backend.dto.response.DeveloperWalletSummaryResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalDetailResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalResponse;
-import com.godotlaunch.backend.entity.Transaction;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.WithdrawalRequest;
@@ -53,7 +52,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private static final String DEFAULT_CURRENCY = "VND";
     private static final Set<WithdrawalStatus> RESERVED_STATUSES = EnumSet.of(
             WithdrawalStatus.pending,
-            WithdrawalStatus.processing
+            WithdrawalStatus.processing,
+            WithdrawalStatus.approved
     );
     private static final Set<TxnType> REVENUE_TXN_TYPES = EnumSet.of(
             TxnType.source_code_purchase,
@@ -97,6 +97,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         withdrawal.setBankAccount(request.getBankAccount().trim());
         withdrawal.setAccountHolder(request.getAccountHolder().trim());
         withdrawal.setStatus(WithdrawalStatus.pending);
+        withdrawal.setRemark(buildRemarkSection("Developer note", request.getNote()));
 
         WithdrawalRequest saved = withdrawalRequestRepository.save(withdrawal);
         saved.setTransferReference(buildTransferReference(saved.getId()));
@@ -163,6 +164,47 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     @Override
     @Transactional
+    public WithdrawalDetailResponse approveWithdrawal(UUID requestId, ApproveWithdrawalRequest request, String adminEmail) {
+        User admin = getUserByEmail(adminEmail);
+        WithdrawalRequest withdrawal = getWithdrawalForUpdate(requestId);
+
+        if (withdrawal.getStatus() != WithdrawalStatus.pending && withdrawal.getStatus() != WithdrawalStatus.processing) {
+            throw new AppException(ErrorCode.INVALID_WITHDRAWAL_STATUS);
+        }
+
+        WithdrawalStatus previousStatus = withdrawal.getStatus();
+        withdrawal.setStatus(WithdrawalStatus.approved);
+        withdrawal.setProcessedBy(admin);
+        withdrawal.setProcessedAt(Instant.now());
+        withdrawal.setTransferReference(resolveTransferReference(withdrawal, request != null ? request.getTransferReference() : null));
+        withdrawal.setRemark(mergeRemarkSections(
+                withdrawal.getRemark(),
+                "Admin approval note",
+                request != null ? request.getRemark() : null
+        ));
+
+        WithdrawalRequest updated = withdrawalRequestRepository.save(withdrawal);
+
+        auditLogService.publishAuto(
+                AuditAction.withdrawal_approved,
+                AuditTarget.withdrawal_request,
+                updated.getId(),
+                Map.of("status", previousStatus.name()),
+                Map.of(
+                        "status", updated.getStatus().name(),
+                        "transferReference", updated.getTransferReference(),
+                        "remark", firstNonBlank(updated.getRemark(), "")
+                ),
+                "Admin approved a withdrawal request without executing payout yet."
+        );
+
+        Wallet wallet = getOrCreateWallet(updated.getUser());
+        WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
+        return mapToDetailResponse(updated, wallet, metrics);
+    }
+
+    @Override
+    @Transactional
     public WithdrawalDetailResponse markWithdrawalProcessing(UUID requestId, String adminEmail) {
         User admin = getUserByEmail(adminEmail);
         WithdrawalRequest withdrawal = getWithdrawalForUpdate(requestId);
@@ -193,74 +235,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Override
     @Transactional
     public WithdrawalDetailResponse completeWithdrawal(UUID requestId, ApproveWithdrawalRequest request, String adminEmail) {
-        User admin = getUserByEmail(adminEmail);
-        WithdrawalRequest withdrawal = getWithdrawalForUpdate(requestId);
-
-        if (withdrawal.getStatus() == WithdrawalStatus.pending) {
-            withdrawal.setStatus(WithdrawalStatus.processing);
-            withdrawal.setProcessedBy(admin);
-            auditLogService.publishAuto(
-                    AuditAction.withdrawal_processing,
-                    AuditTarget.withdrawal_request,
-                    withdrawal.getId(),
-                    Map.of("status", WithdrawalStatus.pending.name()),
-                    Map.of("status", WithdrawalStatus.processing.name()),
-                    "Admin marked withdrawal as processing while completing."
-            );
-        }
-
-        if (withdrawal.getStatus() != WithdrawalStatus.processing) {
-            throw new AppException(ErrorCode.INVALID_WITHDRAWAL_STATUS);
-        }
-
-        Wallet wallet = getOrCreateLockedWallet(withdrawal.getUser());
-        if (wallet.getBalance().compareTo(withdrawal.getAmount()) < 0) {
-            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-
-        String transferReference = resolveTransferReference(withdrawal, request != null ? request.getTransferReference() : null);
-
-        wallet.setBalance(wallet.getBalance().subtract(withdrawal.getAmount()));
-        walletRepository.save(wallet);
-
-        Transaction transaction = new Transaction();
-        transaction.setWallet(wallet);
-        transaction.setRelatedUser(admin);
-        transaction.setGame(null);
-        transaction.setAmount(withdrawal.getAmount().negate());
-        transaction.setPlatformCommission(BigDecimal.ZERO);
-        transaction.setNetAmount(withdrawal.getAmount().negate());
-        transaction.setType(TxnType.withdrawal);
-        transaction.setStatus(TxnStatus.completed);
-        transaction.setReferenceId(transferReference);
-
-        Transaction savedTransaction = transactionRepository.save(transaction);
-
-        WithdrawalStatus previousStatus = withdrawal.getStatus();
-        withdrawal.setTransaction(savedTransaction);
-        withdrawal.setTransferReference(transferReference);
-        withdrawal.setStatus(WithdrawalStatus.completed);
-        withdrawal.setProcessedBy(admin);
-        withdrawal.setProcessedAt(Instant.now());
-        withdrawal.setRemark(firstNonBlank(request != null ? request.getRemark() : null, withdrawal.getRemark()));
-
-        WithdrawalRequest updated = withdrawalRequestRepository.save(withdrawal);
-
-        auditLogService.publishAuto(
-                AuditAction.withdrawal_completed,
-                AuditTarget.withdrawal_request,
-                updated.getId(),
-                Map.of("status", previousStatus.name()),
-                Map.of(
-                        "status", updated.getStatus().name(),
-                        "transferReference", updated.getTransferReference(),
-                        "transactionId", savedTransaction.getId()
-                ),
-                "Admin completed a withdrawal transfer."
-        );
-
-        WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
-        return mapToDetailResponse(updated, wallet, metrics);
+        // Backward-compatible alias: in phase 1, "complete" means "approve only".
+        return approveWithdrawal(requestId, request, adminEmail);
     }
 
     @Override
@@ -281,7 +257,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         withdrawal.setStatus(WithdrawalStatus.rejected);
         withdrawal.setProcessedBy(admin);
         withdrawal.setProcessedAt(Instant.now());
-        withdrawal.setRemark(request.getRemark().trim());
+        withdrawal.setRemark(mergeRemarkSections(withdrawal.getRemark(), "Admin rejection reason", request.getRemark()));
 
         WithdrawalRequest updated = withdrawalRequestRepository.save(withdrawal);
 
@@ -303,7 +279,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Transactional
     public WithdrawalDetailResponse reviewWithdrawalRequest(UUID requestId, ReviewWithdrawalRequest request, String adminEmail) {
         if (request.isApprove()) {
-            return completeWithdrawal(requestId, new ApproveWithdrawalRequest(null, null), adminEmail);
+            return approveWithdrawal(requestId, new ApproveWithdrawalRequest(null, null), adminEmail);
         }
         return rejectWithdrawal(requestId, new RejectWithdrawalRequest(request.getRejectReason()), adminEmail);
     }
@@ -453,6 +429,24 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     private String buildTransferReference(UUID withdrawalId) {
         return "GLWD-" + withdrawalId.toString().replace("-", "").substring(0, 10).toUpperCase(Locale.ROOT);
+    }
+
+    private String buildRemarkSection(String label, String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return label + ": " + value.trim();
+    }
+
+    private String mergeRemarkSections(String existingRemark, String newLabel, String newValue) {
+        String newSection = buildRemarkSection(newLabel, newValue);
+        if (!StringUtils.hasText(existingRemark)) {
+            return newSection;
+        }
+        if (!StringUtils.hasText(newSection)) {
+            return existingRemark.trim();
+        }
+        return existingRemark.trim() + "\n" + newSection;
     }
 
     private String resolveTransferReference(WithdrawalRequest withdrawal, String overrideReference) {

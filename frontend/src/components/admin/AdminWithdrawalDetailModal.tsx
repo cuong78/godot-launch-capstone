@@ -13,8 +13,7 @@ interface AdminWithdrawalDetailModalProps {
   onCompletionRemarkChange: (value: string) => void;
   onRejectRemarkChange: (value: string) => void;
   onClose: () => void;
-  onMarkProcessing: () => void;
-  onComplete: () => void;
+  onApprove: () => void;
   onReject: () => void;
 }
 
@@ -44,6 +43,8 @@ const getStatusMeta = (status: WithdrawalStatus) => {
   switch (status) {
     case 'pending':
       return { label: 'Pending', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
+    case 'approved':
+      return { label: 'Approved', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
     case 'processing':
       return { label: 'Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
     case 'completed':
@@ -76,8 +77,7 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
   onCompletionRemarkChange,
   onRejectRemarkChange,
   onClose,
-  onMarkProcessing,
-  onComplete,
+  onApprove,
   onReject,
 }) => {
   if (!isOpen || !withdrawal) {
@@ -85,8 +85,7 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
   }
 
   const statusMeta = getStatusMeta(withdrawal.status);
-  const canMarkProcessing = withdrawal.status === 'pending';
-  const canComplete = withdrawal.status === 'processing';
+  const canApprove = withdrawal.status === 'pending' || withdrawal.status === 'processing';
   const canReject = withdrawal.status === 'pending' || withdrawal.status === 'processing';
   const currency = withdrawal.currency || 'VND';
 
@@ -238,7 +237,7 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
                 />
               </div>
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                QR được generate động từ bank info, amount và transfer reference. Không lưu trong database.
+                QR được chuẩn bị từ bank info, amount và transfer reference để tương thích payout phase sau. Ở phase 1, approve chưa thực hiện chuyển khoản thật.
               </p>
             </section>
 
@@ -251,10 +250,10 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
                 </div>
               )}
 
-              {(canMarkProcessing || canComplete) && (
+              {canApprove && (
                 <div className="mt-4">
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Admin Remark
+                    Approval Note
                   </label>
                   <textarea
                     value={completionRemark}
@@ -292,14 +291,9 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
               )}
 
               <div className="mt-6 flex flex-wrap gap-3">
-                {canMarkProcessing && (
-                  <Button variant="secondary" size="sm" onClick={onMarkProcessing} disabled={isBusy}>
-                    Mark Processing
-                  </Button>
-                )}
-                {canComplete && (
-                  <Button variant="primary" size="sm" onClick={onComplete} disabled={isBusy}>
-                    Complete Transfer
+                {canApprove && (
+                  <Button variant="primary" size="sm" onClick={onApprove} disabled={isBusy}>
+                    Approve Withdrawal
                   </Button>
                 )}
                 {canReject && (
@@ -307,7 +301,7 @@ export const AdminWithdrawalDetailModal: React.FC<AdminWithdrawalDetailModalProp
                     Reject Request
                   </Button>
                 )}
-                {!canMarkProcessing && !canComplete && !canReject && (
+                {!canApprove && !canReject && (
                   <span className="text-sm text-slate-500 dark:text-slate-400">Withdrawal này đã ở trạng thái cuối và không thể chỉnh sửa thêm.</span>
                 )}
               </div>

@@ -89,11 +89,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       {/* Bell Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-xl bg-slate-800/40 border border-slate-700/30 text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all active:scale-95 flex items-center justify-center"
+        className="relative flex items-center justify-center rounded-xl border border-slate-700/30 bg-slate-800/40 p-2 text-slate-300 transition-all hover:bg-slate-800/60 hover:text-white active:scale-95"
       >
         <Bell size={18} className={unreadNotificationsCount > 0 ? "animate-swing-slow" : ""} />
         {unreadNotificationsCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-bold text-white font-mono shadow-md">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white font-mono shadow-md">
             {unreadNotificationsCount}
           </span>
         )}
@@ -105,11 +105,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
           
           {/* Header */}
           <div className="p-3.5 border-b border-slate-200/40 dark:border-slate-800/40 flex items-center justify-between bg-slate-800/5">
-            <span className="text-xs font-display font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">Notifications</span>
+            <span className="text-sm font-display font-bold text-slate-800 dark:text-white uppercase tracking-wide">Notifications</span>
             {unreadNotificationsCount > 0 && (
               <button
                 onClick={markAllNotificationsAsRead}
-                className="text-[10px] text-amber-500 hover:text-amber-400 font-bold flex items-center gap-1 transition-colors"
+                className="flex items-center gap-1 text-xs font-semibold text-amber-500 transition-colors hover:text-amber-400"
               >
                 <Check size={11} /> Mark all read
               </button>
@@ -146,14 +146,14 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
 
                   {/* Message body */}
                   <div className="flex-grow min-w-0">
-                    <p className="text-[11px] leading-relaxed break-words">
+                    <p className="text-sm leading-relaxed break-words">
                       {notif.message}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <span className="p-0.5 rounded bg-slate-800/20 dark:bg-slate-950/40 border border-slate-700/10 dark:border-slate-800/50 flex items-center justify-center shrink-0">
                         {getIcon(notif.type)}
                       </span>
-                      <span className="text-[8px] text-slate-400 font-mono">
+                      <span className="text-xs text-slate-400 font-mono">
                         {new Date(notif.createdAt).toLocaleDateString()} {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -163,7 +163,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
             ) : (
               <div className="py-10 text-center flex flex-col items-center justify-center gap-2 text-slate-450 dark:text-slate-500">
                 <Bell size={24} className="stroke-[1.5]" />
-                <p className="text-xs italic">Your notifications logs are clean.</p>
+                <p className="text-sm italic">Your notifications logs are clean.</p>
               </div>
             )}
           </div>
