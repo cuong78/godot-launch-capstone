@@ -26,8 +26,8 @@ import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
-import com.godotlaunch.backend.service.AwsS3Service;
 import com.godotlaunch.backend.service.PaymentService;
+import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.payment.PaymentGateway;
 import com.godotlaunch.backend.service.payment.PaymentGatewayCreateRequest;
 import com.godotlaunch.backend.service.payment.PaymentGatewayCreateResponse;
@@ -42,7 +42,6 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -59,6 +58,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private static final String DEFAULT_CURRENCY = "VND";
     private static final int PAYMENT_LINK_EXPIRY_MINUTES = 30;
+    private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
@@ -67,8 +67,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final SourceSnapshotRepository sourceSnapshotRepository;
-    private final AwsS3Service awsS3Service;
     private final PaymentGateway paymentGateway;
+    private final PlatformSettingsService platformSettingsService;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
@@ -108,6 +108,8 @@ public class PaymentServiceImpl implements PaymentService {
             if (payment.getPaymentStatus() == PaymentStatus.PAID) {
                 return mapToResponse(paymentRepository.save(payment));
             }
+
+            payment = refreshPendingPaymentPricing(order, payment, item);
 
             if (isActiveCheckout(payment)) {
                 return mapToResponse(paymentRepository.save(payment));
@@ -184,6 +186,11 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentResponse handleWebhook(Object payload) {
         PaymentGatewayWebhookResult webhook = paymentGateway.verifyWebhook(payload);
+        if (webhook.isValidationRequest()) {
+            log.info("PayOS webhook URL validation request acknowledged successfully.");
+            return null;
+        }
+
         if (webhook.getOrderCode() == null || webhook.getAmount() == null) {
             throw new AppException(ErrorCode.PAYMENT_WEBHOOK_INVALID);
         }
@@ -350,6 +357,50 @@ public class PaymentServiceImpl implements PaymentService {
                 && payment.getOrder().getOrderStatus() == OrderStatus.PAID;
     }
 
+    private Payment refreshPendingPaymentPricing(Order order, Payment payment, MarketplaceItem item) {
+        BigDecimal latestPrice = item.getPrice();
+        boolean orderPriceChanged = order.getPricePaid() == null || order.getPricePaid().compareTo(latestPrice) != 0;
+        boolean paymentAmountChanged = payment.getAmount() == null || payment.getAmount().compareTo(latestPrice) != 0;
+
+        if (!orderPriceChanged && !paymentAmountChanged) {
+            return payment;
+        }
+
+        log.info(
+                "Refreshing pending payment {} for marketplace item {} from amount {} to {}",
+                payment.getId(),
+                item.getId(),
+                payment.getAmount(),
+                latestPrice
+        );
+
+        if (isActiveCheckout(payment) && payment.getPayosOrderCode() != null) {
+            try {
+                paymentGateway.cancelPayment(payment.getPayosOrderCode());
+            } catch (Exception ex) {
+                log.warn(
+                        "Failed to cancel stale PayOS checkout {} while refreshing payment {} pricing: {}",
+                        payment.getPayosOrderCode(),
+                        payment.getId(),
+                        ex.getMessage()
+                );
+            }
+        }
+
+        order.setPricePaid(latestPrice);
+        orderRepository.save(order);
+
+        payment.setAmount(latestPrice);
+        payment.setCheckoutUrl(null);
+        payment.setPayosOrderCode(null);
+        payment.setPayosPaymentLinkId(null);
+        payment.setPayosTransactionId(null);
+        payment.setPaidAt(null);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
+
+        return paymentRepository.save(payment);
+    }
+
     @Transactional
     protected Payment syncPaymentFromGateway(Payment payment) {
         if (payment.getPayosOrderCode() == null || payment.getPaymentStatus() == PaymentStatus.PAID) {
@@ -387,6 +438,9 @@ public class PaymentServiceImpl implements PaymentService {
         MarketplaceItem item = order.getMarketplaceItem();
 
         if (order.getTransaction() == null) {
+            BigDecimal platformCommission = calculatePlatformCommission(payment.getAmount());
+            BigDecimal sellerRevenue = payment.getAmount().subtract(platformCommission);
+
             Wallet sellerWallet = walletRepository.findByUserId(item.getSeller().getId())
                     .orElseGet(() -> createWallet(item.getSeller()));
 
@@ -399,14 +453,14 @@ public class PaymentServiceImpl implements PaymentService {
             transaction.setRelatedUser(order.getBuyer());
             transaction.setGame(item.getSourceGame());
             transaction.setAmount(payment.getAmount());
-            transaction.setPlatformCommission(BigDecimal.ZERO);
-            transaction.setNetAmount(payment.getAmount());
+            transaction.setPlatformCommission(platformCommission);
+            transaction.setNetAmount(sellerRevenue);
             transaction.setType(resolveTransactionType(item));
             transaction.setStatus(TxnStatus.completed);
             transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
 
             Transaction savedTransaction = transactionRepository.save(transaction);
-            sellerWallet.setBalance(sellerWallet.getBalance().add(savedTransaction.getNetAmount()));
+            sellerWallet.setBalance(sellerWallet.getBalance().add(sellerRevenue));
             walletRepository.save(sellerWallet);
 
             order.setTransaction(savedTransaction);
@@ -421,6 +475,13 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setCheckoutUrl(null);
 
         return paymentRepository.save(payment);
+    }
+
+    private BigDecimal calculatePlatformCommission(BigDecimal paymentAmount) {
+        BigDecimal commissionRate = platformSettingsService.getPlatformCommissionRate();
+        return paymentAmount
+                .multiply(commissionRate)
+                .divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
     }
 
     private long toPayOSAmount(BigDecimal amount) {
@@ -553,50 +614,23 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private String resolveDownloadUrl(Order order, MarketplaceItem item, Payment payment) {
-        if (order.getOrderStatus() == OrderStatus.PAID && payment.getPaymentStatus() == PaymentStatus.PAID) {
-            if (item.getItemType() == ItemType.source_code) {
-                String latestBundleUrl = sourceSnapshotRepository.findByMarketplaceItemIdOrderByCreatedAtDesc(item.getId()).stream()
-                        .map(com.godotlaunch.backend.entity.SourceSnapshot::getBundleUrl)
-                        .filter(StringUtils::hasText)
-                        .findFirst()
-                        .orElse(null);
-                return toDownloadUrl(latestBundleUrl);
-            }
-
-            return toDownloadUrl(item.getFileUrl());
-        }
-        return null;
-    }
-
-    private String toDownloadUrl(String rawUrl) {
-        if (!StringUtils.hasText(rawUrl) || "pending".equalsIgnoreCase(rawUrl)) {
+        if (order.getOrderStatus() != OrderStatus.PAID
+                || payment.getPaymentStatus() != PaymentStatus.PAID
+                || item.getItemType() != ItemType.source_code) {
             return null;
         }
 
-        String objectKey = extractObjectKeyFromUrl(rawUrl);
-        if (!StringUtils.hasText(objectKey)) {
-            return rawUrl;
-        }
+        boolean hasSourceBundle = sourceSnapshotRepository.findByMarketplaceItemIdOrderByCreatedAtDesc(item.getId()).stream()
+                .map(com.godotlaunch.backend.entity.SourceSnapshot::getBundleUrl)
+                .anyMatch(StringUtils::hasText);
 
-        try {
-            return awsS3Service.generatePresignedGetUrl(objectKey, Duration.ofHours(1));
-        } catch (Exception ex) {
-            log.warn("Failed to create presigned download URL for objectKey {}: {}", objectKey, ex.getMessage());
-            return rawUrl;
-        }
-    }
+        boolean hasDirectSourceFile = StringUtils.hasText(item.getFileUrl())
+                && !"pending".equalsIgnoreCase(item.getFileUrl());
 
-    private String extractObjectKeyFromUrl(String rawUrl) {
-        String awsMarker = ".amazonaws.com/";
-        int awsIndex = rawUrl.indexOf(awsMarker);
-        if (awsIndex >= 0) {
-            return rawUrl.substring(awsIndex + awsMarker.length());
-        }
-
-        if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+        if (!hasSourceBundle && !hasDirectSourceFile) {
             return null;
         }
 
-        return rawUrl;
+        return "/api/v1/downloads/" + order.getId();
     }
 }

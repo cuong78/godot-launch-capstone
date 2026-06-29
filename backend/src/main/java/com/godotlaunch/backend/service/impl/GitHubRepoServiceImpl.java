@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.util.List;
@@ -69,6 +70,11 @@ public class GitHubRepoServiceImpl implements GitHubRepoService {
             // Fetch được metadata → public, hoặc private mà bot đã có quyền
             boolean isPrivate = Boolean.TRUE.equals(repoData.get("private"));
             return isPrivate ? RepoAccess.PRIVATE_GRANTED : RepoAccess.PUBLIC;
+        }
+        // Fallback khi GitHub REST API bị rate-limit / lỗi tạm thời:
+        // repo page public vẫn truy cập được trực tiếp qua github.com/{owner}/{repo}.
+        if (isPublicRepoPageAccessible(ownerRepo[0], ownerRepo[1])) {
+            return RepoAccess.PUBLIC;
         }
         // Không fetch được (404). GitHub trả 404 cho CẢ "repo không tồn tại" lẫn
         // "private mà bot chưa có quyền". Thử fetch lại KHÔNG token để phân biệt:
@@ -177,6 +183,23 @@ public class GitHubRepoServiceImpl implements GitHubRepoService {
                     .block();
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * Fallback nhẹ để nhận diện public repo khi GitHub REST API bị rate-limit.
+     * Repo private / repo không tồn tại đều không truy cập được bằng anonymous browser request.
+     */
+    private boolean isPublicRepoPageAccessible(String owner, String repo) {
+        try {
+            return Boolean.TRUE.equals(
+                    webClient.get()
+                            .uri(URI.create("https://github.com/" + owner + "/" + repo))
+                            .exchangeToMono(response -> Mono.just(response.statusCode().is2xxSuccessful()))
+                            .block()
+            );
+        } catch (Exception e) {
+            return false;
         }
     }
 

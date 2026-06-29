@@ -31,10 +31,14 @@ const getStatusMeta = (status: WithdrawalStatus) => {
   switch (status) {
     case 'pending':
       return { label: 'Pending', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
+    case 'approved':
+      return { label: 'Approved / Waiting Payout', className: 'bg-violet-100 text-violet-700 border border-violet-200' };
     case 'processing':
-      return { label: 'Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
+      return { label: 'Payout Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
     case 'completed':
       return { label: 'Completed', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+    case 'failed':
+      return { label: 'Payout Failed', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'rejected':
       return { label: 'Rejected', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
     case 'cancelled':
@@ -55,6 +59,8 @@ export const AdminWithdrawalPanel: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [completionRemark, setCompletionRemark] = useState('');
   const [rejectRemark, setRejectRemark] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | WithdrawalStatus>('all');
 
   const loadWithdrawals = async () => {
     setIsLoading(true);
@@ -77,6 +83,18 @@ export const AdminWithdrawalPanel: React.FC = () => {
     loadWithdrawals();
   }, []);
 
+  const filteredWithdrawals = withdrawals.filter((withdrawal) => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const matchesSearch = !normalizedSearch
+      || withdrawal.developerFullName?.toLowerCase().includes(normalizedSearch)
+      || withdrawal.developerEmail?.toLowerCase().includes(normalizedSearch)
+      || withdrawal.transferReference?.toLowerCase().includes(normalizedSearch)
+      || withdrawal.bankName?.toLowerCase().includes(normalizedSearch);
+
+    const matchesStatus = statusFilter === 'all' || withdrawal.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   const openDetail = async (requestId: string) => {
     setIsBusy(true);
     setDetailError(null);
@@ -86,7 +104,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
       const response = await walletApi.getAdminWithdrawalDetail(requestId);
       if (response.success && response.data) {
         setSelectedWithdrawal(response.data);
-        setCompletionRemark(response.data.remark || '');
+        setCompletionRemark('');
         setIsModalOpen(true);
       } else {
         setDetailError(response.message || 'Không thể tải chi tiết yêu cầu rút tiền.');
@@ -116,39 +134,68 @@ export const AdminWithdrawalPanel: React.FC = () => {
     await loadWithdrawals();
   };
 
-  const handleMarkProcessing = async () => {
+  const handleApprove = async () => {
     if (!selectedWithdrawal) return;
     setIsBusy(true);
     setDetailError(null);
     try {
-      const response = await walletApi.markWithdrawalProcessing(selectedWithdrawal.id);
+      const response = await walletApi.approveWithdrawal(selectedWithdrawal.id, {
+        remark: completionRemark.trim() || undefined,
+      });
       if (response.success) {
-        await syncAfterAction(response.data, 'Withdrawal đã được chuyển sang trạng thái processing.');
+        let nextDetail = response.data;
+
+        if (nextDetail?.status === 'processing' && nextDetail.payosPayoutId) {
+          try {
+            const syncResponse = await walletApi.completeWithdrawal(selectedWithdrawal.id);
+            if (syncResponse.success && syncResponse.data) {
+              nextDetail = syncResponse.data;
+            }
+          } catch (syncError) {
+            console.warn('Initial payout sync after approve did not complete immediately.', syncError);
+          }
+        }
+
+        const successText =
+          nextDetail?.status === 'completed'
+            ? 'PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất.'
+            : nextDetail?.status === 'processing'
+              ? 'Payout order đã được tạo. Hãy bấm Sync PayOS Status để cập nhật trạng thái chuyển tiền.'
+              : 'Withdrawal đã được approve thành công.';
+
+        await syncAfterAction(nextDetail, successText);
       } else {
-        setDetailError(response.message || 'Không thể cập nhật trạng thái processing.');
+        setDetailError(response.message || 'Không thể approve withdrawal.');
       }
     } catch (err: any) {
-      setDetailError(err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái processing.');
+      setDetailError(err.response?.data?.message || err.message || 'Không thể approve withdrawal.');
     } finally {
       setIsBusy(false);
     }
   };
 
-  const handleComplete = async () => {
+  const handleSyncStatus = async () => {
     if (!selectedWithdrawal) return;
+
     setIsBusy(true);
     setDetailError(null);
     try {
-      const response = await walletApi.completeWithdrawal(selectedWithdrawal.id, {
-        remark: completionRemark.trim() || undefined,
-      });
+      const response = await walletApi.completeWithdrawal(selectedWithdrawal.id);
       if (response.success) {
-        await syncAfterAction(response.data, 'Withdrawal đã được complete thành công.');
+        const nextDetail = response.data;
+        const successText =
+          nextDetail?.status === 'completed'
+            ? 'PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất.'
+            : nextDetail?.status === 'failed'
+              ? 'PayOS báo payout thất bại. Wallet không bị trừ.'
+              : 'Đã sync trạng thái payout từ PayOS. Giao dịch vẫn đang được xử lý.';
+
+        await syncAfterAction(nextDetail, successText);
       } else {
-        setDetailError(response.message || 'Không thể complete withdrawal.');
+        setDetailError(response.message || 'Không thể đồng bộ trạng thái payout.');
       }
     } catch (err: any) {
-      setDetailError(err.response?.data?.message || err.message || 'Không thể complete withdrawal.');
+      setDetailError(err.response?.data?.message || err.message || 'Không thể đồng bộ trạng thái payout.');
     } finally {
       setIsBusy(false);
     }
@@ -186,17 +233,41 @@ export const AdminWithdrawalPanel: React.FC = () => {
           <div>
             <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">Withdrawal Queue</h3>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Xử lý hàng đợi rút tiền theo flow thủ công: pending, processing, complete hoặc reject.
+              Tạo payout order, theo dõi PayOS status, rồi chỉ hoàn tất withdrawal khi PayOS xác nhận chuyển tiền thành công.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              {withdrawals.length} requests
+              {filteredWithdrawals.length} requests
             </span>
             <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={loadWithdrawals}>
               Refresh
             </Button>
           </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px]">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search by developer, email, bank, or reference..."
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+          />
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as 'all' | WithdrawalStatus)}
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+          >
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved / Waiting Payout</option>
+            <option value="processing">Payout Processing</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Payout Failed</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
 
         {error && (
@@ -226,12 +297,12 @@ export const AdminWithdrawalPanel: React.FC = () => {
                 <tr>
                   <td colSpan={5} className="p-6 text-center text-slate-500 dark:text-slate-400">Đang tải withdrawal queue...</td>
                 </tr>
-              ) : withdrawals.length === 0 ? (
+              ) : filteredWithdrawals.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">Không có yêu cầu rút tiền nào.</td>
+                  <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">Không có yêu cầu rút tiền nào khớp bộ lọc hiện tại.</td>
                 </tr>
               ) : (
-                withdrawals.map((withdrawal) => {
+                filteredWithdrawals.map((withdrawal) => {
                   const statusMeta = getStatusMeta(withdrawal.status);
                   return (
                     <tr key={withdrawal.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/30">
@@ -276,8 +347,8 @@ export const AdminWithdrawalPanel: React.FC = () => {
         onCompletionRemarkChange={setCompletionRemark}
         onRejectRemarkChange={setRejectRemark}
         onClose={closeModal}
-        onMarkProcessing={handleMarkProcessing}
-        onComplete={handleComplete}
+        onApprove={handleApprove}
+        onSyncStatus={handleSyncStatus}
         onReject={handleReject}
       />
     </div>

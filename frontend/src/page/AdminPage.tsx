@@ -23,22 +23,21 @@ import {
   PenTool,
   Gamepad2,
   ShoppingBag,
-  Database,
-  HardDrive
+  Database
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
-import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType } from '../types';
+import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType, PlatformSettingsResponse } from '../types';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
+import { platformSettingsApi } from '../api/platformSettingsApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { AdminStoragePanel } from '../components/AdminStoragePanel';
 import AdminDisputePanel from '../components/AdminDisputePanel';
 import { auditLogApi } from '../api/auditLogApi';
-import AiReviewReportCard from '../components/AiReviewReportCard';
 import {
   AdminUserManagementPanel,
   AdminUserRecord,
@@ -47,7 +46,6 @@ import {
 } from '../components/admin/AdminUserManagementPanel';
 import { AdminPaymentVerificationPanel } from '../components/admin/AdminPaymentVerificationPanel';
 import { AdminWithdrawalPanel } from '../components/admin/AdminWithdrawalPanel';
-import { AdminFileManagementPanel } from '../components/admin/AdminFileManagementPanel';
 
 interface PendingAsset {
   id: string;
@@ -180,13 +178,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'logs' | 'settings' | 'storage' | 'disputes' | 'withdrawal' | 'files'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'withdrawal' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
   
   // Real Game Moderation state
-  const [allGames, setAllGames] = useState<GameResponse[]>([]);
   const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
   const [contracts, setContracts] = useState<ContractResponse[]>([]);
-  const pendingGamesCount = allGames.filter(g => g.status?.toLowerCase() === 'pending').length;
   const [isLoadingGames, setIsLoadingGames] = useState<boolean>(false);
   const [gamesError, setGamesError] = useState<string | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
@@ -194,15 +190,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
 
   // Real Marketplace Moderation state
-  const [allMarketplaceItems, setAllMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
   const [pendingMarketplaceItems, setPendingMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
-  const pendingMarketplaceCount = allMarketplaceItems.filter(item => item.status?.toLowerCase() === 'pending').length;
   const [isLoadingMarketplace, setIsLoadingMarketplace] = useState<boolean>(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [expandedMarketplaceId, setExpandedMarketplaceId] = useState<string | null>(null);
+  const [marketplaceItemDetails, setMarketplaceItemDetails] = useState<Record<string, MarketplaceItemResponse>>({});
+  const [marketplaceDetailLoadingId, setMarketplaceDetailLoadingId] = useState<string | null>(null);
   const [moderationSubTab, setModerationSubTab] = useState<'games' | 'marketplace'>('games');
-  const [gameStatusFilter, setGameStatusFilter] = useState<'pending' | 'approved' | 'published' | 'rejected' | 'all'>('pending');
-  const [marketplaceStatusFilter, setMarketplaceStatusFilter] = useState<'pending' | 'active' | 'rejected' | 'removed' | 'all'>('pending');
 
   // Contract Offer states
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -236,7 +230,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       ]);
       
       if (gamesRes.success && gamesRes.data) {
-        setAllGames(gamesRes.data);
+        const filtered = gamesRes.data.filter((game: GameResponse) => 
+          game.status?.toLowerCase() === 'pending' || 
+          game.status?.toLowerCase() === 'approved'
+        );
+        setPendingGames(filtered);
       } else {
         setGamesError(gamesRes.message || 'Failed to load pending games');
       }
@@ -251,27 +249,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  useEffect(() => {
-    const sortByNewest = (arr: typeof allGames) =>
-      [...arr].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
-
-    if (gameStatusFilter === 'all') {
-      // Show all games except drafts (keep moderation clean)
-      setPendingGames(sortByNewest(allGames.filter(g => g.status?.toLowerCase() !== 'draft')));
-    } else {
-      setPendingGames(sortByNewest(allGames.filter(g => g.status?.toLowerCase() === gameStatusFilter)));
-    }
-  }, [allGames, gameStatusFilter]);
-
   const fetchPendingMarketplaceItems = async () => {
     setIsLoadingMarketplace(true);
     setMarketplaceError(null);
     try {
-      const res = await marketplaceApi.getAllMarketplaceItems();
+      const res = await marketplaceApi.getAllMarketplaceItems('pending');
       if (res.success && res.data) {
-        setAllMarketplaceItems(res.data);
+        setPendingMarketplaceItems(res.data);
       } else {
-        setMarketplaceError(res.message || 'Failed to load marketplace items');
+        setMarketplaceError(res.message || 'Failed to load pending marketplace items');
       }
     } catch (err: any) {
       setMarketplaceError(err.response?.data?.message || err.message || 'Failed to fetch marketplace submissions');
@@ -280,16 +266,32 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  useEffect(() => {
-    const sortByNewest = (arr: typeof allMarketplaceItems) =>
-      [...arr].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
-
-    if (marketplaceStatusFilter === 'all') {
-      setPendingMarketplaceItems(sortByNewest(allMarketplaceItems));
-    } else {
-      setPendingMarketplaceItems(sortByNewest(allMarketplaceItems.filter(item => item.status?.toLowerCase() === marketplaceStatusFilter)));
+  const fetchMarketplaceItemDetail = async (itemId: string) => {
+    setMarketplaceDetailLoadingId(itemId);
+    try {
+      const res = await marketplaceApi.getMarketplaceItemById(itemId);
+      if (res.success && res.data) {
+        setMarketplaceItemDetails(prev => ({
+          ...prev,
+          [itemId]: res.data!
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to refresh marketplace item detail', err);
+    } finally {
+      setMarketplaceDetailLoadingId(current => current === itemId ? null : current);
     }
-  }, [allMarketplaceItems, marketplaceStatusFilter]);
+  };
+
+  const handleToggleMarketplaceDetail = async (itemId: string) => {
+    if (expandedMarketplaceId === itemId) {
+      setExpandedMarketplaceId(null);
+      return;
+    }
+
+    setExpandedMarketplaceId(itemId);
+    await fetchMarketplaceItemDetail(itemId);
+  };
 
 
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
@@ -365,6 +367,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   useEffect(() => {
     fetchUsers();
+    fetchPlatformSettings();
   }, []);
 
   useEffect(() => {
@@ -375,6 +378,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       fetchPendingMarketplaceItems();
     } else if (activeTab === 'logs') {
       fetchAuditLogs();
+    } else if (activeTab === 'settings') {
+      fetchPlatformSettings();
     }
   }, [activeTab, currentPage, pageSize, filterAction, filterTargetType]);
 
@@ -396,11 +401,37 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }, 50);
   };
 
-  // Mock settings state
-  const [commission, setCommission] = useState(15);
+  const applyPlatformSettings = (settings: PlatformSettingsResponse) => {
+    setCommission(Number(settings.commissionRate) || 0);
+    setMaintenance(Boolean(settings.maintenanceMode));
+    setAnnouncement(settings.announcementBanner || '');
+  };
+
+  const fetchPlatformSettings = async () => {
+    setIsLoadingSettings(true);
+    setSettingsError(null);
+    try {
+      const response = await platformSettingsApi.getPlatformSettings();
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to load platform settings');
+      }
+
+      applyPlatformSettings(response.data);
+    } catch (err: any) {
+      setSettingsError(err.response?.data?.message || err.message || 'Failed to load platform settings');
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  // Platform settings state
+  const [commission, setCommission] = useState(10);
   const [maintenance, setMaintenance] = useState(false);
   const [announcement, setAnnouncement] = useState('GodotLaunch Matrix Engine Upgrade is complete!');
   const [settingsSuccess, setSettingsSuccess] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const handleApproveGame = async (game: GameResponse) => {
     if (!game.publishingType || game.publishingType === 'marketplace_listing') {
@@ -481,20 +512,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setSellerRepresentative(game.creatorFullName || game.creatorName || '');
     setSellerAddress('');
     setSellerTaxCode('');
-    setLumpSumAmount(game.priceProposed ? game.priceProposed.toString() : '');
+    setLumpSumAmount('');
     setRevenueSplit(70);
     setAdditionalTerms('');
-    setAdminSignatureBase64(null);
     setIsContractModalOpen(true);
   };
 
   const handleCreateContractOffer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGame) return;
-    if (!adminSignatureBase64) {
-      alert('Vui lòng vẽ chữ ký của Admin trước khi gửi hợp đồng.');
-      return;
-    }
 
     try {
       const res = await contractApi.createOffer({
@@ -508,8 +534,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         buyerPosition,
         sellerRepresentative,
         sellerAddress,
-        sellerTaxCode,
-        buyerSignatureBase64: adminSignatureBase64
+        sellerTaxCode
       });
 
       if (res.success) {
@@ -576,10 +601,31 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSettingsSuccess(true);
-    setTimeout(() => setSettingsSuccess(false), 2000);
+    setIsSavingSettings(true);
+    setSettingsError(null);
+    setSettingsSuccess(false);
+
+    try {
+      const response = await platformSettingsApi.updatePlatformSettings({
+        commissionRate: commission,
+        maintenanceMode: maintenance,
+        announcementBanner: announcement.trim() || null,
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to update platform settings');
+      }
+
+      applyPlatformSettings(response.data);
+      setSettingsSuccess(true);
+      window.setTimeout(() => setSettingsSuccess(false), 2000);
+    } catch (err: any) {
+      setSettingsError(err.response?.data?.message || err.message || 'Failed to update platform settings');
+    } finally {
+      setIsSavingSettings(false);
+    }
   };
 
   return (
@@ -639,14 +685,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-display font-bold dark:text-white">
-              {pendingGamesCount + pendingMarketplaceCount} items
+              {pendingGames.length + pendingMarketplaceItems.length} items
             </span>
-            {(pendingGamesCount > 0 || pendingMarketplaceCount > 0) && (
+            {(pendingGames.length > 0 || pendingMarketplaceItems.length > 0) && (
               <span className="text-[10px] text-amber-500 font-bold font-mono animate-pulse">Action required</span>
             )}
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-455 leading-tight">
-            {pendingGamesCount} games / {pendingMarketplaceCount} marketplace assets
+          <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-tight">
+            {pendingGames.length} games / {pendingMarketplaceItems.length} marketplace assets
           </p>
         </div>
 
@@ -669,7 +715,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           onClick={() => setActiveTab('moderation')}
           className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'moderation' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
-          <FileCheck size={14} /> Moderation Queue ({pendingGamesCount + pendingMarketplaceCount})
+          <FileCheck size={14} /> Moderation Queue ({pendingGames.length + pendingMarketplaceItems.length})
         </button>
         <button
           onClick={() => setActiveTab('users')}
@@ -703,15 +749,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('storage')}
-          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'storage' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-355'}`}
+          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'storage' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
         >
           <Database size={14} /> Storage
-        </button>
-        <button
-          onClick={() => setActiveTab('files')}
-          className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'files' ? 'border-amber-400 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-355'}`}
-        >
-          <HardDrive size={14} /> Quản lý File
         </button>
         <button
           onClick={() => setActiveTab('disputes')}
@@ -738,155 +778,35 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 onClick={() => setModerationSubTab('games')}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
                   moderationSubTab === 'games'
-                    ? 'bg-amber-400 text-slate-955 shadow-md font-bold'
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
                     : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 <Gamepad2 size={14} />
                 Game Submissions
                 <span className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
-                  moderationSubTab === 'games' ? 'bg-slate-955 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  moderationSubTab === 'games' ? 'bg-slate-950 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                 }`}>
-                  {pendingGamesCount}
+                  {pendingGames.length}
                 </span>
               </button>
               <button
                 onClick={() => setModerationSubTab('marketplace')}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
                   moderationSubTab === 'marketplace'
-                    ? 'bg-amber-400 text-slate-955 shadow-md font-bold'
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
                     : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 <ShoppingBag size={14} />
                 Marketplace Submissions
                 <span className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
-                  moderationSubTab === 'marketplace' ? 'bg-slate-955 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400'
+                  moderationSubTab === 'marketplace' ? 'bg-slate-950 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400'
                 }`}>
-                  {pendingMarketplaceCount}
+                  {pendingMarketplaceItems.length}
                 </span>
               </button>
             </div>
-
-            {moderationSubTab === 'games' && (
-              <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/40 rounded-xl w-fit mb-4 border border-slate-200/60 dark:border-slate-800/60 animate-fade-in">
-                <button
-                  type="button"
-                  onClick={() => setGameStatusFilter('pending')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    gameStatusFilter === 'pending'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Chờ duyệt ({allGames.filter(g => g.status?.toLowerCase() === 'pending').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGameStatusFilter('approved')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    gameStatusFilter === 'approved'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Đã duyệt ({allGames.filter(g => g.status?.toLowerCase() === 'approved').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGameStatusFilter('published')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    gameStatusFilter === 'published'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Đã xuất bản ({allGames.filter(g => g.status?.toLowerCase() === 'published').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGameStatusFilter('rejected')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    gameStatusFilter === 'rejected'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Đã từ chối ({allGames.filter(g => g.status?.toLowerCase() === 'rejected').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGameStatusFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    gameStatusFilter === 'all'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Tất cả ({allGames.filter(g => g.status?.toLowerCase() !== 'draft').length})
-                </button>
-              </div>
-            )}
-
-            {moderationSubTab === 'marketplace' && (
-              <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/40 rounded-xl w-fit mb-4 border border-slate-200/60 dark:border-slate-800/60 animate-fade-in">
-                <button
-                  type="button"
-                  onClick={() => setMarketplaceStatusFilter('pending')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    marketplaceStatusFilter === 'pending'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Chờ duyệt ({allMarketplaceItems.filter(i => i.status?.toLowerCase() === 'pending').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMarketplaceStatusFilter('active')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    marketplaceStatusFilter === 'active'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Đang hiển thị ({allMarketplaceItems.filter(i => i.status?.toLowerCase() === 'active').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMarketplaceStatusFilter('rejected')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    marketplaceStatusFilter === 'rejected'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Đã từ chối ({allMarketplaceItems.filter(i => i.status?.toLowerCase() === 'rejected').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMarketplaceStatusFilter('removed')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    marketplaceStatusFilter === 'removed'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Đã xóa ({allMarketplaceItems.filter(i => i.status?.toLowerCase() === 'removed').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMarketplaceStatusFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    marketplaceStatusFilter === 'all'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Tất cả ({allMarketplaceItems.length})
-                </button>
-              </div>
-            )}
 
             {moderationSubTab === 'games' ? (
               <>
@@ -929,47 +849,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 <td className="p-3">
                                   <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                     {game.title}
-                                    {(() => {
-                                      const s = game.status?.toLowerCase();
-                                      switch (s) {
-                                        case 'pending':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse">
-                                              Chờ duyệt
-                                            </span>
-                                          );
-                                        case 'approved':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                              Đã duyệt
-                                            </span>
-                                          );
-                                        case 'published':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                                              Đã xuất bản
-                                            </span>
-                                          );
-                                        case 'rejected':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                                              Đã từ chối
-                                            </span>
-                                          );
-                                        case 'draft':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">
-                                              Bản nháp
-                                            </span>
-                                          );
-                                        default:
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">
-                                              {game.status}
-                                            </span>
-                                          );
-                                      }
-                                    })()}
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                                      game.status?.toLowerCase() === 'pending'
+                                        ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse'
+                                        : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                    }`}>
+                                      {game.status?.toLowerCase() === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
+                                    </span>
                                     <button
                                       onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                       className="text-slate-400 hover:text-amber-500 transition-colors"
@@ -1012,112 +898,93 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   })()}
                                 </td>
                                 <td className="p-3 text-center">
-                                  {(() => {
-                                    const status = game.status?.toLowerCase();
-                                    if (status === 'pending') {
-                                      return (
-                                        <div className="flex items-center justify-center gap-1.5">
-                                          <button
-                                            onClick={() => handleApproveGame(game)}
-                                            className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                            title="Duyệt game"
-                                          >
-                                            <Check size={14} />
-                                          </button>
-                                          <button
-                                            onClick={() => handleRejectGame(game.id, game.title)}
-                                            className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                            title="Từ chối game"
-                                          >
-                                            <X size={14} />
-                                          </button>
-                                        </div>
-                                      );
-                                    } else if (status === 'approved') {
-                                      return (
-                                        <div className="flex flex-col items-center justify-center gap-1">
-                                          {(() => {
-                                            const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
-                                            if (!contract) {
-                                              return (
-                                                <button
-                                                  onClick={() => handleOpenContractModal(game)}
-                                                  className="flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                                >
-                                                  <FileText size={12} />
-                                                  Soạn Hợp đồng
-                                                </button>
-                                              );
-                                            } else if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
-                                              return (
-                                                <button
-                                                  onClick={() => {
-                                                    setSelectedContract(contract);
-                                                    setViewerMode('view');
-                                                    setIsViewerOpen(true);
-                                                  }}
-                                                  className="flex items-center gap-1 px-3 py-1.5 bg-amber-505 bg-amber-500 hover:bg-amber-600 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                                >
-                                                  <Eye size={12} />
-                                                  Chờ Dev ký
-                                                </button>
-                                              );
-                                            } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
-                                              return (
-                                                <button
-                                                  onClick={() => {
-                                                    setSelectedContract(contract);
-                                                    setViewerMode('sign-admin');
-                                                    setIsViewerOpen(true);
-                                                  }}
-                                                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-505 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer animate-pulse"
-                                                >
-                                                  <PenTool size={12} />
-                                                  Ký đối ứng
-                                                </button>
-                                              );
-                                            } else if (contract.status === 'negotiating') {
-                                              return (
-                                                <button
-                                                  onClick={() => handleOpenContractModal(game)}
-                                                  className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                                >
-                                                  <Sliders size={12} />
-                                                  Điều chỉnh HĐ
-                                                </button>
-                                              );
-                                            } else {
-                                              return (
-                                                <button
-                                                  onClick={() => {
-                                                    setSelectedContract(contract);
-                                                    setViewerMode('view');
-                                                    setIsViewerOpen(true);
-                                                  }}
-                                                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                                >
-                                                  <FileText size={12} />
-                                                  Đã hoàn tất
-                                                </button>
-                                              );
-                                            }
-                                          })()}
-                                        </div>
-                                      );
-                                    } else if (status === 'published') {
-                                      return (
-                                        <span className="text-blue-500 dark:text-blue-400 font-bold text-[10px]">Đã xuất bản</span>
-                                      );
-                                    } else if (status === 'rejected') {
-                                      return (
-                                        <span className="text-rose-500 dark:text-rose-400 font-bold text-[10px]">Đã từ chối</span>
-                                      );
-                                    } else {
-                                      return (
-                                        <span className="text-slate-400 font-bold text-[10px]">-</span>
-                                      );
-                                    }
-                                  })()}
+                                  {game.status?.toLowerCase() === 'pending' ? (
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <button
+                                        onClick={() => handleApproveGame(game)}
+                                        className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                        title="Duyệt game"
+                                      >
+                                        <Check size={14} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectGame(game.id, game.title)}
+                                        className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                        title="Từ chối game"
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center gap-1">
+                                      {(() => {
+                                        const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+                                        if (!contract) {
+                                          return (
+                                            <button
+                                              onClick={() => handleOpenContractModal(game)}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                            >
+                                              <FileText size={12} />
+                                              Soạn Hợp đồng
+                                            </button>
+                                          );
+                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
+                                          return (
+                                            <button
+                                              onClick={() => {
+                                                setSelectedContract(contract);
+                                                setViewerMode('view');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                            >
+                                              <Eye size={12} />
+                                              Chờ Dev ký
+                                            </button>
+                                          );
+                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
+                                          return (
+                                            <button
+                                              onClick={() => {
+                                                setSelectedContract(contract);
+                                                setViewerMode('sign-admin');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer animate-pulse"
+                                            >
+                                              <PenTool size={12} />
+                                              Ký đối ứng
+                                            </button>
+                                          );
+                                        } else if (contract.status === 'negotiating') {
+                                          return (
+                                            <button
+                                              onClick={() => handleOpenContractModal(game)}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                            >
+                                              <Sliders size={12} />
+                                              Điều chỉnh HĐ
+                                            </button>
+                                          );
+                                        } else {
+                                          return (
+                                            <button
+                                              onClick={() => {
+                                                setSelectedContract(contract);
+                                                setViewerMode('view');
+                                                setIsViewerOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                            >
+                                              <FileText size={12} />
+                                              Đã hoàn tất
+                                            </button>
+                                          );
+                                        }
+                                      })()}
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                               
@@ -1165,23 +1032,28 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           </div>
                                         </div>
                                         
-                                        <div className="space-y-2">
-                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                            <FileText size={12} className="text-amber-500" /> Mô tả chi tiết
-                                          </h4>
-                                          <div className="bg-slate-50/50 dark:bg-slate-955/20 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/80 shadow-inner">
-                                            {!game.description ? (
-                                              <div className="flex flex-col items-center justify-center py-4 text-slate-400 dark:text-slate-600 italic gap-1">
-                                                <FileText size={18} className="stroke-[1.5]" />
-                                                <span className="text-xs">Không có mô tả chi tiết từ developer.</span>
-                                              </div>
-                                            ) : (
-                                              <p className="text-xs leading-relaxed max-h-36 overflow-y-auto whitespace-pre-wrap text-slate-600 dark:text-slate-300 pr-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                                                {game.description}
-                                              </p>
-                                            )}
-                                          </div>
+                                        <div className="space-y-1.5">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Mô tả chi tiết</h4>
+                                          <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                            {game.description || "Không có mô tả chi tiết từ developer."}
+                                          </p>
                                         </div>
+                                        
+                                        {game.fileUrl ? (
+                                          <a 
+                                            href={game.fileUrl} 
+                                            download 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98]"
+                                          >
+                                            <Download size={14} /> Download Game Package (ZIP)
+                                          </a>
+                                            ) : (
+                                          <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                                            Không tìm thấy tệp game ZIP để tải về
+                                          </div>
+                                        )}
                                       </div>
 
                                       {/* Middle & Right Column: Screenshots & Video */}
@@ -1242,9 +1114,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="mt-6 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
-                                      <AiReviewReportCard gameId={game.id} />
-                                    </div>
                                   </td>
                                 </tr>
                               )}
@@ -1287,12 +1156,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
                         {pendingMarketplaceItems.length > 0 ? (
-                          pendingMarketplaceItems.map(item => (
+                          pendingMarketplaceItems.map(item => {
+                            const displayItem = marketplaceItemDetails[item.id] ?? item;
+
+                            return (
                             <React.Fragment key={item.id}>
                               <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-900/5 transition-colors ${expandedMarketplaceId === item.id ? 'bg-slate-50/50 dark:bg-slate-900/20' : ''}`}>
                                 <td className="p-3 w-10 text-center">
                                   <button
-                                    onClick={() => setExpandedMarketplaceId(expandedMarketplaceId === item.id ? null : item.id)}
+                                    onClick={() => handleToggleMarketplaceDetail(item.id)}
                                     className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
                                     title={expandedMarketplaceId === item.id ? "Hide Details" : "Show Details"}
                                   >
@@ -1302,41 +1174,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 <td className="p-3">
                                   <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                     {item.title}
-                                    {(() => {
-                                      const s = item.status?.toLowerCase();
-                                      switch (s) {
-                                        case 'pending':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse">
-                                              Chờ duyệt
-                                            </span>
-                                          );
-                                        case 'active':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                              Đang hiển thị
-                                            </span>
-                                          );
-                                        case 'rejected':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                                              Đã từ chối
-                                            </span>
-                                          );
-                                        case 'removed':
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">
-                                              Đã xóa
-                                            </span>
-                                          );
-                                        default:
-                                          return (
-                                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">
-                                              {item.status}
-                                            </span>
-                                          );
-                                      }
-                                    })()}
+                                    <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse">
+                                      Pending
+                                    </span>
                                   </div>
                                   <div className="text-[10px] text-slate-500 dark:text-slate-455">by {item.sellerFullName || item.sellerEmail}</div>
                                 </td>
@@ -1354,45 +1194,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   {item.price === 0 ? 'Miễn phí' : `${item.price.toLocaleString('vi-VN')} đ`}
                                 </td>
                                 <td className="p-3 text-center">
-                                  {(() => {
-                                    const s = item.status?.toLowerCase();
-                                    if (s === 'pending') {
-                                      return (
-                                        <div className="flex items-center justify-center gap-1.5">
-                                          <button
-                                            onClick={() => handleApproveMarketplaceItem(item)}
-                                            className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                            title="Approve Asset"
-                                          >
-                                            <Check size={14} />
-                                          </button>
-                                          <button
-                                            onClick={() => handleRejectMarketplaceItem(item.id, item.title)}
-                                            className="p-1.5 bg-rose-50 dark:bg-rose-955/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                            title="Reject Asset"
-                                          >
-                                            <X size={14} />
-                                          </button>
-                                        </div>
-                                      );
-                                    } else if (s === 'active') {
-                                      return (
-                                        <span className="text-emerald-555 dark:text-emerald-400 font-bold text-[10px]">Đã hiển thị</span>
-                                      );
-                                    } else if (s === 'rejected') {
-                                      return (
-                                        <span className="text-rose-555 dark:text-rose-400 font-bold text-[10px]">Đã từ chối</span>
-                                      );
-                                    } else if (s === 'removed') {
-                                      return (
-                                        <span className="text-slate-400 font-bold text-[10px]">Đã xóa</span>
-                                      );
-                                    } else {
-                                      return (
-                                        <span className="text-slate-400 font-bold text-[10px]">-</span>
-                                      );
-                                    }
-                                  })()}
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      onClick={() => handleApproveMarketplaceItem(item)}
+                                      className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                      title="Approve Asset"
+                                    >
+                                      <Check size={14} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectMarketplaceItem(item.id, item.title)}
+                                      className="p-1.5 bg-rose-50 dark:bg-rose-955/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                      title="Reject Asset"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                               
@@ -1403,15 +1220,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
                                       {/* Left Column: Thumbnail, Description, ZIP */}
                                       <div className="space-y-4">
+                                        {marketplaceDetailLoadingId === item.id && (
+                                          <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-[11px] font-semibold text-sky-500">
+                                            Refreshing latest media...
+                                          </div>
+                                        )}
                                         <div>
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
                                             <Image size={12} /> Thumbnail
                                           </h4>
                                           <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
-                                            {item.thumbnailUrl ? (
+                                            {displayItem.thumbnailUrl ? (
                                               <img 
-                                                src={item.thumbnailUrl} 
-                                                alt={item.title} 
+                                                src={displayItem.thumbnailUrl} 
+                                                alt={displayItem.title} 
                                                 className="object-cover w-full h-full"
                                               />
                                             ) : (
@@ -1426,13 +1248,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         <div className="space-y-1.5">
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Item Description</h4>
                                           <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                            {item.description || "No description provided."}
+                                            {displayItem.description || "No description provided."}
                                           </p>
                                         </div>
 
-                                        {item.fileUrl ? (
+                                        {displayItem.fileUrl ? (
                                           <a 
-                                            href={item.fileUrl} 
+                                            href={displayItem.fileUrl} 
                                             download 
                                             target="_blank" 
                                             rel="noopener noreferrer"
@@ -1453,9 +1275,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
                                             <Image size={12} className="text-amber-500" /> Screenshots
                                           </h4>
-                                          {item.screenshots && item.screenshots.length > 0 ? (
+                                          {displayItem.screenshots && displayItem.screenshots.length > 0 ? (
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                              {item.screenshots.map((url, index) => (
+                                              {displayItem.screenshots.map((url, index) => (
                                                 <div 
                                                   key={index} 
                                                   onClick={() => {
@@ -1488,10 +1310,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
                                             <Video size={12} className="text-amber-500" /> Video Demo
                                           </h4>
-                                          {item.videoUrl ? (
+                                          {displayItem.videoUrl ? (
                                             <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
                                               <video 
-                                                src={item.videoUrl} 
+                                                src={displayItem.videoUrl} 
                                                 controls 
                                                 className="w-full h-full object-contain"
                                               />
@@ -1512,55 +1334,77 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <div className="space-y-2 text-xs">
                                             <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                               <span className="text-slate-500">Creator Name</span>
-                                              <span className="font-semibold">{item.sellerFullName || 'N/A'}</span>
+                                              <span className="font-semibold">{displayItem.sellerFullName || 'N/A'}</span>
                                             </div>
                                             <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                               <span className="text-slate-500">Creator Email</span>
-                                              <span className="font-mono">{item.sellerEmail}</span>
+                                              <span className="font-mono">{displayItem.sellerEmail}</span>
                                             </div>
-                                            {item.itemType === 'source_code' && (
+                                            {displayItem.itemType === 'source_code' && (
                                               <>
                                                 <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                   <span className="text-slate-500">Godot Version</span>
-                                                  <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{item.godotVersion || 'N/A'}</span>
+                                                  <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{displayItem.godotVersion || 'N/A'}</span>
                                                 </div>
-                                                {item.githubRepoUrl && (
+                                                {displayItem.githubRepoUrl && (
                                                   <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                     <span className="text-slate-500">GitHub Repository</span>
                                                     <a 
-                                                      href={item.githubRepoUrl} 
+                                                      href={displayItem.githubRepoUrl} 
                                                       target="_blank" 
                                                       rel="noopener noreferrer" 
                                                       className="font-mono text-sky-500 hover:underline break-all max-w-[200px]"
                                                     >
-                                                      {item.githubRepoUrl}
+                                                      {displayItem.githubRepoUrl}
                                                     </a>
                                                   </div>
                                                 )}
                                               </>
                                             )}
-                                            {item.sourceGameTitle && (
+                                            {displayItem.sourceGameTitle && (
                                               <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                 <span className="text-slate-500">Linked Store Game</span>
-                                                <span className="font-semibold text-amber-500">{item.sourceGameTitle}</span>
+                                                <span className="font-semibold text-amber-500">{displayItem.sourceGameTitle}</span>
                                               </div>
                                             )}
                                             <div className="flex justify-between pb-0.5">
                                               <span className="text-slate-500">Submitted On</span>
-                                              <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                              <span>{displayItem.createdAt ? new Date(displayItem.createdAt).toLocaleDateString() : 'N/A'}</span>
                                             </div>
                                           </div>
                                         </div>
+
+                                        {/* License Card */}
+                                        <div className="space-y-3 bg-white/30 dark:bg-slate-900/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1.5">
+                                            <FileText size={12} className="text-amber-500" /> License Information
+                                          </h4>
+                                          <div className="space-y-2 text-xs">
+                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                              <span className="text-slate-500">License Model</span>
+                                              <span className="font-semibold uppercase text-amber-500 font-mono">{displayItem.license || 'N/A'}</span>
+                                            </div>
+                                            {displayItem.licenseTerms ? (
+                                              <div className="space-y-1.5 pt-1.5">
+                                                <span className="text-slate-500 block font-semibold text-[10px] uppercase tracking-wider font-mono">Custom License Terms</span>
+                                                <div className="text-[11px] leading-relaxed max-h-32 overflow-y-auto bg-amber-500/5 dark:bg-amber-450/5 p-2.5 rounded-lg border border-amber-500/10 dark:border-amber-450/20 text-slate-700 dark:text-slate-300 font-sans italic whitespace-pre-wrap break-words">
+                                                  {displayItem.licenseTerms}
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div className="text-[10px] text-slate-500 italic mt-1">
+                                                No custom terms specified. Standard terms apply.
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
                                       </div>
-                                    </div>
-                                    <div className="mt-6 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
-                                      <AiReviewReportCard itemId={item.id} />
                                     </div>
                                   </td>
                                 </tr>
                               )}
                             </React.Fragment>
-                          ))
+                          )})
                         ) : (
                           <tr>
                             <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
@@ -1577,6 +1421,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </div>
         )}
         {activeTab === 'payments' && <AdminPaymentVerificationPanel />}
+        {activeTab === 'withdrawal' && <AdminWithdrawalPanel />}
 
         {/* Tab 2: User Directory */}
         {activeTab === 'users' && (
@@ -1927,9 +1772,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         {/* Tab 5: Storage Management */}
         {activeTab === 'storage' && <AdminStoragePanel />}
         {activeTab === 'disputes' && <AdminDisputePanel />}
-        {activeTab === 'withdrawal' && <AdminWithdrawalPanel />}
-        {activeTab === 'files' && <AdminFileManagementPanel />}
-
 
         {/* Tab 4: Platform Settings */}
         {activeTab === 'settings' && (
@@ -1945,6 +1787,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               </div>
             )}
 
+            {settingsError && (
+              <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-rose-500 text-xs font-semibold flex items-center gap-1.5">
+                <AlertTriangle size={14} /> {settingsError}
+              </div>
+            )}
+
+            {isLoadingSettings && (
+              <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-lg text-slate-500 dark:text-slate-400 text-xs font-semibold flex items-center gap-1.5">
+                <RefreshCw size={14} className="animate-spin" /> Loading platform settings...
+              </div>
+            )}
+
             <form onSubmit={handleSaveSettings} className="space-y-4 max-w-xl">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
@@ -1952,8 +1806,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   type="number"
                   min="0"
                   max="100"
+                  step="0.01"
                   value={commission}
-                  onChange={(e) => setCommission(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setCommission(parseFloat(e.target.value) || 0)}
                   helperText="Percentage kept by the platform from each marketplace transaction"
                   required
                 />
@@ -1998,8 +1853,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               )}
 
               <div className="flex justify-end pt-2">
-                <Button variant="primary" size="md" type="submit" icon={<Sliders size={16} />}>
-                  Save Platform Variable Config
+                <Button
+                  variant="primary"
+                  size="md"
+                  type="submit"
+                  icon={<Sliders size={16} />}
+                  disabled={isSavingSettings || isLoadingSettings}
+                >
+                  {isSavingSettings ? 'Saving Platform Config...' : 'Save Platform Variable Config'}
                 </Button>
               </div>
             </form>
@@ -2139,22 +2000,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 />
               </div>
 
-              {/* Chữ ký của Admin */}
-              <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
-                  <span className="w-1.5 h-3 rounded bg-emerald-500" />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                    CHỮ KÝ CỦA ADMIN <span className="text-rose-500">*</span>
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <SignaturePad
-                    onChange={setAdminSignatureBase64}
-                    placeholder="Dùng chuột để vẽ chữ ký của bạn..."
-                  />
-                </div>
-              </div>
-
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button 
                   type="button"
@@ -2163,14 +2008,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 >
                   Hủy bỏ
                 </button>
-                <Button 
-                  variant="primary" 
-                  size="md" 
-                  type="submit" 
-                  icon={<FileCheck size={16} />}
-                  disabled={!adminSignatureBase64}
-                  className="cursor-pointer"
-                >
+                <Button variant="primary" size="md" type="submit" icon={<FileCheck size={16} />}>
                   Gửi đề nghị & Tạo Hợp đồng
                 </Button>
               </div>

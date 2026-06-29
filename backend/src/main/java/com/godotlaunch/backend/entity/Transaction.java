@@ -60,6 +60,9 @@ public class Transaction {
     @Column(name = "reference_id", length = 100)
     private String referenceId;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 }

@@ -54,6 +54,18 @@ public class WithdrawalRequest {
     @Column(name = "transfer_reference", length = 120)
     private String transferReference;
 
+    @Column(name = "payos_payout_id", length = 120)
+    private String payosPayoutId;
+
+    @Column(name = "payos_reference_id", length = 120)
+    private String payosReferenceId;
+
+    @Column(name = "payos_status", length = 50)
+    private String payosStatus;
+
+    @Column(name = "payos_created_at", columnDefinition = "TEXT")
+    private String payosCreatedAt;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "withdrawal_status_enum")
@@ -69,8 +81,8 @@ public class WithdrawalRequest {
     @Column(name = "remark", columnDefinition = "TEXT")
     private String remark;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transaction_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id", unique = true)
     private Transaction transaction;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)

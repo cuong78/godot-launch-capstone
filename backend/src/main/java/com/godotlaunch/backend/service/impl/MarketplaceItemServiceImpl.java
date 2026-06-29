@@ -740,6 +740,13 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     private String getPresignedGetUrl(String rawUrl) {
         if (rawUrl == null || "pending".equalsIgnoreCase(rawUrl)) return rawUrl;
+
+        // File trên SeaweedFS (hoặc storage public khác) đã là URL đọc trực tiếp.
+        // Chỉ file AWS S3 mới cần generate presigned GET URL.
+        if (!rawUrl.contains(".amazonaws.com/")) {
+            return rawUrl;
+        }
+
         if (!rawUrl.contains(".amazonaws.com/")) {
             return rawUrl;
         }
@@ -755,25 +762,25 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-        
+
         // AWS S3
         String awsMarker = ".amazonaws.com/";
         int awsIndex = url.indexOf(awsMarker);
         if (awsIndex != -1) {
             return url.substring(awsIndex + awsMarker.length());
         }
-        
+
         // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
         String seaweedMarker = "/godotlaunch/";
         int seaweedIndex = url.indexOf(seaweedMarker);
         if (seaweedIndex != -1) {
             return url.substring(seaweedIndex + seaweedMarker.length());
         }
-        
+
         if (url.startsWith("http://") || url.startsWith("https://")) {
             return null;
         }
-        
+
         return url;
     }
 }
