@@ -30,4 +30,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
            "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(u.avatarUrl) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<User> searchAvatars(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE ((u.kycFrontImageUrl IS NOT NULL AND u.kycFrontImageUrl <> '') OR (u.kycBackImageUrl IS NOT NULL AND u.kycBackImageUrl <> '')) " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "LOWER(u.kycFullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<User> searchKycImages(@Param("search") String search, Pageable pageable);
 }

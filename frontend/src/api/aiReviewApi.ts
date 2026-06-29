@@ -32,4 +32,18 @@ export const aiReviewApi = {
       `/api/v1/admin/ai-reviews/marketplace-item/${itemId}/history`);
     return res.data;
   },
+
+  /** Kích hoạt chạy AI review thủ công cho game. */
+  triggerGameReview: async (gameId: string): Promise<ApiResponse<string>> => {
+    const res = await api.post<ApiResponse<string>>(
+      `/api/v1/admin/ai-reviews/game/${gameId}/trigger`);
+    return res.data;
+  },
+
+  /** Kích hoạt chạy AI review thủ công cho marketplace item. */
+  triggerItemReview: async (itemId: string): Promise<ApiResponse<string>> => {
+    const res = await api.post<ApiResponse<string>>(
+      `/api/v1/admin/ai-reviews/marketplace-item/${itemId}/trigger`);
+    return res.data;
+  },
 };

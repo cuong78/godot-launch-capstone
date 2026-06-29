@@ -19,6 +19,8 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
   const [report, setReport] = useState<AiReviewReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [triggering, setTriggering] = useState(false);
+  const [triggerSuccessMsg, setTriggerSuccessMsg] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -41,6 +43,30 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
     }
   };
 
+  const handleTrigger = async () => {
+    setTriggering(true);
+    setTriggerSuccessMsg(null);
+    try {
+      const res = gameId
+        ? await aiReviewApi.triggerGameReview(gameId)
+        : itemId
+          ? await aiReviewApi.triggerItemReview(itemId)
+          : null;
+      if (res && res.success) {
+        setTriggerSuccessMsg('Đang chạy AI Review trong nền. Hãy đợi khoảng 15 giây rồi bấm nút Tải lại ở trên.');
+        setTimeout(() => {
+          load();
+        }, 15000);
+      } else {
+        setError(res?.message || 'Không thể kích hoạt AI Review');
+      }
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || 'Lỗi kích hoạt AI Review');
+    } finally {
+      setTriggering(false);
+    }
+  };
+
   useEffect(() => {
     if (gameId || itemId) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,13 +78,25 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
         <h4 className="text-[11px] uppercase font-mono tracking-wider text-indigo-500 font-bold flex items-center gap-1.5">
           <Bot size={14} /> AI Review — đề xuất (admin quyết định cuối)
         </h4>
-        <button
-          onClick={load}
-          className="p-1 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer"
-          title="Tải lại"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex items-center gap-2">
+          {report && (
+            <button
+              onClick={handleTrigger}
+              disabled={triggering}
+              className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 cursor-pointer flex items-center gap-1"
+              title="Chạy lại phân tích AI"
+            >
+              {triggering ? <RefreshCw className="animate-spin" size={10} /> : <Bot size={10} />} Re-run AI
+            </button>
+          )}
+          <button
+            onClick={load}
+            className="p-1 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer"
+            title="Tải lại"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -68,11 +106,39 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
       ) : error ? (
         <div className="text-xs text-rose-500 font-medium py-2">{error}</div>
       ) : !report ? (
-        <div className="text-xs text-slate-500 dark:text-slate-400 py-2">
-          Chưa có báo cáo AI cho mục này (AI review chạy nền sau khi submit, thử tải lại sau).
+        <div className="text-xs text-slate-500 dark:text-slate-400 py-2 space-y-3">
+          <p>
+            Chưa có báo cáo AI cho mục này (AI review chạy nền sau khi submit).
+          </p>
+          {triggerSuccessMsg ? (
+            <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs border border-emerald-500/20 font-medium">
+              {triggerSuccessMsg}
+            </div>
+          ) : (
+            <button
+              onClick={handleTrigger}
+              disabled={triggering}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-350 dark:disabled:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer transition-all duration-200 active:scale-95 flex items-center gap-1.5 shadow-sm shadow-indigo-600/20"
+            >
+              {triggering ? (
+                <>
+                  <RefreshCw className="animate-spin" size={12} /> Đang yêu cầu...
+                </>
+              ) : (
+                <>
+                  <Bot size={14} /> Chạy AI Review Ngay
+                </>
+              )}
+            </button>
+          )}
         </div>
       ) : (
         <>
+          {triggerSuccessMsg && (
+            <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs border border-emerald-500/20 font-medium">
+              {triggerSuccessMsg}
+            </div>
+          )}
           <RecommendationBadge value={report.overallRecommendation} nsfw={report.nsfwFlag} />
 
           {/* Điểm từng tiêu chí */}

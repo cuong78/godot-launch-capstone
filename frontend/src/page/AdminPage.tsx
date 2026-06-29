@@ -475,15 +475,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setSellerRepresentative(game.creatorFullName || game.creatorName || '');
     setSellerAddress('');
     setSellerTaxCode('');
-    setLumpSumAmount('');
+    setLumpSumAmount(game.priceProposed ? game.priceProposed.toString() : '');
     setRevenueSplit(70);
     setAdditionalTerms('');
+    setAdminSignatureBase64(null);
     setIsContractModalOpen(true);
   };
 
   const handleCreateContractOffer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGame) return;
+    if (!adminSignatureBase64) {
+      alert('Vui lòng vẽ chữ ký của Admin trước khi gửi hợp đồng.');
+      return;
+    }
 
     try {
       const res = await contractApi.createOffer({
@@ -497,7 +502,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         buyerPosition,
         sellerRepresentative,
         sellerAddress,
-        sellerTaxCode
+        sellerTaxCode,
+        buyerSignatureBase64: adminSignatureBase64
       });
 
       if (res.success) {
@@ -2127,6 +2133,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 />
               </div>
 
+              {/* Chữ ký của Admin */}
+              <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="w-1.5 h-3 rounded bg-emerald-500" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+                    CHỮ KÝ CỦA ADMIN <span className="text-rose-500">*</span>
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <SignaturePad
+                    onChange={setAdminSignatureBase64}
+                    placeholder="Dùng chuột để vẽ chữ ký của bạn..."
+                  />
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button 
                   type="button"
@@ -2135,7 +2157,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 >
                   Hủy bỏ
                 </button>
-                <Button variant="primary" size="md" type="submit" icon={<FileCheck size={16} />}>
+                <Button 
+                  variant="primary" 
+                  size="md" 
+                  type="submit" 
+                  icon={<FileCheck size={16} />}
+                  disabled={!adminSignatureBase64}
+                  className="cursor-pointer"
+                >
                   Gửi đề nghị & Tạo Hợp đồng
                 </Button>
               </div>

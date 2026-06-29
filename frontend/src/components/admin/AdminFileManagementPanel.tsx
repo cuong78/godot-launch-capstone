@@ -63,6 +63,7 @@ export const AdminFileManagementPanel: React.FC = () => {
     { value: 'contract_pdf', label: 'Hợp đồng (PDF)', icon: <FileText size={14} /> },
     { value: 'source_snapshot', label: 'Sao lưu Snapshots', icon: <Archive size={14} /> },
     { value: 'chat_media', label: 'File trong Chat', icon: <Image size={14} /> },
+    { value: 'cccd_image', label: 'Ảnh xác thực CCCD/Passport', icon: <User size={14} /> },
   ];
 
   const [mediaFilter, setMediaFilter] = useState<'all' | 'image' | 'video'>('all');
@@ -206,6 +207,7 @@ export const AdminFileManagementPanel: React.FC = () => {
     contract_pdf: ['pdf_contract'],
     source_snapshot: ['source_bundle'],
     chat_media: ['game_media'],
+    cccd_image: ['cccd_image'],
   };
 
   // Tree helper: Find categories routed to specific bucket
@@ -233,7 +235,7 @@ export const AdminFileManagementPanel: React.FC = () => {
   // Helper render file preview icon/thumbnail
   const renderPreview = (file: UploadedFileResponse) => {
     const isImage = file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) || 
-                    ['avatar', 'game_thumbnail', 'marketplace_thumbnail'].includes(category);
+                    ['avatar', 'game_thumbnail', 'marketplace_thumbnail', 'cccd_image'].includes(category);
     const isVid = file.fileUrl.match(/\.(mp4|webm|ogg|mov)/i);
 
     if (isImage) {

@@ -32,6 +32,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 
+import com.godotlaunch.backend.service.impl.StorageRouter;
+import com.godotlaunch.backend.entity.enums.FileType;
+import com.godotlaunch.backend.util.ByteArrayMultipartFile;
+
 @RestController
 @RequestMapping("/api/developer/kyc")
 @RequiredArgsConstructor
@@ -41,6 +45,7 @@ public class KycController {
 
     private final UserRepository userRepository;
     private final BannedIdentityService bannedIdentityService;
+    private final StorageRouter storageRouter;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${app.face-service.url:http://localhost:8001}")
@@ -124,6 +129,28 @@ public class KycController {
             throw new AppException(ErrorCode.IDENTITY_BANNED);
         }
 
+        // Upload images if provided
+        if (request.getFrontImageBase64() != null && !request.getFrontImageBase64().isBlank()) {
+            try {
+                byte[] bytes = java.util.Base64.getDecoder().decode(cleanBase64(request.getFrontImageBase64()));
+                ByteArrayMultipartFile file = new ByteArrayMultipartFile(bytes, "front", "kyc_front_" + user.getId() + ".jpg", "image/jpeg");
+                String frontUrl = storageRouter.upload(FileType.cccd_image, file, "kyc");
+                user.setKycFrontImageUrl(frontUrl);
+            } catch (Exception e) {
+                log.error("Failed to upload KYC front image", e);
+            }
+        }
+        if (request.getBackImageBase64() != null && !request.getBackImageBase64().isBlank()) {
+            try {
+                byte[] bytes = java.util.Base64.getDecoder().decode(cleanBase64(request.getBackImageBase64()));
+                ByteArrayMultipartFile file = new ByteArrayMultipartFile(bytes, "back", "kyc_back_" + user.getId() + ".jpg", "image/jpeg");
+                String backUrl = storageRouter.upload(FileType.cccd_image, file, "kyc");
+                user.setKycBackImageUrl(backUrl);
+            } catch (Exception e) {
+                log.error("Failed to upload KYC back image", e);
+            }
+        }
+
         user.setKycDocumentType(request.getDocumentType());
         user.setKycFullName(request.getFullName());
         user.setKycIdNumber(request.getIdNumber());
@@ -140,6 +167,13 @@ public class KycController {
         return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "Xác thực KYC thành công."));
     }
 
+    private String cleanBase64(String base64) {
+        if (base64 != null && base64.contains(",")) {
+            return base64.split(",")[1];
+        }
+        return base64;
+    }
+
     private User findUser(Principal principal) {
         return userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -154,6 +188,8 @@ public class KycController {
                 .dateOfBirth(user.getKycDateOfBirth())
                 .address(user.getKycAddress())
                 .kycVerifiedAt(user.getKycVerifiedAt())
+                .kycFrontImageUrl(user.getKycFrontImageUrl())
+                .kycBackImageUrl(user.getKycBackImageUrl())
                 .build();
     }
 

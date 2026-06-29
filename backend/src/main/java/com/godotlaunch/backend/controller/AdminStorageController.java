@@ -434,6 +434,39 @@ public class AdminStorageController {
                             .build();
                 });
             }
+            case "cccd_image" -> {
+                Page<User> users = userRepo.searchKycImages(cleanSearch, pageable);
+                List<UploadedFileResponse> list = new java.util.ArrayList<>();
+                for (User u : users.getContent()) {
+                    if (u.getKycFrontImageUrl() != null && !u.getKycFrontImageUrl().isEmpty()) {
+                        list.add(UploadedFileResponse.builder()
+                                .id("cccd-front-" + u.getId())
+                                .fileName(extractFileName(u.getKycFrontImageUrl()))
+                                .fileType("cccd_image")
+                                .fileUrl(u.getKycFrontImageUrl())
+                                .storageProvider(inferProvider(u.getKycFrontImageUrl()))
+                                .ownerId(u.getId())
+                                .ownerType("User")
+                                .ownerName((u.getKycFullName() != null ? u.getKycFullName() : u.getEmail()) + " (Mặt trước)")
+                                .createdAt(u.getKycVerifiedAt() != null ? u.getKycVerifiedAt() : u.getCreatedAt())
+                                .build());
+                    }
+                    if (u.getKycBackImageUrl() != null && !u.getKycBackImageUrl().isEmpty()) {
+                        list.add(UploadedFileResponse.builder()
+                                .id("cccd-back-" + u.getId())
+                                .fileName(extractFileName(u.getKycBackImageUrl()))
+                                .fileType("cccd_image")
+                                .fileUrl(u.getKycBackImageUrl())
+                                .storageProvider(inferProvider(u.getKycBackImageUrl()))
+                                .ownerId(u.getId())
+                                .ownerType("User")
+                                .ownerName((u.getKycFullName() != null ? u.getKycFullName() : u.getEmail()) + " (Mặt sau)")
+                                .createdAt(u.getKycVerifiedAt() != null ? u.getKycVerifiedAt() : u.getCreatedAt())
+                                .build());
+                    }
+                }
+                resultPage = new org.springframework.data.domain.PageImpl<>(list, pageable, users.getTotalElements());
+            }
             default -> throw new RuntimeException("Phân loại file không hợp lệ: " + category);
         }
 
@@ -471,8 +504,20 @@ public class AdminStorageController {
         UUID uuid = UUID.fromString(ownerId);
         switch (ownerType.toLowerCase()) {
             case "user" -> userRepo.findById(uuid).ifPresent(u -> {
+                boolean changed = false;
                 if (fileUrl.equals(u.getAvatarUrl())) {
                     u.setAvatarUrl(null);
+                    changed = true;
+                }
+                if (fileUrl.equals(u.getKycFrontImageUrl())) {
+                    u.setKycFrontImageUrl(null);
+                    changed = true;
+                }
+                if (fileUrl.equals(u.getKycBackImageUrl())) {
+                    u.setKycBackImageUrl(null);
+                    changed = true;
+                }
+                if (changed) {
                     userRepo.save(u);
                 }
             });

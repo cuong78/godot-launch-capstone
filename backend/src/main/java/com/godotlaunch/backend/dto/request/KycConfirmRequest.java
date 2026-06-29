@@ -22,4 +22,8 @@ public class KycConfirmRequest {
     private String dateOfBirth;
 
     private String address;
+
+    private String frontImageBase64;
+
+    private String backImageBase64;
 }

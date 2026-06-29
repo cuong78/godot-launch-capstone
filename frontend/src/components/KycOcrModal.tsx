@@ -20,8 +20,10 @@ const FIELD_LABELS: Record<string, string> = {
 export default function KycOcrModal({ onSuccess, onClose }: Props) {
   const [step, setStep] = useState<Step>('upload');
   const [docType, setDocType] = useState<DocType>('cccd');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string>('');
+  const [frontPreviewUrl, setFrontPreviewUrl] = useState<string | null>(null);
+  const [frontBase64, setFrontBase64] = useState<string>('');
+  const [backPreviewUrl, setBackPreviewUrl] = useState<string | null>(null);
+  const [backBase64, setBackBase64] = useState<string>('');
   const [ocrResult, setOcrResult] = useState<KycOcrResult | null>(null);
   const [form, setForm] = useState<KycConfirmPayload>({
     documentType: 'cccd',
@@ -31,34 +33,44 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
     address: '',
   });
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (side: 'front' | 'back') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (ev) => {
       const result = ev.target?.result as string;
-      setPreviewUrl(result);
       // strip data URI prefix for API
       const base64 = result.includes(',') ? result.split(',')[1] : result;
-      setImageBase64(base64);
+      if (side === 'front') {
+        setFrontPreviewUrl(result);
+        setFrontBase64(base64);
+      } else {
+        setBackPreviewUrl(result);
+        setBackBase64(base64);
+      }
       setError(null);
     };
     reader.readAsDataURL(file);
-  }, []);
+  };
 
   const handleOcr = useCallback(async () => {
-    if (!imageBase64) {
-      setError('Vui lòng chọn ảnh giấy tờ.');
+    if (!frontBase64) {
+      setError('Vui lòng chọn ảnh mặt trước của giấy tờ.');
+      return;
+    }
+    if (docType === 'cccd' && !backBase64) {
+      setError('Vui lòng chọn ảnh mặt sau của CCCD.');
       return;
     }
     setStep('processing');
     setError(null);
 
     try {
-      const res = await kycApi.ocr(imageBase64, docType);
+      const res = await kycApi.ocr(frontBase64, docType);
       if (res.success && res.data) {
         setOcrResult(res.data);
         setForm({
@@ -77,7 +89,7 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
       setError('Lỗi kết nối. Vui lòng thử lại.');
       setStep('upload');
     }
-  }, [imageBase64, docType]);
+  }, [frontBase64, backBase64, docType]);
 
   const handleConfirm = useCallback(async () => {
     if (!form.fullName.trim() || !form.idNumber.trim()) {
@@ -88,7 +100,11 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
     setError(null);
 
     try {
-      const res = await kycApi.confirm(form);
+      const res = await kycApi.confirm({
+        ...form,
+        frontImageBase64: frontBase64,
+        backImageBase64: backBase64 || undefined
+      });
       if (res.success) {
         setStep('success');
         setTimeout(() => {
@@ -107,14 +123,17 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
       setError('Lỗi kết nối. Vui lòng thử lại.');
       setStep('review');
     }
-  }, [form, onSuccess]);
+  }, [form, frontBase64, backBase64, onSuccess]);
 
   const resetUpload = () => {
-    setPreviewUrl(null);
-    setImageBase64('');
+    setFrontPreviewUrl(null);
+    setFrontBase64('');
+    setBackPreviewUrl(null);
+    setBackBase64('');
     setStep('upload');
     setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (frontInputRef.current) frontInputRef.current.value = '';
+    if (backInputRef.current) backInputRef.current.value = '';
   };
 
   return (
@@ -152,7 +171,11 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
                   {(['cccd', 'passport'] as DocType[]).map((t) => (
                     <button
                       key={t}
-                      onClick={() => setDocType(t)}
+                      onClick={() => {
+                        setDocType(t);
+                        setBackPreviewUrl(null);
+                        setBackBase64('');
+                      }}
                       className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
                         docType === t
                           ? 'bg-amber-500 border-amber-500 text-black'
@@ -165,34 +188,89 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
                 </div>
 
                 {/* Upload area */}
-                {!previewUrl ? (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-white/20 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-amber-400/50 hover:bg-amber-400/5 transition-all"
-                  >
-                    <Upload className="w-8 h-8 text-white/30" />
-                    <span className="text-white/50 text-sm">Nhấn để chọn ảnh</span>
-                    <span className="text-white/30 text-xs">PNG, JPG, JPEG</span>
-                  </button>
-                ) : (
-                  <div className="relative rounded-xl overflow-hidden border border-white/10">
-                    <img src={previewUrl} alt="preview" className="w-full object-contain max-h-52" />
-                    <button
-                      onClick={resetUpload}
-                      className="absolute top-2 right-2 bg-black/60 text-white rounded-lg p-1 hover:bg-black/80"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Front Side Upload */}
+                  <div className="space-y-2">
+                    <label className="text-white/60 text-xs font-semibold block">
+                      Mặt trước {docType === 'cccd' ? 'CCCD' : 'Hộ chiếu'} <span className="text-rose-500">*</span>
+                    </label>
+                    {!frontPreviewUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => frontInputRef.current?.click()}
+                        className="w-full border-2 border-dashed border-white/20 rounded-xl p-6 flex flex-col items-center gap-2 hover:border-amber-400/50 hover:bg-amber-400/5 transition-all h-40 justify-center text-center"
+                      >
+                        <Upload className="w-6 h-6 text-white/30" />
+                        <span className="text-white/50 text-xs">Tải lên mặt trước</span>
+                        <span className="text-white/30 text-[10px]">PNG, JPG, JPEG</span>
+                      </button>
+                    ) : (
+                      <div className="relative rounded-xl overflow-hidden border border-white/10 h-40 bg-black/30 flex items-center justify-center">
+                        <img src={frontPreviewUrl} alt="front-preview" className="max-w-full max-h-full object-contain" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFrontPreviewUrl(null);
+                            setFrontBase64('');
+                            if (frontInputRef.current) frontInputRef.current.value = '';
+                          }}
+                          className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-lg p-1 transition"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      ref={frontInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg"
+                      onChange={handleFileChange('front')}
+                      className="hidden"
+                    />
                   </div>
-                )}
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
+                  {/* Back Side Upload (only for CCCD) */}
+                  {docType === 'cccd' && (
+                    <div className="space-y-2">
+                      <label className="text-white/60 text-xs font-semibold block">
+                        Mặt sau CCCD <span className="text-rose-500">*</span>
+                      </label>
+                      {!backPreviewUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => backInputRef.current?.click()}
+                          className="w-full border-2 border-dashed border-white/20 rounded-xl p-6 flex flex-col items-center gap-2 hover:border-amber-400/50 hover:bg-amber-400/5 transition-all h-40 justify-center text-center"
+                        >
+                          <Upload className="w-6 h-6 text-white/30" />
+                          <span className="text-white/50 text-xs">Tải lên mặt sau</span>
+                          <span className="text-white/30 text-[10px]">PNG, JPG, JPEG</span>
+                        </button>
+                      ) : (
+                        <div className="relative rounded-xl overflow-hidden border border-white/10 h-40 bg-black/30 flex items-center justify-center">
+                          <img src={backPreviewUrl} alt="back-preview" className="max-w-full max-h-full object-contain" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBackPreviewUrl(null);
+                              setBackBase64('');
+                              if (backInputRef.current) backInputRef.current.value = '';
+                            }}
+                            className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-lg p-1 transition"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                      <input
+                        ref={backInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg"
+                        onChange={handleFileChange('back')}
+                        className="hidden"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {error && (
@@ -204,7 +282,7 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
 
               <button
                 onClick={handleOcr}
-                disabled={!imageBase64}
+                disabled={!frontBase64 || (docType === 'cccd' && !backBase64)}
                 className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-xl transition-colors"
               >
                 Đọc thông tin giấy tờ

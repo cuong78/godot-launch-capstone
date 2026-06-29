@@ -25,6 +25,8 @@ export interface KycConfirmPayload {
   idNumber: string;
   dateOfBirth?: string;
   address?: string;
+  frontImageBase64?: string;
+  backImageBase64?: string;
 }
 
 export const kycApi = {
