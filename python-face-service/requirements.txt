@@ -8,7 +8,7 @@ Pillow==10.4.0
 google-cloud-vision==3.7.2
 python-multipart==0.0.9
 clamd==1.0.2
-# AI review: CLIP (media↔text match) + NSFW classifier qua Hugging Face transformers (CPU torch)
-torch==2.2.2
+# AI review: CLIP (media↔text match) + NSFW classifier qua Hugging Face transformers.
+# LƯU Ý: torch KHÔNG để ở đây — cài riêng bản CPU-only trong Dockerfile (tránh kéo ~3GB CUDA).
 transformers==4.44.2
 requests==2.32.3

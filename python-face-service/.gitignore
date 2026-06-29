@@ -1,0 +1,13 @@
+# Python bytecode cache — build artifact, tự sinh từ .py, không push
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env (nếu tạo local)
+.venv/
+venv/
+env/
+
+# Secrets local
+.env
