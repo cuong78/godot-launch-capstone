@@ -18,7 +18,7 @@ public class UploadedFileResponse {
     private String fileUrl;
     private String storageProvider; // aws_s3, seaweedfs
     private UUID ownerId;
-    private String ownerType; // User, Game, MarketplaceItem, Contract, SourceSnapshot, ChatMedia
+    private String ownerType; // User, Game, Asset, Contract, SourceSnapshot, ChatMedia
     private String ownerName; // Tên hiển thị của thực thể sở hữu (ví dụ: Full Name, Game Title)
     private Instant createdAt;
 }

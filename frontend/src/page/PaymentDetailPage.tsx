@@ -82,7 +82,7 @@ const getStatusMeta = (
         label: t('payment:status.paid.label'),
         badgeClass: 'bg-emerald-500/12 text-emerald-500 border-emerald-500/25',
         icon: <CheckCircle2 size={14} />,
-        helper: itemType === 'source_code'
+        helper: itemType === 'game_source'
           ? t('payment:status.paid.helperSource')
           : t('payment:status.paid.helperAsset'),
       };
@@ -126,7 +126,7 @@ const getStatusMeta = (
 };
 
 const getItemMeta = (itemType: PaymentResponse['marketplaceItemType'], t: any) =>
-  itemType === 'source_code'
+  itemType === 'game_source'
     ? {
         label: t('payment:itemType.sourceCode'),
         icon: <Code2 size={18} />,
@@ -271,7 +271,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
   const canCancelPayment =
     activePayment.paymentStatus === 'PENDING' || activePayment.paymentStatus === 'PROCESSING';
   const isPaidSourcePurchase = activePayment.paymentStatus === 'PAID'
-    && activePayment.marketplaceItemType === 'source_code'
+    && activePayment.marketplaceItemType === 'game_source'
     && Boolean(activeDownloadUrl);
   const isPaidAssetPurchase = activePayment.paymentStatus === 'PAID'
     && activePayment.marketplaceItemType === 'asset';

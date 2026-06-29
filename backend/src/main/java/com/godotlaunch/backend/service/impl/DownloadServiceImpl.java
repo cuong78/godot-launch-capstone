@@ -1,13 +1,12 @@
 package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
-import com.godotlaunch.backend.entity.MarketplaceItem;
+import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Order;
 import com.godotlaunch.backend.entity.Payment;
 import com.godotlaunch.backend.entity.SourceDownload;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.FileType;
-import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.exception.AppException;
@@ -52,37 +51,29 @@ public class DownloadServiceImpl implements DownloadService {
                 .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
 
         Payment payment = order.getPayment();
-        MarketplaceItem item = order.getMarketplaceItem();
+        Asset item = order.getAsset();
 
         if (!order.getBuyer().getId().equals(buyer.getId())
                 || order.getOrderStatus() != OrderStatus.PAID
                 || payment == null
                 || payment.getPaymentStatus() != PaymentStatus.PAID
-                || item == null
-                || item.getItemType() != ItemType.source_code) {
+                || item == null) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        String bundleUrl = sourceSnapshotRepository.findByMarketplaceItemIdOrderByCreatedAtDesc(item.getId()).stream()
-                .map(com.godotlaunch.backend.entity.SourceSnapshot::getBundleUrl)
-                .filter(StringUtils::hasText)
-                .findFirst()
-                .orElse(null);
-
-        String downloadUrl = StringUtils.hasText(bundleUrl) ? bundleUrl : item.getFileUrl();
+        // Asset = tài nguyên lẻ: tải trực tiếp file đã upload (asset không còn source bundle/repo).
+        String downloadUrl = item.getFileUrl();
 
         String objectKey = extractObjectKey(downloadUrl);
         if (!StringUtils.hasText(objectKey)) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        InputStream inputStream = StringUtils.hasText(bundleUrl)
-                ? storageRouter.getInputStream(FileType.source_bundle, objectKey)
-                : awsS3Service.getObjectStream(objectKey);
+        InputStream inputStream = storageRouter.getInputStream(FileType.source_bundle, objectKey);
 
         SourceDownload sourceDownload = new SourceDownload();
         sourceDownload.setUser(buyer);
-        sourceDownload.setMarketplaceItem(item);
+        sourceDownload.setAsset(item);
         sourceDownload.setOrder(order);
         sourceDownload.setIpAddress(normalize(ipAddress));
         sourceDownload.setDeviceInfo(truncate(userAgent, DEVICE_INFO_MAX_LENGTH));
@@ -93,7 +84,7 @@ public class DownloadServiceImpl implements DownloadService {
     }
 
     private Integer resolveNextDownloadCount(UUID buyerId, UUID itemId, UUID orderId) {
-        long currentCount = sourceDownloadRepository.countByUserIdAndMarketplaceItemIdAndOrderId(buyerId, itemId, orderId);
+        long currentCount = sourceDownloadRepository.countByUserIdAndAssetIdAndOrderId(buyerId, itemId, orderId);
         return Math.toIntExact(currentCount + 1);
     }
 

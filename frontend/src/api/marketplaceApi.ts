@@ -8,29 +8,29 @@ import {
 
 export const marketplaceApi = {
   createMarketplaceItem: async (data: CreateMarketplaceItemRequest): Promise<ApiResponse<{ itemId: string }>> => {
-    const response = await api.post<ApiResponse<{ itemId: string }>>('/api/v1/marketplace-items', data);
+    const response = await api.post<ApiResponse<{ itemId: string }>>('/api/v1/assets', data);
     return response.data;
   },
 
   getAllMarketplaceItems: async (status?: string): Promise<ApiResponse<MarketplaceItemResponse[]>> => {
-    const response = await api.get<ApiResponse<MarketplaceItemResponse[]>>('/api/v1/marketplace-items', {
+    const response = await api.get<ApiResponse<MarketplaceItemResponse[]>>('/api/v1/assets', {
       params: status ? { status } : {}
     });
     return response.data;
   },
 
   getMyMarketplaceItems: async (): Promise<ApiResponse<MarketplaceItemResponse[]>> => {
-    const response = await api.get<ApiResponse<MarketplaceItemResponse[]>>('/api/v1/marketplace-items/my-items');
+    const response = await api.get<ApiResponse<MarketplaceItemResponse[]>>('/api/v1/assets/my-items');
     return response.data;
   },
 
   getMarketplaceItemById: async (id: string): Promise<ApiResponse<MarketplaceItemResponse>> => {
-    const response = await api.get<ApiResponse<MarketplaceItemResponse>>(`/api/v1/marketplace-items/${id}`);
+    const response = await api.get<ApiResponse<MarketplaceItemResponse>>(`/api/v1/assets/${id}`);
     return response.data;
   },
 
   updateMarketplaceItem: async (id: string, data: UpdateMarketplaceItemRequest): Promise<ApiResponse<MarketplaceItemResponse>> => {
-    const response = await api.put<ApiResponse<MarketplaceItemResponse>>(`/api/v1/marketplace-items/${id}`, data);
+    const response = await api.put<ApiResponse<MarketplaceItemResponse>>(`/api/v1/assets/${id}`, data);
     return response.data;
   },
 
@@ -38,7 +38,7 @@ export const marketplaceApi = {
     id: string, 
     contentType: string
   ): Promise<ApiResponse<{ uploadUrl: string }>> => {
-    const response = await api.get<ApiResponse<{ uploadUrl: string }>>(`/api/v1/marketplace-items/${id}/upload-url`, {
+    const response = await api.get<ApiResponse<{ uploadUrl: string }>>(`/api/v1/assets/${id}/upload-url`, {
       params: { contentType }
     });
     return response.data;
@@ -48,31 +48,9 @@ export const marketplaceApi = {
     id: string,
     objectKey?: string
   ): Promise<ApiResponse<{ message: string }>> => {
-    const response = await api.post<ApiResponse<{ message: string }>>(`/api/v1/marketplace-items/${id}/upload-complete`, null, {
+    const response = await api.post<ApiResponse<{ message: string }>>(`/api/v1/assets/${id}/upload-complete`, null, {
       params: { objectKey }
     });
-    return response.data;
-  },
-
-  // Submit source_code bằng repo GitHub: verify owner → clone → scan → snapshot
-  submitItemRepo: async (
-    id: string,
-    repoUrl: string,
-    branch?: string
-  ): Promise<ApiResponse<{ message: string }>> => {
-    const response = await api.post<ApiResponse<{ message: string }>>(
-      `/api/v1/marketplace-items/${id}/submit-repo`,
-      { repoUrl, branch }
-    );
-    return response.data;
-  },
-
-  // Bot accept invitation cho repo private (marketplace)
-  acceptBot: async (repoUrl: string): Promise<ApiResponse<{ granted: boolean }>> => {
-    const response = await api.post<ApiResponse<{ granted: boolean }>>(
-      '/api/v1/marketplace-items/accept-bot',
-      { repoUrl }
-    );
     return response.data;
   },
 
@@ -86,7 +64,7 @@ export const marketplaceApi = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await api.post<ApiResponse<{ message: string; objectKey: string }>>(
-      `/api/v1/marketplace-items/${id}/media`,
+      `/api/v1/assets/${id}/media`,
       formData,
       {
         params: { mediaType },
@@ -101,7 +79,7 @@ export const marketplaceApi = {
 
   deleteAssetMedia: async (id: string, mediaUrl: string): Promise<ApiResponse<{ message: string }>> => {
     const response = await api.delete<ApiResponse<{ message: string }>>(
-      `/api/v1/marketplace-items/${id}/media`,
+      `/api/v1/assets/${id}/media`,
       { params: { mediaUrl } }
     );
     return response.data;
@@ -116,7 +94,7 @@ export const marketplaceApi = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await api.post<ApiResponse<{ message: string }>>(
-      `/api/v1/marketplace-items/${id}/upload`,
+      `/api/v1/assets/${id}/upload`,
       formData,
       {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -138,7 +116,7 @@ export const marketplaceApi = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await api.post<ApiResponse<{ message: string; objectKey: string }>>(
-      `/api/v1/marketplace-items/${id}/media/upload`,
+      `/api/v1/assets/${id}/media/upload`,
       formData,
       {
         params: { fileType },
@@ -157,24 +135,24 @@ export const marketplaceApi = {
     mediaUrl: string
   ): Promise<ApiResponse<{ message: string }>> => {
     const response = await api.delete<ApiResponse<{ message: string }>>(
-      `/api/v1/marketplace-items/${id}/media/item`,
+      `/api/v1/assets/${id}/media/item`,
       { params: { mediaUrl } }
     );
     return response.data;
   },
 
   deleteMarketplaceItem: async (id: string): Promise<ApiResponse<{ message: string }>> => {
-    const response = await api.delete<ApiResponse<{ message: string }>>(`/api/v1/marketplace-items/${id}`);
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/api/v1/assets/${id}`);
     return response.data;
   },
 
   approveMarketplaceItem: async (id: string): Promise<ApiResponse<void>> => {
-    const response = await api.post<ApiResponse<void>>(`/api/v1/marketplace-items/${id}/approve`);
+    const response = await api.post<ApiResponse<void>>(`/api/v1/assets/${id}/approve`);
     return response.data;
   },
 
   rejectMarketplaceItem: async (id: string, reason: string): Promise<ApiResponse<void>> => {
-    const response = await api.post<ApiResponse<void>>(`/api/v1/marketplace-items/${id}/reject`, { reason });
+    const response = await api.post<ApiResponse<void>>(`/api/v1/assets/${id}/reject`, { reason });
     return response.data;
   }
 };

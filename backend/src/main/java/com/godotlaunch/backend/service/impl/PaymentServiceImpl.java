@@ -4,13 +4,12 @@ import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.CreatePaymentRequest;
 import com.godotlaunch.backend.dto.response.PaymentResponse;
 import com.godotlaunch.backend.dto.response.PaymentStatusSummaryResponse;
-import com.godotlaunch.backend.entity.MarketplaceItem;
+import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Order;
 import com.godotlaunch.backend.entity.Payment;
 import com.godotlaunch.backend.entity.Transaction;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Wallet;
-import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.OrderType;
@@ -19,7 +18,7 @@ import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.exception.AppException;
-import com.godotlaunch.backend.repository.MarketplaceItemRepository;
+import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.OrderRepository;
 import com.godotlaunch.backend.repository.PaymentRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
@@ -62,7 +61,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
-    private final MarketplaceItemRepository marketplaceItemRepository;
+    private final AssetRepository assetRepository;
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
@@ -79,7 +78,7 @@ public class PaymentServiceImpl implements PaymentService {
         User buyer = getUserByEmail(buyerEmail);
         validatePurchaserRole(buyer);
 
-        MarketplaceItem item = marketplaceItemRepository.findById(request.getMarketplaceItemId())
+        Asset item = assetRepository.findById(request.getAssetId())
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         if (item.getStatus() != ItemStatus.active) {
@@ -90,7 +89,7 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.OWN_PRODUCT_PURCHASE_NOT_ALLOWED);
         }
 
-        Order order = orderRepository.findByBuyerIdAndMarketplaceItemId(buyer.getId(), item.getId())
+        Order order = orderRepository.findByBuyerIdAndAssetId(buyer.getId(), item.getId())
                 .orElseGet(() -> createOrder(buyer, item));
 
         Payment payment = order.getPayment();
@@ -292,10 +291,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .collect(Collectors.toList());
     }
 
-    private Order createOrder(User buyer, MarketplaceItem item) {
+    private Order createOrder(User buyer, Asset item) {
         Order order = new Order();
         order.setBuyer(buyer);
-        order.setMarketplaceItem(item);
+        order.setAsset(item);
         order.setOrderType(resolveOrderType(item));
         order.setOrderStatus(OrderStatus.PENDING);
         order.setPricePaid(item.getPrice());
@@ -357,7 +356,7 @@ public class PaymentServiceImpl implements PaymentService {
                 && payment.getOrder().getOrderStatus() == OrderStatus.PAID;
     }
 
-    private Payment refreshPendingPaymentPricing(Order order, Payment payment, MarketplaceItem item) {
+    private Payment refreshPendingPaymentPricing(Order order, Payment payment, Asset item) {
         BigDecimal latestPrice = item.getPrice();
         boolean orderPriceChanged = order.getPricePaid() == null || order.getPricePaid().compareTo(latestPrice) != 0;
         boolean paymentAmountChanged = payment.getAmount() == null || payment.getAmount().compareTo(latestPrice) != 0;
@@ -435,7 +434,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private Payment completePaidPayment(Payment payment, Instant paidAt, String transactionReference) {
         Order order = payment.getOrder();
-        MarketplaceItem item = order.getMarketplaceItem();
+        Asset item = order.getAsset();
 
         if (order.getTransaction() == null) {
             BigDecimal platformCommission = calculatePlatformCommission(payment.getAmount());
@@ -451,8 +450,8 @@ public class PaymentServiceImpl implements PaymentService {
             Transaction transaction = new Transaction();
             transaction.setWallet(sellerWallet);
             transaction.setRelatedUser(order.getBuyer());
-            transaction.setGame(item.getSourceGame());
-            transaction.setMarketplaceItem(item);
+            // Asset = tài nguyên lẻ, không gắn game (game-source purchase wire ở Phase 2)
+            transaction.setGame(null);
             transaction.setAmount(payment.getAmount());
             transaction.setPlatformCommission(platformCommission);
             transaction.setNetAmount(sellerRevenue);
@@ -573,24 +572,25 @@ public class PaymentServiceImpl implements PaymentService {
         return null;
     }
 
-    private OrderType resolveOrderType(MarketplaceItem item) {
-        return item.getItemType() == ItemType.asset ? OrderType.asset_purchase : OrderType.source_code_purchase;
+    private OrderType resolveOrderType(Asset item) {
+        // Asset = tài nguyên lẻ → luôn asset_purchase (source_code purchase thuộc luồng game market, Phase 2)
+        return OrderType.asset_purchase;
     }
 
-    private TxnType resolveTransactionType(MarketplaceItem item) {
-        return item.getItemType() == ItemType.asset ? TxnType.asset_purchase : TxnType.source_code_purchase;
+    private TxnType resolveTransactionType(Asset item) {
+        return TxnType.asset_purchase;
     }
 
     private PaymentResponse mapToResponse(Payment payment) {
         Order order = payment.getOrder();
-        MarketplaceItem item = order.getMarketplaceItem();
+        Asset item = order.getAsset();
 
         return PaymentResponse.builder()
                 .id(payment.getId())
                 .orderId(order.getId())
-                .marketplaceItemId(item.getId())
-                .marketplaceItemTitle(item.getTitle())
-                .marketplaceItemType(item.getItemType())
+                .assetId(item.getId())
+                .assetTitle(item.getTitle())
+                .assetType("asset")
                 .buyerId(order.getBuyer().getId())
                 .buyerEmail(order.getBuyer().getEmail())
                 .buyerFullName(order.getBuyer().getFullName())
@@ -614,21 +614,16 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
     }
 
-    private String resolveDownloadUrl(Order order, MarketplaceItem item, Payment payment) {
+    private String resolveDownloadUrl(Order order, Asset item, Payment payment) {
         if (order.getOrderStatus() != OrderStatus.PAID
-                || payment.getPaymentStatus() != PaymentStatus.PAID
-                || item.getItemType() != ItemType.source_code) {
+                || payment.getPaymentStatus() != PaymentStatus.PAID) {
             return null;
         }
 
-        boolean hasSourceBundle = sourceSnapshotRepository.findByMarketplaceItemIdOrderByCreatedAtDesc(item.getId()).stream()
-                .map(com.godotlaunch.backend.entity.SourceSnapshot::getBundleUrl)
-                .anyMatch(StringUtils::hasText);
-
-        boolean hasDirectSourceFile = StringUtils.hasText(item.getFileUrl())
+        // Asset = file đã upload: có file thật (khác 'pending') mới cho tải.
+        boolean hasFile = StringUtils.hasText(item.getFileUrl())
                 && !"pending".equalsIgnoreCase(item.getFileUrl());
-
-        if (!hasSourceBundle && !hasDirectSourceFile) {
+        if (!hasFile) {
             return null;
         }
 

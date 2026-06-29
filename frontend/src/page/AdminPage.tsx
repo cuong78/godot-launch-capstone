@@ -1181,12 +1181,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   <div className="text-[10px] text-slate-500 dark:text-slate-455">by {item.sellerFullName || item.sellerEmail}</div>
                                 </td>
                                 <td className="p-3">
-                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
-                                    item.itemType === 'source_code'
-                                      ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
-                                      : 'bg-emerald-450/10 text-emerald-500 border-emerald-500/20'
-                                  }`}>
-                                    {item.itemType === 'source_code' ? 'SOURCE CODE' : 'RESOURCE ASSET'}
+                                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border bg-emerald-450/10 text-emerald-500 border-emerald-500/20">
+                                    RESOURCE ASSET
                                   </span>
                                 </td>
                                 <td className="p-3 text-slate-600 dark:text-slate-355">{item.categoryName || 'Unassigned'}</td>
@@ -1340,33 +1336,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                               <span className="text-slate-500">Creator Email</span>
                                               <span className="font-mono">{displayItem.sellerEmail}</span>
                                             </div>
-                                            {displayItem.itemType === 'source_code' && (
-                                              <>
-                                                <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                                  <span className="text-slate-500">Godot Version</span>
-                                                  <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{displayItem.godotVersion || 'N/A'}</span>
-                                                </div>
-                                                {displayItem.githubRepoUrl && (
-                                                  <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                                    <span className="text-slate-500">GitHub Repository</span>
-                                                    <a 
-                                                      href={displayItem.githubRepoUrl} 
-                                                      target="_blank" 
-                                                      rel="noopener noreferrer" 
-                                                      className="font-mono text-sky-500 hover:underline break-all max-w-[200px]"
-                                                    >
-                                                      {displayItem.githubRepoUrl}
-                                                    </a>
-                                                  </div>
-                                                )}
-                                              </>
-                                            )}
-                                            {displayItem.sourceGameTitle && (
-                                              <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                                <span className="text-slate-500">Linked Store Game</span>
-                                                <span className="font-semibold text-amber-500">{displayItem.sourceGameTitle}</span>
-                                              </div>
-                                            )}
+                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
+                                              <span className="text-slate-500">Version</span>
+                                              <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{displayItem.version || 'N/A'}</span>
+                                            </div>
                                             <div className="flex justify-between pb-0.5">
                                               <span className="text-slate-500">Submitted On</span>
                                               <span>{displayItem.createdAt ? new Date(displayItem.createdAt).toLocaleDateString() : 'N/A'}</span>
@@ -1374,30 +1347,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           </div>
                                         </div>
 
-                                        {/* License Card */}
-                                        <div className="space-y-3 bg-white/30 dark:bg-slate-900/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
-                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1.5">
-                                            <FileText size={12} className="text-amber-500" /> License Information
-                                          </h4>
-                                          <div className="space-y-2 text-xs">
-                                            <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
-                                              <span className="text-slate-500">License Model</span>
-                                              <span className="font-semibold uppercase text-amber-500 font-mono">{displayItem.license || 'N/A'}</span>
-                                            </div>
-                                            {displayItem.licenseTerms ? (
-                                              <div className="space-y-1.5 pt-1.5">
-                                                <span className="text-slate-500 block font-semibold text-[10px] uppercase tracking-wider font-mono">Custom License Terms</span>
-                                                <div className="text-[11px] leading-relaxed max-h-32 overflow-y-auto bg-amber-500/5 dark:bg-amber-450/5 p-2.5 rounded-lg border border-amber-500/10 dark:border-amber-450/20 text-slate-700 dark:text-slate-300 font-sans italic whitespace-pre-wrap break-words">
-                                                  {displayItem.licenseTerms}
-                                                </div>
-                                              </div>
-                                            ) : (
-                                              <div className="text-[10px] text-slate-500 italic mt-1">
-                                                No custom terms specified. Standard terms apply.
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
                                       </div>
                                     </div>
                                   </td>

@@ -39,8 +39,8 @@ public class Dispute {
     private Game game;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "marketplace_item_id")
-    private MarketplaceItem marketplaceItem;
+    @JoinColumn(name = "asset_id")
+    private Asset asset;
 
     @Column(name = "reason", columnDefinition = "TEXT", nullable = false)
     private String reason;

@@ -17,8 +17,8 @@ public class DisputeResponse {
     private String reportedSellerEmail;
     private UUID gameId;
     private String gameTitle;
-    private UUID marketplaceItemId;
-    private String marketplaceItemTitle;
+    private UUID assetId;
+    private String assetTitle;
     private String reason;
     private String evidenceRepoUrl;
     private String evidenceNote;

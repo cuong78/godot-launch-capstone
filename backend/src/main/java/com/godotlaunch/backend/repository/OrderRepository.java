@@ -11,8 +11,7 @@ import com.godotlaunch.backend.entity.enums.OrderStatus;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
-    boolean existsByBuyerIdAndMarketplaceItemId(UUID buyerId, UUID marketplaceItemId);
-    boolean existsByBuyerIdAndMarketplaceItemIdAndOrderStatus(UUID buyerId, UUID marketplaceItemId, OrderStatus orderStatus);
+    boolean existsByBuyerIdAndAssetIdAndOrderStatus(UUID buyerId, UUID assetId, OrderStatus orderStatus);
 
-    Optional<Order> findByBuyerIdAndMarketplaceItemId(UUID buyerId, UUID marketplaceItemId);
+    Optional<Order> findByBuyerIdAndAssetId(UUID buyerId, UUID assetId);
 }

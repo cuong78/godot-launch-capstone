@@ -26,8 +26,8 @@ public class CartItem {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "marketplace_item_id", nullable = false)
-    private MarketplaceItem marketplaceItem;
+    @JoinColumn(name = "asset_id", nullable = false)
+    private Asset asset;
 
     @Column(name = "added_at", nullable = false, insertable = false, updatable = false)
     private Instant addedAt;

@@ -13,14 +13,14 @@ import com.godotlaunch.backend.repository.StorageBucketRepository;
 import com.godotlaunch.backend.repository.StorageRoutingRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.GameRepository;
-import com.godotlaunch.backend.repository.MarketplaceItemRepository;
+import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.repository.ContractRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.ChatMediaRepository;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Game;
-import com.godotlaunch.backend.entity.MarketplaceItem;
+import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
 import com.godotlaunch.backend.entity.Contract;
 import com.godotlaunch.backend.entity.SourceSnapshot;
@@ -68,7 +68,7 @@ public class AdminStorageController {
     private final StorageRouter storageRouter;
     private final UserRepository userRepo;
     private final GameRepository gameRepo;
-    private final MarketplaceItemRepository itemRepo;
+    private final AssetRepository itemRepo;
     private final MediaRepository mediaRepo;
     private final ContractRepository contractRepo;
     private final SourceSnapshotRepository snapshotRepo;
@@ -322,7 +322,7 @@ public class AdminStorageController {
                         .build());
             }
             case "marketplace_zip" -> {
-                Page<MarketplaceItem> items = itemRepo.searchMarketplaceZips(cleanSearch, pageable);
+                Page<Asset> items = itemRepo.searchAssetZips(cleanSearch, pageable);
                 resultPage = items.map(m -> UploadedFileResponse.builder()
                         .id("marketzip-" + m.getId())
                         .fileName(extractFileName(m.getFileUrl()))
@@ -330,13 +330,13 @@ public class AdminStorageController {
                         .fileUrl(m.getFileUrl())
                         .storageProvider(inferProvider(m.getFileUrl()))
                         .ownerId(m.getId())
-                        .ownerType("MarketplaceItem")
+                        .ownerType("Asset")
                         .ownerName(m.getTitle())
                         .createdAt(m.getCreatedAt())
                         .build());
             }
             case "marketplace_thumbnail" -> {
-                Page<MarketplaceItem> items = itemRepo.searchMarketplaceThumbnails(cleanSearch, pageable);
+                Page<Asset> items = itemRepo.searchAssetThumbnails(cleanSearch, pageable);
                 resultPage = items.map(m -> UploadedFileResponse.builder()
                         .id("marketthumb-" + m.getId())
                         .fileName(extractFileName(m.getThumbnailUrl()))
@@ -344,7 +344,7 @@ public class AdminStorageController {
                         .fileUrl(m.getThumbnailUrl())
                         .storageProvider(inferProvider(m.getThumbnailUrl()))
                         .ownerId(m.getId())
-                        .ownerType("MarketplaceItem")
+                        .ownerType("Asset")
                         .ownerName(m.getTitle())
                         .createdAt(m.getCreatedAt())
                         .build());
@@ -365,8 +365,8 @@ public class AdminStorageController {
                         ownerName = gameRepo.findById(med.getOwnerId()).map(Game::getTitle).orElse("Deleted Game");
                         ownerType = "Game";
                     } else if (med.getOwnerType() == com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item) {
-                        ownerName = itemRepo.findById(med.getOwnerId()).map(MarketplaceItem::getTitle).orElse("Deleted Marketplace Item");
-                        ownerType = "MarketplaceItem";
+                        ownerName = itemRepo.findById(med.getOwnerId()).map(Asset::getTitle).orElse("Deleted Marketplace Item");
+                        ownerType = "Asset";
                     }
                     return UploadedFileResponse.builder()
                             .id("media-" + med.getId())

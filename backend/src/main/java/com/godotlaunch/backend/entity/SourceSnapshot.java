@@ -32,8 +32,8 @@ public class SourceSnapshot {
     private Game game;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "marketplace_item_id")
-    private MarketplaceItem marketplaceItem;
+    @JoinColumn(name = "asset_id")
+    private Asset asset;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "submitted_by", nullable = false)

@@ -10,7 +10,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import com.godotlaunch.backend.entity.enums.ItemStatus;
-import com.godotlaunch.backend.entity.enums.ItemType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,13 +29,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Asset bán ở marketplace (3D model, sprite, audio, source code lẻ).
+ * Tách bạch khỏi Game (Game lo luồng lên store / co-publishing).
+ * Trước đây tên MarketplaceItem — đổi tên cho trực quan (V56).
+ */
 @Entity
-@Table(name = "marketplace_items")
+@Table(name = "assets")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MarketplaceItem {
+public class Asset {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -49,11 +53,6 @@ public class MarketplaceItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
-
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "item_type", nullable = false, columnDefinition = "item_type_enum")
-    private ItemType itemType;
 
     @Column(name = "title", nullable = false, length = 200)
     private String title;
@@ -70,32 +69,16 @@ public class MarketplaceItem {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
-    @Column(name = "documentation", columnDefinition = "TEXT")
-
-    private String documentation;
-
+    // version: để sau user update phiên bản asset (KHÔNG phải godot version)
     @Column(name = "version", length = 50)
     private String version = "1.0.0";
 
     @Column(name = "supported_platforms", length = 200)
     private String supportedPlatforms;
 
-    @Column(name = "godot_version", length = 20)
-    private String godotVersion;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_game_id")
-    private Game sourceGame;
-
-    @Column(name = "github_repo_url", columnDefinition = "TEXT")
-    private String githubRepoUrl;
-
-    @Column(name = "github_verified_at")
-    private Instant githubVerifiedAt;
-
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "marketplace_item_tags",
-            joinColumns = @JoinColumn(name = "item_id"),
+    @JoinTable(name = "asset_tags",
+            joinColumns = @JoinColumn(name = "asset_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<Tag> tags = new HashSet<>();
 

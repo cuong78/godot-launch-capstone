@@ -9,7 +9,7 @@ import java.util.UUID;
 public class CreateDisputeRequest {
     // Sản phẩm bị tố — 1 trong 2
     private UUID gameId;
-    private UUID marketplaceItemId;
+    private UUID assetId;
 
     @NotBlank(message = "Lý do tố cáo là bắt buộc")
     private String reason;
