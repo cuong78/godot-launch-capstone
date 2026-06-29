@@ -2,8 +2,8 @@ package com.godotlaunch.backend.service.payout;
 
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.exception.AppException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import vn.payos.PayOS;
@@ -24,12 +24,15 @@ import java.util.List;
 import java.util.Locale;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class PayOSPayoutGateway implements PayoutGateway {
 
     @SuppressWarnings("unused")
     private final PayOS payOS;
+
+    public PayOSPayoutGateway(@Qualifier("payoutPayOS") PayOS payOS) {
+        this.payOS = payOS;
+    }
 
     @Override
     public PayoutGatewayCreateResponse createPayout(PayoutGatewayCreateRequest request) {

@@ -3,7 +3,7 @@ import { Button } from '../Button';
 import { Eye, RefreshCw } from 'lucide-react';
 import { walletApi } from '../../api/walletApi';
 import { WithdrawalDetailResponse, WithdrawalResponse, WithdrawalStatus } from '../../types';
-import { AdminWithdrawalDetailModal } from './AdminWithdrawalDetailModal';
+import { AdminWithdrawalDetailModal, WithdrawalStatusNotice } from './AdminWithdrawalDetailModal';
 
 const formatMoney = (value?: number, currency = 'VND') => {
   if (value == null) return 'N/A';
@@ -57,6 +57,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [statusNotice, setStatusNotice] = useState<WithdrawalStatusNotice | null>(null);
   const [completionRemark, setCompletionRemark] = useState('');
   const [rejectRemark, setRejectRemark] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,6 +99,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
   const openDetail = async (requestId: string) => {
     setIsBusy(true);
     setDetailError(null);
+    setStatusNotice(null);
     setCompletionRemark('');
     setRejectRemark('');
     try {
@@ -120,6 +122,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
     setIsModalOpen(false);
     setSelectedWithdrawal(null);
     setDetailError(null);
+    setStatusNotice(null);
     setCompletionRemark('');
     setRejectRemark('');
   };
@@ -132,6 +135,34 @@ export const AdminWithdrawalPanel: React.FC = () => {
       setSuccessMessage(successText);
     }
     await loadWithdrawals();
+  };
+
+  const presentPayoutStatus = (detail?: WithdrawalDetailResponse | null) => {
+    if (!detail) {
+      return;
+    }
+
+    if (detail.status === 'completed') {
+      closeModal();
+      return;
+    }
+
+    if (detail.status === 'failed') {
+      setStatusNotice({
+        title: 'Payout chuyển tiền chưa thành công',
+        message: 'PayOS đã phản hồi payout thất bại hoặc bị từ chối. Tiền chưa về tài khoản ngân hàng của developer và wallet nội bộ không bị trừ.',
+        tone: 'warning',
+      });
+      return;
+    }
+
+    if (detail.status === 'processing' || detail.status === 'approved') {
+      setStatusNotice({
+        title: 'Tiền chưa về tài khoản người dùng',
+        message: 'Lệnh chi đã được tạo nhưng PayOS chưa xác nhận chuyển tiền thành công. Hãy giữ lại withdrawal này trong queue và bấm Sync PayOS Status sau ít phút để cập nhật kết quả mới nhất.',
+        tone: 'info',
+      });
+    }
   };
 
   const handleApprove = async () => {
@@ -164,6 +195,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
               : 'Withdrawal đã được approve thành công.';
 
         await syncAfterAction(nextDetail, successText);
+        presentPayoutStatus(nextDetail);
       } else {
         setDetailError(response.message || 'Không thể approve withdrawal.');
       }
@@ -191,6 +223,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
               : 'Đã sync trạng thái payout từ PayOS. Giao dịch vẫn đang được xử lý.';
 
         await syncAfterAction(nextDetail, successText);
+        presentPayoutStatus(nextDetail);
       } else {
         setDetailError(response.message || 'Không thể đồng bộ trạng thái payout.');
       }
@@ -350,6 +383,8 @@ export const AdminWithdrawalPanel: React.FC = () => {
         onApprove={handleApprove}
         onSyncStatus={handleSyncStatus}
         onReject={handleReject}
+        statusNotice={statusNotice}
+        onDismissStatusNotice={() => setStatusNotice(null)}
       />
     </div>
   );

@@ -91,6 +91,11 @@ app:
         bot-username: ${GITHUB_BOT_USERNAME:}
         bot-token: ${GITHUB_BOT_TOKEN:}
   payos:
-    client-id: ${PAYOS_CLIENT_ID:}
-    api-key: ${PAYOS_API_KEY:}
-    checksum-key: ${PAYOS_CHECKSUM_KEY:}
+    payment:
+      client-id: ${PAYOS_PAYMENT_CLIENT_ID:${PAYOS_CLIENT_ID:}}
+      api-key: ${PAYOS_PAYMENT_API_KEY:${PAYOS_API_KEY:}}
+      checksum-key: ${PAYOS_PAYMENT_CHECKSUM_KEY:${PAYOS_CHECKSUM_KEY:}}
+    payout:
+      client-id: ${PAYOS_PAYOUT_CLIENT_ID:${PAYOS_CLIENT_ID:}}
+      api-key: ${PAYOS_PAYOUT_API_KEY:${PAYOS_API_KEY:}}
+      checksum-key: ${PAYOS_PAYOUT_CHECKSUM_KEY:${PAYOS_CHECKSUM_KEY:}}
