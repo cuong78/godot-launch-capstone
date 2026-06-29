@@ -1,6 +1,6 @@
--- V48: Bảng media_content_flags — lưu kết quả quét NSFW tự động cho từng file media
+-- Bảng media_content_flags — lưu kết quả quét NSFW tự động cho từng file media
 
-CREATE TABLE media_content_flags (
+CREATE TABLE IF NOT EXISTS media_content_flags (
     id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     media_url     TEXT         NOT NULL,               -- URL file bị quét
     media_type    VARCHAR(20),                         -- 'image' | 'video'
@@ -17,7 +17,7 @@ CREATE TABLE media_content_flags (
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_media_flags_status   ON media_content_flags(status);
-CREATE INDEX idx_media_flags_owner    ON media_content_flags(owner_type, owner_id);
-CREATE INDEX idx_media_flags_flagged  ON media_content_flags(flagged);
-CREATE INDEX idx_media_flags_created  ON media_content_flags(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_media_flags_status  ON media_content_flags(status);
+CREATE INDEX IF NOT EXISTS idx_media_flags_owner   ON media_content_flags(owner_type, owner_id);
+CREATE INDEX IF NOT EXISTS idx_media_flags_flagged ON media_content_flags(flagged);
+CREATE INDEX IF NOT EXISTS idx_media_flags_created ON media_content_flags(created_at DESC);
