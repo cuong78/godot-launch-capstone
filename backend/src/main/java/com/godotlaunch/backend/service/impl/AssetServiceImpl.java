@@ -1,26 +1,25 @@
 package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
-import com.godotlaunch.backend.dto.request.CreateMarketplaceItemRequest;
-import com.godotlaunch.backend.dto.request.UpdateMarketplaceItemRequest;
-import com.godotlaunch.backend.dto.response.MarketplaceItemResponse;
+import com.godotlaunch.backend.dto.request.CreateAssetRequest;
+import com.godotlaunch.backend.dto.request.UpdateAssetRequest;
+import com.godotlaunch.backend.dto.response.AssetResponse;
 import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.Game;
-import com.godotlaunch.backend.entity.MarketplaceItem;
+import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
-import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.CategoryRepository;
 import com.godotlaunch.backend.repository.GameRepository;
-import com.godotlaunch.backend.repository.MarketplaceItemRepository;
+import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.AsyncVirusScanService;
 import com.godotlaunch.backend.service.AwsS3Service;
 import com.godotlaunch.backend.service.EmailService;
-import com.godotlaunch.backend.service.MarketplaceItemService;
+import com.godotlaunch.backend.service.AssetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,9 +40,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class MarketplaceItemServiceImpl implements MarketplaceItemService {
+public class AssetServiceImpl implements AssetService {
 
-    private final MarketplaceItemRepository marketplaceItemRepository;
+    private final AssetRepository assetRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final GameRepository gameRepository;
@@ -66,14 +65,14 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         return "marketplace/items/" + itemId + "/project.zip";
     }
 
-    /** FileType cho upload file. ZIP của asset dùng source_bundle để giữ bảo mật trong Private Bucket. */
-    private FileType resolveFileType(MarketplaceItem item) {
-        return item.getItemType() == ItemType.asset ? FileType.source_bundle : FileType.asset_media;
+    /** FileType cho upload file asset. Lưu ở Private Bucket qua source_bundle để giữ bảo mật. */
+    private FileType resolveFileType(Asset item) {
+        return FileType.source_bundle;
     }
 
     @Override
     @Transactional
-    public UUID createMarketplaceItem(CreateMarketplaceItemRequest request, String sellerEmail) {
+    public UUID createAsset(CreateAssetRequest request, String sellerEmail) {
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -81,9 +80,8 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             throw new AppException(ErrorCode.FACE_VERIFY_REQUIRED);
         }
 
-        MarketplaceItem item = new MarketplaceItem();
+        Asset item = new Asset();
         item.setSeller(seller);
-        item.setItemType(request.getItemType());
         item.setTitle(request.getTitle());
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
@@ -93,28 +91,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             Category category = categoryRepository.findById(request.getCategoryId())
                     .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
             item.setCategory(category);
-        }
-
-        if (request.getSourceGameId() != null) {
-            Game game = gameRepository.findById(request.getSourceGameId())
-                    .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
-            item.setSourceGame(game);
-        }
-
-        // Handle constraints for source_code
-        if (request.getItemType() == ItemType.source_code) {
-            if (request.getGodotVersion() == null || request.getGodotVersion().trim().isEmpty()) {
-                throw new AppException(ErrorCode.INVALID_INPUT);
-            }
-            if (request.getGithubRepoUrl() == null || request.getGithubRepoUrl().trim().isEmpty()) {
-                throw new AppException(ErrorCode.INVALID_INPUT);
-            }
-            item.setGodotVersion(request.getGodotVersion());
-            item.setGithubRepoUrl(request.getGithubRepoUrl());
-            // KHÔNG auto-verify — repo được clone/scan/snapshot thật ở submitItemRepo (Step 2)
-        } else {
-            item.setGodotVersion(request.getGodotVersion());
-            item.setGithubRepoUrl(request.getGithubRepoUrl());
         }
 
         // fileUrl is NOT NULL in database, default to placeholder if not provided
@@ -129,58 +105,56 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             item.setTags(new java.util.HashSet<>(tagRepository.findByIdIn(request.getTagIds())));
         }
 
-        // Map licensing and specifications fields
-        item.setDocumentation(request.getDocumentation());
-
+        // Specifications
         if (request.getVersion() != null && !request.getVersion().trim().isEmpty()) {
             item.setVersion(request.getVersion());
         }
         item.setSupportedPlatforms(request.getSupportedPlatforms());
 
-        MarketplaceItem savedItem = marketplaceItemRepository.save(item);
+        Asset savedItem = assetRepository.save(item);
         return savedItem.getId();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MarketplaceItemResponse getMarketplaceItemById(UUID id, String requesterEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(id)
+    public AssetResponse getAssetById(UUID id, String requesterEmail) {
+        Asset item = assetRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
         return mapToResponse(item, canAccessPrivateItemFields(item, resolveRequester(requesterEmail).orElse(null)));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MarketplaceItemResponse> getAllMarketplaceItems(String requesterEmail) {
+    public List<AssetResponse> getAllAssets(String requesterEmail) {
         User requester = resolveRequester(requesterEmail).orElse(null);
-        return marketplaceItemRepository.findAll().stream()
+        return assetRepository.findAll().stream()
                 .map(item -> mapToResponse(item, canAccessPrivateItemFields(item, requester)))
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MarketplaceItemResponse> getMarketplaceItemsByStatus(ItemStatus status, String requesterEmail) {
+    public List<AssetResponse> getAssetsByStatus(ItemStatus status, String requesterEmail) {
         User requester = resolveRequester(requesterEmail).orElse(null);
-        return marketplaceItemRepository.findByStatus(status).stream()
+        return assetRepository.findByStatus(status).stream()
                 .map(item -> mapToResponse(item, canAccessPrivateItemFields(item, requester)))
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MarketplaceItemResponse> getMarketplaceItemsBySeller(String sellerEmail) {
+    public List<AssetResponse> getAssetsBySeller(String sellerEmail) {
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return marketplaceItemRepository.findBySellerId(seller.getId()).stream()
+        return assetRepository.findBySellerId(seller.getId()).stream()
                 .map(item -> mapToResponse(item, true))
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public MarketplaceItemResponse updateMarketplaceItem(UUID id, UpdateMarketplaceItemRequest request, String updaterEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(id)
+    public AssetResponse updateAsset(UUID id, UpdateAssetRequest request, String updaterEmail) {
+        Asset item = assetRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         if (!item.getSeller().getEmail().equalsIgnoreCase(updaterEmail)) {
@@ -205,34 +179,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             item.setFileUrl(request.getFileUrl());
         }
 
-        if (item.getItemType() == ItemType.source_code) {
-            if (request.getGodotVersion() != null) {
-                if (request.getGodotVersion().trim().isEmpty()) {
-                    throw new AppException(ErrorCode.INVALID_INPUT);
-                }
-                item.setGodotVersion(request.getGodotVersion());
-            }
-            if (request.getGithubRepoUrl() != null) {
-                if (request.getGithubRepoUrl().trim().isEmpty()) {
-                    throw new AppException(ErrorCode.INVALID_INPUT);
-                }
-                item.setGithubRepoUrl(request.getGithubRepoUrl());
-                item.setGithubVerifiedAt(Instant.now()); // Auto-verify updated repo
-            }
-        } else {
-            if (request.getGodotVersion() != null) {
-                item.setGodotVersion(request.getGodotVersion());
-            }
-            if (request.getGithubRepoUrl() != null) {
-                item.setGithubRepoUrl(request.getGithubRepoUrl());
-            }
-        }
-
-        // Map licensing and specifications fields
-        if (request.getDocumentation() != null) {
-            item.setDocumentation(request.getDocumentation());
-        }
-
+        // Specifications
         if (request.getVersion() != null) {
             item.setVersion(request.getVersion());
         }
@@ -240,14 +187,14 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             item.setSupportedPlatforms(request.getSupportedPlatforms());
         }
 
-        MarketplaceItem updatedItem = marketplaceItemRepository.save(item);
+        Asset updatedItem = assetRepository.save(item);
         return mapToResponse(updatedItem, true);
     }
 
     @Override
     @Transactional(readOnly = true)
     public String getPresignedUploadUrl(UUID itemId, String contentType) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+        Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         String objectKey = buildObjectKey(item.getId());
@@ -257,7 +204,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     @Override
     @Transactional
     public void uploadItemFile(UUID itemId, MultipartFile file, String uploaderEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+        Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         // Chỉ seller sở hữu item mới được upload
@@ -271,125 +218,20 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         // Upload qua StorageRouter — tôn trọng routing config (S3 / SeaweedFS)
         String fileUrl = storageRouter.uploadWithKey(fileType, file, objectKey);
         item.setFileUrl(fileUrl);
-        marketplaceItemRepository.save(item);
+        assetRepository.save(item);
 
-        asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, objectKey);
+        asyncVirusScanService.scanAndProcessAsset(itemId, objectKey);
         log.info("Marketplace item {} uploaded via StorageRouter ({}) with key {}, virus scan started",
                 itemId, storageRouter.getProvider(fileType), objectKey);
 
         // Asset (upload file, không repo): AI review media-only (CLIP + NSFW). Fail-soft.
-        // source_code chạy AI review ở submitItemRepo (sau snapshot), không lặp ở đây.
-        if (item.getItemType() == ItemType.asset) {
-            aiReviewService.reviewMarketplaceItemAsync(itemId);
-        }
-    }
-
-    @Override
-    @Transactional
-    public void submitItemRepo(UUID itemId, String repoUrl, String branch, String sellerEmail) {
-        User seller = userRepository.findByEmail(sellerEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
-                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-
-        if (!item.getSeller().getId().equals(seller.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-        if (item.getItemType() != ItemType.source_code) {
-            throw new AppException(ErrorCode.INVALID_INPUT); // asset dùng upload file, không repo
-        }
-        if (repoUrl == null || repoUrl.isBlank()) {
-            throw new AppException(ErrorCode.REPO_URL_REQUIRED);
-        }
-
-        // 1. Verify owner TRƯỚC — repo phải thuộc về chính seller (chống đánh cắp repo người khác).
-        //    Chạy trước checkAccess để A submit repo của B bị chặn ngay (không nhảy vào "mời bot").
-        gitHubRepoService.verifyOwnership(seller, repoUrl);
-
-        // 2. Repo của họ nhưng private chưa cấp quyền bot → báo mời bot
-        com.godotlaunch.backend.service.GitHubRepoService.RepoAccess access =
-                gitHubRepoService.checkAccess(repoUrl);
-        if (access == com.godotlaunch.backend.service.GitHubRepoService.RepoAccess.PRIVATE_NO_ACCESS) {
-            throw new AppException(ErrorCode.REPO_NEEDS_BOT);
-        }
-
-        // 3. clone + scan + snapshot
-        String token = gitHubRepoService.getCloneToken(repoUrl);
-        com.godotlaunch.backend.dto.response.SourceProcessResult result;
-        try {
-            result = sourceProcessingClient.process(repoUrl, token, branch);
-        } catch (com.godotlaunch.backend.config.SourceProcessingClient.SourceProcessingException e) {
-            throw new AppException(ErrorCode.SOURCE_PROCESSING_FAILED);
-        }
-
-        // 4. Mã độc → removed
-        if (!result.isClean()) {
-            item.setStatus(ItemStatus.removed);
-            marketplaceItemRepository.save(item);
-            saveSnapshotForItem(item, seller, repoUrl, result);
-
-            auditLogService.publish(
-                    seller.getId(),
-                    ActorRole.developer,
-                    AuditAction.security_alert,
-                    AuditTarget.marketplace_item,
-                    itemId,
-                    null,
-                    null,
-                    "PHÁT HIỆN MÃ ĐỘC (Malware detected) trong repo của marketplace item: " + item.getTitle(),
-                    null
-            );
-
-            throw new AppException(ErrorCode.SOURCE_MALWARE_DETECTED);
-        }
-
-        // Không phải Godot project hợp lệ → từ chối
-        if (!result.isGodotProject()) {
-            log.warn("Marketplace repo {} không phải Godot project (hasProjectGodot={}, hasGodotSource={})",
-                    repoUrl, result.isHasProjectGodot(), result.isHasGodotSource());
-            throw new AppException(ErrorCode.NOT_GODOT_PROJECT);
-        }
-
-        // 5. Sạch → lưu repo + snapshot → pending (chờ admin duyệt)
-        item.setGithubRepoUrl(repoUrl);
-        item.setGithubVerifiedAt(Instant.now());
-        item.setFileUrl(repoUrl); // fileUrl NOT NULL — dùng repoUrl làm nguồn
-        item.setStatus(ItemStatus.pending);
-        marketplaceItemRepository.save(item);
-
-        saveSnapshotForItem(item, seller, repoUrl, result);
-        log.info("Marketplace source_code item {} submit qua repo, verified & snapshot. Chờ duyệt.", itemId);
-
-        auditLogService.publish(
-                seller.getId(),
-                ActorRole.developer,
-                AuditAction.game_submitted,
-                AuditTarget.marketplace_item,
-                itemId,
-                null,
-                ItemStatus.pending.name(),
-                "Marketplace item '" + item.getTitle() + "' submitted via repo, verified & snapshot. Pending review.",
-                null
-        );
-
-        // AI review async (code + media) — tạo report đề xuất cho admin. Fail-soft.
-        aiReviewService.reviewMarketplaceItemAsync(itemId);
-    }
-
-    @Override
-    public boolean acceptBotInvitation(String repoUrl, String sellerEmail) {
-        userRepository.findByEmail(sellerEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        if (repoUrl == null || repoUrl.isBlank()) {
-            throw new AppException(ErrorCode.REPO_URL_REQUIRED);
-        }
-        return gitHubRepoService.acceptBotInvitation(repoUrl);
+        aiReviewService.reviewAssetAsync(itemId);
     }
 
     @Override
     @Transactional
     public String uploadItemMedia(UUID itemId, String mediaType, MultipartFile file, String uploaderEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+        Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
         if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
@@ -425,7 +267,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     @Override
     @Transactional
     public void deleteAssetMedia(UUID itemId, String mediaUrl, String uploaderEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+        Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
         if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
@@ -448,13 +290,13 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     @Override
     @Transactional
-    public String uploadMarketplaceItemMedia(UUID id, String fileType, MultipartFile file, String uploaderEmail) {
+    public String uploadAssetMediaProxy(UUID id, String fileType, MultipartFile file, String uploaderEmail) {
         return uploadItemMedia(id, fileType, file, uploaderEmail);
     }
 
     @Override
     @Transactional
-    public void deleteMarketplaceItemMediaByUrl(UUID id, String mediaUrl, String uploaderEmail) {
+    public void deleteAssetMediaByUrl(UUID id, String mediaUrl, String uploaderEmail) {
         deleteAssetMedia(id, mediaUrl, uploaderEmail);
     }
 
@@ -472,102 +314,24 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public String getSourceBundleUrl(UUID itemId, String requesterEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
-                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-        User requester = userRepository.findByEmail(requesterEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        boolean isAdmin = "admin".equalsIgnoreCase(requester.getRole().getName());
-        boolean isSeller = item.getSeller().getId().equals(requester.getId());
-        boolean hasPurchased = orderRepository.existsByBuyerIdAndMarketplaceItemIdAndOrderStatus(
-                requester.getId(), itemId, OrderStatus.PAID);
-
-        // Chỉ admin / seller / người đã mua được tải source bundle
-        if (!isAdmin && !isSeller && !hasPurchased) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        String bundleUrl = sourceSnapshotRepository.findByMarketplaceItemIdOrderByCreatedAtDesc(itemId).stream()
-                .map(com.godotlaunch.backend.entity.SourceSnapshot::getBundleUrl)
-                .filter(u -> u != null && !u.isBlank())
-                .findFirst()
-                .orElse(null);
-        if (bundleUrl == null) {
-            throw new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND);
-        }
-        return getPresignedGetUrl(bundleUrl);
-    }
-
-    /** Lưu snapshot bất biến cho marketplace item. */
-    private void saveSnapshotForItem(MarketplaceItem item, User seller, String repoUrl,
-                                     com.godotlaunch.backend.dto.response.SourceProcessResult result) {
-        try {
-            com.godotlaunch.backend.entity.SourceSnapshot snap = new com.godotlaunch.backend.entity.SourceSnapshot();
-            snap.setMarketplaceItem(item);
-            snap.setSubmittedBy(seller);
-            snap.setRepoUrl(repoUrl);
-            snap.setCommitSha(result.getCommitSha());
-            snap.setBundleHash(result.getBundleHash());
-            snap.setFileCount(result.getFileCount());
-            snap.setGodotProject(result.isGodotProject());
-            snap.setVirusClean(result.isClean());
-            snap.setVirusScanned(result.isScanned());
-            snap.setFileHashes(toJson(result.getFileHashes()));
-            snap.setSecretsFound(toJson(result.getSecrets()));
-            // Upload source bundle lên storage cho AI đọc lại + admin/người mua tải
-            snap.setBundleUrl(uploadSourceBundle(result, "marketplace/items/" + item.getId()));
-            sourceSnapshotRepository.save(snap);
-        } catch (Exception e) {
-            log.warn("Không lưu được snapshot cho marketplace item {}: {}", item.getId(), e.getMessage());
-        }
-    }
-
-    private String toJson(Object obj) {
-        try {
-            return obj == null ? null : objectMapper.writeValueAsString(obj);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /** Upload source bundle (base64 zip từ Python) lên storage qua StorageRouter(source_bundle). */
-    private String uploadSourceBundle(com.godotlaunch.backend.dto.response.SourceProcessResult result, String prefix) {
-        if (result.getBundleBase64() == null || result.getBundleBase64().isBlank()) {
-            return null;
-        }
-        try {
-            byte[] zipBytes = java.util.Base64.getDecoder().decode(result.getBundleBase64());
-            String objectKey = prefix + "/source-bundle.zip";
-            var file = new com.godotlaunch.backend.util.ByteArrayMultipartFile(
-                    zipBytes, "file", "source-bundle.zip", "application/zip");
-            return storageRouter.uploadWithKey(FileType.source_bundle, file, objectKey);
-        } catch (Exception e) {
-            log.warn("Không upload được source bundle (prefix={}): {}", prefix, e.getMessage());
-            return null;
-        }
-    }
-
-    @Override
     @Transactional
     public void confirmUploadComplete(UUID itemId, String objectKey) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId)
+        Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         String actualKey = objectKey != null ? objectKey : buildObjectKey(item.getId());
         String fileUrl = awsS3Service.getFileUrl(actualKey);
         item.setFileUrl(fileUrl);
-        marketplaceItemRepository.save(item);
+        assetRepository.save(item);
 
-        asyncVirusScanService.scanAndProcessMarketplaceItem(itemId, actualKey);
+        asyncVirusScanService.scanAndProcessAsset(itemId, actualKey);
         log.info("Marketplace item {} upload confirmed with key {} and virus scan started", itemId, actualKey);
     }
 
     @Override
     @Transactional
-    public void approveMarketplaceItem(UUID id) {
-        MarketplaceItem item = marketplaceItemRepository.findById(id)
+    public void approveAsset(UUID id) {
+        Asset item = assetRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         if (item.getStatus() != ItemStatus.pending) {
@@ -575,9 +339,9 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         item.setStatus(ItemStatus.active);
-        marketplaceItemRepository.save(item);
+        assetRepository.save(item);
 
-        emailService.sendMarketplaceItemStatusNotification(
+        emailService.sendAssetStatusNotification(
                 item.getSeller().getEmail(),
                 item.getTitle(),
                 "APPROVED",
@@ -597,8 +361,8 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     @Override
     @Transactional
-    public void rejectMarketplaceItem(UUID id, String reason) {
-        MarketplaceItem item = marketplaceItemRepository.findById(id)
+    public void rejectAsset(UUID id, String reason) {
+        Asset item = assetRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         if (item.getStatus() != ItemStatus.pending) {
@@ -606,7 +370,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         item.setStatus(ItemStatus.rejected);
-        marketplaceItemRepository.save(item);
+        assetRepository.save(item);
 
         // Delete S3 zip file
         try {
@@ -617,7 +381,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
         }
 
-        emailService.sendMarketplaceItemStatusNotification(
+        emailService.sendAssetStatusNotification(
                 item.getSeller().getEmail(),
                 item.getTitle(),
                 "REJECTED",
@@ -637,8 +401,8 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     @Override
     @Transactional
-    public void removeMarketplaceItem(UUID id, String updaterEmail) {
-        MarketplaceItem item = marketplaceItemRepository.findById(id)
+    public void removeAsset(UUID id, String updaterEmail) {
+        Asset item = assetRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         User updater = userRepository.findByEmail(updaterEmail)
@@ -653,7 +417,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
         String oldStatus = item.getStatus() != null ? item.getStatus().name() : null;
         item.setStatus(ItemStatus.removed);
-        marketplaceItemRepository.save(item);
+        assetRepository.save(item);
 
         try {
             String objectKey = "marketplace/items/" + item.getId().toString() + "/project.zip";
@@ -681,7 +445,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         return userRepository.findByEmail(requesterEmail);
     }
 
-    private boolean canAccessPrivateItemFields(MarketplaceItem item, User requester) {
+    private boolean canAccessPrivateItemFields(Asset item, User requester) {
         if (requester == null) {
             return false;
         }
@@ -690,7 +454,7 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 || item.getSeller().getId().equals(requester.getId());
     }
 
-    private MarketplaceItemResponse mapToResponse(MarketplaceItem item, boolean includePrivateAccess) {
+    private AssetResponse mapToResponse(Asset item, boolean includePrivateAccess) {
         // Load media 1 lần, tách theo loại (thumbnail/video/screenshot/asset_image)
         var mediaList = mediaRepository.findByOwnerTypeAndOwnerId(
                 com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item, item.getId());
@@ -703,22 +467,16 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         java.util.List<String> assetImgs = mediaList.stream().filter(m -> "asset_image".equals(m.getMediaType()))
                 .map(m -> getPresignedGetUrl(m.getMediaUrl())).toList();
 
-        return MarketplaceItemResponse.builder()
+        return AssetResponse.builder()
                 .id(item.getId())
                 .sellerEmail(item.getSeller().getEmail())
                 .sellerFullName(item.getSeller().getFullName())
                 .categoryId(item.getCategory() != null ? item.getCategory().getId() : null)
                 .categoryName(item.getCategory() != null ? item.getCategory().getName() : null)
-                .itemType(item.getItemType())
                 .title(item.getTitle())
                 .description(item.getDescription())
                 .price(item.getPrice())
                 .fileUrl(includePrivateAccess ? getPresignedGetUrl(item.getFileUrl()) : null)
-                .godotVersion(item.getGodotVersion())
-                .sourceGameId(item.getSourceGame() != null ? item.getSourceGame().getId() : null)
-                .sourceGameTitle(item.getSourceGame() != null ? item.getSourceGame().getTitle() : null)
-                .githubRepoUrl(includePrivateAccess ? item.getGithubRepoUrl() : null)
-                .githubVerifiedAt(item.getGithubVerifiedAt())
                 .status(item.getStatus())
                 .tags(item.getTags() == null ? java.util.List.of() :
                         item.getTags().stream()
@@ -728,9 +486,6 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .thumbnailUrl(thumbUrl)
                 .videoUrl(vidUrl)
                 .screenshots(shots)
-                .documentation(item.getDocumentation())
-
-
                 .version(item.getVersion())
                 .supportedPlatforms(item.getSupportedPlatforms())
                 .createdAt(item.getCreatedAt())

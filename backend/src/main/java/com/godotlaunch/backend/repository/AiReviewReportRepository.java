@@ -15,11 +15,11 @@ public interface AiReviewReportRepository extends JpaRepository<AiReviewReport, 
     Optional<AiReviewReport> findFirstByGameIdOrderByCreatedAtDesc(UUID gameId);
 
     /** Report mới nhất của 1 marketplace item. */
-    Optional<AiReviewReport> findFirstByMarketplaceItemIdOrderByCreatedAtDesc(UUID itemId);
+    Optional<AiReviewReport> findFirstByAssetIdOrderByCreatedAtDesc(UUID itemId);
 
     /** Tất cả report của 1 game (lịch sử re-submit). */
     List<AiReviewReport> findByGameIdOrderByCreatedAtDesc(UUID gameId);
 
     /** Tất cả report của 1 marketplace item. */
-    List<AiReviewReport> findByMarketplaceItemIdOrderByCreatedAtDesc(UUID itemId);
+    List<AiReviewReport> findByAssetIdOrderByCreatedAtDesc(UUID itemId);
 }

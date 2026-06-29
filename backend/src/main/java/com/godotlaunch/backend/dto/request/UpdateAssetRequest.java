@@ -7,19 +7,15 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
-public class UpdateMarketplaceItemRequest {
+public class UpdateAssetRequest {
     private String title;
     private String description;
     private BigDecimal price;
     private UUID categoryId;
-    private String godotVersion;
 
-    private String githubRepoUrl;
     private String fileUrl;
 
     private String thumbnailUrl;
-
-    private String documentation;
 
     private String version;
     private String supportedPlatforms;

@@ -41,10 +41,10 @@ public class AdminAiReviewController {
         return ResponseEntity.ok(ApiResponse.success("AI review triggered successfully in background", "OK"));
     }
 
-    @PostMapping("/marketplace-item/{itemId}/trigger")
+    @PostMapping("/asset/{itemId}/trigger")
     @Operation(summary = "Kích hoạt chạy AI Review thủ công cho marketplace item (Admin only)")
     public ResponseEntity<ApiResponse<String>> triggerItemReview(@PathVariable UUID itemId) {
-        aiReviewService.reviewMarketplaceItemAsync(itemId);
+        aiReviewService.reviewAssetAsync(itemId);
         return ResponseEntity.ok(ApiResponse.success("AI review triggered successfully in background", "OK"));
     }
 
@@ -58,11 +58,11 @@ public class AdminAiReviewController {
                 .orElseGet(() -> ResponseEntity.ok(ApiResponse.success(null, "Chưa có AI report")));
     }
 
-    @GetMapping("/marketplace-item/{itemId}")
+    @GetMapping("/asset/{itemId}")
     @Transactional(readOnly = true)
     @Operation(summary = "AI report mới nhất của marketplace item")
     public ResponseEntity<ApiResponse<AiReviewReportResponse>> getLatestForItem(@PathVariable UUID itemId) {
-        return aiReviewReportRepository.findFirstByMarketplaceItemIdOrderByCreatedAtDesc(itemId)
+        return aiReviewReportRepository.findFirstByAssetIdOrderByCreatedAtDesc(itemId)
                 .map(r -> ResponseEntity.ok(ApiResponse.success(map(r), "OK")))
                 .orElseGet(() -> ResponseEntity.ok(ApiResponse.success(null, "Chưa có AI report")));
     }
@@ -76,12 +76,12 @@ public class AdminAiReviewController {
         return ResponseEntity.ok(ApiResponse.success(list, "OK"));
     }
 
-    @GetMapping("/marketplace-item/{itemId}/history")
+    @GetMapping("/asset/{itemId}/history")
     @Transactional(readOnly = true)
     @Operation(summary = "Lịch sử AI report của marketplace item")
     public ResponseEntity<ApiResponse<List<AiReviewReportResponse>>> getHistoryForItem(@PathVariable UUID itemId) {
         List<AiReviewReportResponse> list = aiReviewReportRepository
-                .findByMarketplaceItemIdOrderByCreatedAtDesc(itemId).stream().map(this::map).toList();
+                .findByAssetIdOrderByCreatedAtDesc(itemId).stream().map(this::map).toList();
         return ResponseEntity.ok(ApiResponse.success(list, "OK"));
     }
 
@@ -89,7 +89,7 @@ public class AdminAiReviewController {
         return AiReviewReportResponse.builder()
                 .id(r.getId())
                 .gameId(r.getGame() != null ? r.getGame().getId() : null)
-                .marketplaceItemId(r.getMarketplaceItem() != null ? r.getMarketplaceItem().getId() : null)
+                .assetId(r.getAsset() != null ? r.getAsset().getId() : null)
                 .codeQualityScore(r.getCodeQualityScore())
                 .mediaMatchScore(r.getMediaMatchScore())
                 .descriptionMatchScore(r.getDescriptionMatchScore())

@@ -1,11 +1,11 @@
 package com.godotlaunch.backend.controller;
 
-import com.godotlaunch.backend.dto.request.CreateMarketplaceItemRequest;
-import com.godotlaunch.backend.dto.request.UpdateMarketplaceItemRequest;
+import com.godotlaunch.backend.dto.request.CreateAssetRequest;
+import com.godotlaunch.backend.dto.request.UpdateAssetRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
-import com.godotlaunch.backend.dto.response.MarketplaceItemResponse;
+import com.godotlaunch.backend.dto.response.AssetResponse;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
-import com.godotlaunch.backend.service.MarketplaceItemService;
+import com.godotlaunch.backend.service.AssetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,34 +21,34 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/marketplace-items")
+@RequestMapping("/api/v1/assets")
 @RequiredArgsConstructor
 @Tag(name = "Creator Marketplace API", description = "Endpoints for listing, uploading, and managing assets & source codes")
-public class MarketplaceItemController {
+public class AssetController {
 
-    private final MarketplaceItemService marketplaceItemService;
+    private final AssetService assetService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
     @Operation(summary = "Create marketplace item", description = "Initializes a marketplace item. Bypasses GitHub verification automatically for now.")
-    public ResponseEntity<ApiResponse<Map<String, UUID>>> createMarketplaceItem(
-            @Valid @RequestBody CreateMarketplaceItemRequest request,
+    public ResponseEntity<ApiResponse<Map<String, UUID>>> createAsset(
+            @Valid @RequestBody CreateAssetRequest request,
             Principal principal) {
         String sellerEmail = principal.getName();
-        UUID itemId = marketplaceItemService.createMarketplaceItem(request, sellerEmail);
+        UUID itemId = assetService.createAsset(request, sellerEmail);
         return ResponseEntity.ok(ApiResponse.success(Map.of("itemId", itemId), "Marketplace item initialized successfully"));
     }
 
     @GetMapping
     @Operation(summary = "Get all marketplace items", description = "Retrieves active or removed marketplace items (optionally filtered by status).")
-    public ResponseEntity<ApiResponse<List<MarketplaceItemResponse>>> getAllMarketplaceItems(
+    public ResponseEntity<ApiResponse<List<AssetResponse>>> getAllAssets(
             @RequestParam(required = false) ItemStatus status,
             Principal principal) {
-        List<MarketplaceItemResponse> items;
+        List<AssetResponse> items;
         if (status != null) {
-            items = marketplaceItemService.getMarketplaceItemsByStatus(status, principal != null ? principal.getName() : null);
+            items = assetService.getAssetsByStatus(status, principal != null ? principal.getName() : null);
         } else {
-            items = marketplaceItemService.getAllMarketplaceItems(principal != null ? principal.getName() : null);
+            items = assetService.getAllAssets(principal != null ? principal.getName() : null);
         }
         return ResponseEntity.ok(ApiResponse.success(items, "Marketplace items retrieved successfully"));
     }
@@ -56,28 +56,28 @@ public class MarketplaceItemController {
     @GetMapping("/my-items")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
     @Operation(summary = "Get current seller items", description = "Retrieves all marketplace items listed by the authenticated developer.")
-    public ResponseEntity<ApiResponse<List<MarketplaceItemResponse>>> getMyMarketplaceItems(Principal principal) {
+    public ResponseEntity<ApiResponse<List<AssetResponse>>> getMyAssets(Principal principal) {
         String sellerEmail = principal.getName();
-        List<MarketplaceItemResponse> items = marketplaceItemService.getMarketplaceItemsBySeller(sellerEmail);
+        List<AssetResponse> items = assetService.getAssetsBySeller(sellerEmail);
         return ResponseEntity.ok(ApiResponse.success(items, "Your marketplace items retrieved successfully"));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get marketplace item by ID", description = "Retrieves details of a specific marketplace asset or project template.")
-    public ResponseEntity<ApiResponse<MarketplaceItemResponse>> getMarketplaceItemById(@PathVariable UUID id, Principal principal) {
-        MarketplaceItemResponse item = marketplaceItemService.getMarketplaceItemById(id, principal != null ? principal.getName() : null);
+    public ResponseEntity<ApiResponse<AssetResponse>> getAssetById(@PathVariable UUID id, Principal principal) {
+        AssetResponse item = assetService.getAssetById(id, principal != null ? principal.getName() : null);
         return ResponseEntity.ok(ApiResponse.success(item, "Marketplace item retrieved successfully"));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
     @Operation(summary = "Update marketplace item", description = "Updates metadata parameters for a marketplace listing.")
-    public ResponseEntity<ApiResponse<MarketplaceItemResponse>> updateMarketplaceItem(
+    public ResponseEntity<ApiResponse<AssetResponse>> updateAsset(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateMarketplaceItemRequest request,
+            @Valid @RequestBody UpdateAssetRequest request,
             Principal principal) {
         String updaterEmail = principal.getName();
-        MarketplaceItemResponse updatedItem = marketplaceItemService.updateMarketplaceItem(id, request, updaterEmail);
+        AssetResponse updatedItem = assetService.updateAsset(id, request, updaterEmail);
         return ResponseEntity.ok(ApiResponse.success(updatedItem, "Marketplace item updated successfully"));
     }
 
@@ -87,7 +87,7 @@ public class MarketplaceItemController {
     public ResponseEntity<ApiResponse<Map<String, String>>> getUploadUrl(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "application/zip") String contentType) {
-        String url = marketplaceItemService.getPresignedUploadUrl(id, contentType);
+        String url = assetService.getPresignedUploadUrl(id, contentType);
         return ResponseEntity.ok(ApiResponse.success(Map.of("uploadUrl", url), "Presigned URL generated successfully"));
     }
 
@@ -98,7 +98,7 @@ public class MarketplaceItemController {
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,
             Principal principal) {
-        marketplaceItemService.uploadItemFile(id, file, principal.getName());
+        assetService.uploadItemFile(id, file, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "File uploaded successfully"), "Success"));
     }
 
@@ -110,7 +110,7 @@ public class MarketplaceItemController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "asset_image") String mediaType,
             Principal principal) {
-        String objectKey = marketplaceItemService.uploadItemMedia(id, mediaType, file, principal.getName());
+        String objectKey = assetService.uploadItemMedia(id, mediaType, file, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of("message", "Media uploaded", "objectKey", objectKey), "Success"));
     }
@@ -122,43 +122,10 @@ public class MarketplaceItemController {
             @PathVariable UUID id,
             @RequestParam String mediaUrl,
             Principal principal) {
-        marketplaceItemService.deleteAssetMedia(id, mediaUrl, principal.getName());
+        assetService.deleteAssetMedia(id, mediaUrl, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Media deleted"), "Success"));
     }
 
-    @GetMapping("/{id}/source-bundle")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Lấy URL tải source bundle", description = "Chỉ admin / seller / người đã mua được tải. Trả URL bundle zip.")
-    public ResponseEntity<ApiResponse<Map<String, String>>> getSourceBundle(
-            @PathVariable UUID id, Principal principal) {
-        String url = marketplaceItemService.getSourceBundleUrl(id, principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(Map.of("bundleUrl", url), "Source bundle URL"));
-    }
-
-    @PostMapping("/{id}/submit-repo")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @Operation(summary = "Submit source_code bằng repo GitHub",
-            description = "Verify owner → clone → virus scan → snapshot (như game). Private chưa cấp quyền → 403 REPO_NEEDS_BOT.")
-    public ResponseEntity<ApiResponse<Map<String, String>>> submitItemRepo(
-            @PathVariable UUID id,
-            @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
-            Principal principal) {
-        marketplaceItemService.submitItemRepo(id, request.getRepoUrl(), request.getBranch(), principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(
-                Map.of("message", "Repo verified và submit thành công. Đang chờ duyệt."), "Success"));
-    }
-
-    @PostMapping("/accept-bot")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @Operation(summary = "Bot accept invitation repo private (marketplace)")
-    public ResponseEntity<ApiResponse<Map<String, Boolean>>> acceptBot(
-            @Valid @RequestBody com.godotlaunch.backend.dto.request.SubmitGameRepoRequest request,
-            Principal principal) {
-        boolean granted = marketplaceItemService.acceptBotInvitation(request.getRepoUrl(), principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(
-                Map.of("granted", granted),
-                granted ? "Đã cấp quyền cho bot. Bạn có thể submit lại." : "Chưa tìm thấy lời mời."));
-    }
 
     @PostMapping("/{id}/upload-complete")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
@@ -166,37 +133,37 @@ public class MarketplaceItemController {
     public ResponseEntity<ApiResponse<Map<String, String>>> confirmUploadComplete(
             @PathVariable UUID id,
             @RequestParam(required = false) String objectKey) {
-        marketplaceItemService.confirmUploadComplete(id, objectKey);
+        assetService.confirmUploadComplete(id, objectKey);
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Marketplace item ZIP uploaded successfully"), "Success"));
     }
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Approve marketplace item", description = "Approves a pending marketplace item, changing its status to active and notifying the developer.")
-    public ResponseEntity<ApiResponse<Void>> approveMarketplaceItem(@PathVariable UUID id) {
-        marketplaceItemService.approveMarketplaceItem(id);
+    public ResponseEntity<ApiResponse<Void>> approveAsset(@PathVariable UUID id) {
+        assetService.approveAsset(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Marketplace item approved successfully"));
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Reject marketplace item", description = "Rejects a pending marketplace item, changing its status to rejected, deleting files and notifying the developer.")
-    public ResponseEntity<ApiResponse<Void>> rejectMarketplaceItem(
+    public ResponseEntity<ApiResponse<Void>> rejectAsset(
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, String> requestBody) {
         String reason = requestBody != null ? requestBody.getOrDefault("reason", "Violated store policies") : "Violated store policies";
-        marketplaceItemService.rejectMarketplaceItem(id, reason);
+        assetService.rejectAsset(id, reason);
         return ResponseEntity.ok(ApiResponse.success(null, "Marketplace item rejected successfully"));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
     @Operation(summary = "Remove marketplace item", description = "Soft-deletes a marketplace item listing (sets status to removed).")
-    public ResponseEntity<ApiResponse<Map<String, String>>> deleteMarketplaceItem(
+    public ResponseEntity<ApiResponse<Map<String, String>>> deleteAsset(
             @PathVariable UUID id,
             Principal principal) {
         String updaterEmail = principal.getName();
-        marketplaceItemService.removeMarketplaceItem(id, updaterEmail);
+        assetService.removeAsset(id, updaterEmail);
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Marketplace item removed successfully"), "Success"));
     }
 
@@ -208,7 +175,7 @@ public class MarketplaceItemController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "screenshot") String fileType,
             Principal principal) {
-        String objectKey = marketplaceItemService.uploadMarketplaceItemMedia(id, fileType, file, principal.getName());
+        String objectKey = assetService.uploadAssetMediaProxy(id, fileType, file, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of("message", "Media uploaded successfully", "objectKey", objectKey), "Success"));
     }
@@ -220,7 +187,7 @@ public class MarketplaceItemController {
             @PathVariable UUID id,
             @RequestParam String mediaUrl,
             Principal principal) {
-        marketplaceItemService.deleteMarketplaceItemMediaByUrl(id, mediaUrl, principal.getName());
+        assetService.deleteAssetMediaByUrl(id, mediaUrl, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Media item deleted successfully"), "Success"));
     }
 }

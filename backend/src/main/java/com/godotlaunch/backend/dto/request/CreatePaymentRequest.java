@@ -11,5 +11,5 @@ import java.util.UUID;
 public class CreatePaymentRequest {
 
     @NotNull(message = "Marketplace item is required.")
-    private UUID marketplaceItemId;
+    private UUID assetId;
 }

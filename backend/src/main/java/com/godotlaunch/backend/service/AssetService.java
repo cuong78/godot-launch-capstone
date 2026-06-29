@@ -1,21 +1,21 @@
 package com.godotlaunch.backend.service;
 
-import com.godotlaunch.backend.dto.request.CreateMarketplaceItemRequest;
-import com.godotlaunch.backend.dto.request.UpdateMarketplaceItemRequest;
-import com.godotlaunch.backend.dto.response.MarketplaceItemResponse;
+import com.godotlaunch.backend.dto.request.CreateAssetRequest;
+import com.godotlaunch.backend.dto.request.UpdateAssetRequest;
+import com.godotlaunch.backend.dto.response.AssetResponse;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface MarketplaceItemService {
-    UUID createMarketplaceItem(CreateMarketplaceItemRequest request, String sellerEmail);
-    MarketplaceItemResponse getMarketplaceItemById(UUID id, String requesterEmail);
-    List<MarketplaceItemResponse> getAllMarketplaceItems(String requesterEmail);
-    List<MarketplaceItemResponse> getMarketplaceItemsByStatus(ItemStatus status, String requesterEmail);
-    List<MarketplaceItemResponse> getMarketplaceItemsBySeller(String sellerEmail);
-    MarketplaceItemResponse updateMarketplaceItem(UUID id, UpdateMarketplaceItemRequest request, String updaterEmail);
+public interface AssetService {
+    UUID createAsset(CreateAssetRequest request, String sellerEmail);
+    AssetResponse getAssetById(UUID id, String requesterEmail);
+    List<AssetResponse> getAllAssets(String requesterEmail);
+    List<AssetResponse> getAssetsByStatus(ItemStatus status, String requesterEmail);
+    List<AssetResponse> getAssetsBySeller(String sellerEmail);
+    AssetResponse updateAsset(UUID id, UpdateAssetRequest request, String updaterEmail);
     String getPresignedUploadUrl(UUID itemId, String contentType);
     void confirmUploadComplete(UUID itemId, String objectKey);
 
@@ -26,16 +26,7 @@ public interface MarketplaceItemService {
     void uploadItemFile(UUID itemId, MultipartFile file, String uploaderEmail);
 
     /**
-     * Submit marketplace source_code bằng repo GitHub: verify owner → clone → scan → snapshot.
-     * Như game. Sạch → pending (chờ admin), nhiễm → removed. Private chưa cấp quyền → REPO_NEEDS_BOT.
-     */
-    void submitItemRepo(UUID itemId, String repoUrl, String branch, String sellerEmail);
-
-    /** Bot accept invitation cho repo private của marketplace item. */
-    boolean acceptBotInvitation(String repoUrl, String sellerEmail);
-
-    /**
-     * Upload media cho marketplace item qua StorageRouter.
+     * Upload media cho asset qua StorageRouter.
      * @param mediaType 'thumbnail' | 'screenshot' | 'video' | 'asset_image'
      * @return objectKey để frontend track / xóa lẻ
      */
@@ -44,23 +35,17 @@ public interface MarketplaceItemService {
     /** Xóa 1 media theo mediaUrl. */
     void deleteAssetMedia(UUID itemId, String mediaUrl, String uploaderEmail);
 
-    /**
-     * Lấy URL source bundle để tải. Chỉ admin / người đã mua item / seller được phép.
-     * @return bundle URL, throw ACCESS_DENIED nếu không có quyền.
-     */
-    String getSourceBundleUrl(UUID itemId, String requesterEmail);
-
-    void approveMarketplaceItem(UUID id);
-    void rejectMarketplaceItem(UUID id, String reason);
-    void removeMarketplaceItem(UUID id, String updaterEmail);
+    void approveAsset(UUID id);
+    void rejectAsset(UUID id, String reason);
+    void removeAsset(UUID id, String updaterEmail);
 
     /**
-     * Proxy upload media (thumbnail, screenshot, video) cho MarketplaceItem.
+     * Proxy upload media (thumbnail, screenshot, video) cho Asset.
      */
-    String uploadMarketplaceItemMedia(UUID id, String fileType, MultipartFile file, String uploaderEmail);
+    String uploadAssetMediaProxy(UUID id, String fileType, MultipartFile file, String uploaderEmail);
 
     /**
-     * Xóa 1 file media cụ thể của MarketplaceItem theo URL.
+     * Xóa 1 file media cụ thể của Asset theo URL.
      */
-    void deleteMarketplaceItemMediaByUrl(UUID id, String mediaUrl, String uploaderEmail);
+    void deleteAssetMediaByUrl(UUID id, String mediaUrl, String uploaderEmail);
 }

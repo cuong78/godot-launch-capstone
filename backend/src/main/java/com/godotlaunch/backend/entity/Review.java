@@ -30,8 +30,8 @@ public class Review {
     private Order order;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "marketplace_item_id", nullable = false)
-    private MarketplaceItem marketplaceItem;
+    @JoinColumn(name = "asset_id", nullable = false)
+    private Asset asset;
 
     @Column(name = "rating", nullable = false)
     private Short rating;
