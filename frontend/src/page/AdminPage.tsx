@@ -252,11 +252,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   useEffect(() => {
+    const sortByNewest = (arr: typeof allGames) =>
+      [...arr].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+
     if (gameStatusFilter === 'all') {
       // Show all games except drafts (keep moderation clean)
-      setPendingGames(allGames.filter(g => g.status?.toLowerCase() !== 'draft'));
+      setPendingGames(sortByNewest(allGames.filter(g => g.status?.toLowerCase() !== 'draft')));
     } else {
-      setPendingGames(allGames.filter(g => g.status?.toLowerCase() === gameStatusFilter));
+      setPendingGames(sortByNewest(allGames.filter(g => g.status?.toLowerCase() === gameStatusFilter)));
     }
   }, [allGames, gameStatusFilter]);
 
@@ -278,10 +281,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   useEffect(() => {
+    const sortByNewest = (arr: typeof allMarketplaceItems) =>
+      [...arr].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+
     if (marketplaceStatusFilter === 'all') {
-      setPendingMarketplaceItems(allMarketplaceItems);
+      setPendingMarketplaceItems(sortByNewest(allMarketplaceItems));
     } else {
-      setPendingMarketplaceItems(allMarketplaceItems.filter(item => item.status?.toLowerCase() === marketplaceStatusFilter));
+      setPendingMarketplaceItems(sortByNewest(allMarketplaceItems.filter(item => item.status?.toLowerCase() === marketplaceStatusFilter)));
     }
   }, [allMarketplaceItems, marketplaceStatusFilter]);
 
