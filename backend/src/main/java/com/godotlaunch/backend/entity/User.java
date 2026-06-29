@@ -88,6 +88,12 @@ public class User {
     @Column(name = "kyc_verified_at")
     private Instant kycVerifiedAt;
 
+    @Column(name = "kyc_front_image_url", columnDefinition = "TEXT")
+    private String kycFrontImageUrl;
+
+    @Column(name = "kyc_back_image_url", columnDefinition = "TEXT")
+    private String kycBackImageUrl;
+
     @Column(name = "preferred_language", nullable = false, length = 10)
     private String preferredLanguage = "vi";
 

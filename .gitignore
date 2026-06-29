@@ -16,3 +16,4 @@ workspace.xml
 *.json
 !frontend/src/locales/**/*.json
 
+

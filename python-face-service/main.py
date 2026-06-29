@@ -9,12 +9,13 @@ from pydantic import BaseModel
 from typing import Optional
 from face_service import extract_embedding
 from db import find_duplicate_face, save_face_embedding, delete_face_embedding
-from ocr_service import ocr_document
+from ocr_service import ocr_document, extract_text_from_image
 import source_service
 import frame_extractor
 import clip_service
 import nsfw_service
 import code_analyzer
+import text_analyzer
 import base64 as _b64
 import requests as _requests
 
@@ -228,6 +229,10 @@ def process_source(req: SourceProcessRequest):
 def _url_to_b64(url: str) -> Optional[str]:
     """Tải ảnh từ URL → base64. None nếu lỗi (fail-soft, không crash review)."""
     try:
+        if "localhost" in url:
+            url = url.replace("localhost", "host.docker.internal")
+        elif "127.0.0.1" in url:
+            url = url.replace("127.0.0.1", "host.docker.internal")
         r = _requests.get(url, timeout=30)
         r.raise_for_status()
         if len(r.content) > 15 * 1024 * 1024:  # bỏ ảnh > 15MB
@@ -296,6 +301,19 @@ def ai_review(req: AiReviewRequest):
         finally:
             source_service.cleanup(tmp_dir)
 
+    # ── 2a. Text analyzer (Kiểm duyệt ngôn từ nhạy cảm trong Tên và Mô tả) ──
+    try:
+        text_res = text_analyzer.analyze(req.title, req.description)
+        raw["text"] = text_res
+        for issue in text_res.get("issues", []):
+            flags.append({
+                "type": "text_" + str(issue.get("type", "issue")),
+                "severity": issue.get("severity", "medium"),
+                "detail": f"Văn bản nhạy cảm: {issue.get('detail')}"
+            })
+    except Exception as e:
+        raw["textError"] = str(e)[:200]
+
     # ── 3. CLIP media-match ──
     clip_res = clip_service.match(
         images_b64, [req.title, req.description, req.category or ""])
@@ -314,6 +332,32 @@ def ai_review(req: AiReviewRequest):
                       "detail": f"Ảnh #{idx} vượt ngưỡng NSFW "
                                 f"({nsfw_res.get('maxNsfwScore')})",
                       "evidenceIndex": idx})
+
+    # ── 4a. OCR Text Moderation on Images & Video Frames ──
+    ocr_flags_count = 0
+    try:
+        from text_analyzer import _SENSITIVE_KEYWORDS
+        # Quét tối đa 8 hình ảnh (bao gồm cả screenshots và video frames) để tránh quá tải API
+        sampled_images = images_b64[:8]
+        for idx, img_b64 in enumerate(sampled_images):
+            try:
+                detected_text = extract_text_from_image(img_b64)
+                if detected_text:
+                    detected_lower = detected_text.lower()
+                    matched_kws = [kw for kw in _SENSITIVE_KEYWORDS if kw in detected_lower]
+                    if matched_kws:
+                        flags.append({
+                            "type": "media_ocr_sensitive",
+                            "severity": "high",
+                            "detail": f"Phát hiện ngôn từ nhạy cảm viết trong hình ảnh/video #{idx}: {', '.join(matched_kws[:3])}",
+                            "evidenceIndex": idx
+                        })
+                        ocr_flags_count += 1
+            except Exception:
+                pass
+        raw["ocr_media_scan"] = {"scanned_count": len(sampled_images), "flags_found": ocr_flags_count}
+    except Exception as e:
+        raw["ocr_media_scan_error"] = str(e)[:200]
 
     # ── 5. Tổng hợp đề xuất ──
     recommendation = _recommend(code_quality, media_match, description_match, nsfw_flag, flags)

@@ -7,6 +7,7 @@ import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.entity.AiReviewReport;
 import com.godotlaunch.backend.repository.AiReviewReportRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import com.godotlaunch.backend.service.AiReviewService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,21 @@ public class AdminAiReviewController {
 
     private final AiReviewReportRepository aiReviewReportRepository;
     private final ObjectMapper objectMapper;
+    private final AiReviewService aiReviewService;
+
+    @PostMapping("/game/{gameId}/trigger")
+    @Operation(summary = "Kích hoạt chạy AI Review thủ công cho game (Admin only)")
+    public ResponseEntity<ApiResponse<String>> triggerGameReview(@PathVariable UUID gameId) {
+        aiReviewService.reviewGameAsync(gameId);
+        return ResponseEntity.ok(ApiResponse.success("AI review triggered successfully in background", "OK"));
+    }
+
+    @PostMapping("/marketplace-item/{itemId}/trigger")
+    @Operation(summary = "Kích hoạt chạy AI Review thủ công cho marketplace item (Admin only)")
+    public ResponseEntity<ApiResponse<String>> triggerItemReview(@PathVariable UUID itemId) {
+        aiReviewService.reviewMarketplaceItemAsync(itemId);
+        return ResponseEntity.ok(ApiResponse.success("AI review triggered successfully in background", "OK"));
+    }
 
     @GetMapping("/game/{gameId}")
     @Transactional(readOnly = true)

@@ -409,6 +409,8 @@ public class GameServiceImpl implements GameService {
                 .fileUrl(getPresignedGetUrl(game.getFileUrl()))
                 .githubRepoUrl(game.getGithubRepoUrl())
                 .githubBranch(game.getGithubBranch())
+                .createdAt(game.getCreatedAt())
+                .updatedAt(game.getUpdatedAt())
                 .build();
     }
 
@@ -635,11 +637,25 @@ public class GameServiceImpl implements GameService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-        String prefix = ".amazonaws.com/";
-        int index = url.indexOf(prefix);
-        if (index != -1) {
-            return url.substring(index + prefix.length());
+        
+        // AWS S3
+        String awsMarker = ".amazonaws.com/";
+        int awsIndex = url.indexOf(awsMarker);
+        if (awsIndex != -1) {
+            return url.substring(awsIndex + awsMarker.length());
         }
+        
+        // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
+        String seaweedMarker = "/godotlaunch/";
+        int seaweedIndex = url.indexOf(seaweedMarker);
+        if (seaweedIndex != -1) {
+            return url.substring(seaweedIndex + seaweedMarker.length());
+        }
+        
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return null;
+        }
+        
         return url;
     }
 }

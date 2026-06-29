@@ -53,17 +53,45 @@ def _parse_cccd(raw: str) -> dict:
         result["idNumber"] = id_match.group(1)
 
     # Họ và tên: dòng ALL CAPS sau "Họ và tên" / "Full name"
-    name_match = re.search(
-        r'(?:Họ(?:\s+và)?\s+tên|Full\s+name)[:\s]*\n?([A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẶỆ][A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẶỆ\s]+)',
-        raw, re.IGNORECASE | re.UNICODE
-    )
-    if name_match:
-        result["fullName"] = name_match.group(1).strip().title()
-    else:
-        # fallback: dòng chữ hoa dài (tên người)
+    vietnamese_caps = "A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẰẲẴẶẦẤẨẪẬÈÉẺẼẸỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔƠỒỐỔỖỘỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ"
+    
+    # Dò tìm thông minh dựa trên dòng chứa nhãn
+    label_keywords = ["họ và tên", "họ tên", "full name", "name"]
+    target_idx = -1
+    for idx, line in enumerate(lines):
+        if any(k in line.lower() for k in label_keywords):
+            target_idx = idx
+            break
+            
+    if target_idx != -1:
+        # Check cùng dòng
+        line_content = lines[target_idx]
+        cleaned_line = re.sub(r'(?i)(?:Họ\s+và\s+tên|Họ\s+tên|Full\s+name|Name)', '', line_content)
+        cleaned_line = re.sub(r'^[Il1/|:\s]+', '', cleaned_line).strip()
+        if re.match(r'^[' + vietnamese_caps + r'\s]{5,50}$', cleaned_line):
+            result["fullName"] = cleaned_line.title()
+            
+        # Check dòng tiếp theo nếu cùng dòng không khớp
+        if not result["fullName"] and target_idx + 1 < len(lines):
+            next_line = lines[target_idx + 1].strip()
+            next_line_clean = re.sub(r'^[Il1/|:\s]+', '', next_line).strip()
+            if re.match(r'^[' + vietnamese_caps + r'\s]{5,50}$', next_line_clean):
+                if not any(k in next_line_clean.lower() for k in ["ngày", "date", "birth", "sinh", "nơi", "place", "quê"]):
+                    result["fullName"] = next_line_clean.title()
+
+    # Fallback quét tất cả các dòng tìm tên in hoa nếu trên chưa tìm ra
+    if not result["fullName"]:
         for line in lines:
-            if re.match(r'^[A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂẮẶỆ\s]{5,50}$', line):
-                result["fullName"] = line.strip().title()
+            line_clean = re.sub(r'^[Il1/|:\s]+', '', line).strip()
+            if any(k in line_clean.lower() for k in [
+                "họ và tên", "full name", "no.", "số", "cộng hòa", "độc lập", "tự do", "hạnh phúc",
+                "căn cước", "công dân", "identity", "card", "place", "origin", "residence", "date",
+                "birth", "sex", "nationality", "ngày sinh", "giới tính", "quốc tịch", "quê quán",
+                "thường trú", "nơi"
+            ]):
+                continue
+            if re.match(r'^[' + vietnamese_caps + r'\s]{5,50}$', line_clean):
+                result["fullName"] = line_clean.title()
                 break
 
     # Ngày sinh: DD/MM/YYYY
@@ -76,13 +104,35 @@ def _parse_cccd(raw: str) -> dict:
     if dob_match:
         result["dateOfBirth"] = dob_match.group(1).replace("-", "/")
 
-    # Nơi thường trú / Quê quán
+    # Nơi thường trú / Quê quán (đọc nhiều dòng)
     addr_match = re.search(
-        r'(?:Nơi\s+thường\s+trú|Place\s+of\s+residence)[:\s]*\n?(.+)',
-        raw, re.IGNORECASE
+        r'(?i)(?:Nơi\s+thường\s+trú|Place\s+of\s+residence)[:\s]*\n?([\s\S]+)',
+        raw, re.UNICODE
     )
     if addr_match:
-        result["address"] = addr_match.group(1).strip()
+        address_block = addr_match.group(1).strip()
+        addr_lines = []
+        for line in address_block.splitlines():
+            line_str = line.strip()
+            if not line_str:
+                continue
+            # Nếu gặp các nhãn khác thì dừng lại
+            if any(k in line_str.lower() for k in ["số / no", "họ và tên", "ngày sinh", "giới tính", "quốc tịch", "quê quán", "có giá trị đến", "expiry"]):
+                break
+            addr_lines.append(line_str)
+        if addr_lines:
+            full_addr = ", ".join(addr_lines)
+            
+            # Xử lý dọn dẹp nhãn đa tầng cực kỳ mạnh mẽ:
+            # Bước 1: Xóa các ký tự đặc biệt rác ở đầu (ví dụ: /, |, :, khoảng trắng)
+            full_addr = re.sub(r'^[^\w]+', '', full_addr).strip()
+            # Bước 2: Loại bỏ label "Place of residence" hoặc "Nơi thường trú" ở đầu
+            full_addr = re.sub(r'(?i)^(?:Place\s+of\s+residence|Nơi\s+thường\s+trú)', '', full_addr).strip()
+            # Bước 3: Xóa tiếp các ký tự phân tách vừa lòi ra sau khi xóa label (như : hoặc khoảng trắng)
+            full_addr = re.sub(r'^[^\w]+', '', full_addr).strip()
+            
+            full_addr = re.sub(r',\s*,', ',', full_addr)  # Dọn dẹp dấu phẩy lặp
+            result["address"] = full_addr.strip().strip(',').strip()
 
     return result
 

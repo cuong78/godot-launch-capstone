@@ -31,19 +31,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   assets,
   handleViewAssetDetails
 }) => {
-  const [showLicenseModal, setShowLicenseModal] = React.useState(false);
-  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
-  const [pendingAction, setPendingAction] = React.useState<(() => void) | null>(null);
 
-  const handlePurchaseAction = (action: () => void) => {
-    if ((focusedAsset.license === 'Proprietary' || focusedAsset.license === 'Custom') && focusedAsset.licenseTerms) {
-      setPendingAction(() => action);
-      setAcceptedTerms(false);
-      setShowLicenseModal(true);
-    } else {
-      action();
-    }
-  };
 
   const mediaList = React.useMemo(() => {
     const list: { type: 'image' | 'video'; url: string }[] = [];
@@ -254,12 +242,12 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 variant="primary"
                 className="w-full"
                 size="md"
-                onClick={() => handlePurchaseAction(() => handleAddToCart(focusedAsset))}
+                onClick={() => handleAddToCart(focusedAsset)}
               >
                 Add To Creators Cart
               </Button>
               <button
-                onClick={() => handlePurchaseAction(() => handleBuyNow(focusedAsset))}
+                onClick={() => handleBuyNow(focusedAsset)}
                 className="w-full py-2.5 px-4 bg-transparent border border-sky-400 dark:border-sky-800 hover:bg-sky-500/20 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-sky-600 dark:text-white font-display text-center transition-studio cursor-pointer"
               >
                 Buy Now via Bank Transfer
@@ -283,12 +271,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   <span>VERSION:</span>
                   <span className="text-slate-800 dark:text-white font-bold">{focusedAsset.version || '1.0.0'}</span>
                 </div>
-                {focusedAsset.license && (
-                  <div className="flex justify-between">
-                    <span>LICENSE:</span>
-                    <span className="text-slate-800 dark:text-white font-bold">{focusedAsset.license}</span>
-                  </div>
-                )}
+
                 {focusedAsset.supportedPlatforms && (
                   <div className="flex justify-between">
                     <span>PLATFORMS:</span>
@@ -355,66 +338,6 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         </div>
 
       </div>
-
-      {/* Proprietary License Commitment Modal */}
-      {showLicenseModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-scale-in">
-            <div className="space-y-1.5">
-              <span className="px-2 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-500 uppercase font-bold border border-rose-500/20">
-                Proprietary License Commitment Required
-              </span>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">
-                Cam kết Điều khoản Bản quyền của Người bán
-              </h3>
-              <p className="text-xs text-slate-500">
-                Sản phẩm này được phát hành dưới bản quyền thương mại riêng của người bán. Bạn cần đồng ý với các điều khoản dưới đây trước khi tải về hoặc mua hàng.
-              </p>
-            </div>
-
-            <div className="max-h-60 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-850 text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-sans whitespace-pre-wrap">
-              {focusedAsset.licenseTerms || "Không có điều khoản cụ thể nào được cung cấp."}
-            </div>
-
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 dark:border-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-0 focus:ring-2"
-              />
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-normal">
-                Tôi đồng ý và cam kết tuân thủ đầy đủ các điều khoản bản quyền sở hữu trí tuệ của người bán ở trên.
-              </span>
-            </label>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => {
-                  setShowLicenseModal(false);
-                  setPendingAction(null);
-                }}
-                className="px-4 py-2 bg-slate-105 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs transition-studio"
-              >
-                Từ chối
-              </button>
-              <button
-                disabled={!acceptedTerms}
-                onClick={() => {
-                  if (pendingAction) {
-                    pendingAction();
-                  }
-                  setShowLicenseModal(false);
-                  setPendingAction(null);
-                }}
-                className="px-4 py-2 bg-sky-550 hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition-studio"
-              >
-                Đồng ý & Tiếp tục
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

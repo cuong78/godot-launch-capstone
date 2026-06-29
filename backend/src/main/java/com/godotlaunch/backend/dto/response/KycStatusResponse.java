@@ -16,4 +16,6 @@ public class KycStatusResponse {
     private LocalDate dateOfBirth;
     private String address;
     private Instant kycVerifiedAt;
+    private String kycFrontImageUrl;
+    private String kycBackImageUrl;
 }

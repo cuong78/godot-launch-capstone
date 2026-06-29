@@ -3,6 +3,10 @@ package com.godotlaunch.backend.repository;
 import com.godotlaunch.backend.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,4 +23,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"role"})
     Optional<User> findWithRoleByEmail(String email);
+
+    @Query("SELECT u FROM User u WHERE u.avatarUrl IS NOT NULL AND u.avatarUrl <> '' " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.avatarUrl) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<User> searchAvatars(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE ((u.kycFrontImageUrl IS NOT NULL AND u.kycFrontImageUrl <> '') OR (u.kycBackImageUrl IS NOT NULL AND u.kycBackImageUrl <> '')) " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "LOWER(u.kycFullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<User> searchKycImages(@Param("search") String search, Pageable pageable);
 }

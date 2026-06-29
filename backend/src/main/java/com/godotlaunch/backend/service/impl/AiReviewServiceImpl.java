@@ -20,6 +20,7 @@ import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.service.AiReviewService;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.GitHubRepoService;
+import com.godotlaunch.backend.service.AwsS3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -46,6 +47,7 @@ public class AiReviewServiceImpl implements AiReviewService {
     private final MediaRepository mediaRepository;
     private final GitHubRepoService gitHubRepoService;
     private final AuditLogService auditLogService;
+    private final AwsS3Service awsS3Service;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -60,9 +62,11 @@ public class AiReviewServiceImpl implements AiReviewService {
         try {
             String category = game.getCategory() != null ? game.getCategory().getName() : null;
             String token = safeCloneToken(game.getGithubRepoUrl());
-            String videoUrl = firstMediaUrl(MediaOwnerType.game, gameId, "video");
+            String videoUrl = getPresignedGetUrl(firstMediaUrl(MediaOwnerType.game, gameId, "video"));
             List<String> screenshots = mediaUrls(MediaOwnerType.game, gameId,
-                    "screenshot", "thumbnail");
+                    "screenshot", "thumbnail").stream()
+                    .map(this::getPresignedGetUrl)
+                    .collect(java.util.stream.Collectors.toList());
 
             AiReviewResult result = aiReviewClient.review(
                     "code", game.getGithubRepoUrl(), token, game.getGithubBranch(),
@@ -103,9 +107,11 @@ public class AiReviewServiceImpl implements AiReviewService {
             String category = item.getCategory() != null ? item.getCategory().getName() : null;
             String repoUrl = isCode ? item.getGithubRepoUrl() : null;
             String token = isCode ? safeCloneToken(item.getGithubRepoUrl()) : null;
-            String videoUrl = firstMediaUrl(MediaOwnerType.marketplace_item, itemId, "video");
+            String videoUrl = getPresignedGetUrl(firstMediaUrl(MediaOwnerType.marketplace_item, itemId, "video"));
             List<String> screenshots = mediaUrls(MediaOwnerType.marketplace_item, itemId,
-                    "screenshot", "thumbnail", "asset_image");
+                    "screenshot", "thumbnail", "asset_image").stream()
+                    .map(this::getPresignedGetUrl)
+                    .collect(java.util.stream.Collectors.toList());
 
             AiReviewResult result = aiReviewClient.review(
                     contentType, repoUrl, token, null,
@@ -128,6 +134,45 @@ public class AiReviewServiceImpl implements AiReviewService {
         } catch (Exception e) {
             log.error("AI review item {} lỗi (bỏ qua): {}", itemId, e.getMessage());
         }
+    }
+
+    private String getPresignedGetUrl(String rawUrl) {
+        if (rawUrl == null) return null;
+        if (!rawUrl.contains(".amazonaws.com/")) {
+            return rawUrl;
+        }
+        String objectKey = extractObjectKeyFromUrl(rawUrl);
+        if (objectKey == null) return rawUrl;
+        try {
+            return awsS3Service.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
+        } catch (Exception e) {
+            log.warn("Failed to generate presigned GET URL for objectKey: {}, returning raw URL. Error: {}", objectKey, e.getMessage());
+            return rawUrl;
+        }
+    }
+
+    private String extractObjectKeyFromUrl(String url) {
+        if (url == null) return null;
+
+        // AWS S3
+        String awsMarker = ".amazonaws.com/";
+        int awsIndex = url.indexOf(awsMarker);
+        if (awsIndex != -1) {
+            return url.substring(awsIndex + awsMarker.length());
+        }
+
+        // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
+        String seaweedMarker = "/godotlaunch/";
+        int seaweedIndex = url.indexOf(seaweedMarker);
+        if (seaweedIndex != -1) {
+            return url.substring(seaweedIndex + seaweedMarker.length());
+        }
+
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return null;
+        }
+
+        return url;
     }
 
     // ── helpers ─────────────────────────────────────────────────

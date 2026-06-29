@@ -67,15 +67,13 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   }, []);
 
   // Stepper helper
-  const getStepStatus = (step: 1 | 2 | 3) => {
-    if (step === 1) return 'completed';
+  const getStepStatus = (step: 1 | 2) => {
+    if (step === 1) {
+      return contract.signedAtBuyer ? 'completed' : 'active';
+    }
     if (step === 2) {
       if (contract.signedAtSeller) return 'completed';
-      return (contract.status === 'pending' || contract.status === 're_issued') ? 'active' : 'upcoming';
-    }
-    if (step === 3) {
-      if (contract.status === 'signed') return 'completed';
-      return contract.signedAtSeller ? 'active' : 'upcoming';
+      return contract.signedAtBuyer ? 'active' : 'upcoming';
     }
     return 'upcoming';
   };
@@ -215,13 +213,12 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
         </div>
 
         {/* Stepper Progress bar */}
-        <div className="contract-stepper-bar grid grid-cols-3 gap-4 mb-6 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/50 dark:border-slate-850">
+        <div className="contract-stepper-bar grid grid-cols-2 gap-4 mb-6 bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200/50 dark:border-slate-850">
           {[
-            { step: 1, title: 'Khởi tạo hợp đồng', desc: 'Admin biên soạn điều khoản', icon: <FileText size={16} /> },
-            { step: 2, title: 'Developer ký tên', desc: contract.signedAtSeller ? `Đã ký lúc ${new Date(contract.signedAtSeller).toLocaleDateString()}` : 'Đang chờ ký tên', icon: <PenTool size={16} /> },
-            { step: 3, title: 'Admin ký đối ứng', desc: contract.signedAtBuyer ? `Đã hoàn tất ${new Date(contract.signedAtBuyer).toLocaleDateString()}` : 'Chờ hoàn tất', icon: <ShieldCheck size={16} /> }
+            { step: 1, title: 'Admin ký tên', desc: contract.signedAtBuyer ? `Đã ký lúc ${new Date(contract.signedAtBuyer).toLocaleDateString()}` : 'Chờ Admin ký', icon: <PenTool size={16} /> },
+            { step: 2, title: 'Developer ký đối ứng', desc: contract.signedAtSeller ? `Đã ký lúc ${new Date(contract.signedAtSeller).toLocaleDateString()}` : 'Đang chờ ký đối ứng', icon: <ShieldCheck size={16} /> }
           ].map((item) => {
-            const status = getStepStatus(item.step as 1 | 2 | 3);
+            const status = getStepStatus(item.step as 1 | 2);
             return (
               <div key={item.step} className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg shrink-0 ${
@@ -329,13 +326,9 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                           <td className="w-1/3 py-1 font-semibold">Họ và Tên đại diện:</td>
                           <td className="py-1 font-bold">{sellerRepresentative || contract.sellerRepresentative || contract.sellerName}</td>
                         </tr>
-                        <tr className="border-b border-slate-100 dark:border-slate-850">
+                        <tr>
                           <td className="py-1 font-semibold">Địa chỉ thường trú:</td>
                           <td className="py-1">{sellerAddress || contract.sellerAddress || '(Chưa cập nhật)'}</td>
-                        </tr>
-                        <tr className="border-b border-slate-100 dark:border-slate-850">
-                          <td className="py-1 font-semibold">Mã số thuế:</td>
-                          <td className="py-1">{sellerTaxCode || contract.sellerTaxCode || '(Chưa cập nhật)'}</td>
                         </tr>
                         <tr>
                           <td className="py-1 font-semibold">Email tài khoản:</td>
@@ -498,14 +491,8 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                   <span className="font-bold text-amber-500">
                     {contract.contractType === 'co_publishing' 
                       ? `${contract.revenueSplit}% Doanh thu`
-                      : `$${contract.lumpSumAmount}`}
+                      : `${contract.lumpSumAmount} đ`}
                   </span>
-                </div>
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-1.5 space-y-0.5">
-                  <span className="text-slate-500 dark:text-slate-400 block">Mã băm điều khoản (SHA-256 Hash):</span>
-                  <code className="text-[10px] break-all font-mono bg-slate-100 dark:bg-slate-950 p-1 rounded block text-slate-600 dark:text-slate-300 select-all border border-slate-200/55 dark:border-slate-850">
-                    {contract.termsHash || 'Pending contract hashing...'}
-                  </code>
                 </div>
               </div>
 
@@ -594,20 +581,12 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="Họ tên đại diện Bên B"
-                      value={sellerRepresentative}
-                      onChange={(e) => setSellerRepresentative(e.target.value)}
-                      required
-                    />
-                    <Input
-                      label="Mã số thuế"
-                      value={sellerTaxCode}
-                      onChange={(e) => setSellerTaxCode(e.target.value)}
-                      required
-                    />
-                  </div>
+                  <Input
+                    label="Họ tên đại diện Bên B"
+                    value={sellerRepresentative}
+                    onChange={(e) => setSellerRepresentative(e.target.value)}
+                    required
+                  />
 
                   <Input
                     label="Địa chỉ thường trú"

@@ -66,9 +66,9 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         return "marketplace/items/" + itemId + "/project.zip";
     }
 
-    /** FileType cho upload file. Chỉ asset upload file (source_code dùng repo) → asset_media. */
+    /** FileType cho upload file. ZIP của asset dùng source_bundle để giữ bảo mật trong Private Bucket. */
     private FileType resolveFileType(MarketplaceItem item) {
-        return FileType.asset_media;
+        return item.getItemType() == ItemType.asset ? FileType.source_bundle : FileType.asset_media;
     }
 
     @Override
@@ -130,9 +130,8 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         // Map licensing and specifications fields
-        item.setLicense(request.getLicense());
-        item.setLicenseTerms(request.getLicenseTerms());
         item.setDocumentation(request.getDocumentation());
+
         if (request.getVersion() != null && !request.getVersion().trim().isEmpty()) {
             item.setVersion(request.getVersion());
         }
@@ -230,15 +229,10 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
         }
 
         // Map licensing and specifications fields
-        if (request.getLicense() != null) {
-            item.setLicense(request.getLicense());
-        }
-        if (request.getLicenseTerms() != null) {
-            item.setLicenseTerms(request.getLicenseTerms());
-        }
         if (request.getDocumentation() != null) {
             item.setDocumentation(request.getDocumentation());
         }
+
         if (request.getVersion() != null) {
             item.setVersion(request.getVersion());
         }
@@ -734,9 +728,9 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
                 .thumbnailUrl(thumbUrl)
                 .videoUrl(vidUrl)
                 .screenshots(shots)
-                .license(item.getLicense())
-                .licenseTerms(item.getLicenseTerms())
                 .documentation(item.getDocumentation())
+
+
                 .version(item.getVersion())
                 .supportedPlatforms(item.getSupportedPlatforms())
                 .createdAt(item.getCreatedAt())
@@ -753,6 +747,9 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
             return rawUrl;
         }
 
+        if (!rawUrl.contains(".amazonaws.com/")) {
+            return rawUrl;
+        }
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
@@ -765,11 +762,25 @@ public class MarketplaceItemServiceImpl implements MarketplaceItemService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-        String prefix = ".amazonaws.com/";
-        int index = url.indexOf(prefix);
-        if (index != -1) {
-            return url.substring(index + prefix.length());
+
+        // AWS S3
+        String awsMarker = ".amazonaws.com/";
+        int awsIndex = url.indexOf(awsMarker);
+        if (awsIndex != -1) {
+            return url.substring(awsIndex + awsMarker.length());
         }
+
+        // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
+        String seaweedMarker = "/godotlaunch/";
+        int seaweedIndex = url.indexOf(seaweedMarker);
+        if (seaweedIndex != -1) {
+            return url.substring(seaweedIndex + seaweedMarker.length());
+        }
+
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return null;
+        }
+
         return url;
     }
 }

@@ -60,6 +60,10 @@ def extract_frames(video_url: str, frame_count: int = DEFAULT_FRAME_COUNT) -> li
 
 def _download(url: str, dest: str) -> bool:
     try:
+        if "localhost" in url:
+            url = url.replace("localhost", "host.docker.internal")
+        elif "127.0.0.1" in url:
+            url = url.replace("127.0.0.1", "host.docker.internal")
         with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT_SEC) as r:
             r.raise_for_status()
             total = 0

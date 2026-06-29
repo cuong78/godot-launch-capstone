@@ -89,6 +89,12 @@ public class ContractServiceImpl implements ContractService {
         contract.setSellerTaxCode(request.getSellerTaxCode());
         contract.setStatus(isReIssued ? ContractStatus.re_issued : ContractStatus.pending);
 
+        if (request.getBuyerSignatureBase64() == null || request.getBuyerSignatureBase64().trim().isEmpty()) {
+            throw new RuntimeException("Chữ ký của Admin là bắt buộc");
+        }
+        contract.setBuyerSignatureBase64(request.getBuyerSignatureBase64());
+        contract.setSignedAtBuyer(Instant.now());
+
         contract.setTermsHash("N/A");
         contract.setPdfUrl("");
 
@@ -177,17 +183,15 @@ public class ContractServiceImpl implements ContractService {
         if (contract.getSellerAddress() == null || contract.getSellerAddress().trim().isEmpty()) {
             throw new RuntimeException("Địa chỉ thường trú là bắt buộc");
         }
-        if (contract.getSellerTaxCode() == null || contract.getSellerTaxCode().trim().isEmpty()) {
-            throw new RuntimeException("Mã số thuế Bên B là bắt buộc");
-        }
 
         contract.setSignedAtSeller(Instant.now());
         contract.setSellerSignatureBase64(signatureBase64);
+        contract.setStatus(ContractStatus.signed);
         contractRepository.save(contract);
 
-        // Update game status to approved
+        // Update game status to published
         Game game = contract.getGame();
-        game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.approved);
+        game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.published);
         gameRepository.save(game);
 
         auditLogService.publishAuto(
@@ -196,16 +200,16 @@ public class ContractServiceImpl implements ContractService {
                 contract.getId(),
                 null,
                 contract.getStatus().name(),
-                "Contract signed by developer (seller) for game: " + contract.getGame().getTitle()
+                "Contract fully signed by developer (seller) for game: " + contract.getGame().getTitle()
         );
 
         auditLogService.publishAuto(
-                AuditAction.game_approved,
+                AuditAction.game_published,
                 AuditTarget.game,
                 game.getId(),
                 com.godotlaunch.backend.entity.enums.GameStatus.pending.name(),
-                com.godotlaunch.backend.entity.enums.GameStatus.approved.name(),
-                "Game '" + game.getTitle() + "' approved (contract signed by developer)."
+                com.godotlaunch.backend.entity.enums.GameStatus.published.name(),
+                "Game '" + game.getTitle() + "' published (contract fully signed by developer)."
         );
 
         return mapToResponse(contract);
