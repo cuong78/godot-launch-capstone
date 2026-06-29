@@ -38,6 +38,10 @@ public class Transaction {
     @JoinColumn(name = "game_id")
     private Game game;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "marketplace_item_id")
+    private MarketplaceItem marketplaceItem;
+
     @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 

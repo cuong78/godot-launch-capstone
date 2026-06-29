@@ -435,6 +435,14 @@ CREATE TABLE public.favorites (
 
 COMMENT ON TABLE public.favorites IS 'Danh sach game yeu thich / wishlist cua user';
 
+CREATE TABLE public.marketplace_favorites (
+    user_id uuid NOT NULL,
+    item_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+COMMENT ON TABLE public.marketplace_favorites IS 'Danh sách asset và source code yêu thích của user';
+
 CREATE TABLE public.game_tags (
     game_id uuid NOT NULL,
     tag_id uuid NOT NULL
@@ -784,6 +792,7 @@ CREATE TABLE public.transactions (
     wallet_id uuid NOT NULL,
     related_user_id uuid,
     game_id uuid,
+    marketplace_item_id uuid,
     amount numeric(15,2) NOT NULL,
     platform_commission numeric(15,2) DEFAULT 0.00 NOT NULL,
     net_amount numeric(15,2) NOT NULL,
@@ -1323,6 +1332,10 @@ CREATE INDEX idx_transactions_type ON public.transactions USING btree (type);
 
 CREATE INDEX idx_transactions_wallet_id ON public.transactions USING btree (wallet_id);
 
+CREATE INDEX idx_transactions_marketplace_item_id ON public.transactions USING btree (marketplace_item_id);
+
+CREATE INDEX idx_marketplace_favorites_item_id ON public.marketplace_favorites USING btree (item_id);
+
 CREATE INDEX idx_users_github_id ON public.users USING btree (github_id) WHERE (github_id IS NOT NULL);
 
 CREATE INDEX idx_users_preferred_language ON public.users USING btree (preferred_language);
@@ -1536,6 +1549,18 @@ ALTER TABLE ONLY public.transactions
 
 ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_wallet_id_fkey FOREIGN KEY (wallet_id) REFERENCES public.wallets(id) ON DELETE RESTRICT;
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.marketplace_favorites
+    ADD CONSTRAINT marketplace_favorites_pkey PRIMARY KEY (user_id, item_id);
+
+ALTER TABLE ONLY public.marketplace_favorites
+    ADD CONSTRAINT marketplace_favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.marketplace_favorites
+    ADD CONSTRAINT marketplace_favorites_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.user_ip_logs
     ADD CONSTRAINT user_ip_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;

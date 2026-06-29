@@ -452,6 +452,7 @@ public class PaymentServiceImpl implements PaymentService {
             transaction.setWallet(sellerWallet);
             transaction.setRelatedUser(order.getBuyer());
             transaction.setGame(item.getSourceGame());
+            transaction.setMarketplaceItem(item);
             transaction.setAmount(payment.getAmount());
             transaction.setPlatformCommission(platformCommission);
             transaction.setNetAmount(sellerRevenue);
