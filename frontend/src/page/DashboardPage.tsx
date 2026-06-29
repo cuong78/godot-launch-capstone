@@ -842,7 +842,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             </td>
                             <td className="p-3">
                               <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border bg-amber-450/10 text-amber-500 border-amber-500/20">
-                                {item.itemType === 'source_code' ? 'SOURCE CODE' : 'RESOURCE ASSET'}
+                                RESOURCE ASSET
                               </span>
                             </td>
                             <td className="p-3 text-slate-600 dark:text-slate-350">{item.categoryName || 'Chưa phân loại'}</td>

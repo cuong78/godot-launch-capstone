@@ -105,7 +105,7 @@ export const PurchasedInventoryPanel: React.FC<PurchasedInventoryPanelProps> = (
             <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
               {paidPayments.map((payment) => {
                 const downloadUrl = resolveApiUrl(payment.downloadUrl);
-                const isSourceCode = payment.marketplaceItemType === 'source_code';
+                const isSourceCode = payment.marketplaceItemType === 'game_source';
 
                 return (
                   <article

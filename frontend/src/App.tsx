@@ -74,8 +74,7 @@ const readStoredSelectedPaymentOrder = () => {
 };
 
 const normalizeMarketplaceCategory = (
-  categoryName?: string,
-  itemType?: Asset['itemType']
+  categoryName?: string
 ): Asset['category'] => {
   const normalized = categoryName?.trim().toLowerCase();
 
@@ -99,7 +98,7 @@ const normalizeMarketplaceCategory = (
     case 'audio and sfx':
       return 'Audio & SFX';
     default:
-      return itemType === 'source_code' ? 'Scripts & Plugins' : '2D Assets';
+      return '2D Assets';
   }
 };
 
@@ -127,16 +126,13 @@ const getMarketplaceImage = (
   item: MarketplaceItemResponse,
   category: Asset['category']
 ) => {
-  const imagePool =
-    item.itemType === 'source_code'
-      ? [IMAGE_SEED_MAP.drift, IMAGE_SEED_MAP.planner, IMAGE_SEED_MAP.tycoon]
-      : {
-          'Shaders & VFX': [IMAGE_SEED_MAP.interior, IMAGE_SEED_MAP.sky],
-          '2D Assets': [IMAGE_SEED_MAP.forest, IMAGE_SEED_MAP.interior],
-          '3D Models': [IMAGE_SEED_MAP.knight, IMAGE_SEED_MAP.char],
-          'Audio & SFX': [IMAGE_SEED_MAP.char, IMAGE_SEED_MAP.sky],
-          'Scripts & Plugins': [IMAGE_SEED_MAP.planner, IMAGE_SEED_MAP.tycoon]
-        }[category];
+  const imagePool = {
+    'Shaders & VFX': [IMAGE_SEED_MAP.interior, IMAGE_SEED_MAP.sky],
+    '2D Assets': [IMAGE_SEED_MAP.forest, IMAGE_SEED_MAP.interior],
+    '3D Models': [IMAGE_SEED_MAP.knight, IMAGE_SEED_MAP.char],
+    'Audio & SFX': [IMAGE_SEED_MAP.char, IMAGE_SEED_MAP.sky],
+    'Scripts & Plugins': [IMAGE_SEED_MAP.planner, IMAGE_SEED_MAP.tycoon]
+  }[category];
 
   return imagePool[Math.abs(hashString(item.id)) % imagePool.length];
 };
@@ -145,16 +141,14 @@ const buildMarketplaceTagList = (
   item: MarketplaceItemResponse,
   category: Asset['category']
 ) => [
-  item.itemType === 'source_code' ? 'Source Code' : 'Asset Pack',
+  'Asset Pack',
   category,
-  item.godotVersion,
-  item.sourceGameTitle,
-  item.githubVerifiedAt ? 'GitHub Verified' : undefined,
+  item.version,
   item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : undefined
 ].filter((tag): tag is string => Boolean(tag));
 
 const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
-  const category = normalizeMarketplaceCategory(item.categoryName, item.itemType);
+  const category = normalizeMarketplaceCategory(item.categoryName);
   const dbTags = item.tags || [];
   const tagList = dbTags.length > 0 ? dbTags : buildMarketplaceTagList(item, category);
 
@@ -162,40 +156,32 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
     id: item.id,
     title: item.title,
     price: Number(item.price || 0),
-    rating: item.itemType === 'source_code' ? 4.9 : 4.8,
+    rating: 4.8,
     reviewedCount: 0,
     author: item.sellerFullName || item.sellerEmail || 'Unknown Creator',
     authorAvatar: DEFAULT_AUTHOR_AVATAR,
     category,
     description: item.description || '',
-    image: item.thumbnailUrl || (item.itemType === 'asset' && item.mediaUrls && item.mediaUrls.length > 0 ? item.mediaUrls[0] : undefined) || getMarketplaceImage(item, category),
-    tag: item.godotVersion || category,
+    image: item.thumbnailUrl || (item.mediaUrls && item.mediaUrls.length > 0 ? item.mediaUrls[0] : undefined) || getMarketplaceImage(item, category),
+    tag: item.version || category,
     tagList,
-    itemType: item.itemType,
-    version: item.version || (item.itemType === 'source_code' ? (item.godotVersion || '1.0.0') : '1.0.0'),
-    screenshots: item.itemType === 'asset' ? (item.mediaUrls || []) : (item.screenshots || []),
+    itemType: 'asset',
+    version: item.version || '1.0.0',
+    screenshots: item.mediaUrls || [],
     videoUrl: item.videoUrl,
-    documentation: item.documentation || '',
+    documentation: '',
 
     supportedPlatforms: item.supportedPlatforms || '',
     lastUpdated: formatMarketplaceDate(item.updatedAt || item.createdAt),
     details: {
-      tilesCount: item.itemType === 'source_code' ? 'Complete project bundle' : 'Pack archive',
-      spritesCount: item.itemType === 'source_code'
-        ? (item.sourceGameTitle || 'Standalone source package')
-        : 'Ready-to-import resources',
-      propsCount: item.githubVerifiedAt ? 'GitHub-verified package' : 'Marketplace file package',
-      featuresList: item.itemType === 'source_code'
-        ? [
-            'Real marketplace source listing from API',
-            item.githubVerifiedAt ? 'GitHub repository verified before publishing' : 'Direct source package download',
-            item.godotVersion ? `Built for ${item.godotVersion}` : 'Compatible Godot project structure'
-          ]
-        : [
-            'Real marketplace asset listing from API',
-            'Ready for import into your production pipeline',
-            category ? `${category} category mapping preserved` : 'Category metadata preserved'
-          ]
+      tilesCount: 'Pack archive',
+      spritesCount: 'Ready-to-import resources',
+      propsCount: 'Marketplace file package',
+      featuresList: [
+        'Real marketplace asset listing from API',
+        'Ready for import into your production pipeline',
+        category ? `${category} category mapping preserved` : 'Category metadata preserved'
+      ]
     }
   };
 };
