@@ -4,14 +4,12 @@ import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Order;
 import com.godotlaunch.backend.entity.Payment;
-import com.godotlaunch.backend.entity.SourceDownload;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.OrderRepository;
-import com.godotlaunch.backend.repository.SourceDownloadRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.AwsS3Service;
@@ -32,12 +30,10 @@ import java.util.UUID;
 public class DownloadServiceImpl implements DownloadService {
 
     private static final String SOURCE_BUNDLE_MARKER = "marketplace/items/";
-    private static final int DEVICE_INFO_MAX_LENGTH = 200;
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final SourceSnapshotRepository sourceSnapshotRepository;
-    private final SourceDownloadRepository sourceDownloadRepository;
     private final StorageRouter storageRouter;
     private final AwsS3Service awsS3Service;
 
@@ -71,21 +67,7 @@ public class DownloadServiceImpl implements DownloadService {
 
         InputStream inputStream = storageRouter.getInputStream(FileType.source_bundle, objectKey);
 
-        SourceDownload sourceDownload = new SourceDownload();
-        sourceDownload.setUser(buyer);
-        sourceDownload.setAsset(item);
-        sourceDownload.setOrder(order);
-        sourceDownload.setIpAddress(normalize(ipAddress));
-        sourceDownload.setDeviceInfo(truncate(userAgent, DEVICE_INFO_MAX_LENGTH));
-        sourceDownload.setDownloadCount(resolveNextDownloadCount(buyer.getId(), item.getId(), order.getId()));
-        sourceDownloadRepository.save(sourceDownload);
-
         return new DownloadResource(inputStream, buildDownloadFileName(item.getTitle()));
-    }
-
-    private Integer resolveNextDownloadCount(UUID buyerId, UUID itemId, UUID orderId) {
-        long currentCount = sourceDownloadRepository.countByUserIdAndAssetIdAndOrderId(buyerId, itemId, orderId);
-        return Math.toIntExact(currentCount + 1);
     }
 
     private String extractObjectKey(String rawUrl) {
@@ -130,21 +112,5 @@ public class DownloadServiceImpl implements DownloadService {
         }
 
         return asciiTitle + ".zip";
-    }
-
-    private String normalize(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
-    }
-
-    private String truncate(String value, int maxLength) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-
-        String normalized = value.trim();
-        return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
     }
 }

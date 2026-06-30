@@ -1,7 +1,6 @@
 package com.godotlaunch.backend.dto.response;
 
 import com.godotlaunch.backend.entity.enums.OrderStatus;
-import com.godotlaunch.backend.entity.enums.PaymentProvider;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,7 +31,6 @@ public class PaymentResponse {
     private String sellerEmail;
     private String sellerFullName;
     private OrderStatus orderStatus;
-    private PaymentProvider paymentProvider;
     private PaymentStatus paymentStatus;
     private BigDecimal amount;
     private String currency;

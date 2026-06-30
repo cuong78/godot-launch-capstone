@@ -4,7 +4,6 @@ import com.godotlaunch.backend.dto.request.UpdateGameRequest;
 import com.godotlaunch.backend.dto.response.GameResponse;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.Media;
-import com.godotlaunch.backend.entity.enums.MediaOwnerType;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.SourceSnapshot;
@@ -57,7 +56,7 @@ public class GameServiceImpl implements GameService {
 
     /** Helper: tìm media của game này. */
     private List<Media> gameMedia(UUID gameId) {
-        return mediaRepository.findByOwnerTypeAndOwnerId(MediaOwnerType.game, gameId);
+        return mediaRepository.findByGame_Id(gameId);
     }
     private final AwsS3Service awsS3Service;
     private final AsyncVirusScanService asyncVirusScanService;
@@ -474,12 +473,11 @@ public class GameServiceImpl implements GameService {
 
             // Video chỉ có 1 cái/game → upload mới thay thế cái cũ (không giữ lịch sử).
             if (isVideo) {
-                mediaRepository.deleteByOwnerTypeAndOwnerIdAndMediaType(MediaOwnerType.game, gameId, "video");
+                mediaRepository.deleteByGame_IdAndMediaType(gameId, "video");
             }
 
             Media media = new Media();
-            media.setOwnerType(MediaOwnerType.game);
-            media.setOwnerId(gameId);
+            media.setGame(game);
             media.setMediaType(isVideo ? "video" : "image");
             media.setMediaUrl(mediaUrl);
             mediaRepository.save(media);
@@ -520,8 +518,7 @@ public class GameServiceImpl implements GameService {
                 deleteMediaFilesAndRecords(gameId, "video");
             }
             Media media = new Media();
-            media.setOwnerType(MediaOwnerType.game);
-            media.setOwnerId(gameId);
+            media.setGame(game);
             media.setMediaType(isVideo ? "video" : "image");
             media.setMediaUrl(mediaUrl);
             mediaRepository.save(media);
@@ -544,7 +541,7 @@ public class GameServiceImpl implements GameService {
                         }
                     }
                 });
-        mediaRepository.deleteByOwnerTypeAndOwnerIdAndMediaType(MediaOwnerType.game, gameId, mediaType);
+        mediaRepository.deleteByGame_IdAndMediaType(gameId, mediaType);
     }
 
     @Override
@@ -629,7 +626,7 @@ public class GameServiceImpl implements GameService {
                     awsS3Service.deleteObject(mediaKey);
                 }
             }
-            mediaRepository.deleteByOwnerTypeAndOwnerId(MediaOwnerType.game, gameId);
+            mediaRepository.deleteByGame_Id(gameId);
             log.info("Đã xóa tệp ZIP, Thumbnail và {} tệp screenshots/video trên S3 cho game bị từ chối: gameId = {}", mediaList.size(), gameId);
         } catch (Exception e) {
             log.warn("Không thể xóa hoàn toàn tệp tin trên S3 của game bị từ chối: gameId = {}, lỗi = {}", gameId, e.getMessage());

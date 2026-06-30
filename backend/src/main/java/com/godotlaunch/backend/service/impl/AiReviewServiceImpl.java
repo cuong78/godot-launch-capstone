@@ -11,7 +11,6 @@ import com.godotlaunch.backend.entity.enums.ActorRole;
 import com.godotlaunch.backend.entity.enums.AiRecommendation;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
-import com.godotlaunch.backend.entity.enums.MediaOwnerType;
 import com.godotlaunch.backend.repository.AiReviewReportRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
@@ -61,8 +60,8 @@ public class AiReviewServiceImpl implements AiReviewService {
         try {
             String category = game.getCategory() != null ? game.getCategory().getName() : null;
             String token = safeCloneToken(game.getGithubRepoUrl());
-            String videoUrl = getPresignedGetUrl(firstMediaUrl(MediaOwnerType.game, gameId, "video"));
-            List<String> screenshots = mediaUrls(MediaOwnerType.game, gameId,
+            String videoUrl = getPresignedGetUrl(firstGameMediaUrl(gameId, "video"));
+            List<String> screenshots = gameMediaUrls(gameId,
                     "screenshot", "thumbnail").stream()
                     .map(this::getPresignedGetUrl)
                     .collect(java.util.stream.Collectors.toList());
@@ -102,8 +101,8 @@ public class AiReviewServiceImpl implements AiReviewService {
         try {
             // Asset = tài nguyên lẻ → AI review chỉ media (CLIP + NSFW), không có repo code.
             String category = item.getCategory() != null ? item.getCategory().getName() : null;
-            String videoUrl = getPresignedGetUrl(firstMediaUrl(MediaOwnerType.marketplace_item, itemId, "video"));
-            List<String> screenshots = mediaUrls(MediaOwnerType.marketplace_item, itemId,
+            String videoUrl = getPresignedGetUrl(firstAssetMediaUrl(itemId, "video"));
+            List<String> screenshots = assetMediaUrls(itemId,
                     "screenshot", "thumbnail", "asset_image").stream()
                     .map(this::getPresignedGetUrl)
                     .collect(java.util.stream.Collectors.toList());
@@ -206,16 +205,30 @@ public class AiReviewServiceImpl implements AiReviewService {
         }
     }
 
-    private String firstMediaUrl(MediaOwnerType ownerType, UUID ownerId, String mediaType) {
-        List<Media> list = mediaRepository.findByOwnerTypeAndOwnerIdAndMediaType(
-                ownerType, ownerId, mediaType);
+    private String firstGameMediaUrl(UUID gameId, String mediaType) {
+        List<Media> list = mediaRepository.findByGame_IdAndMediaType(gameId, mediaType);
         return list.isEmpty() ? null : list.get(0).getMediaUrl();
     }
 
-    private List<String> mediaUrls(MediaOwnerType ownerType, UUID ownerId, String... mediaTypes) {
+    private String firstAssetMediaUrl(UUID assetId, String mediaType) {
+        List<Media> list = mediaRepository.findByAsset_IdAndMediaType(assetId, mediaType);
+        return list.isEmpty() ? null : list.get(0).getMediaUrl();
+    }
+
+    private List<String> gameMediaUrls(UUID gameId, String... mediaTypes) {
         List<String> urls = new ArrayList<>();
         for (String type : mediaTypes) {
-            for (Media m : mediaRepository.findByOwnerTypeAndOwnerIdAndMediaType(ownerType, ownerId, type)) {
+            for (Media m : mediaRepository.findByGame_IdAndMediaType(gameId, type)) {
+                if (m.getMediaUrl() != null) urls.add(m.getMediaUrl());
+            }
+        }
+        return urls;
+    }
+
+    private List<String> assetMediaUrls(UUID assetId, String... mediaTypes) {
+        List<String> urls = new ArrayList<>();
+        for (String type : mediaTypes) {
+            for (Media m : mediaRepository.findByAsset_IdAndMediaType(assetId, type)) {
                 if (m.getMediaUrl() != null) urls.add(m.getMediaUrl());
             }
         }

@@ -501,12 +501,6 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                   </p>
                 </div>
                 <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.provider')}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
-                    {activePayment.paymentProvider}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.reference')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
                     {activePayment.paymentReference || t('payment:common.waitingReference')}

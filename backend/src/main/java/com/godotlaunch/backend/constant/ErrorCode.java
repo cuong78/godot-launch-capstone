@@ -13,7 +13,6 @@ public enum ErrorCode {
     ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Specified user role does not exist."),
     PASSWORDS_DO_NOT_MATCH(HttpStatus.BAD_REQUEST, "Passwords do not match."),
     INVALID_OTP(HttpStatus.BAD_REQUEST, "Invalid or expired OTP verification code."),
-    WISHLIST_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "Game is already in your wishlist."),
 
     // 401 Unauthorized
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Full authentication is required to access this resource."),
@@ -30,7 +29,6 @@ public enum ErrorCode {
     // 404 Not Found
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested user does not exist."),
     GAME_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested game does not exist."),
-    WISHLIST_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Game is not in your wishlist."),
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested category does not exist."),
     MARKETPLACE_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested marketplace item does not exist."),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested order does not exist."),

@@ -324,10 +324,6 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
 
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.paymentProvider')}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{payment.paymentProvider}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.paymentStatus')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{payment.paymentStatus}</p>
                 </div>

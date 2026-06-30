@@ -73,7 +73,6 @@ public class ContractServiceImpl implements ContractService {
         Contract contract = new Contract();
         contract.setGame(game);
         contract.setSeller(game.getCreator());
-        contract.setBuyer(admin);
         contract.setContractType(request.getContractType());
         if (request.getContractType() == ContractType.co_publishing) {
             contract.setRevenueSplit(request.getRevenueSplit());
@@ -231,7 +230,6 @@ public class ContractServiceImpl implements ContractService {
         contract.setSignedAtBuyer(Instant.now());
         contract.setBuyerSignatureBase64(signatureBase64);
         contract.setStatus(ContractStatus.signed);
-        contract.setBuyer(userRepository.findById(adminId).orElseThrow());
 
         contractRepository.save(contract);
 
@@ -312,7 +310,6 @@ public class ContractServiceImpl implements ContractService {
                 .sellerId(contract.getSeller().getId())
                 .sellerName(contract.getSeller().getFullName() != null ? contract.getSeller().getFullName() : contract.getSeller().getEmail())
                 .sellerEmail(contract.getSeller().getEmail())
-                .buyerId(contract.getBuyer() != null ? contract.getBuyer().getId() : null)
                 .contractType(contract.getContractType())
                 .termsHash(contract.getTermsHash())
                 .pdfUrl(publicPdfUrl)

@@ -496,8 +496,6 @@ export interface MarketplaceItemResponse {
   updatedAt?: string;
 }
 
-export type PaymentProvider = "PAYOS";
-
 export type OrderStatus = "PENDING" | "PAID";
 
 export type PaymentStatus =
@@ -525,7 +523,6 @@ export interface PaymentResponse {
   sellerEmail: string;
   sellerFullName: string;
   orderStatus: OrderStatus;
-  paymentProvider: PaymentProvider;
   paymentStatus: PaymentStatus;
   amount: number;
   currency: string;

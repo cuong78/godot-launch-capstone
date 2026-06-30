@@ -13,7 +13,6 @@ import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.OrderType;
-import com.godotlaunch.backend.entity.enums.PaymentProvider;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
@@ -96,7 +95,6 @@ public class PaymentServiceImpl implements PaymentService {
         if (payment == null) {
             payment = new Payment();
             payment.setOrder(order);
-            payment.setPaymentProvider(PaymentProvider.PAYOS);
             payment.setPaymentStatus(PaymentStatus.PENDING);
             payment.setAmount(item.getPrice());
             payment.setCurrency(DEFAULT_CURRENCY);
@@ -136,7 +134,6 @@ public class PaymentServiceImpl implements PaymentService {
                         .build()
         );
 
-        payment.setPaymentProvider(PaymentProvider.PAYOS);
         payment.setPaymentStatus(resolveCreatedPaymentStatus(gatewayResponse.getStatus()));
         payment.setPayosOrderCode(gatewayResponse.getOrderCode());
         payment.setPayosPaymentLinkId(gatewayResponse.getPaymentLinkId());
@@ -599,7 +596,6 @@ public class PaymentServiceImpl implements PaymentService {
                 .sellerEmail(item.getSeller().getEmail())
                 .sellerFullName(item.getSeller().getFullName())
                 .orderStatus(order.getOrderStatus())
-                .paymentProvider(payment.getPaymentProvider())
                 .paymentStatus(payment.getPaymentStatus())
                 .amount(payment.getAmount())
                 .currency(payment.getCurrency())

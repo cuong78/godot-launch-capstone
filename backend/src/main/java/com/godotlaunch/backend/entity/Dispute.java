@@ -34,13 +34,9 @@ public class Dispute {
     @JoinColumn(name = "reported_seller_id", nullable = false)
     private User reportedSeller;       // A
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "game_id", nullable = false)
     private Game game;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "asset_id")
-    private Asset asset;
 
     @Column(name = "reason", columnDefinition = "TEXT", nullable = false)
     private String reason;

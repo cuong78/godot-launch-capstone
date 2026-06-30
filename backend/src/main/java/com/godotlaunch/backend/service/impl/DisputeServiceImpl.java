@@ -6,14 +6,11 @@ import com.godotlaunch.backend.dto.request.ResolveDisputeRequest;
 import com.godotlaunch.backend.dto.response.DisputeResponse;
 import com.godotlaunch.backend.entity.Dispute;
 import com.godotlaunch.backend.entity.Game;
-import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.GameStatus;
-import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.DisputeRepository;
 import com.godotlaunch.backend.repository.GameRepository;
-import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.BannedIdentityService;
 import com.godotlaunch.backend.service.DisputeService;
@@ -35,7 +32,6 @@ public class DisputeServiceImpl implements DisputeService {
     private final DisputeRepository disputeRepository;
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
-    private final AssetRepository assetRepository;
     private final BannedIdentityService bannedIdentityService;
 
     private static final int REFUND_DAYS = 5;
@@ -47,7 +43,7 @@ public class DisputeServiceImpl implements DisputeService {
         User reporter = userRepository.findByEmail(reporterEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        if (request.getGameId() == null && request.getAssetId() == null) {
+        if (request.getGameId() == null) {
             throw new AppException(ErrorCode.BAD_REQUEST);
         }
 
@@ -58,24 +54,14 @@ public class DisputeServiceImpl implements DisputeService {
         dispute.setEvidenceNote(request.getEvidenceNote());
         dispute.setStatus("open");
 
-        User seller;
-        // Xác định sản phẩm + seller (A) + auto-suspend
-        if (request.getGameId() != null) {
-            Game game = gameRepository.findById(request.getGameId())
-                    .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
-            seller = game.getCreator();
-            dispute.setGame(game);
-            // Auto-suspend: gỡ game khỏi store ngay
-            game.setStatus(GameStatus.rejected);
-            gameRepository.save(game);
-        } else {
-            Asset item = assetRepository.findById(request.getAssetId())
-                    .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-            seller = item.getSeller();
-            dispute.setAsset(item);
-            item.setStatus(ItemStatus.removed);
-            assetRepository.save(item);
-        }
+        // Dispute chỉ cho game: xác định seller (A) + auto-suspend game
+        Game game = gameRepository.findById(request.getGameId())
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+        User seller = game.getCreator();
+        dispute.setGame(game);
+        // Auto-suspend: gỡ game khỏi store ngay
+        game.setStatus(GameStatus.rejected);
+        gameRepository.save(game);
 
         // Không cho tự tố chính mình
         if (seller.getId().equals(reporter.getId())) {
@@ -175,10 +161,6 @@ public class DisputeServiceImpl implements DisputeService {
             Game game = dispute.getGame();
             game.setStatus(GameStatus.published);
             gameRepository.save(game);
-        } else if (dispute.getAsset() != null) {
-            Asset item = dispute.getAsset();
-            item.setStatus(ItemStatus.active);
-            assetRepository.save(item);
         }
     }
 
@@ -206,10 +188,8 @@ public class DisputeServiceImpl implements DisputeService {
                 .reporterEmail(d.getReporter().getEmail())
                 .reportedSellerId(d.getReportedSeller().getId())
                 .reportedSellerEmail(d.getReportedSeller().getEmail())
-                .gameId(d.getGame() != null ? d.getGame().getId() : null)
-                .gameTitle(d.getGame() != null ? d.getGame().getTitle() : null)
-                .assetId(d.getAsset() != null ? d.getAsset().getId() : null)
-                .assetTitle(d.getAsset() != null ? d.getAsset().getTitle() : null)
+                .gameId(d.getGame().getId())
+                .gameTitle(d.getGame().getTitle())
                 .reason(d.getReason())
                 .evidenceRepoUrl(d.getEvidenceRepoUrl())
                 .evidenceNote(d.getEvidenceNote())

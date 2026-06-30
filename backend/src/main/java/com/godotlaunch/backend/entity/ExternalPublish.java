@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.entity;
 
-import com.godotlaunch.backend.entity.enums.ExtPlatform;
 import com.godotlaunch.backend.entity.enums.ExtStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -32,10 +31,6 @@ public class ExternalPublish {
     private GameVersion gameVersion;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "platform", nullable = false, columnDefinition = "ext_platform_enum")
-    private ExtPlatform platform;
-
-    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "ext_status_enum")
     private ExtStatus status = ExtStatus.pending;
 
@@ -53,10 +48,6 @@ public class ExternalPublish {
 
     @Column(name = "rejected_reason", columnDefinition = "TEXT")
     private String rejectedReason;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "submitted_by", nullable = false)
-    private User submittedBy;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

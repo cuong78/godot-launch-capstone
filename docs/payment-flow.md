@@ -166,7 +166,6 @@ Lưu ý:
 - `sellerId`
 - `sellerEmail`
 - `orderStatus`
-- `paymentProvider`
 - `paymentStatus`
 - `amount`
 - `currency`

@@ -87,6 +87,7 @@ CREATE TYPE public.contract_type_enum AS ENUM (
     'co_publishing'
 );
 
+-- Dùng cho store_download_stats.platform (Google Play / App Store stats).
 CREATE TYPE public.ext_platform_enum AS ENUM (
     'google_play',
     'app_store'
@@ -141,10 +142,6 @@ CREATE TYPE public.order_type_enum AS ENUM (
 
 CREATE TYPE public.payment_method_enum AS ENUM (
     'MANUAL_BANK_TRANSFER'
-);
-
-CREATE TYPE public.payment_provider_enum AS ENUM (
-    'PAYOS'
 );
 
 CREATE TYPE public.payment_status_enum AS ENUM (
@@ -370,11 +367,13 @@ COMMENT ON COLUMN public.community_chats.parent_message_id IS 'NULL = tin nhan g
 
 COMMENT ON COLUMN public.community_chats.is_deleted IS 'Soft delete: admin xem duoc noi dung, user thay [da xoa]';
 
+-- Hop dong CHI cho full_acquisition / co_publishing.
+-- He thong chi 1 admin ky thay platform → khong luu FK buyer (buyer_id da bo).
+-- Thong tin phap nhan ben mua giu o buyer_representative / buyer_position / buyer_signature_base64.
 CREATE TABLE public.contracts (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     game_id uuid NOT NULL,
     seller_id uuid NOT NULL,
-    buyer_id uuid,
     contract_type public.contract_type_enum NOT NULL,
     terms_hash character varying(64) NOT NULL,
     pdf_url text NOT NULL,
@@ -399,16 +398,15 @@ CREATE TABLE public.contracts (
 
 COMMENT ON TABLE public.contracts IS 'Hop dong phap ly — CHI cho full_acquisition va co_publishing';
 
-COMMENT ON COLUMN public.contracts.buyer_id IS 'NULL = platform mua dut';
-
 COMMENT ON COLUMN public.contracts.revenue_split IS '% cho developer (chi co_publishing)';
 
+-- Tranh chap ban quyen CHI cho GAME (asset = tai nguyen le, khong dispute).
+-- game_id BAT BUOC (asset_id da bo).
 CREATE TABLE public.disputes (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     reporter_id uuid NOT NULL,
     reported_seller_id uuid NOT NULL,
-    game_id uuid,
-    asset_id uuid,
+    game_id uuid NOT NULL,
     reason text NOT NULL,
     evidence_repo_url text,
     evidence_note text,
@@ -420,31 +418,30 @@ CREATE TABLE public.disputes (
     resolved_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT chk_dispute_target CHECK (((game_id IS NOT NULL) OR (asset_id IS NOT NULL))),
     CONSTRAINT disputes_status_check CHECK (((status)::text = ANY (ARRAY[('open'::character varying)::text, ('investigating'::character varying)::text, ('resolved_seller_fault'::character varying)::text, ('resolved_reporter_fault'::character varying)::text, ('resolved_inconclusive'::character varying)::text, ('cancelled'::character varying)::text])))
 );
 
 COMMENT ON TABLE public.disputes IS 'Tranh chấp bản quyền source: B tố A đánh cắp. Admin phán xử theo cây quyết định.';
 
+-- He thong chi publish 1 platform mac dinh (Google Play) → khong luu cot platform.
+-- Admin/he thong la nguoi submit → khong luu FK submitted_by.
 CREATE TABLE public.external_publishes (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     game_id uuid NOT NULL,
     game_version_id uuid NOT NULL,
-    platform public.ext_platform_enum NOT NULL,
     status public.ext_status_enum DEFAULT 'pending'::public.ext_status_enum NOT NULL,
     external_app_id character varying(200),
     store_url text,
     submitted_at timestamp with time zone,
     live_at timestamp with time zone,
     rejected_reason text,
-    submitted_by uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-COMMENT ON TABLE public.external_publishes IS 'Theo doi tung lan submit game len Google Play / App Store';
+COMMENT ON TABLE public.external_publishes IS 'Theo doi tung lan submit game len store (mac dinh Google Play)';
 
-COMMENT ON COLUMN public.external_publishes.game_version_id IS 'Version cu the duoc submit — biet Google Play/AppStore dang chay version nao';
+COMMENT ON COLUMN public.external_publishes.game_version_id IS 'Version cu the duoc submit — biet store dang chay version nao';
 
 CREATE TABLE public.face_embeddings (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -452,14 +449,6 @@ CREATE TABLE public.face_embeddings (
     embedding public.vector(128) NOT NULL,
     created_at timestamp with time zone DEFAULT now()
 );
-
-CREATE TABLE public.favorites (
-    user_id uuid NOT NULL,
-    game_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-COMMENT ON TABLE public.favorites IS 'Danh sach game yeu thich / wishlist cua user';
 
 CREATE TABLE public.game_tags (
     game_id uuid NOT NULL,
@@ -516,65 +505,18 @@ COMMENT ON COLUMN public.games.github_branch IS 'Branch để pull (null = defau
 
 COMMENT ON COLUMN public.games.github_verified_at IS 'Thời điểm verify owner repo khớp account';
 
-CREATE TABLE public.asset_favorites (
-    user_id uuid NOT NULL,
-    asset_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-COMMENT ON TABLE public.asset_favorites IS 'Danh sách asset và source code yêu thích của user';
-
+-- Media (anh/video) cua Game hoac Asset — exclusive arc game_id XOR asset_id, FK that ON DELETE CASCADE.
 CREATE TABLE public.media (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    owner_type character varying(20) NOT NULL,
-    owner_id uuid NOT NULL,
-    media_type character varying(20) NOT NULL,
-    media_url text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT media_owner_type_check CHECK (((owner_type)::text = ANY (ARRAY[('game'::character varying)::text, ('marketplace_item'::character varying)::text])))
-);
-
-COMMENT ON TABLE public.media IS 'Media chung cho game + marketplace_item (polymorphic owner)';
-
-CREATE TABLE public.media_content_flags (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    media_url text NOT NULL,
-    media_type character varying(20),
-    owner_type character varying(50) NOT NULL,
-    owner_id uuid NOT NULL,
-    owner_name text,
-    nsfw_score double precision DEFAULT 0.0 NOT NULL,
-    flagged boolean DEFAULT false NOT NULL,
-    flag_details jsonb,
-    status character varying(20) DEFAULT 'pending'::character varying NOT NULL,
-    reviewed_by uuid,
-    reviewed_at timestamp with time zone,
-    reviewer_note text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-CREATE TABLE public.media_files (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     game_id uuid,
     asset_id uuid,
     media_type character varying(20) NOT NULL,
-    url text NOT NULL,
-    display_order smallint DEFAULT 0 NOT NULL,
-    alt_text character varying(200),
+    media_url text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT chk_media_one_owner CHECK ((((game_id IS NOT NULL) AND (asset_id IS NULL)) OR ((game_id IS NULL) AND (asset_id IS NOT NULL)))),
-    CONSTRAINT media_files_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('screenshot'::character varying)::text, ('video'::character varying)::text, ('thumbnail'::character varying)::text, ('banner'::character varying)::text])))
+    CONSTRAINT chk_media_one_owner CHECK ((num_nonnulls(game_id, asset_id) = 1))
 );
 
-COMMENT ON TABLE public.media_files IS 'Anh/video cho games VA marketplace_items — game_id XOR marketplace_item_id';
-
-COMMENT ON COLUMN public.media_files.game_id IS 'FK → games. NULL neu owner la marketplace_item';
-
-COMMENT ON COLUMN public.media_files.asset_id IS 'FK → marketplace_items. NULL neu owner la game';
-
-COMMENT ON COLUMN public.media_files.media_type IS 'screenshot | video | thumbnail | banner';
-
-COMMENT ON COLUMN public.media_files.display_order IS 'Thu tu hien thi — Google Play / App Store dung thu tu nay';
+COMMENT ON TABLE public.media IS 'Media cho game + asset — game_id XOR asset_id (FK that)';
 
 CREATE TABLE public.notifications (
     id uuid NOT NULL,
@@ -610,6 +552,7 @@ COMMENT ON COLUMN public.orders.asset_id IS 'NOT NULL: source code hoac asset du
 
 COMMENT ON COLUMN public.orders.price_paid IS 'Gia thuc te thanh toan, co the khac gia niem yet neu co discount';
 
+-- He thong chi dung 1 cong PAYOS → khong luu cot payment_provider.
 CREATE TABLE public.payments (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     order_id uuid NOT NULL,
@@ -626,7 +569,6 @@ CREATE TABLE public.payments (
     rejection_reason text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    payment_provider public.payment_provider_enum DEFAULT 'PAYOS'::public.payment_provider_enum NOT NULL,
     payos_order_code bigint,
     payos_payment_link_id character varying(120),
     payos_transaction_id character varying(120),
@@ -678,35 +620,11 @@ CREATE TABLE public.roles (
 
 COMMENT ON TABLE public.roles IS 'Bang role tach khoi enum: de them role moi ma khong can ALTER TYPE';
 
-CREATE TABLE public.source_downloads (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    asset_id uuid,
-    game_id uuid,
-    order_id uuid NOT NULL,
-    ip_address inet,
-    device_info character varying(200),
-    downloaded_at timestamp with time zone DEFAULT now() NOT NULL,
-    download_count integer DEFAULT 1 NOT NULL,
-    CONSTRAINT source_downloads_download_count_check CHECK ((download_count >= 1)),
-    CONSTRAINT chk_source_downloads_target CHECK (
-        (asset_id IS NOT NULL AND game_id IS NULL) OR
-        (asset_id IS NULL AND game_id IS NOT NULL)
-    )
-);
-
-COMMENT ON TABLE public.source_downloads IS 'Moi luot tai source code / asset — KHONG UNIQUE (tai lai nhieu lan)';
-
-COMMENT ON COLUMN public.source_downloads.asset_id IS 'Source code hoac asset duoc tai';
-
-COMMENT ON COLUMN public.source_downloads.order_id IS 'Bat buoc: phai co order source_code_purchase hop le';
-
-COMMENT ON COLUMN public.source_downloads.device_info IS 'OS + may tinh, ho tro analytics';
-
+-- Bang chung bat bien moi lan submit source GAME qua GitHub repo (anti-theft + due diligence).
+-- Chi cho game (asset_id da bo — asset la tai nguyen le, khong snapshot).
 CREATE TABLE public.source_snapshots (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     game_id uuid,
-    asset_id uuid,
     submitted_by uuid NOT NULL,
     repo_url text NOT NULL,
     commit_sha character varying(40),
@@ -718,11 +636,10 @@ CREATE TABLE public.source_snapshots (
     file_hashes jsonb,
     secrets_found jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    bundle_url text,
-    CONSTRAINT chk_snapshot_target CHECK ((((game_id IS NOT NULL) AND (asset_id IS NULL)) OR ((game_id IS NULL) AND (asset_id IS NOT NULL))))
+    bundle_url text
 );
 
-COMMENT ON TABLE public.source_snapshots IS 'Bằng chứng bất biến mỗi lần submit code (anti-theft + due diligence)';
+COMMENT ON TABLE public.source_snapshots IS 'Bằng chứng bất biến mỗi lần submit source game (anti-theft + due diligence)';
 
 COMMENT ON COLUMN public.source_snapshots.bundle_url IS 'Link source code đã zip lên storage (AI đọc lại + admin/người mua tải)';
 
@@ -1005,9 +922,6 @@ ALTER TABLE ONLY public.external_publishes
 ALTER TABLE ONLY public.face_embeddings
     ADD CONSTRAINT face_embeddings_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.favorites
-    ADD CONSTRAINT favorites_pkey PRIMARY KEY (user_id, game_id);
-
 ALTER TABLE ONLY public.game_tags
     ADD CONSTRAINT game_tags_pkey PRIMARY KEY (game_id, tag_id);
 
@@ -1016,15 +930,6 @@ ALTER TABLE ONLY public.game_versions
 
 ALTER TABLE ONLY public.games
     ADD CONSTRAINT games_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.asset_favorites
-    ADD CONSTRAINT asset_favorites_pkey PRIMARY KEY (user_id, asset_id);
-
-ALTER TABLE ONLY public.media_content_flags
-    ADD CONSTRAINT media_content_flags_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.media_files
-    ADD CONSTRAINT media_files_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.media
     ADD CONSTRAINT media_pkey PRIMARY KEY (id);
@@ -1052,9 +957,6 @@ ALTER TABLE ONLY public.roles
 
 ALTER TABLE ONLY public.roles
     ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.source_downloads
-    ADD CONSTRAINT source_downloads_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.source_snapshots
     ADD CONSTRAINT source_snapshots_pkey PRIMARY KEY (id);
@@ -1088,9 +990,6 @@ ALTER TABLE ONLY public.cart_items
 
 ALTER TABLE ONLY public.chat_reactions
     ADD CONSTRAINT uq_chat_reaction UNIQUE (chat_id, user_id);
-
-ALTER TABLE ONLY public.external_publishes
-    ADD CONSTRAINT uq_game_platform UNIQUE (game_id, platform);
 
 ALTER TABLE ONLY public.game_versions
     ADD CONSTRAINT uq_game_version UNIQUE (game_id, version_number);
@@ -1176,8 +1075,6 @@ CREATE INDEX idx_community_chats_parent_message_id ON public.community_chats USI
 
 CREATE INDEX idx_community_chats_sender_id ON public.community_chats USING btree (sender_id);
 
-CREATE INDEX idx_contracts_buyer_id ON public.contracts USING btree (buyer_id);
-
 CREATE INDEX idx_contracts_game_id ON public.contracts USING btree (game_id);
 
 CREATE INDEX idx_contracts_seller_id ON public.contracts USING btree (seller_id);
@@ -1192,13 +1089,9 @@ CREATE INDEX idx_disputes_status ON public.disputes USING btree (status);
 
 CREATE INDEX idx_ext_publishes_game_id ON public.external_publishes USING btree (game_id);
 
-CREATE INDEX idx_ext_publishes_platform ON public.external_publishes USING btree (platform);
-
 CREATE INDEX idx_ext_publishes_status ON public.external_publishes USING btree (status);
 
 CREATE INDEX idx_ext_publishes_version_id ON public.external_publishes USING btree (game_version_id);
-
-CREATE INDEX idx_favorites_game_id ON public.favorites USING btree (game_id);
 
 CREATE INDEX idx_game_tags_tag_id ON public.game_tags USING btree (tag_id);
 
@@ -1228,8 +1121,6 @@ CREATE INDEX idx_ip_logs_user_id ON public.user_ip_logs USING btree (user_id);
 
 CREATE INDEX idx_marketplace_category ON public.assets USING btree (category_id);
 
-CREATE INDEX idx_asset_favorites_asset_id ON public.asset_favorites USING btree (asset_id);
-
 CREATE INDEX idx_marketplace_item_tags_tag ON public.asset_tags USING btree (tag_id);
 
 CREATE INDEX idx_marketplace_item_tags_tag_id ON public.asset_tags USING btree (tag_id);
@@ -1238,29 +1129,9 @@ CREATE INDEX idx_marketplace_seller_id ON public.assets USING btree (seller_id);
 
 CREATE INDEX idx_marketplace_status ON public.assets USING btree (status);
 
-CREATE INDEX idx_media_files_game_id ON public.media_files USING btree (game_id) WHERE (game_id IS NOT NULL);
+CREATE INDEX idx_media_game ON public.media USING btree (game_id) WHERE (game_id IS NOT NULL);
 
-CREATE INDEX idx_media_files_marketplace_id ON public.media_files USING btree (asset_id) WHERE (asset_id IS NOT NULL);
-
-CREATE INDEX idx_media_files_order_game ON public.media_files USING btree (game_id, display_order) WHERE (game_id IS NOT NULL);
-
-CREATE INDEX idx_media_files_thumb_game ON public.media_files USING btree (game_id) WHERE (((media_type)::text = 'thumbnail'::text) AND (game_id IS NOT NULL));
-
-CREATE INDEX idx_media_files_thumb_market ON public.media_files USING btree (asset_id) WHERE (((media_type)::text = 'thumbnail'::text) AND (asset_id IS NOT NULL));
-
-CREATE INDEX idx_media_files_type_game ON public.media_files USING btree (game_id, media_type) WHERE (game_id IS NOT NULL);
-
-CREATE INDEX idx_media_files_type_market ON public.media_files USING btree (asset_id, media_type) WHERE (asset_id IS NOT NULL);
-
-CREATE INDEX idx_media_flags_created ON public.media_content_flags USING btree (created_at DESC);
-
-CREATE INDEX idx_media_flags_flagged ON public.media_content_flags USING btree (flagged);
-
-CREATE INDEX idx_media_flags_owner ON public.media_content_flags USING btree (owner_type, owner_id);
-
-CREATE INDEX idx_media_flags_status ON public.media_content_flags USING btree (status);
-
-CREATE INDEX idx_media_owner ON public.media USING btree (owner_type, owner_id);
+CREATE INDEX idx_media_asset ON public.media USING btree (asset_id) WHERE (asset_id IS NOT NULL);
 
 CREATE INDEX idx_notifications_is_read ON public.notifications USING btree (recipient_id, is_read);
 
@@ -1290,19 +1161,9 @@ CREATE INDEX idx_reviews_rating ON public.reviews USING btree (rating);
 
 CREATE INDEX idx_reviews_user_id ON public.reviews USING btree (user_id);
 
-CREATE INDEX idx_source_downloads_downloaded_at ON public.source_downloads USING btree (downloaded_at DESC);
-
-CREATE INDEX idx_source_downloads_marketplace_item_id ON public.source_downloads USING btree (asset_id);
-
-CREATE INDEX idx_source_downloads_order_id ON public.source_downloads USING btree (order_id);
-
-CREATE INDEX idx_source_downloads_user_id ON public.source_downloads USING btree (user_id);
-
 CREATE INDEX idx_source_snapshots_bundle ON public.source_snapshots USING btree (bundle_hash);
 
 CREATE INDEX idx_source_snapshots_game ON public.source_snapshots USING btree (game_id);
-
-CREATE INDEX idx_source_snapshots_item ON public.source_snapshots USING btree (asset_id);
 
 CREATE INDEX idx_source_snapshots_user ON public.source_snapshots USING btree (submitted_by);
 
@@ -1399,19 +1260,13 @@ ALTER TABLE ONLY public.community_chats
     ADD CONSTRAINT community_chats_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.contracts
-    ADD CONSTRAINT contracts_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.users(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY public.contracts
     ADD CONSTRAINT contracts_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE RESTRICT;
 
 ALTER TABLE ONLY public.contracts
     ADD CONSTRAINT contracts_seller_id_fkey FOREIGN KEY (seller_id) REFERENCES public.users(id) ON DELETE RESTRICT;
 
 ALTER TABLE ONLY public.disputes
-    ADD CONSTRAINT disputes_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.disputes
-    ADD CONSTRAINT disputes_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE SET NULL;
+    ADD CONSTRAINT disputes_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.disputes
     ADD CONSTRAINT disputes_reported_seller_id_fkey FOREIGN KEY (reported_seller_id) REFERENCES public.users(id);
@@ -1428,17 +1283,8 @@ ALTER TABLE ONLY public.external_publishes
 ALTER TABLE ONLY public.external_publishes
     ADD CONSTRAINT external_publishes_game_version_id_fkey FOREIGN KEY (game_version_id) REFERENCES public.game_versions(id) ON DELETE RESTRICT;
 
-ALTER TABLE ONLY public.external_publishes
-    ADD CONSTRAINT external_publishes_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id) ON DELETE RESTRICT;
-
 ALTER TABLE ONLY public.face_embeddings
     ADD CONSTRAINT face_embeddings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.favorites
-    ADD CONSTRAINT favorites_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.favorites
-    ADD CONSTRAINT favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.game_tags
     ADD CONSTRAINT game_tags_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
@@ -1455,12 +1301,6 @@ ALTER TABLE ONLY public.games
 ALTER TABLE ONLY public.games
     ADD CONSTRAINT games_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.users(id) ON DELETE RESTRICT;
 
-ALTER TABLE ONLY public.asset_favorites
-    ADD CONSTRAINT asset_favorites_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.asset_favorites
-    ADD CONSTRAINT asset_favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
 ALTER TABLE ONLY public.asset_tags
     ADD CONSTRAINT marketplace_item_tags_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
@@ -1473,14 +1313,11 @@ ALTER TABLE ONLY public.assets
 ALTER TABLE ONLY public.assets
     ADD CONSTRAINT marketplace_items_seller_id_fkey FOREIGN KEY (seller_id) REFERENCES public.users(id) ON DELETE RESTRICT;
 
-ALTER TABLE ONLY public.media_content_flags
-    ADD CONSTRAINT media_content_flags_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.users(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.media
+    ADD CONSTRAINT media_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.media_files
-    ADD CONSTRAINT media_files_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.media_files
-    ADD CONSTRAINT media_files_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.media
+    ADD CONSTRAINT media_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.users(id) ON DELETE CASCADE;
@@ -1518,23 +1355,8 @@ ALTER TABLE ONLY public.reviews
 ALTER TABLE ONLY public.reviews
     ADD CONSTRAINT reviews_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.source_downloads
-    ADD CONSTRAINT source_downloads_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.source_downloads
-    ADD CONSTRAINT source_downloads_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.source_downloads
-    ADD CONSTRAINT source_downloads_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY public.source_downloads
-    ADD CONSTRAINT source_downloads_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
 ALTER TABLE ONLY public.source_snapshots
     ADD CONSTRAINT source_snapshots_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.source_snapshots
-    ADD CONSTRAINT source_snapshots_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.source_snapshots
     ADD CONSTRAINT source_snapshots_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id);
@@ -1580,5 +1402,3 @@ ALTER TABLE ONLY public.withdrawal_requests
 
 ALTER TABLE ONLY public.withdrawal_requests
     ADD CONSTRAINT withdrawal_requests_wallet_id_fkey FOREIGN KEY (wallet_id) REFERENCES public.wallets(id) ON DELETE RESTRICT;
-
-

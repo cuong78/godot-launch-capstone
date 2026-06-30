@@ -13,11 +13,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * Báo cáo AI review multimodal (code + media) — ĐỀ XUẤT cho admin.
- * AI KHÔNG quyết định cuối: admin xem điểm + flags + bằng chứng rồi tự duyệt/từ chối.
- * Gắn với 1 trong 2: game HOẶC marketplace item.
- */
+
 @Entity
 @Table(name = "ai_review_reports")
 @Getter

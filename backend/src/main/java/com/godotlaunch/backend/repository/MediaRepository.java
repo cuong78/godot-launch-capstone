@@ -1,7 +1,6 @@
 package com.godotlaunch.backend.repository;
 
 import com.godotlaunch.backend.entity.Media;
-import com.godotlaunch.backend.entity.enums.MediaOwnerType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
@@ -13,10 +12,17 @@ import java.util.UUID;
 
 @Repository
 public interface MediaRepository extends JpaRepository<Media, UUID> {
-    List<Media> findByOwnerTypeAndOwnerId(MediaOwnerType ownerType, UUID ownerId);
-    List<Media> findByOwnerTypeAndOwnerIdAndMediaType(MediaOwnerType ownerType, UUID ownerId, String mediaType);
-    void deleteByOwnerTypeAndOwnerId(MediaOwnerType ownerType, UUID ownerId);
-    void deleteByOwnerTypeAndOwnerIdAndMediaType(MediaOwnerType ownerType, UUID ownerId, String mediaType);
+    // Media của Game (FK game_id)
+    List<Media> findByGame_Id(UUID gameId);
+    List<Media> findByGame_IdAndMediaType(UUID gameId, String mediaType);
+    void deleteByGame_Id(UUID gameId);
+    void deleteByGame_IdAndMediaType(UUID gameId, String mediaType);
+
+    // Media của Asset (FK asset_id)
+    List<Media> findByAsset_Id(UUID assetId);
+    List<Media> findByAsset_IdAndMediaType(UUID assetId, String mediaType);
+    void deleteByAsset_Id(UUID assetId);
+    void deleteByAsset_IdAndMediaType(UUID assetId, String mediaType);
 
     @Query("SELECT m FROM Media m WHERE :search IS NULL OR :search = '' OR " +
            "LOWER(m.mediaUrl) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

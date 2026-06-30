@@ -13,7 +13,6 @@ import java.util.UUID;
 @Repository
 public interface SourceSnapshotRepository extends JpaRepository<SourceSnapshot, UUID> {
     List<SourceSnapshot> findByGameIdOrderByCreatedAtDesc(UUID gameId);
-    List<SourceSnapshot> findByAssetIdOrderByCreatedAtDesc(UUID itemId);
 
     // Tra cứu khi tranh chấp: ai từng submit cùng bundle hash
     List<SourceSnapshot> findByBundleHash(String bundleHash);

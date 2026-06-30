@@ -46,7 +46,6 @@ public class Game {
     @Column(name = "file_url", columnDefinition = "TEXT")
     private String fileUrl;
 
-    // Repo-based submit: game pull code từ repo GitHub thay cho upload game.zip
     @Column(name = "github_repo_url", columnDefinition = "TEXT")
     private String githubRepoUrl;
 

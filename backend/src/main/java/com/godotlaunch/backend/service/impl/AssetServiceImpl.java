@@ -246,7 +246,6 @@ public class AssetServiceImpl implements AssetService {
             default -> "asset_image";
         };
 
-        var ownerType = com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item;
         // thumbnail & video chỉ 1 cái/item → thay thế cái cũ
         if ("thumbnail".equals(type) || "video".equals(type)) {
             deleteItemMediaByType(itemId, type);
@@ -256,8 +255,7 @@ public class AssetServiceImpl implements AssetService {
         String mediaUrl = storageRouter.uploadWithKey(FileType.asset_media, file, objectKey);
 
         com.godotlaunch.backend.entity.Media media = new com.godotlaunch.backend.entity.Media();
-        media.setOwnerType(ownerType);
-        media.setOwnerId(itemId);
+        media.setAsset(item);
         media.setMediaType(type);
         media.setMediaUrl(mediaUrl);
         mediaRepository.save(media);
@@ -280,8 +278,7 @@ public class AssetServiceImpl implements AssetService {
         }
 
         String targetKey = extractObjectKeyFromUrl(mediaUrl);
-        mediaRepository.findByOwnerTypeAndOwnerId(
-                        com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item, itemId).stream()
+        mediaRepository.findByAsset_Id(itemId).stream()
                 .filter(m -> targetKey != null && targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
                 .findFirst()
                 .ifPresent(m -> {
@@ -308,8 +305,7 @@ public class AssetServiceImpl implements AssetService {
 
     /** Xóa toàn bộ media 1 loại của item (dùng khi thay thumbnail/video). */
     private void deleteItemMediaByType(UUID itemId, String mediaType) {
-        var ownerType = com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item;
-        mediaRepository.findByOwnerTypeAndOwnerIdAndMediaType(ownerType, itemId, mediaType)
+        mediaRepository.findByAsset_IdAndMediaType(itemId, mediaType)
                 .forEach(m -> {
                     String key = extractObjectKeyFromUrl(m.getMediaUrl());
                     if (key != null) {
@@ -462,8 +458,7 @@ public class AssetServiceImpl implements AssetService {
 
     private AssetResponse mapToResponse(Asset item, boolean includePrivateAccess) {
         // Load media 1 lần, tách theo loại (thumbnail/video/screenshot/asset_image)
-        var mediaList = mediaRepository.findByOwnerTypeAndOwnerId(
-                com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item, item.getId());
+        var mediaList = mediaRepository.findByAsset_Id(item.getId());
         String thumbUrl = mediaList.stream().filter(m -> "thumbnail".equals(m.getMediaType()))
                 .map(m -> getPresignedGetUrl(m.getMediaUrl())).findFirst().orElse(null);
         String vidUrl = mediaList.stream().filter(m -> "video".equals(m.getMediaType()))

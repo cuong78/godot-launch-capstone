@@ -7,9 +7,8 @@ import java.util.UUID;
 
 @Data
 public class CreateDisputeRequest {
-    // Sản phẩm bị tố — 1 trong 2
+    // Game bị tố (dispute chỉ cho game)
     private UUID gameId;
-    private UUID assetId;
 
     @NotBlank(message = "Lý do tố cáo là bắt buộc")
     private String reason;

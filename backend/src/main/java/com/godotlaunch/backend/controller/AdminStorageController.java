@@ -35,6 +35,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -267,6 +268,7 @@ public class AdminStorageController {
 
     @GetMapping("/files")
     @Operation(summary = "Lấy danh sách file tải lên phân trang theo Category")
+    @Transactional(readOnly = true)  // media.getGame()/getAsset() là LAZY proxy → cần session mở
     public ResponseEntity<ApiResponse<Page<UploadedFileResponse>>> listUploadedFiles(
             @RequestParam String category,
             @RequestParam(required = false, defaultValue = "") String search,
@@ -361,17 +363,17 @@ public class AdminStorageController {
                 resultPage = mediaList.map(med -> {
                     String ownerName = "Unknown";
                     String ownerType = "Unknown";
-                    if (med.getOwnerType() == com.godotlaunch.backend.entity.enums.MediaOwnerType.game) {
-                        ownerName = gameRepo.findById(med.getOwnerId()).map(Game::getTitle).orElse("Deleted Game");
+                    if (med.getGame() != null) {
+                        ownerName = med.getGame().getTitle();
                         ownerType = "Game";
-                    } else if (med.getOwnerType() == com.godotlaunch.backend.entity.enums.MediaOwnerType.marketplace_item) {
-                        ownerName = itemRepo.findById(med.getOwnerId()).map(Asset::getTitle).orElse("Deleted Marketplace Item");
+                    } else if (med.getAsset() != null) {
+                        ownerName = med.getAsset().getTitle();
                         ownerType = "Asset";
                     }
                     return UploadedFileResponse.builder()
                             .id("media-" + med.getId())
                             .fileName(extractFileName(med.getMediaUrl()))
-                            .fileType(med.getOwnerType() == com.godotlaunch.backend.entity.enums.MediaOwnerType.game ? "game_media" : "asset_media")
+                            .fileType(med.getGame() != null ? "game_media" : "asset_media")
                             .fileUrl(med.getMediaUrl())
                             .storageProvider(inferProvider(med.getMediaUrl()))
                             .ownerId(med.getId())

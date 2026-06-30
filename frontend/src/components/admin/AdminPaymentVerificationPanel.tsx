@@ -159,7 +159,6 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
                   <th className="p-4 font-semibold">Order</th>
                   <th className="p-4 font-semibold">Buyer</th>
                   <th className="p-4 font-semibold">Amount</th>
-                  <th className="p-4 font-semibold">Provider</th>
                   <th className="p-4 font-semibold">Payment Status</th>
                   <th className="p-4 font-semibold">Updated</th>
                   <th className="p-4 font-semibold text-right">Action</th>
@@ -168,13 +167,13 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">
+                    <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500">
                       Loading payment sessions...
                     </td>
                   </tr>
                 ) : payments.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500">
+                    <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500">
                       No payment sessions are available right now.
                     </td>
                   </tr>
@@ -197,7 +196,6 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
                           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{payment.buyerEmail}</div>
                         </td>
                         <td className="p-4 font-semibold text-amber-500">{formatMoney(payment.amount)}</td>
-                        <td className="p-4 text-xs font-semibold text-slate-600 dark:text-slate-300">{payment.paymentProvider}</td>
                         <td className="p-4">
                           <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${statusMeta.badgeClass}`}>
                             {statusMeta.icon}

@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.entity;
 
-import com.godotlaunch.backend.entity.enums.MediaOwnerType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,10 +9,12 @@ import lombok.AllArgsConstructor;
 import java.time.Instant;
 import java.util.UUID;
 
+
 /**
- * Media chung cho game + marketplace_item (polymorphic owner).
- * owner_type + owner_id thay cho FK cứng (vì owner trỏ 2 bảng khác nhau).
- * media_type: 'thumbnail' | 'screenshot' | 'video' | 'asset_image'.
+ * Media (ảnh/video) của Game hoặc Asset.
+ * Exclusive arc: đúng 1 trong game / asset non-null (CHECK chk_media_one_owner ở DB).
+ * FK thật ON DELETE CASCADE → xóa Game/Asset tự dọn media. Thay cho polymorphic
+ * owner_type+owner_id cũ (V67) để toàn vẹn dữ liệu + ER diagram vẽ đúng quan hệ.
  */
 @Entity
 @Table(name = "media")
@@ -27,12 +28,13 @@ public class Media {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "owner_type", nullable = false, length = 20)
-    private MediaOwnerType ownerType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "game_id")
+    private Game game;
 
-    @Column(name = "owner_id", nullable = false)
-    private UUID ownerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asset_id")
+    private Asset asset;
 
     @Column(name = "media_type", nullable = false, length = 20)
     private String mediaType;

@@ -16,7 +16,6 @@ public class ContractResponse {
     private UUID sellerId;
     private String sellerName;
     private String sellerEmail;
-    private UUID buyerId;
     private ContractType contractType;
     private String termsHash;
     private String pdfUrl;
