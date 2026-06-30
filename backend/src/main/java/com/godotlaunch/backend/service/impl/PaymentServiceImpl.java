@@ -452,6 +452,7 @@ public class PaymentServiceImpl implements PaymentService {
             transaction.setRelatedUser(order.getBuyer());
             // Asset = tài nguyên lẻ, không gắn game (game-source purchase wire ở Phase 2)
             transaction.setGame(null);
+            transaction.setAsset(item);
             transaction.setAmount(payment.getAmount());
             transaction.setPlatformCommission(platformCommission);
             transaction.setNetAmount(sellerRevenue);

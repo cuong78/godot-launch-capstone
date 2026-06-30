@@ -115,11 +115,6 @@ CREATE TYPE public.item_status_enum AS ENUM (
     'rejected'
 );
 
-CREATE TYPE public.item_type_enum AS ENUM (
-    'source_code',
-    'asset'
-);
-
 CREATE TYPE public.notif_type_enum AS ENUM (
     'game_submitted',
     'game_approved',
@@ -207,7 +202,7 @@ CREATE TYPE public.withdrawal_status_enum AS ENUM (
 CREATE TABLE public.ai_review_reports (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     game_id uuid,
-    marketplace_item_id uuid,
+    asset_id uuid,
     code_quality_score integer,
     media_match_score integer,
     description_match_score integer,
@@ -221,7 +216,7 @@ CREATE TABLE public.ai_review_reports (
     pricing_rationale text,
     CONSTRAINT ai_review_reports_suggested_price_check CHECK ((suggested_price >= (0)::numeric)),
     CONSTRAINT ai_review_reports_suggested_revenue_split_check CHECK (((suggested_revenue_split >= 0) AND (suggested_revenue_split <= 100))),
-    CONSTRAINT chk_ai_review_target CHECK (((game_id IS NOT NULL) OR (marketplace_item_id IS NOT NULL)))
+    CONSTRAINT chk_ai_review_target CHECK (((game_id IS NOT NULL) OR (asset_id IS NOT NULL)))
 );
 
 COMMENT ON TABLE public.ai_review_reports IS 'AI review multimodal — ĐỀ XUẤT cho admin, không phải phán quyết';
@@ -235,6 +230,32 @@ COMMENT ON COLUMN public.ai_review_reports.suggested_price IS 'Giá AI gợi ý 
 COMMENT ON COLUMN public.ai_review_reports.suggested_revenue_split IS '% chia doanh thu AI gợi ý 0-100 (game co-publishing)';
 
 COMMENT ON COLUMN public.ai_review_reports.pricing_rationale IS 'Lý do AI đề xuất mức giá đó';
+
+CREATE TABLE public.asset_tags (
+    asset_id uuid NOT NULL,
+    tag_id uuid NOT NULL
+);
+
+COMMENT ON TABLE public.asset_tags IS 'Nhiều-nhiều: marketplace item ↔ tags';
+
+CREATE TABLE public.assets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    seller_id uuid NOT NULL,
+    category_id uuid,
+    title character varying(200) NOT NULL,
+    description text,
+    price numeric(15,2) NOT NULL,
+    file_url text NOT NULL,
+    status public.item_status_enum DEFAULT 'active'::public.item_status_enum NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    thumbnail_url text,
+    CONSTRAINT marketplace_items_price_check CHECK ((price >= (0)::numeric))
+);
+
+COMMENT ON TABLE public.assets IS 'Asset = tài nguyên lẻ ở marketplace (3D/sprite/audio/plugin). Không chứa source code game.';
+
+COMMENT ON COLUMN public.assets.file_url IS 'URL file ZIP: Godot project hoac asset pack';
 
 CREATE TABLE public.banned_identities (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -271,7 +292,7 @@ COMMENT ON COLUMN public.banned_ips.expires_at IS 'NULL = vinh vien | NOT NULL =
 CREATE TABLE public.cart_items (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
-    marketplace_item_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
     added_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -382,7 +403,7 @@ CREATE TABLE public.disputes (
     reporter_id uuid NOT NULL,
     reported_seller_id uuid NOT NULL,
     game_id uuid,
-    marketplace_item_id uuid,
+    asset_id uuid,
     reason text NOT NULL,
     evidence_repo_url text,
     evidence_note text,
@@ -394,8 +415,8 @@ CREATE TABLE public.disputes (
     resolved_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT chk_dispute_target CHECK (((game_id IS NOT NULL) OR (marketplace_item_id IS NOT NULL))),
-    CONSTRAINT disputes_status_check CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'investigating'::character varying, 'resolved_seller_fault'::character varying, 'resolved_reporter_fault'::character varying, 'resolved_inconclusive'::character varying, 'cancelled'::character varying])::text[])))
+    CONSTRAINT chk_dispute_target CHECK (((game_id IS NOT NULL) OR (asset_id IS NOT NULL))),
+    CONSTRAINT disputes_status_check CHECK (((status)::text = ANY (ARRAY[('open'::character varying)::text, ('investigating'::character varying)::text, ('resolved_seller_fault'::character varying)::text, ('resolved_reporter_fault'::character varying)::text, ('resolved_inconclusive'::character varying)::text, ('cancelled'::character varying)::text])))
 );
 
 COMMENT ON TABLE public.disputes IS 'Tranh chấp bản quyền source: B tố A đánh cắp. Admin phán xử theo cây quyết định.';
@@ -434,14 +455,6 @@ CREATE TABLE public.favorites (
 );
 
 COMMENT ON TABLE public.favorites IS 'Danh sach game yeu thich / wishlist cua user';
-
-CREATE TABLE public.marketplace_favorites (
-    user_id uuid NOT NULL,
-    item_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-COMMENT ON TABLE public.marketplace_favorites IS 'Danh sách asset và source code yêu thích của user';
 
 CREATE TABLE public.game_tags (
     game_id uuid NOT NULL,
@@ -498,49 +511,13 @@ COMMENT ON COLUMN public.games.github_branch IS 'Branch để pull (null = defau
 
 COMMENT ON COLUMN public.games.github_verified_at IS 'Thời điểm verify owner repo khớp account';
 
-CREATE TABLE public.marketplace_item_tags (
-    item_id uuid NOT NULL,
-    tag_id uuid NOT NULL
+CREATE TABLE public.asset_favorites (
+    user_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-COMMENT ON TABLE public.marketplace_item_tags IS 'Nhiều-nhiều: marketplace item ↔ tags';
-
-CREATE TABLE public.marketplace_items (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    seller_id uuid NOT NULL,
-    category_id uuid,
-    item_type public.item_type_enum NOT NULL,
-    title character varying(200) NOT NULL,
-    description text,
-    price numeric(15,2) NOT NULL,
-    file_url text NOT NULL,
-    godot_version character varying(20),
-    source_game_id uuid,
-    github_repo_url text,
-    github_verified_at timestamp with time zone,
-    status public.item_status_enum DEFAULT 'active'::public.item_status_enum NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    thumbnail_url text,
-    documentation text,
-    version character varying(50) DEFAULT '1.0.0'::character varying,
-    supported_platforms character varying(200),
-    CONSTRAINT chk_source_needs_github CHECK (((item_type <> 'source_code'::public.item_type_enum) OR (github_repo_url IS NOT NULL))),
-    CONSTRAINT chk_source_needs_godot_version CHECK (((item_type <> 'source_code'::public.item_type_enum) OR (godot_version IS NOT NULL))),
-    CONSTRAINT marketplace_items_price_check CHECK ((price >= (0)::numeric))
-);
-
-COMMENT ON TABLE public.marketplace_items IS 'Cho ban source code Godot (source_code) va asset le';
-
-COMMENT ON COLUMN public.marketplace_items.item_type IS 'source_code = Godot project day du | asset = tai nguyen le';
-
-COMMENT ON COLUMN public.marketplace_items.file_url IS 'URL file ZIP: Godot project hoac asset pack';
-
-COMMENT ON COLUMN public.marketplace_items.godot_version IS 'Phien ban Godot tuong thich — bat buoc voi source_code';
-
-COMMENT ON COLUMN public.marketplace_items.source_game_id IS 'FK → games neu ban source cua game tren Platform. NULL = doc lap';
-
-COMMENT ON COLUMN public.marketplace_items.github_repo_url IS 'URL GitHub repo — bang chung so huu, bat buoc voi source_code';
+COMMENT ON TABLE public.asset_favorites IS 'Danh sách asset và source code yêu thích của user';
 
 CREATE TABLE public.media (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -549,7 +526,7 @@ CREATE TABLE public.media (
     media_type character varying(20) NOT NULL,
     media_url text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT media_owner_type_check CHECK (((owner_type)::text = ANY ((ARRAY['game'::character varying, 'marketplace_item'::character varying])::text[])))
+    CONSTRAINT media_owner_type_check CHECK (((owner_type)::text = ANY (ARRAY[('game'::character varying)::text, ('marketplace_item'::character varying)::text])))
 );
 
 COMMENT ON TABLE public.media IS 'Media chung cho game + marketplace_item (polymorphic owner)';
@@ -574,21 +551,21 @@ CREATE TABLE public.media_content_flags (
 CREATE TABLE public.media_files (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     game_id uuid,
-    marketplace_item_id uuid,
+    asset_id uuid,
     media_type character varying(20) NOT NULL,
     url text NOT NULL,
     display_order smallint DEFAULT 0 NOT NULL,
     alt_text character varying(200),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT chk_media_one_owner CHECK ((((game_id IS NOT NULL) AND (marketplace_item_id IS NULL)) OR ((game_id IS NULL) AND (marketplace_item_id IS NOT NULL)))),
-    CONSTRAINT media_files_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['screenshot'::character varying, 'video'::character varying, 'thumbnail'::character varying, 'banner'::character varying])::text[])))
+    CONSTRAINT chk_media_one_owner CHECK ((((game_id IS NOT NULL) AND (asset_id IS NULL)) OR ((game_id IS NULL) AND (asset_id IS NOT NULL)))),
+    CONSTRAINT media_files_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('screenshot'::character varying)::text, ('video'::character varying)::text, ('thumbnail'::character varying)::text, ('banner'::character varying)::text])))
 );
 
 COMMENT ON TABLE public.media_files IS 'Anh/video cho games VA marketplace_items — game_id XOR marketplace_item_id';
 
 COMMENT ON COLUMN public.media_files.game_id IS 'FK → games. NULL neu owner la marketplace_item';
 
-COMMENT ON COLUMN public.media_files.marketplace_item_id IS 'FK → marketplace_items. NULL neu owner la game';
+COMMENT ON COLUMN public.media_files.asset_id IS 'FK → marketplace_items. NULL neu owner la game';
 
 COMMENT ON COLUMN public.media_files.media_type IS 'screenshot | video | thumbnail | banner';
 
@@ -609,7 +586,7 @@ CREATE TABLE public.orders (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     buyer_id uuid NOT NULL,
     order_type public.order_type_enum NOT NULL,
-    marketplace_item_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
     transaction_id uuid,
     price_paid numeric(15,2) NOT NULL,
     purchased_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -619,7 +596,7 @@ CREATE TABLE public.orders (
 
 COMMENT ON TABLE public.orders IS 'Don hang mua source code hoac asset tren Marketplace';
 
-COMMENT ON COLUMN public.orders.marketplace_item_id IS 'NOT NULL: source code hoac asset duoc mua';
+COMMENT ON COLUMN public.orders.asset_id IS 'NOT NULL: source code hoac asset duoc mua';
 
 COMMENT ON COLUMN public.orders.price_paid IS 'Gia thuc te thanh toan, co the khac gia niem yet neu co discount';
 
@@ -663,7 +640,7 @@ CREATE TABLE public.reviews (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     order_id uuid NOT NULL,
-    marketplace_item_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
     rating smallint NOT NULL,
     comment text,
     is_approved boolean DEFAULT true NOT NULL,
@@ -675,7 +652,7 @@ COMMENT ON TABLE public.reviews IS 'Verified buyer review — chi sau khi mua (o
 
 COMMENT ON COLUMN public.reviews.order_id IS 'FK → orders — xac nhan da mua truoc khi review';
 
-COMMENT ON COLUMN public.reviews.marketplace_item_id IS 'San pham duoc review (source_code hoac asset)';
+COMMENT ON COLUMN public.reviews.asset_id IS 'San pham duoc review (source_code hoac asset)';
 
 CREATE TABLE public.roles (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -689,7 +666,7 @@ COMMENT ON TABLE public.roles IS 'Bang role tach khoi enum: de them role moi ma 
 CREATE TABLE public.source_downloads (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
-    marketplace_item_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
     order_id uuid NOT NULL,
     ip_address inet,
     device_info character varying(200),
@@ -700,7 +677,7 @@ CREATE TABLE public.source_downloads (
 
 COMMENT ON TABLE public.source_downloads IS 'Moi luot tai source code / asset — KHONG UNIQUE (tai lai nhieu lan)';
 
-COMMENT ON COLUMN public.source_downloads.marketplace_item_id IS 'Source code hoac asset duoc tai';
+COMMENT ON COLUMN public.source_downloads.asset_id IS 'Source code hoac asset duoc tai';
 
 COMMENT ON COLUMN public.source_downloads.order_id IS 'Bat buoc: phai co order source_code_purchase hop le';
 
@@ -709,7 +686,7 @@ COMMENT ON COLUMN public.source_downloads.device_info IS 'OS + may tinh, ho tro 
 CREATE TABLE public.source_snapshots (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     game_id uuid,
-    marketplace_item_id uuid,
+    asset_id uuid,
     submitted_by uuid NOT NULL,
     repo_url text NOT NULL,
     commit_sha character varying(40),
@@ -722,7 +699,7 @@ CREATE TABLE public.source_snapshots (
     secrets_found jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     bundle_url text,
-    CONSTRAINT chk_snapshot_target CHECK ((((game_id IS NOT NULL) AND (marketplace_item_id IS NULL)) OR ((game_id IS NULL) AND (marketplace_item_id IS NOT NULL))))
+    CONSTRAINT chk_snapshot_target CHECK ((((game_id IS NOT NULL) AND (asset_id IS NULL)) OR ((game_id IS NULL) AND (asset_id IS NOT NULL))))
 );
 
 COMMENT ON TABLE public.source_snapshots IS 'Bằng chứng bất biến mỗi lần submit code (anti-theft + due diligence)';
@@ -737,7 +714,7 @@ CREATE TABLE public.storage_accounts (
     is_active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT storage_accounts_provider_check CHECK (((provider)::text = ANY ((ARRAY['aws_s3'::character varying, 'seaweedfs'::character varying])::text[])))
+    CONSTRAINT storage_accounts_provider_check CHECK (((provider)::text = ANY (ARRAY[('aws_s3'::character varying)::text, ('seaweedfs'::character varying)::text])))
 );
 
 CREATE TABLE public.storage_buckets (
@@ -792,7 +769,7 @@ CREATE TABLE public.transactions (
     wallet_id uuid NOT NULL,
     related_user_id uuid,
     game_id uuid,
-    marketplace_item_id uuid,
+    asset_id uuid,
     amount numeric(15,2) NOT NULL,
     platform_commission numeric(15,2) DEFAULT 0.00 NOT NULL,
     net_amount numeric(15,2) NOT NULL,
@@ -816,7 +793,7 @@ CREATE TABLE public.user_ip_logs (
     action character varying(50) NOT NULL,
     user_agent text,
     logged_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT user_ip_logs_action_check CHECK (((action)::text = ANY ((ARRAY['register'::character varying, 'login'::character varying, 'upload_source'::character varying, 'submit_game'::character varying, 'post_review'::character varying, 'post_chat'::character varying, 'checkout'::character varying])::text[])))
+    CONSTRAINT user_ip_logs_action_check CHECK (((action)::text = ANY (ARRAY[('register'::character varying)::text, ('login'::character varying)::text, ('upload_source'::character varying)::text, ('submit_game'::character varying)::text, ('post_review'::character varying)::text, ('post_chat'::character varying)::text, ('checkout'::character varying)::text])))
 );
 
 COMMENT ON TABLE public.user_ip_logs IS 'Log IP cho cac action quan trong — phat hien spam va ho tro ban IP';
@@ -853,9 +830,9 @@ CREATE TABLE public.users (
     preferred_language character varying(10) DEFAULT 'vi'::character varying NOT NULL,
     kyc_front_image_url text,
     kyc_back_image_url text,
-    CONSTRAINT check_users_preferred_language CHECK (((preferred_language)::text = ANY ((ARRAY['vi'::character varying, 'en'::character varying, 'ja'::character varying])::text[]))),
+    CONSTRAINT check_users_preferred_language CHECK (((preferred_language)::text = ANY (ARRAY[('vi'::character varying)::text, ('en'::character varying)::text, ('ja'::character varying)::text]))),
     CONSTRAINT chk_github_fields CHECK (((github_id IS NULL) OR ((github_id IS NOT NULL) AND (github_username IS NOT NULL) AND (github_token_enc IS NOT NULL) AND (github_linked_at IS NOT NULL)))),
-    CONSTRAINT users_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'inactive'::character varying, 'banned'::character varying])::text[])))
+    CONSTRAINT users_status_check CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('inactive'::character varying)::text, ('banned'::character varying)::text])))
 );
 
 COMMENT ON TABLE public.users IS 'Nguoi dung. GitHub OAuth bat buoc de ban source code.';
@@ -957,6 +934,12 @@ INSERT INTO public.tags (id, name, slug, created_at) VALUES ('d57d252d-79f0-4e7b
 ALTER TABLE ONLY public.ai_review_reports
     ADD CONSTRAINT ai_review_reports_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.asset_tags
+    ADD CONSTRAINT asset_tags_pkey PRIMARY KEY (asset_id, tag_id);
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY public.banned_identities
     ADD CONSTRAINT banned_identities_pkey PRIMARY KEY (id);
 
@@ -1014,11 +997,8 @@ ALTER TABLE ONLY public.game_versions
 ALTER TABLE ONLY public.games
     ADD CONSTRAINT games_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.marketplace_item_tags
-    ADD CONSTRAINT marketplace_item_tags_pkey PRIMARY KEY (item_id, tag_id);
-
-ALTER TABLE ONLY public.marketplace_items
-    ADD CONSTRAINT marketplace_items_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.asset_favorites
+    ADD CONSTRAINT asset_favorites_pkey PRIMARY KEY (user_id, asset_id);
 
 ALTER TABLE ONLY public.media_content_flags
     ADD CONSTRAINT media_content_flags_pkey PRIMARY KEY (id);
@@ -1084,7 +1064,7 @@ ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.cart_items
-    ADD CONSTRAINT uq_cart_item UNIQUE (user_id, marketplace_item_id);
+    ADD CONSTRAINT uq_cart_item UNIQUE (user_id, asset_id);
 
 ALTER TABLE ONLY public.chat_reactions
     ADD CONSTRAINT uq_chat_reaction UNIQUE (chat_id, user_id);
@@ -1096,10 +1076,10 @@ ALTER TABLE ONLY public.game_versions
     ADD CONSTRAINT uq_game_version UNIQUE (game_id, version_number);
 
 ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT uq_order_marketplace UNIQUE (buyer_id, marketplace_item_id);
+    ADD CONSTRAINT uq_order_marketplace UNIQUE (buyer_id, asset_id);
 
 ALTER TABLE ONLY public.reviews
-    ADD CONSTRAINT uq_review_item UNIQUE (user_id, marketplace_item_id);
+    ADD CONSTRAINT uq_review_item UNIQUE (user_id, asset_id);
 
 ALTER TABLE ONLY public.store_download_stats
     ADD CONSTRAINT uq_store_stat UNIQUE (game_id, platform, stat_date);
@@ -1134,7 +1114,7 @@ CREATE INDEX idx_ai_review_created ON public.ai_review_reports USING btree (crea
 
 CREATE INDEX idx_ai_review_game ON public.ai_review_reports USING btree (game_id);
 
-CREATE INDEX idx_ai_review_item ON public.ai_review_reports USING btree (marketplace_item_id);
+CREATE INDEX idx_ai_review_item ON public.ai_review_reports USING btree (asset_id);
 
 CREATE INDEX idx_banned_bank ON public.banned_identities USING btree (bank_account);
 
@@ -1226,37 +1206,31 @@ CREATE INDEX idx_ip_logs_review_spam ON public.user_ip_logs USING btree (ip_addr
 
 CREATE INDEX idx_ip_logs_user_id ON public.user_ip_logs USING btree (user_id);
 
-CREATE INDEX idx_marketplace_category ON public.marketplace_items USING btree (category_id);
+CREATE INDEX idx_marketplace_category ON public.assets USING btree (category_id);
 
-CREATE INDEX idx_marketplace_github_repo ON public.marketplace_items USING btree (github_repo_url) WHERE (github_repo_url IS NOT NULL);
+CREATE INDEX idx_asset_favorites_asset_id ON public.asset_favorites USING btree (asset_id);
 
-CREATE INDEX idx_marketplace_godot_ver ON public.marketplace_items USING btree (godot_version) WHERE (godot_version IS NOT NULL);
+CREATE INDEX idx_marketplace_item_tags_tag ON public.asset_tags USING btree (tag_id);
 
-CREATE INDEX idx_marketplace_item_tags_tag ON public.marketplace_item_tags USING btree (tag_id);
+CREATE INDEX idx_marketplace_item_tags_tag_id ON public.asset_tags USING btree (tag_id);
 
-CREATE INDEX idx_marketplace_item_tags_tag_id ON public.marketplace_item_tags USING btree (tag_id);
+CREATE INDEX idx_marketplace_seller_id ON public.assets USING btree (seller_id);
 
-CREATE INDEX idx_marketplace_item_type ON public.marketplace_items USING btree (item_type);
-
-CREATE INDEX idx_marketplace_seller_id ON public.marketplace_items USING btree (seller_id);
-
-CREATE INDEX idx_marketplace_source_game ON public.marketplace_items USING btree (source_game_id) WHERE (source_game_id IS NOT NULL);
-
-CREATE INDEX idx_marketplace_status ON public.marketplace_items USING btree (status);
+CREATE INDEX idx_marketplace_status ON public.assets USING btree (status);
 
 CREATE INDEX idx_media_files_game_id ON public.media_files USING btree (game_id) WHERE (game_id IS NOT NULL);
 
-CREATE INDEX idx_media_files_marketplace_id ON public.media_files USING btree (marketplace_item_id) WHERE (marketplace_item_id IS NOT NULL);
+CREATE INDEX idx_media_files_marketplace_id ON public.media_files USING btree (asset_id) WHERE (asset_id IS NOT NULL);
 
 CREATE INDEX idx_media_files_order_game ON public.media_files USING btree (game_id, display_order) WHERE (game_id IS NOT NULL);
 
 CREATE INDEX idx_media_files_thumb_game ON public.media_files USING btree (game_id) WHERE (((media_type)::text = 'thumbnail'::text) AND (game_id IS NOT NULL));
 
-CREATE INDEX idx_media_files_thumb_market ON public.media_files USING btree (marketplace_item_id) WHERE (((media_type)::text = 'thumbnail'::text) AND (marketplace_item_id IS NOT NULL));
+CREATE INDEX idx_media_files_thumb_market ON public.media_files USING btree (asset_id) WHERE (((media_type)::text = 'thumbnail'::text) AND (asset_id IS NOT NULL));
 
 CREATE INDEX idx_media_files_type_game ON public.media_files USING btree (game_id, media_type) WHERE (game_id IS NOT NULL);
 
-CREATE INDEX idx_media_files_type_market ON public.media_files USING btree (marketplace_item_id, media_type) WHERE (marketplace_item_id IS NOT NULL);
+CREATE INDEX idx_media_files_type_market ON public.media_files USING btree (asset_id, media_type) WHERE (asset_id IS NOT NULL);
 
 CREATE INDEX idx_media_flags_created ON public.media_content_flags USING btree (created_at DESC);
 
@@ -1274,7 +1248,7 @@ CREATE INDEX idx_notifications_recipient ON public.notifications USING btree (re
 
 CREATE INDEX idx_orders_buyer_id ON public.orders USING btree (buyer_id);
 
-CREATE INDEX idx_orders_marketplace_item_id ON public.orders USING btree (marketplace_item_id);
+CREATE INDEX idx_orders_marketplace_item_id ON public.orders USING btree (asset_id);
 
 CREATE INDEX idx_orders_purchased_at ON public.orders USING btree (purchased_at DESC);
 
@@ -1288,7 +1262,7 @@ CREATE INDEX idx_payments_status ON public.payments USING btree (payment_status)
 
 CREATE INDEX idx_payments_verified_by ON public.payments USING btree (verified_by);
 
-CREATE INDEX idx_reviews_marketplace_item ON public.reviews USING btree (marketplace_item_id);
+CREATE INDEX idx_reviews_marketplace_item ON public.reviews USING btree (asset_id);
 
 CREATE INDEX idx_reviews_order_id ON public.reviews USING btree (order_id);
 
@@ -1298,7 +1272,7 @@ CREATE INDEX idx_reviews_user_id ON public.reviews USING btree (user_id);
 
 CREATE INDEX idx_source_downloads_downloaded_at ON public.source_downloads USING btree (downloaded_at DESC);
 
-CREATE INDEX idx_source_downloads_marketplace_item_id ON public.source_downloads USING btree (marketplace_item_id);
+CREATE INDEX idx_source_downloads_marketplace_item_id ON public.source_downloads USING btree (asset_id);
 
 CREATE INDEX idx_source_downloads_order_id ON public.source_downloads USING btree (order_id);
 
@@ -1308,7 +1282,7 @@ CREATE INDEX idx_source_snapshots_bundle ON public.source_snapshots USING btree 
 
 CREATE INDEX idx_source_snapshots_game ON public.source_snapshots USING btree (game_id);
 
-CREATE INDEX idx_source_snapshots_item ON public.source_snapshots USING btree (marketplace_item_id);
+CREATE INDEX idx_source_snapshots_item ON public.source_snapshots USING btree (asset_id);
 
 CREATE INDEX idx_source_snapshots_user ON public.source_snapshots USING btree (submitted_by);
 
@@ -1326,15 +1300,13 @@ CREATE INDEX idx_tags_slug ON public.tags USING btree (slug);
 
 CREATE INDEX idx_transactions_created_at ON public.transactions USING btree (created_at DESC);
 
+CREATE INDEX idx_transactions_asset_id ON public.transactions USING btree (asset_id);
+
 CREATE INDEX idx_transactions_status ON public.transactions USING btree (status);
 
 CREATE INDEX idx_transactions_type ON public.transactions USING btree (type);
 
 CREATE INDEX idx_transactions_wallet_id ON public.transactions USING btree (wallet_id);
-
-CREATE INDEX idx_transactions_marketplace_item_id ON public.transactions USING btree (marketplace_item_id);
-
-CREATE INDEX idx_marketplace_favorites_item_id ON public.marketplace_favorites USING btree (item_id);
 
 CREATE INDEX idx_users_github_id ON public.users USING btree (github_id) WHERE (github_id IS NOT NULL);
 
@@ -1356,7 +1328,7 @@ ALTER TABLE ONLY public.ai_review_reports
     ADD CONSTRAINT ai_review_reports_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.ai_review_reports
-    ADD CONSTRAINT ai_review_reports_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
+    ADD CONSTRAINT ai_review_reports_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.banned_identities
     ADD CONSTRAINT banned_identities_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
@@ -1368,7 +1340,7 @@ ALTER TABLE ONLY public.banned_ips
     ADD CONSTRAINT banned_ips_related_user_id_fkey FOREIGN KEY (related_user_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.cart_items
-    ADD CONSTRAINT cart_items_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
+    ADD CONSTRAINT cart_items_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.cart_items
     ADD CONSTRAINT cart_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
@@ -1416,7 +1388,7 @@ ALTER TABLE ONLY public.disputes
     ADD CONSTRAINT disputes_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.disputes
-    ADD CONSTRAINT disputes_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE SET NULL;
+    ADD CONSTRAINT disputes_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.disputes
     ADD CONSTRAINT disputes_reported_seller_id_fkey FOREIGN KEY (reported_seller_id) REFERENCES public.users(id);
@@ -1460,20 +1432,23 @@ ALTER TABLE ONLY public.games
 ALTER TABLE ONLY public.games
     ADD CONSTRAINT games_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.users(id) ON DELETE RESTRICT;
 
-ALTER TABLE ONLY public.marketplace_item_tags
-    ADD CONSTRAINT marketplace_item_tags_marketplace_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.asset_favorites
+    ADD CONSTRAINT asset_favorites_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.marketplace_item_tags
+ALTER TABLE ONLY public.asset_favorites
+    ADD CONSTRAINT asset_favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.asset_tags
+    ADD CONSTRAINT marketplace_item_tags_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.asset_tags
     ADD CONSTRAINT marketplace_item_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.marketplace_items
+ALTER TABLE ONLY public.assets
     ADD CONSTRAINT marketplace_items_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE SET NULL;
 
-ALTER TABLE ONLY public.marketplace_items
+ALTER TABLE ONLY public.assets
     ADD CONSTRAINT marketplace_items_seller_id_fkey FOREIGN KEY (seller_id) REFERENCES public.users(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY public.marketplace_items
-    ADD CONSTRAINT marketplace_items_source_game_id_fkey FOREIGN KEY (source_game_id) REFERENCES public.games(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.media_content_flags
     ADD CONSTRAINT media_content_flags_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.users(id) ON DELETE SET NULL;
@@ -1482,7 +1457,7 @@ ALTER TABLE ONLY public.media_files
     ADD CONSTRAINT media_files_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.media_files
-    ADD CONSTRAINT media_files_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
+    ADD CONSTRAINT media_files_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES public.users(id) ON DELETE CASCADE;
@@ -1494,7 +1469,7 @@ ALTER TABLE ONLY public.orders
     ADD CONSTRAINT orders_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.users(id) ON DELETE RESTRICT;
 
 ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT orders_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE RESTRICT;
+    ADD CONSTRAINT orders_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE RESTRICT;
 
 ALTER TABLE ONLY public.orders
     ADD CONSTRAINT orders_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES public.transactions(id) ON DELETE RESTRICT;
@@ -1506,7 +1481,7 @@ ALTER TABLE ONLY public.payments
     ADD CONSTRAINT payments_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.users(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.reviews
-    ADD CONSTRAINT reviews_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
+    ADD CONSTRAINT reviews_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.reviews
     ADD CONSTRAINT reviews_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE;
@@ -1515,7 +1490,7 @@ ALTER TABLE ONLY public.reviews
     ADD CONSTRAINT reviews_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.source_downloads
-    ADD CONSTRAINT source_downloads_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
+    ADD CONSTRAINT source_downloads_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.source_downloads
     ADD CONSTRAINT source_downloads_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE RESTRICT;
@@ -1527,7 +1502,7 @@ ALTER TABLE ONLY public.source_snapshots
     ADD CONSTRAINT source_snapshots_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.source_snapshots
-    ADD CONSTRAINT source_snapshots_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
+    ADD CONSTRAINT source_snapshots_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.source_snapshots
     ADD CONSTRAINT source_snapshots_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id);
@@ -1545,22 +1520,13 @@ ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_related_user_id_fkey FOREIGN KEY (related_user_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_wallet_id_fkey FOREIGN KEY (wallet_id) REFERENCES public.wallets(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY public.transactions
-    ADD CONSTRAINT transactions_marketplace_item_id_fkey FOREIGN KEY (marketplace_item_id) REFERENCES public.marketplace_items(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.marketplace_favorites
-    ADD CONSTRAINT marketplace_favorites_pkey PRIMARY KEY (user_id, item_id);
-
-ALTER TABLE ONLY public.marketplace_favorites
-    ADD CONSTRAINT marketplace_favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.marketplace_favorites
-    ADD CONSTRAINT marketplace_favorites_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.marketplace_items(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.user_ip_logs
     ADD CONSTRAINT user_ip_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
@@ -1582,4 +1548,5 @@ ALTER TABLE ONLY public.withdrawal_requests
 
 ALTER TABLE ONLY public.withdrawal_requests
     ADD CONSTRAINT withdrawal_requests_wallet_id_fkey FOREIGN KEY (wallet_id) REFERENCES public.wallets(id) ON DELETE RESTRICT;
+
 

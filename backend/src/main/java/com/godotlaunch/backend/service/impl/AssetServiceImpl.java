@@ -105,11 +105,7 @@ public class AssetServiceImpl implements AssetService {
             item.setTags(new java.util.HashSet<>(tagRepository.findByIdIn(request.getTagIds())));
         }
 
-        // Specifications
-        if (request.getVersion() != null && !request.getVersion().trim().isEmpty()) {
-            item.setVersion(request.getVersion());
-        }
-        item.setSupportedPlatforms(request.getSupportedPlatforms());
+
 
         Asset savedItem = assetRepository.save(item);
         return savedItem.getId();
@@ -179,13 +175,7 @@ public class AssetServiceImpl implements AssetService {
             item.setFileUrl(request.getFileUrl());
         }
 
-        // Specifications
-        if (request.getVersion() != null) {
-            item.setVersion(request.getVersion());
-        }
-        if (request.getSupportedPlatforms() != null) {
-            item.setSupportedPlatforms(request.getSupportedPlatforms());
-        }
+
 
         Asset updatedItem = assetRepository.save(item);
         return mapToResponse(updatedItem, true);
@@ -486,8 +476,6 @@ public class AssetServiceImpl implements AssetService {
                 .thumbnailUrl(thumbUrl)
                 .videoUrl(vidUrl)
                 .screenshots(shots)
-                .version(item.getVersion())
-                .supportedPlatforms(item.getSupportedPlatforms())
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();

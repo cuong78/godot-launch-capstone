@@ -9,13 +9,13 @@ import lombok.AllArgsConstructor;
 import java.time.Instant;
 
 @Entity
-@Table(name = "marketplace_favorites")
-@IdClass(MarketplaceFavoriteId.class)
+@Table(name = "asset_favorites")
+@IdClass(AssetFavoriteId.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MarketplaceFavorite {
+public class AssetFavorite {
 
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
@@ -24,8 +24,8 @@ public class MarketplaceFavorite {
 
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id", nullable = false)
-    private MarketplaceItem marketplaceItem;
+    @JoinColumn(name = "asset_id", nullable = false)
+    private Asset asset;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
