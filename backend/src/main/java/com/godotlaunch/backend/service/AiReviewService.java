@@ -13,5 +13,5 @@ public interface AiReviewService {
     void reviewGameAsync(UUID gameId);
 
     /** Kích hoạt AI review cho marketplace item (async). */
-    void reviewMarketplaceItemAsync(UUID itemId);
+    void reviewAssetAsync(UUID itemId);
 }

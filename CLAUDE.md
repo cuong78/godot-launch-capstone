@@ -17,7 +17,7 @@
 |---|---|
 | Backend | Spring Boot 4.0.6, Java 21, PostgreSQL 16 |
 | Frontend | React 19 + TypeScript + Tailwind v4 |
-| DB Migration | Flyway (V1–V14) |
+| DB Migration | Flyway (V1 - Gộp tất cả lịch sử) |
 | Storage | AWS S3 + SeaweedFS (dynamic, admin-configured) |
 | Auth | JWT + Google OAuth + GitHub OAuth |
 | Realtime | WebSocket (Spring Messaging) |
@@ -43,7 +43,7 @@ go-dot-launch-capstone-fptu/
 │       └── exception/               GlobalExceptionHandler
 │   └── src/main/resources/
 │       ├── application.yaml         Config (dùng env vars)
-│       └── db/migration/            Flyway SQL files V1–V14
+│       └── db/migration/            Flyway SQL file V1__init_schema.sql
 ├── frontend/                        React SPA
 │   └── src/
 │       ├── page/                    Màn hình chính (AdminPage, GamePage, ...)
@@ -64,7 +64,8 @@ go-dot-launch-capstone-fptu/
 
 ---
 
-## 3. Database — 27 + 3 bảng (V1–V14)
+## 3. Database — Gộp thành V1 duy nhất
+
 
 **Nhóm Identity:** `roles`, `users`
 **Nhóm Content:** `categories`, `tags`, `game_tags`

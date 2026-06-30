@@ -15,7 +15,7 @@ export const aiReviewApi = {
   /** Report mới nhất của 1 marketplace item (null nếu chưa có). */
   getLatestForItem: async (itemId: string): Promise<ApiResponse<AiReviewReport | null>> => {
     const res = await api.get<ApiResponse<AiReviewReport | null>>(
-      `/api/v1/admin/ai-reviews/marketplace-item/${itemId}`);
+      `/api/v1/admin/ai-reviews/asset/${itemId}`);
     return res.data;
   },
 
@@ -29,7 +29,7 @@ export const aiReviewApi = {
   /** Lịch sử report của marketplace item. */
   getHistoryForItem: async (itemId: string): Promise<ApiResponse<AiReviewReport[]>> => {
     const res = await api.get<ApiResponse<AiReviewReport[]>>(
-      `/api/v1/admin/ai-reviews/marketplace-item/${itemId}/history`);
+      `/api/v1/admin/ai-reviews/asset/${itemId}/history`);
     return res.data;
   },
 
@@ -43,7 +43,7 @@ export const aiReviewApi = {
   /** Kích hoạt chạy AI review thủ công cho marketplace item. */
   triggerItemReview: async (itemId: string): Promise<ApiResponse<string>> => {
     const res = await api.post<ApiResponse<string>>(
-      `/api/v1/admin/ai-reviews/marketplace-item/${itemId}/trigger`);
+      `/api/v1/admin/ai-reviews/asset/${itemId}/trigger`);
     return res.data;
   },
 };

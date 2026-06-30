@@ -35,8 +35,8 @@ public class SourceDownload {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "marketplace_item_id", nullable = false)
-    private MarketplaceItem marketplaceItem;
+    @JoinColumn(name = "asset_id", nullable = false)
+    private Asset asset;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "order_id", nullable = false)

@@ -95,7 +95,7 @@ const getStatusMeta = (
       return {
         label: t('payment:status.paid.label'),
         badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-        helper: itemType === 'source_code'
+        helper: itemType === 'game_source'
           ? t('payment:status.paid.helperSource')
           : t('payment:status.paid.helperAsset'),
       };
@@ -207,7 +207,7 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
     (payment?.paymentStatus === 'PENDING' || payment?.paymentStatus === 'PROCESSING');
   const resolvedDownloadUrl = React.useMemo(() => resolveApiUrl(payment?.downloadUrl), [payment?.downloadUrl]);
   const isPaidSourcePurchase = payment?.paymentStatus === 'PAID'
-    && payment?.marketplaceItemType === 'source_code'
+    && payment?.marketplaceItemType === 'game_source'
     && Boolean(resolvedDownloadUrl);
   const isPaidAssetPurchase = payment?.paymentStatus === 'PAID' && payment?.marketplaceItemType === 'asset';
 

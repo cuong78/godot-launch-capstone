@@ -69,7 +69,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendMarketplaceItemStatusNotification(String to, String itemTitle, String status, String reason) {
+    public void sendAssetStatusNotification(String to, String itemTitle, String status, String reason) {
         String subject = "Godot Launch - Update on your marketplace asset: " + itemTitle;
 
         boolean isApproved = status != null && status.toUpperCase().contains("APPROVED");

@@ -5,17 +5,16 @@ import com.godotlaunch.backend.config.AiReviewClient;
 import com.godotlaunch.backend.dto.response.AiReviewResult;
 import com.godotlaunch.backend.entity.AiReviewReport;
 import com.godotlaunch.backend.entity.Game;
-import com.godotlaunch.backend.entity.MarketplaceItem;
+import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
 import com.godotlaunch.backend.entity.enums.ActorRole;
 import com.godotlaunch.backend.entity.enums.AiRecommendation;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
-import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.entity.enums.MediaOwnerType;
 import com.godotlaunch.backend.repository.AiReviewReportRepository;
 import com.godotlaunch.backend.repository.GameRepository;
-import com.godotlaunch.backend.repository.MarketplaceItemRepository;
+import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.service.AiReviewService;
 import com.godotlaunch.backend.service.AuditLogService;
@@ -43,7 +42,7 @@ public class AiReviewServiceImpl implements AiReviewService {
     private final AiReviewClient aiReviewClient;
     private final AiReviewReportRepository aiReviewReportRepository;
     private final GameRepository gameRepository;
-    private final MarketplaceItemRepository marketplaceItemRepository;
+    private final AssetRepository assetRepository;
     private final MediaRepository mediaRepository;
     private final GitHubRepoService gitHubRepoService;
     private final AuditLogService auditLogService;
@@ -94,19 +93,15 @@ public class AiReviewServiceImpl implements AiReviewService {
     @Override
     @Async
     @Transactional
-    public void reviewMarketplaceItemAsync(UUID itemId) {
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId).orElse(null);
+    public void reviewAssetAsync(UUID itemId) {
+        Asset item = assetRepository.findById(itemId).orElse(null);
         if (item == null) {
             log.warn("AI review: không tìm thấy marketplace item {}", itemId);
             return;
         }
         try {
-            // source_code → review code từ repo; asset → chỉ review media
-            boolean isCode = item.getItemType() == ItemType.source_code;
-            String contentType = isCode ? "code" : "asset";
+            // Asset = tài nguyên lẻ → AI review chỉ media (CLIP + NSFW), không có repo code.
             String category = item.getCategory() != null ? item.getCategory().getName() : null;
-            String repoUrl = isCode ? item.getGithubRepoUrl() : null;
-            String token = isCode ? safeCloneToken(item.getGithubRepoUrl()) : null;
             String videoUrl = getPresignedGetUrl(firstMediaUrl(MediaOwnerType.marketplace_item, itemId, "video"));
             List<String> screenshots = mediaUrls(MediaOwnerType.marketplace_item, itemId,
                     "screenshot", "thumbnail", "asset_image").stream()
@@ -114,14 +109,14 @@ public class AiReviewServiceImpl implements AiReviewService {
                     .collect(java.util.stream.Collectors.toList());
 
             AiReviewResult result = aiReviewClient.review(
-                    contentType, repoUrl, token, null,
+                    "asset", null, null, null,
                     item.getTitle(), item.getDescription(), category,
                     videoUrl, screenshots);
 
             if (result == null) return;
 
             AiReviewReport report = new AiReviewReport();
-            report.setMarketplaceItem(item);
+            report.setAsset(item);
             fill(report, result);
             aiReviewReportRepository.save(report);
 

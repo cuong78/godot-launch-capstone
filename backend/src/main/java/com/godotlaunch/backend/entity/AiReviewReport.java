@@ -35,8 +35,8 @@ public class AiReviewReport {
     private Game game;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "marketplace_item_id")
-    private MarketplaceItem marketplaceItem;
+    @JoinColumn(name = "asset_id")
+    private Asset asset;
 
     // điểm từng tiêu chí (0-100, null = module bị skip/lỗi)
     @Column(name = "code_quality_score")

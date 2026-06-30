@@ -31,21 +31,6 @@ interface MarketplacePageProps {
   setSelectedCategories: (categories: string[]) => void;
 }
 
-const SOURCE_KEYWORD_BLACKLIST = new Set([
-  "godot ready",
-  "godot 4",
-  "godot 4.x",
-  "godot",
-  "2d",
-  "3d",
-  "marketplace",
-  "published",
-  "free",
-  "ui & elements",
-  "grid systems",
-  "tileset",
-]);
-
 const formatCompactPrice = (price: number) =>
   price === 0 ? "FREE" : `${price.toLocaleString('vi-VN')} đ`;
 
@@ -65,41 +50,8 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   handleAddToCart,
   setSelectedCategories,
 }) => {
-  const { sourceListings, assetListings } = React.useMemo(() => {
-    return filteredAssets.reduce<{
-      sourceListings: Asset[];
-      assetListings: Asset[];
-    }>(
-      (groups, asset) => {
-        if (asset.itemType === "source_code") {
-          groups.sourceListings.push(asset);
-        } else {
-          groups.assetListings.push(asset);
-        }
-        return groups;
-      },
-      { sourceListings: [], assetListings: [] },
-    );
-  }, [filteredAssets]);
-
-  const sourceKeywordChips = React.useMemo(() => {
-    const keywordMap = new Map<string, string>();
-
-    sourceListings.forEach((asset) => {
-      asset.tagList.forEach((tag) => {
-        const normalized = tag.trim().toLowerCase();
-        if (!normalized || SOURCE_KEYWORD_BLACKLIST.has(normalized)) {
-          return;
-        }
-
-        if (!keywordMap.has(normalized)) {
-          keywordMap.set(normalized, tag.trim());
-        }
-      });
-    });
-
-    return Array.from(keywordMap.values()).slice(0, 5);
-  }, [sourceListings]);
+  // Marketplace giờ chỉ còn asset thuần (source_code chuyển sang Game market)
+  const assetListings = filteredAssets;
 
   const assetCategoryChips = React.useMemo(() => {
     return ["Shaders & VFX", "2D Assets", "3D Models", "Audio & SFX"].filter(
@@ -291,148 +243,6 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
             </div>
           ) : (
             <div className="space-y-8">
-              <section className="relative overflow-hidden rounded-2xl border border-slate-250 bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 p-5 shadow-sm backdrop-blur-md dark:border-slate-800">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.10),transparent_26%)]" />
-                <div className="relative z-10">
-                  <div className="mb-6 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-                    <div>
-                      <h2 className="font-display text-2xl font-bold text-slate-850 dark:text-white flex items-center gap-2">
-                        <Code2 size={22} className="text-amber-400" /> Source Code
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-550 dark:text-slate-400">
-                        Discover complete Godot projects, gameplay frameworks, and
-                        reusable source-first systems.
-                      </p>
-                    </div>
-                    <span className="inline-flex self-start rounded-full border border-amber-500/20 bg-amber-400/10 px-3 py-1 text-xs font-mono font-bold text-amber-500 backdrop-blur-sm">
-                      {sourceListings.length} source listings
-                    </span>
-                  </div>
-
-                  <div className="mb-6 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSearchText("")}
-                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-studio ${
-                      !searchText
-                        ? "bg-amber-400 text-slate-950 shadow-[0_2px_0_0_#9a7d00]"
-                        : "border border-slate-200 bg-slate-50 text-slate-600 hover:border-amber-400 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-350 dark:hover:border-amber-500 dark:hover:text-white"
-                    }`}
-                  >
-                    All Projects
-                  </button>
-                  {sourceKeywordChips.map((keyword) => (
-                    <button
-                      key={keyword}
-                      type="button"
-                      onClick={() => setSearchText(keyword)}
-                      className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-studio ${
-                        searchText.toLowerCase() === keyword.toLowerCase()
-                          ? "bg-amber-400 text-slate-950 shadow-[0_2px_0_0_#9a7d00]"
-                          : "border border-slate-200 bg-slate-50 text-slate-600 hover:border-amber-400 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-350 dark:hover:border-amber-500 dark:hover:text-white"
-                      }`}
-                    >
-                      {keyword}
-                    </button>
-                  ))}
-                  </div>
-
-                  {sourceListings.length === 0 ? (
-                    renderEmptyState(
-                      "No source code listing matches the active filters.",
-                      "Try broadening your search keywords or clear category filters to surface source-based projects again.",
-                    )
-                  ) : (
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                      {sourceListings.map((asset) => (
-                        <article
-                          key={asset.id}
-                          onClick={() => handleViewAssetDetails(asset)}
-                          className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 transition-studio hover:-translate-y-1 hover:border-amber-400/60 hover:shadow-lg dark:border-slate-800/80 dark:bg-slate-950/55 dark:hover:border-amber-400/50"
-                        >
-                          <div className="relative h-48 overflow-hidden bg-slate-950/20">
-                            <img
-                              referrerPolicy="no-referrer"
-                              src={asset.image}
-                              alt={asset.title}
-                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
-                            <span className="absolute left-3 top-3 rounded-lg border border-amber-400/20 bg-slate-950/80 px-2.5 py-1 text-[11px] font-bold text-amber-400 backdrop-blur-sm">
-                              {asset.version || "v1.0"}
-                            </span>
-                            {asset.isBestseller && (
-                              <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
-                                <Sparkles size={11} className="text-amber-300" />{" "}
-                                Featured
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex flex-1 flex-col p-5">
-                            <div className="mb-3 flex items-start justify-between gap-3">
-                              <h4 className="font-display text-lg font-bold leading-tight text-slate-850 dark:text-white">
-                                {asset.title}
-                              </h4>
-                              <span className="shrink-0 text-base font-bold text-amber-500">
-                                {formatCompactPrice(asset.price)}
-                              </span>
-                            </div>
-
-                            <div className="mb-4 flex flex-wrap items-center gap-1.5 text-xs">
-                              {asset.tagList && asset.tagList.length > 0 ? (
-                                asset.tagList.slice(0, 3).map((tag, idx) => (
-                                  <span key={idx} className="rounded-full bg-sky-500/10 dark:bg-sky-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-500 border border-sky-500/5">
-                                    {tag}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="rounded-full bg-sky-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-500">
-                                  Source
-                                </span>
-                              )}
-                              <span className="text-slate-500 dark:text-slate-400 ml-1">
-                                by {asset.author}
-                              </span>
-                            </div>
-
-                            <p className="mb-5 line-clamp-3 text-sm leading-relaxed text-slate-550 dark:text-slate-400">
-                              {asset.description}
-                            </p>
-
-                            <div className="mb-5 flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-                              <div className="flex items-center gap-1.5 text-amber-500">
-                                <Star size={12} className="fill-amber-500" />
-                                <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                  {asset.rating.toFixed(1)} ({asset.reviewedCount}
-                                  )
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <FolderCode size={12} className="text-sky-500" />
-                                <span>
-                                  {asset.lastUpdated || "Recently updated"}
-                                </span>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleViewAssetDetails(asset);
-                              }}
-                              className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-studio group-hover:border-amber-400 group-hover:bg-amber-400 group-hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:group-hover:border-amber-400 dark:group-hover:bg-amber-400 dark:group-hover:text-slate-950"
-                            >
-                              View Details <ArrowRight size={14} />
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </section>
-
               <section className="relative overflow-hidden rounded-2xl border border-slate-250 bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 p-5 shadow-sm backdrop-blur-md dark:border-slate-800">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.10),transparent_26%)]" />
                 <div className="relative z-10">

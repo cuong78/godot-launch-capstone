@@ -200,33 +200,7 @@ export function Header({
       onClick: () => handleNavigate("community"),
     },
   ];
-  const creatorMenuItems: DesktopMenuItem[] = [
-    {
-      id: "sell-acquire",
-      title: t("sell_acquire"),
-      description: t("sell_acquire_hint"),
-      icon: <Play size={18} className="fill-current" />,
-      iconClassName: "border-emerald-500/20 bg-emerald-500/12 text-emerald-500",
-      isActive: currentScreen === "path",
-      glowClassName: "from-emerald-500/20 via-emerald-500/8 to-transparent",
-      featured: true,
-      onClick: handleOpenPath,
-    },
-    {
-      id: "upload",
-      title: t("upload_file"),
-      description: t("upload_file_hint"),
-      icon: <Plus size={18} />,
-      iconClassName: "border-amber-500/20 bg-amber-400/12 text-amber-500",
-      isActive: currentScreen === "upload",
-      glowClassName: "from-amber-400/22 via-amber-400/10 to-transparent",
-      onClick: () => {
-        setOpenDesktopMenu(null);
-        setCurrentScreen("upload");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      },
-    },
-  ];
+  // "Trung tâm sáng tạo" giờ đi thẳng vào trang Upload (không dropdown) → bỏ creatorMenuItems.
   const workspaceMenuItems: DesktopMenuItem[] = [
     {
       id: "wallet",
@@ -435,35 +409,22 @@ export function Header({
             )}
           </div>
 
-          <div
-            className="relative shrink-0"
-            onMouseEnter={() => openDesktopMenuPanel("creator")}
-            onMouseLeave={() => scheduleDesktopMenuClose("creator")}
-          >
+          <div className="relative shrink-0">
             <button
               type="button"
               className={navGroupButtonClassName(
                 isCreatorActive,
-                openDesktopMenu === "creator",
+                false,
               )}
               onClick={() => {
-                clearDesktopMenuCloseTimeout();
-                setOpenDesktopMenu((current) =>
-                  current === "creator" ? null : "creator",
-                );
+                // Đi thẳng vào trang Upload, không mở dropdown
+                setOpenDesktopMenu(null);
+                setCurrentScreen("upload");
+                window.scrollTo({ top: 0, behavior: "smooth" });
               }}
-              aria-expanded={openDesktopMenu === "creator"}
-              aria-haspopup="true"
             >
               {t("creator_hub")}
             </button>
-
-            {renderDesktopMenuPanel(
-              "creator",
-              t("creator_hub"),
-              t("creator_hub_subtitle"),
-              creatorMenuItems,
-            )}
           </div>
 
           {currentUser && (

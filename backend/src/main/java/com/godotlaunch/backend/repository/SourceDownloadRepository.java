@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface SourceDownloadRepository extends JpaRepository<SourceDownload, UUID> {
-    long countByUserIdAndMarketplaceItemIdAndOrderId(UUID userId, UUID marketplaceItemId, UUID orderId);
+    long countByUserIdAndAssetIdAndOrderId(UUID userId, UUID assetId, UUID orderId);
 }

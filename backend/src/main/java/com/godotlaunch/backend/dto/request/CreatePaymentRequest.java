@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,5 +12,6 @@ import java.util.UUID;
 public class CreatePaymentRequest {
 
     @NotNull(message = "Marketplace item is required.")
-    private UUID marketplaceItemId;
+    @JsonAlias("marketplaceItemId")
+    private UUID assetId;
 }

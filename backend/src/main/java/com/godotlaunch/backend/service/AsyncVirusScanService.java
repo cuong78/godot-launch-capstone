@@ -1,12 +1,11 @@
 package com.godotlaunch.backend.service;
 
-import com.godotlaunch.backend.entity.MarketplaceItem;
+import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
-import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.repository.GameRepository;
-import com.godotlaunch.backend.repository.MarketplaceItemRepository;
+import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.service.impl.StorageRouter;
 import com.godotlaunch.backend.util.SafeZipUnpacker;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +35,7 @@ public class AsyncVirusScanService {
     private final ClamAVService clamAVService;
     private final AwsS3Service awsS3Service;
     private final GameRepository gameRepository;
-    private final MarketplaceItemRepository marketplaceItemRepository;
+    private final AssetRepository assetRepository;
     private final StorageRouter storageRouter;
     private final AuditLogService auditLogService;
 
@@ -168,19 +167,19 @@ public class AsyncVirusScanService {
     }
 
     /**
-     * Thực hiện kiểm duyệt tệp tin ZIP tải lên cho MarketplaceItem bất đồng bộ.
+     * Thực hiện kiểm duyệt tệp tin ZIP tải lên cho Asset bất đồng bộ.
      *
-     * @param itemId ID của MarketplaceItem
+     * @param itemId ID của Asset
      * @param objectKey Đường dẫn đối tượng trên S3
      */
     @Async
     @Transactional
-    public void scanAndProcessMarketplaceItem(UUID itemId, String objectKey) {
+    public void scanAndProcessAsset(UUID itemId, String objectKey) {
         log.info("Bắt đầu quy trình kiểm duyệt an toàn bất đồng bộ cho marketplace item: {}, objectKey: {}", itemId, objectKey);
 
-        MarketplaceItem item = marketplaceItemRepository.findById(itemId).orElse(null);
+        Asset item = assetRepository.findById(itemId).orElse(null);
         if (item == null) {
-            log.warn("Không tìm thấy MarketplaceItem với id {} để tiến hành quét bảo mật.", itemId);
+            log.warn("Không tìm thấy Asset với id {} để tiến hành quét bảo mật.", itemId);
             return;
         }
 
@@ -198,7 +197,7 @@ public class AsyncVirusScanService {
 
             if (!isClean) {
                 log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin tải lên của marketplace item: {}. Tiến hành xóa tệp và gỡ bỏ sản phẩm.", itemId);
-                updateMarketplaceItemStatus(itemId, ItemStatus.removed);
+                updateAssetStatus(itemId, ItemStatus.removed);
                 storageRouter.delete(fileType, objectKey);
 
                 auditLogService.publish(
@@ -239,7 +238,7 @@ public class AsyncVirusScanService {
 
         } catch (SecurityException | IllegalStateException e) {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với marketplace item: {}: {}", itemId, e.getMessage());
-            updateMarketplaceItemStatus(itemId, ItemStatus.removed);
+            updateAssetStatus(itemId, ItemStatus.removed);
             try {
                 storageRouter.delete(fileType, objectKey);
             } catch (Exception ex) {
@@ -271,11 +270,11 @@ public class AsyncVirusScanService {
         }
     }
 
-    private void updateMarketplaceItemStatus(UUID itemId, ItemStatus status) {
+    private void updateAssetStatus(UUID itemId, ItemStatus status) {
         try {
-            marketplaceItemRepository.findById(itemId).ifPresent(item -> {
+            assetRepository.findById(itemId).ifPresent(item -> {
                 item.setStatus(status);
-                marketplaceItemRepository.save(item);
+                assetRepository.save(item);
                 log.info("Cập nhật trạng thái marketplace item {} sang {} thành công.", itemId, status);
             });
         } catch (Exception ex) {

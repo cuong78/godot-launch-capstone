@@ -41,8 +41,8 @@ public class Order {
     private OrderStatus orderStatus = OrderStatus.PENDING;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "marketplace_item_id", nullable = false)
-    private MarketplaceItem marketplaceItem;
+    @JoinColumn(name = "asset_id", nullable = false)
+    private Asset asset;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id")

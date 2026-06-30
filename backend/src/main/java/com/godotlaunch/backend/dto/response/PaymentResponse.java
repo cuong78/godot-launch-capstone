@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.dto.response;
 
-import com.godotlaunch.backend.entity.enums.ItemType;
 import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.PaymentProvider;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
@@ -22,9 +21,10 @@ import java.util.UUID;
 public class PaymentResponse {
     private UUID id;
     private UUID orderId;
-    private UUID marketplaceItemId;
-    private String marketplaceItemTitle;
-    private ItemType marketplaceItemType;
+    private UUID assetId;
+    private String assetTitle;
+    // 'asset' | 'game_source' — phân loại sản phẩm trong đơn (Phase 2 wire game-source)
+    private String assetType;
     private UUID buyerId;
     private String buyerEmail;
     private String buyerFullName;

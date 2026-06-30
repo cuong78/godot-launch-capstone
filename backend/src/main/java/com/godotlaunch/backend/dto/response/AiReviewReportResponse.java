@@ -17,7 +17,7 @@ import java.util.UUID;
 public class AiReviewReportResponse {
     private UUID id;
     private UUID gameId;
-    private UUID marketplaceItemId;
+    private UUID assetId;
 
     private Integer codeQualityScore;
     private Integer mediaMatchScore;
