@@ -69,13 +69,6 @@ public class Asset {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
-    // version: để sau user update phiên bản asset (KHÔNG phải godot version)
-    @Column(name = "version", length = 50)
-    private String version = "1.0.0";
-
-    @Column(name = "supported_platforms", length = 200)
-    private String supportedPlatforms;
-
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "asset_tags",
             joinColumns = @JoinColumn(name = "asset_id"),
