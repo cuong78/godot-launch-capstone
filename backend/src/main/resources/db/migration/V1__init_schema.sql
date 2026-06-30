@@ -292,8 +292,13 @@ COMMENT ON COLUMN public.banned_ips.expires_at IS 'NULL = vinh vien | NOT NULL =
 CREATE TABLE public.cart_items (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
-    asset_id uuid NOT NULL,
-    added_at timestamp with time zone DEFAULT now() NOT NULL
+    asset_id uuid,
+    game_id uuid,
+    added_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_cart_items_target CHECK (
+        (asset_id IS NOT NULL AND game_id IS NULL) OR
+        (asset_id IS NULL AND game_id IS NOT NULL)
+    )
 );
 
 COMMENT ON TABLE public.cart_items IS 'Gio hang: source code hoac asset tren Marketplace';
@@ -586,12 +591,17 @@ CREATE TABLE public.orders (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     buyer_id uuid NOT NULL,
     order_type public.order_type_enum NOT NULL,
-    asset_id uuid NOT NULL,
+    asset_id uuid,
+    game_id uuid,
     transaction_id uuid,
     price_paid numeric(15,2) NOT NULL,
     purchased_at timestamp with time zone DEFAULT now() NOT NULL,
     order_status public.order_status_enum DEFAULT 'PENDING'::public.order_status_enum NOT NULL,
-    CONSTRAINT orders_price_paid_check CHECK ((price_paid >= (0)::numeric))
+    CONSTRAINT orders_price_paid_check CHECK ((price_paid >= (0)::numeric)),
+    CONSTRAINT chk_orders_target CHECK (
+        (asset_id IS NOT NULL AND game_id IS NULL) OR
+        (asset_id IS NULL AND game_id IS NOT NULL)
+    )
 );
 
 COMMENT ON TABLE public.orders IS 'Don hang mua source code hoac asset tren Marketplace';
@@ -640,12 +650,17 @@ CREATE TABLE public.reviews (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     order_id uuid NOT NULL,
-    asset_id uuid NOT NULL,
+    asset_id uuid,
+    game_id uuid,
     rating smallint NOT NULL,
     comment text,
     is_approved boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5)))
+    CONSTRAINT reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5))),
+    CONSTRAINT chk_reviews_target CHECK (
+        (asset_id IS NOT NULL AND game_id IS NULL) OR
+        (asset_id IS NULL AND game_id IS NOT NULL)
+    )
 );
 
 COMMENT ON TABLE public.reviews IS 'Verified buyer review — chi sau khi mua (order_id bat buoc)';
@@ -666,13 +681,18 @@ COMMENT ON TABLE public.roles IS 'Bang role tach khoi enum: de them role moi ma 
 CREATE TABLE public.source_downloads (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
-    asset_id uuid NOT NULL,
+    asset_id uuid,
+    game_id uuid,
     order_id uuid NOT NULL,
     ip_address inet,
     device_info character varying(200),
     downloaded_at timestamp with time zone DEFAULT now() NOT NULL,
     download_count integer DEFAULT 1 NOT NULL,
-    CONSTRAINT source_downloads_download_count_check CHECK ((download_count >= 1))
+    CONSTRAINT source_downloads_download_count_check CHECK ((download_count >= 1)),
+    CONSTRAINT chk_source_downloads_target CHECK (
+        (asset_id IS NOT NULL AND game_id IS NULL) OR
+        (asset_id IS NULL AND game_id IS NOT NULL)
+    )
 );
 
 COMMENT ON TABLE public.source_downloads IS 'Moi luot tai source code / asset — KHONG UNIQUE (tai lai nhieu lan)';
@@ -1343,6 +1363,9 @@ ALTER TABLE ONLY public.cart_items
     ADD CONSTRAINT cart_items_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.cart_items
+    ADD CONSTRAINT cart_items_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.cart_items
     ADD CONSTRAINT cart_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.categories
@@ -1472,6 +1495,9 @@ ALTER TABLE ONLY public.orders
     ADD CONSTRAINT orders_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE RESTRICT;
 
 ALTER TABLE ONLY public.orders
+    ADD CONSTRAINT orders_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE RESTRICT;
+
+ALTER TABLE ONLY public.orders
     ADD CONSTRAINT orders_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES public.transactions(id) ON DELETE RESTRICT;
 
 ALTER TABLE ONLY public.payments
@@ -1484,6 +1510,9 @@ ALTER TABLE ONLY public.reviews
     ADD CONSTRAINT reviews_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.reviews
+    ADD CONSTRAINT reviews_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.reviews
     ADD CONSTRAINT reviews_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.reviews
@@ -1491,6 +1520,9 @@ ALTER TABLE ONLY public.reviews
 
 ALTER TABLE ONLY public.source_downloads
     ADD CONSTRAINT source_downloads_marketplace_item_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.source_downloads
+    ADD CONSTRAINT source_downloads_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.source_downloads
     ADD CONSTRAINT source_downloads_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE RESTRICT;

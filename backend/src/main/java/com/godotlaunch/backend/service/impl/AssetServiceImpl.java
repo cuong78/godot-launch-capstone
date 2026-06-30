@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
@@ -215,7 +217,16 @@ public class AssetServiceImpl implements AssetService {
                 itemId, storageRouter.getProvider(fileType), objectKey);
 
         // Asset (upload file, không repo): AI review media-only (CLIP + NSFW). Fail-soft.
-        aiReviewService.reviewAssetAsync(itemId);
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    aiReviewService.reviewAssetAsync(itemId);
+                }
+            });
+        } else {
+            aiReviewService.reviewAssetAsync(itemId);
+        }
     }
 
     @Override
@@ -250,6 +261,11 @@ public class AssetServiceImpl implements AssetService {
         media.setMediaType(type);
         media.setMediaUrl(mediaUrl);
         mediaRepository.save(media);
+
+        if ("thumbnail".equals(type)) {
+            item.setThumbnailUrl(mediaUrl);
+            assetRepository.save(item);
+        }
 
         return objectKey;
     }

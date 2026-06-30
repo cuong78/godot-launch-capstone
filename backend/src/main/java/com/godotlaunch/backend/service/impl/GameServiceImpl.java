@@ -35,6 +35,8 @@ import com.godotlaunch.backend.service.AuditLogService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -180,8 +182,17 @@ public class GameServiceImpl implements GameService {
                 AuditTarget.game, gameId, GameStatus.draft.name(), GameStatus.pending.name(),
                 "Game '" + game.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
 
-        // AI review async (sau snapshot sạch, trước admin) — tạo report đề xuất. Fail-soft.
-        aiReviewService.reviewGameAsync(gameId);
+        // AI review async (sau snapshot sạch, trước admin) để tạo report đề xuất. Fail-soft.
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    aiReviewService.reviewGameAsync(gameId);
+                }
+            });
+        } else {
+            aiReviewService.reviewGameAsync(gameId);
+        }
     }
 
     @Override
@@ -391,6 +402,14 @@ public class GameServiceImpl implements GameService {
                 .findFirst()
                 .orElse(null);
 
+        String fileUrl = game.getFileUrl();
+        if (fileUrl == null || fileUrl.isBlank()) {
+            List<SourceSnapshot> snaps = sourceSnapshotRepository.findByGameIdOrderByCreatedAtDesc(game.getId());
+            if (snaps != null && !snaps.isEmpty()) {
+                fileUrl = snaps.get(0).getBundleUrl();
+            }
+        }
+
         return GameResponse.builder()
                 .id(game.getId())
                 .title(game.getTitle())
@@ -406,7 +425,7 @@ public class GameServiceImpl implements GameService {
                 .publishingType(game.getPublishingType() != null ? game.getPublishingType().name() : null)
                 .screenshots(screenshots)
                 .videoUrl(videoUrl)
-                .fileUrl(getPresignedGetUrl(game.getFileUrl()))
+                .fileUrl(getPresignedGetUrl(fileUrl))
                 .githubRepoUrl(game.getGithubRepoUrl())
                 .githubBranch(game.getGithubBranch())
                 .createdAt(game.getCreatedAt())
