@@ -28,9 +28,6 @@ public class BannedIdentity {
     @Column(name = "user_id")
     private UUID userId;
 
-    // face_embedding (vector) không map trực tiếp ở đây — set qua native query.
-    // Lưu cảnh báo: cột vector cần native SQL để insert/search.
-
     @Column(name = "kyc_id_number", columnDefinition = "TEXT")
     private String kycIdNumber;        // đã encrypt
 

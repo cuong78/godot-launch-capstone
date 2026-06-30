@@ -12,6 +12,14 @@
 - Migration: **ĐÃ GỘP tất cả về 1 file `V1__init_schema.sql` duy nhất** (next = V2). Xóa V60–V71. V1 = schema cuối cùng đã sạch (đã áp toàn bộ dọn dẹp 2.1–2.9).
   - ⚠️ Vì rewrite V1 → checksum đổi. `repair-on-migrate` chỉ sửa checksum, KHÔNG áp lại schema. BẮT BUỘC drop DB chạy lại: `docker exec -e PGPASSWORD=12345 godotlaunch-postgres psql -U postgres -d postgres -c "DROP DATABASE godot_launch;" -c "CREATE DATABASE godot_launch;"` rồi boot backend.
   - Đã validate: chạy V1 vào DB tạm sạch → 0 lỗi, 36 bảng, mọi cột/type/FK đúng trạng thái cuối.
+
+### 2.10 Bổ sung entity còn thiếu so với schema
+- Đối chiếu 36 bảng DB ↔ `@Table` entity Java: thiếu entity cho `banned_ips`, `store_download_stats` (bảng nghiệp vụ thật chưa wire). Tạo mới:
+  - `BannedIp.java` (bảng `banned_ips`): ip_address inet (+@ColumnTransformer ::inet), reason, relatedUserId/bannedBy (UUID, nullable), bannedAt, expiresAt, notes.
+  - `StoreDownloadStat.java` (bảng `store_download_stats`): @ManyToOne Game, platform String +@ColumnTransformer ::ext_platform_enum (không hồi sinh enum ExtPlatform đã xóa), statDate, downloads, installs, revenue, fetchedAt.
+- KHÔNG tạo entity cho: `face_embeddings` (vector(128) — dùng native SQL trong BannedIdentityServiceImpl, cố ý), `game_tags`/`asset_tags` (bảng nối M:N — map qua @JoinTable trong Game/Asset).
+- Fix test: `BackendApplicationTests` gọi `contract.getBuyer()` (đã xóa ở V63) → bỏ dòng đó. (Đây là regression test chưa cập nhật, lộ ra khi boot vì spring-boot:run compile cả test.)
+- VALIDATE THẬT: boot backend vào DB tạm (Flyway chạy V1 + Hibernate ddl-auto=validate) → **Started BackendApplication** thành công → toàn bộ entity (gồm 2 cái mới) khớp schema 100%.
 - Backup branches còn giữ (đường lùi nếu cần):
   - `backup-before-reset-a20112f-20260630-081109` (trước khi reset develop về a20112f cho demo)
   - `backup-apk-feature-20260629-224526` (tính năng build APK đã bỏ)

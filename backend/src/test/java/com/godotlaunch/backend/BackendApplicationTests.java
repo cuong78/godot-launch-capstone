@@ -22,10 +22,9 @@ class BackendApplicationTests {
         System.out.println("=== CONTRACTS ===");
         contractRepository.findAll().forEach(contract -> {
             try {
-                System.out.println("Contract ID: " + contract.getId() 
+                System.out.println("Contract ID: " + contract.getId()
                     + ", Game: " + (contract.getGame() != null ? contract.getGame().getTitle() : "null")
                     + ", Seller: " + (contract.getSeller() != null ? contract.getSeller().getEmail() : "null")
-                    + ", Buyer: " + (contract.getBuyer() != null ? contract.getBuyer().getEmail() : "null")
                 );
             } catch (Exception e) {
                 e.printStackTrace();
