@@ -64,7 +64,7 @@ Pattern này giải quyết bằng cách thêm 1 bước verify phía DB.
 
 ```json
 {
-  "sub": "cuongcaoleanh@gmail.com",
+  "sub": "user@example.com",
   "userId": "uuid-...",
   "role": "admin",
   "sessionSecret": "550e8400-e29b-41d4-a716-446655440000",

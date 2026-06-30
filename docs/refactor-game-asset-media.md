@@ -35,7 +35,7 @@ Media  ─ nguồn sự thật DUY NHẤT cho mọi ảnh/video (game store, gam
 ### 1.1 Backend
 | Hạng mục | Chi tiết |
 |---|---|
-| **Migration** | `V57__simplify_asset_drop_source_code.sql`: DROP cột `item_type`, `source_game_id`, `github_repo_url`, `github_verified_at` khỏi `assets`; DROP TYPE `item_type_enum` |
+| **Migration** | `V59__simplify_asset_drop_source_code.sql`: DROP cột `item_type`, `source_game_id`, `github_repo_url`, `github_verified_at` khỏi `assets`; DROP TYPE `item_type_enum` |
 | **Entity** | `Asset.java` bỏ 4 field trên. XÓA file `entity/enums/ItemType.java` |
 | **DTO** | `CreateAssetRequest`/`UpdateAssetRequest`/`AssetResponse`: bỏ itemType/sourceGameId/githubRepoUrl/githubVerifiedAt. `PaymentResponse.assetType`: `ItemType` → `String` ("asset" \| "game_source") |
 | **AssetServiceImpl** | Bỏ nhánh `itemType==source_code`. **XÓA hẳn** method `submitItemRepo`, `acceptBotInvitation`, `getSourceBundleUrl`, `saveSnapshotForItem`, `uploadSourceBundle`. Asset luôn là upload-file. |
@@ -57,7 +57,7 @@ Media  ─ nguồn sự thật DUY NHẤT cho mọi ảnh/video (game store, gam
 
 ### 1.3 Trạng thái verify Phase 1
 - ✅ Backend `./mvnw -o compile` → BUILD SUCCESS
-- ✅ Flyway V57 chạy thật, backend boot OK (Hibernate validate pass)
+- ✅ Flyway phase refactor migration chạy thật, backend boot OK (Hibernate validate pass)
 - ✅ DB: `assets` không còn item_type/source_game_id/github_*; còn lại: id, seller, category, title, description, price, file_url, status, **thumbnail_url, version, supported_platforms**, timestamps
 - ✅ Frontend `npx tsc --noEmit` → 0 lỗi
 
@@ -65,7 +65,7 @@ Media  ─ nguồn sự thật DUY NHẤT cho mọi ảnh/video (game store, gam
 - **Chưa commit** — code đang ở working tree (branch `develop`).
 - `Asset` UI model trong `types.ts` (dòng ~19) vẫn còn `itemType?: "source_code"|"asset"` (optional) — dùng cho **mock/featured data** trong App.tsx (FEATURED_ASSETS hardcode). KHÔNG phải dữ liệu API thật. Có thể dọn sau, không gấp.
 - `MediaOwnerType` vẫn dùng value `marketplace_item` (chưa đổi `asset`) — để Phase 3.
-- DB local hiện ở migration V57. Cred DB: user `postgres` / pass `12345` (trong `backend/.env`, đã khớp docker-compose).
+- DB local cũ có thể đã chạy các version `56` và `57` từ luồng migration trước đó. Sau khi gộp schema vào `V1`, các migration refactor mới cần dùng version mới hơn để tránh bị Flyway bỏ qua.
 
 ---
 
