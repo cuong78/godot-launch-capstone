@@ -1,6 +1,8 @@
-package com.godotlaunch.backend.service.payout;
+package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.dto.response.PayoutGatewayBalanceResponse;
+import com.godotlaunch.backend.dto.response.PayoutGatewayStatusResponse;
 import com.godotlaunch.backend.exception.AppException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

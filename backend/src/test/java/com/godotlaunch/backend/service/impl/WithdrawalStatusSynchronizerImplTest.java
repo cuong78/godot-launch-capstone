@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.service.impl;
 
+import com.godotlaunch.backend.dto.response.PayoutGatewayStatusResponse;
 import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.Transaction;
 import com.godotlaunch.backend.entity.User;
@@ -12,10 +13,9 @@ import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
+import com.godotlaunch.backend.repository.PayoutGateway;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
-import com.godotlaunch.backend.service.payout.PayoutGateway;
-import com.godotlaunch.backend.service.payout.PayoutGatewayStatusResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
