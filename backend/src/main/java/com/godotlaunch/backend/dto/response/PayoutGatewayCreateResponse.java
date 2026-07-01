@@ -1,4 +1,4 @@
-package com.godotlaunch.backend.service.payout;
+package com.godotlaunch.backend.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;

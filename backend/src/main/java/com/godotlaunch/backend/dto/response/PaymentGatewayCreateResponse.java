@@ -1,4 +1,4 @@
-package com.godotlaunch.backend.service.payment;
+package com.godotlaunch.backend.dto.response;
 
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import lombok.Builder;
