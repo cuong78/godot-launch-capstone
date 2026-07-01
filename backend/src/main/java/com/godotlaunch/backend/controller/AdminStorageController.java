@@ -295,20 +295,8 @@ public class AdminStorageController {
                         .createdAt(u.getCreatedAt())
                         .build());
             }
-            case "game_zip" -> {
-                Page<Game> games = gameRepo.searchGameZips(cleanSearch, pageable);
-                resultPage = games.map(g -> UploadedFileResponse.builder()
-                        .id("gamezip-" + g.getId())
-                        .fileName(extractFileName(g.getFileUrl()))
-                        .fileType("source_bundle")
-                        .fileUrl(g.getFileUrl())
-                        .storageProvider(inferProvider(g.getFileUrl()))
-                        .ownerId(g.getId())
-                        .ownerType("Game")
-                        .ownerName(g.getTitle())
-                        .createdAt(g.getCreatedAt())
-                        .build());
-            }
+            // "game_zip" đã gộp vào "source_snapshot": file source game nằm ở SourceSnapshot.bundleUrl
+            // (game = repo + snapshot), không còn Game.file_url.
             case "game_thumbnail" -> {
                 Page<Game> games = gameRepo.searchGameThumbnails(cleanSearch, pageable);
                 resultPage = games.map(g -> UploadedFileResponse.builder()
@@ -524,16 +512,8 @@ public class AdminStorageController {
                 }
             });
             case "game" -> gameRepo.findById(uuid).ifPresent(g -> {
-                boolean changed = false;
                 if (fileUrl.equals(g.getThumbnailUrl())) {
                     g.setThumbnailUrl(null);
-                    changed = true;
-                }
-                if (fileUrl.equals(g.getFileUrl())) {
-                    g.setFileUrl(null);
-                    changed = true;
-                }
-                if (changed) {
                     gameRepo.save(g);
                 }
             });

@@ -20,6 +20,14 @@
 - KHÔNG tạo entity cho: `face_embeddings` (vector(128) — dùng native SQL trong BannedIdentityServiceImpl, cố ý), `game_tags`/`asset_tags` (bảng nối M:N — map qua @JoinTable trong Game/Asset).
 - Fix test: `BackendApplicationTests` gọi `contract.getBuyer()` (đã xóa ở V63) → bỏ dòng đó. (Đây là regression test chưa cập nhật, lộ ra khi boot vì spring-boot:run compile cả test.)
 - VALIDATE THẬT: boot backend vào DB tạm (Flyway chạy V1 + Hibernate ddl-auto=validate) → **Started BackendApplication** thành công → toàn bộ entity (gồm 2 cái mới) khớp schema 100%.
+
+### 2.11 Bỏ Game.file_url — file game lấy từ SourceSnapshot (migration V2)
+- Lý do: game submit qua GitHub repo → file source thật ở `source_snapshots.bundle_url` (game = repo + snapshot). `games.file_url` là di tích luồng cũ "upload game.zip", gần như luôn null → dư thừa.
+- KHÔNG wire GameVersion (Explore xác nhận: GameVersion + ExternalPublish là bảng chết; "wire version" thực ra là feature versioning mới — file game không có nguồn để gắn vào version. Để dành.)
+- Sửa: `Game` xóa field `fileUrl`; `GameServiceImpl.mapToResponse` lấy thẳng từ SourceSnapshot (bỏ fallback game.fileUrl); bỏ 2 `setFileUrl` (confirmUploadComplete giữ virus scan, rejectGame); `GameRepository` xóa `searchGameZips`; `AdminStorageController` xóa case "game_zip" (đã có case "source_snapshot" hiển thị file game qua bundle) + bỏ nhánh xóa game.fileUrl.
+- KHÔNG đụng Asset.fileUrl (asset vẫn upload file trực tiếp — khác game).
+- `V2__drop_game_file_url.sql`: `ALTER TABLE games DROP COLUMN file_url`.
+- Verify: `mvnw compile` SUCCESS; Flyway "Successfully applied 2 migrations, now at version v2" (V1+V2 chạy sạch trên DB tạm). Boot-validate đầy đủ bị gián đoạn do **postgres container tự dừng giữa chừng** (lỗi hạ tầng, không liên quan code — đã restart lại). Migration cao nhất giờ = V2 (next = V3).
 - Backup branches còn giữ (đường lùi nếu cần):
   - `backup-before-reset-a20112f-20260630-081109` (trước khi reset develop về a20112f cho demo)
   - `backup-apk-feature-20260629-224526` (tính năng build APK đã bỏ)
@@ -164,6 +172,42 @@ docker exec -e PGPASSWORD=12345 godotlaunch-postgres psql -U postgres -d godot_l
 
 ---
 
+## 4b. TASK CHỜ LÀM: Wire GameVersion + đổi AiReviewReport → GameVersion
+
+> ⚠️ ĐÍNH CHÍNH: GameVersion & ExternalPublish **KHÔNG phải "bảng chết"** — chúng là 2 luồng
+> nghiệp vụ QUAN TRỌNG (versioning game + publish lên Google Play/App Store), chỉ **chưa được
+> wire code** (mới có entity + schema, chưa có repository/service/controller).
+
+### Quyết định đã CHỐT với user (làm ở task sau):
+- **Cách A**: khi submit game repo → **tự tạo 1 GameVersion mới** từ snapshot.
+- **Mỗi lần submit repo = 1 version mới** (v1 → v2 → v3), giữ lịch sử. `is_current` = version mới nhất.
+- **AiReviewReport đổi HẲN** `game_id` → `game_version_id` (bỏ game_id, không giữ cả hai).
+  Admin xem report theo game thì join version→game.
+
+### Các bước cần làm (đã khảo sát sẵn):
+1. **Tạo `GameVersionRepository`** (chưa có) — cần method đếm/lấy version mới nhất theo game để đánh số version.
+2. **`GameServiceImpl.submitGameRepo`** (dòng ~174-177, sau `saveSnapshotForGame`): tạo GameVersion
+   - `versionNumber` tăng dần (đếm version hiện có của game + 1, vd "v1", "v2").
+   - `fileUrl` = bundleUrl (lấy từ snapshot vừa tạo — `snap.getBundleUrl()`).
+   - `isCurrent` = true (set version cũ isCurrent=false trước).
+   - Truyền `gameVersionId` cho AI review thay vì gameId.
+   - LƯU Ý: `saveSnapshotForGame` hiện không trả bundleUrl ra ngoài — cần refactor để lấy được, hoặc tạo version bên trong nó.
+3. **Entity `AiReviewReport`**: đổi `@JoinColumn game_id / Game game` → `game_version_id / GameVersion gameVersion`. Giữ nguyên `asset` (asset review vẫn theo asset).
+4. **`AiReviewService`**: `reviewGameAsync(gameId)` → `reviewGameVersionAsync(gameVersionId)`.
+   - Trong đó: `report.setGameVersion(version)`. Media vẫn lấy theo game (version.getGame().getId()).
+   - `AiReviewReportRepository`: `findFirstByGameIdOrderByCreatedAtDesc` → `findFirstByGameVersion_Game_Id...` (join) hoặc thêm method theo version.
+5. **`AdminAiReviewController`**: endpoint `/game/{gameId}` — quyết định giữ (query qua version→game) hay đổi thành `/game-version/{id}`. + `DTO AiReviewReportResponse` đổi `gameId` → `gameVersionId` (+ có thể thêm gameId tính từ version cho FE tiện).
+6. **Frontend `aiReviewApi.ts`**: cập nhật endpoint/field nếu đổi.
+7. **Migration mới (V-next)**: `ai_review_reports` rename cột `game_id` → `game_version_id` + đổi FK trỏ `game_versions(id)`. (DB trống nên rename đơn giản; nếu có data thì cần migrate.)
+8. **Verify**: build + boot (Flyway + Hibernate validate) + FE tsc.
+
+### Rủi ro / lưu ý:
+- Đây là refactor ĐA TẦNG (entity + service + controller + DTO + FE + migration) → **nên vào plan mode** khi làm.
+- GameVersion.file_url NOT NULL → phải có bundleUrl khi tạo version (game submit qua repo luôn có bundle nếu sạch).
+- Có thể cân nhắc wire luôn ExternalPublish (publish version lên store) trong cùng đợt — nhưng đó là scope riêng, hỏi user.
+
+---
+
 ## 5. Tài liệu liên quan trong repo
 - `docs/refactor-game-asset-media.md` — chi tiết Phase 1/2/3 + checklist test
 - `docs/ai-review-plan.md` — plan AI review multimodal
@@ -173,4 +217,7 @@ docker exec -e PGPASSWORD=12345 godotlaunch-postgres psql -U postgres -d godot_l
 ---
 
 ## 6. Tóm tắt 1 dòng cho session mới
-> Đang dọn dẹp entity sau refactor Game/Asset. Vừa xóa favorite (V62) + Contract.buyer (V63) + Dispute.asset (V64), **chưa commit**, chờ user overview. Phase 2 (wire bán source game) và Phase 3 (chuẩn hóa media) chưa làm.
+> Đang dọn dẹp entity sau refactor Game/Asset (đã làm nhiều đợt, xem mục 2). **Chưa commit**, chờ user overview.
+> TASK CHỜ (mục 4b): wire GameVersion + đổi AiReviewReport→GameVersion (đã chốt cách A, mỗi submit = version mới).
+> GameVersion & ExternalPublish là luồng QUAN TRỌNG (versioning + publish store), chưa wire code.
+> Phase 2 (wire bán source game) & Phase 3 (chuẩn hóa media) trong docs/refactor-game-asset-media.md.

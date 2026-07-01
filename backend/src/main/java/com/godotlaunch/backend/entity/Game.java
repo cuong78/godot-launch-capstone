@@ -43,9 +43,6 @@ public class Game {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
-    @Column(name = "file_url", columnDefinition = "TEXT")
-    private String fileUrl;
-
     @Column(name = "github_repo_url", columnDefinition = "TEXT")
     private String githubRepoUrl;
 
