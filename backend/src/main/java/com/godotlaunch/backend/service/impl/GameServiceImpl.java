@@ -401,12 +401,11 @@ public class GameServiceImpl implements GameService {
                 .findFirst()
                 .orElse(null);
 
-        String fileUrl = game.getFileUrl();
-        if (fileUrl == null || fileUrl.isBlank()) {
-            List<SourceSnapshot> snaps = sourceSnapshotRepository.findByGameIdOrderByCreatedAtDesc(game.getId());
-            if (snaps != null && !snaps.isEmpty()) {
-                fileUrl = snaps.get(0).getBundleUrl();
-            }
+        // File source game nằm ở SourceSnapshot mới nhất (game = repo + snapshot, không lưu file rời).
+        String fileUrl = null;
+        List<SourceSnapshot> snaps = sourceSnapshotRepository.findByGameIdOrderByCreatedAtDesc(game.getId());
+        if (snaps != null && !snaps.isEmpty()) {
+            fileUrl = snaps.get(0).getBundleUrl();
         }
 
         return GameResponse.builder()
@@ -482,12 +481,9 @@ public class GameServiceImpl implements GameService {
             media.setMediaUrl(mediaUrl);
             mediaRepository.save(media);
         } else {
+            // Luồng upload game.zip trực tiếp: chỉ quét virus (file source thật của game đi qua repo + snapshot,
+            // không lưu file_url rời trên Game nữa).
             String actualKey = objectKey != null ? objectKey : "games/" + gameId.toString() + "/game.zip";
-            String fileUrl = awsS3Service.getFileUrl(actualKey);
-
-            game.setFileUrl(fileUrl);
-            gameRepository.save(game);
-
             asyncVirusScanService.scanAndProcessGame(gameId, actualKey);
         }
     }
@@ -615,7 +611,6 @@ public class GameServiceImpl implements GameService {
             awsS3Service.deleteObject(zipKey);
             awsS3Service.deleteObject(thumbnailKey);
 
-            game.setFileUrl(null);
             game.setThumbnailUrl(null);
 
             // Xóa toàn bộ screenshots và videos trong media

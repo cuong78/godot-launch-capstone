@@ -51,12 +51,15 @@
 | 10 | GameVersion **dùng cho** ExternalPublish | `||` | `o<` | external_publishes.game_version_id NOT NULL |
 | 11 | Game **thống kê** StoreDownloadStat | `||` | `o<` | store_download_stats.game_id NOT NULL |
 | 12 | Developer(seller) **bán** Asset | `||` | `o<` | assets.seller_id NOT NULL |
-| 13 | Asset **gắn** AssetTag | `||` | `o<` | asset_tags.asset_id (PK) |
-| 14 | Tag **gắn** AssetTag | `||` | `o<` | asset_tags.tag_id (PK) |
-| 15 | Asset **có** Media | `||` | `o<` | media.asset_id (arc) |
-| 16 | Developer **sở hữu** Wallet | `||` | `o|` | wallets.user_id NOT NULL + **UNIQUE** |
-| 17 | Wallet **ghi** Transaction | `||` | `o<` | transactions.wallet_id NOT NULL |
-| 18 | Wallet **yêu cầu** WithdrawalRequest | `||` | `o<` | withdrawal_requests.wallet_id NOT NULL |
+| 13 | Category **phân loại** Asset | `o|` | `o<` | assets.category_id nullable (FK SET NULL) |
+| 14 | Asset **gắn** AssetTag | `||` | `o<` | asset_tags.asset_id (PK) |
+| 15 | Tag **gắn** AssetTag | `||` | `o<` | asset_tags.tag_id (PK) |
+| 16 | Asset **có** Media | `||` | `o<` | media.asset_id (arc) |
+| 17 | Developer **sở hữu** Wallet | `||` | `o|` | wallets.user_id NOT NULL + **UNIQUE** |
+| 18 | Wallet **ghi** Transaction | `||` | `o<` | transactions.wallet_id NOT NULL |
+| 19 | Wallet **yêu cầu** WithdrawalRequest | `||` | `o<` | withdrawal_requests.wallet_id NOT NULL |
+
+> **Category dùng chung cho cả Game lẫn Asset** (`games.category_id` + `assets.category_id` cùng → `categories`). → Trên diagram, box **Category** có 2 đường "phân loại": một tới Game (#2), một tới Asset (#13).
 
 > **GameTag / AssetTag** = associative entity (bảng nối M:N). PK kép (game_id, tag_id) → ở conceptual có thể vẽ rút gọn `Game >──< Tag`, hoặc giữ box associative như trên (đưa-vào-hết theo yêu cầu).
 
@@ -129,19 +132,26 @@
 
 ## 6. VIEW 5 — SECURITY / OPS (định danh, chống gian lận, hạ tầng)
 
-**Thứ tự vẽ:** User là tâm → FaceEmbedding, BannedIdentity, BannedIp, UserIpLog (định danh/bảo mật); cụm Storage độc lập (Account → Bucket → Routing).
+**Thứ tự vẽ:** Developer (Face/KYC) + User-chung (Ban/Log) → các bảng định danh/bảo mật; cụm Storage độc lập (Account → Bucket → Routing).
+
+> ⚠️ **Quan trọng — phân biệt vai khi vẽ (nghiệp vụ ≠ FK thuần):** FK đều trỏ `users(id)` không phân role, NHƯNG logic ứng dụng giới hạn ai làm được. Conceptual vẽ theo **nghiệp vụ**, nên:
+> - **FaceEmbedding & KYC → neo vào `Developer`** (chỉ developer face-verify/KYC: route `/api/developer/*` + `@PreAuthorize('DEVELOPER','ADMIN')`; là điều kiện trước khi bán hàng — `createAsset` chặn nếu chưa face-verify). Customer chỉ mua → không có.
+> - **BannedIdentity / BannedIp / UserIpLog → neo vào `User` chung** (cả developer-seller gian lận LẪN customer-reporter spam đều bị ban; IP log cho mọi role kể cả anonymous).
 
 | # | Quan hệ (Cha — Con) | Cha | Con | Căn cứ |
 |---|---|---|---|---|
-| 1 | User **có** FaceEmbedding | `||` | `o<` | face_embeddings.user_id NOT NULL |
-| 2 | User **bị chặn (danh tính)** BannedIdentity | `o|` | `o<` | banned_identities.user_id nullable + FK SET NULL |
-| 3 | User(related) **liên đới** BannedIp | `o|` | `o<` | banned_ips.related_user_id nullable |
-| 4 | User(banned_by/admin) **chặn** BannedIp | `o|` | `o<` | banned_ips.banned_by nullable |
-| 5 | User **để lại** UserIpLog | `o|` | `o<` | user_ip_logs.user_id nullable (null = anonymous) |
+| 1 | **Developer** **face-verify** FaceEmbedding | `||` | `o|` | face_embeddings.user_id NOT NULL. **One-time**: `FaceVerifyController` chặn verify lần 2 (`if isFaceVerified return`) → mỗi developer tối đa **1** embedding |
+| 2 | User **bị chặn (danh tính)** BannedIdentity | `o|` | `o|` | banned_identities.user_id nullable (FK SET NULL). 1 user bị ban → **1** bản ghi blacklist (user đã banned thì không vào lại để bị ban lần 2) |
+| 3 | User(related) **liên đới** BannedIp | `o|` | `o|` | banned_ips.related_user_id nullable. 1 user → **1** lần bị chặn IP (chặn rồi không vào lại) |
+| 4 | Admin(banned_by) **chặn** BannedIp | `o|` | `o<` | banned_ips.banned_by nullable. 1 admin chặn **nhiều** IP |
+| 5 | User **để lại** UserIpLog | `o|` | `o<` | user_ip_logs.user_id nullable (null = anonymous). LOG → 1 user **nhiều** dòng (login/upload/checkout… mỗi lần 1 dòng) |
 | 6 | StorageAccount **chứa** StorageBucket | `||` | `o<` | storage_buckets.account_id NOT NULL |
 | 7 | StorageBucket **được route bởi** StorageRouting | `o|` | `o<` | storage_routing.bucket_id nullable |
 
-> `banned_ips.ip_address` UNIQUE (1 IP 1 record). `storage_routing` PK = file_type (mỗi loại file route tới 1 bucket). FaceEmbedding ở đây = mặt **đang hoạt động**; còn mặt **đã bị ban** nằm *bên trong* BannedIdentity (cột face_embedding) — 2 thứ khác mục đích.
+> `banned_ips.ip_address` UNIQUE (1 IP 1 record). `storage_routing` PK = file_type (mỗi loại file route tới 1 bucket).
+> FaceEmbedding = mặt **đang hoạt động** (của developer đã verify); còn mặt **đã bị ban** nằm *bên trong* BannedIdentity (cột face_embedding) — 2 thứ khác mục đích.
+> **KYC KHÔNG có bảng riêng** → lưu thẳng vào các cột `kyc_*` của bảng `users` (`kyc_verified`, `kyc_full_name`, `kyc_id_number`, `kyc_date_of_birth`, `kyc_address`, `kyc_document_type`, `kyc_verified_at`, `kyc_front_image_url`, `kyc_back_image_url`) + `face_verified`. → Ở conceptual KYC là **THUỘC TÍNH (attribute) của User/Developer**, KHÔNG vẽ box entity riêng.
+> Đối lập: `face_embeddings` tách bảng riêng (vector(128), nhiều bản ghi/user) → vẽ box entity. Đó là khác biệt: KYC = attribute 1-1 trong users; FaceEmbedding = entity 1-n tách bảng.
 
 ---
 
