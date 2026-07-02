@@ -1049,6 +1049,8 @@ CREATE INDEX idx_banned_kyc ON public.banned_identities USING btree (kyc_id_numb
 
 CREATE INDEX idx_cart_items_user_id ON public.cart_items USING btree (user_id);
 
+CREATE INDEX idx_cart_items_game_id ON public.cart_items USING btree (game_id);
+
 CREATE INDEX idx_categories_parent_id ON public.categories USING btree (parent_id);
 
 CREATE INDEX idx_categories_slug ON public.categories USING btree (slug);

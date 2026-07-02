@@ -1,8 +1,8 @@
 package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.response.ApiResponse;
+import com.godotlaunch.backend.dto.response.PayoutGatewayBalanceResponse;
 import com.godotlaunch.backend.service.PayoutBalanceService;
-import com.godotlaunch.backend.service.payout.PayoutGatewayBalanceResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
