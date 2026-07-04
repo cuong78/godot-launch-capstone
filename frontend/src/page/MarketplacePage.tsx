@@ -54,7 +54,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const assetListings = filteredAssets;
 
   const assetCategoryChips = React.useMemo(() => {
-    return ["Shaders & VFX", "2D Assets", "3D Models", "Audio & SFX"].filter(
+    return ["Scripts & Plugins", "Shaders & VFX", "2D Assets", "3D Models", "Audio & SFX"].filter(
       (category) => assetListings.some((asset) => asset.category === category),
     );
   }, [assetListings]);

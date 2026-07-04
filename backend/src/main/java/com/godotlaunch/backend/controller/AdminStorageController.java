@@ -1,16 +1,8 @@
 package com.godotlaunch.backend.controller;
 
-import com.godotlaunch.backend.dto.request.StorageAccountRequest;
-import com.godotlaunch.backend.dto.request.StorageBucketRequest;
-import com.godotlaunch.backend.dto.request.StorageRoutingRequest;
-import com.godotlaunch.backend.dto.response.*;
-import com.godotlaunch.backend.entity.StorageAccount;
-import com.godotlaunch.backend.entity.StorageBucket;
-import com.godotlaunch.backend.entity.StorageRouting;
+import com.godotlaunch.backend.dto.response.ApiResponse;
+import com.godotlaunch.backend.dto.response.UploadedFileResponse;
 import com.godotlaunch.backend.entity.enums.FileType;
-import com.godotlaunch.backend.repository.StorageAccountRepository;
-import com.godotlaunch.backend.repository.StorageBucketRepository;
-import com.godotlaunch.backend.repository.StorageRoutingRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
@@ -23,8 +15,7 @@ import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
 import com.godotlaunch.backend.entity.Contract;
 import com.godotlaunch.backend.entity.SourceSnapshot;
-import com.godotlaunch.backend.dto.response.UploadedFileResponse;
-import com.godotlaunch.backend.security.EncryptionUtils;
+import com.godotlaunch.backend.entity.ChatMedia;
 import com.godotlaunch.backend.service.impl.StorageRouter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -40,7 +31,6 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -48,22 +38,16 @@ import org.springframework.web.bind.annotation.*;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.constant.ErrorCode;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/storage")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
-@Tag(name = "Admin Storage API", description = "Quản lý storage providers, buckets và file routing")
+@Tag(name = "Admin Storage API", description = "Quản lý tập tin lưu trữ hệ thống")
 public class AdminStorageController {
 
-    private final StorageAccountRepository accountRepo;
-    private final StorageBucketRepository bucketRepo;
-    private final StorageRoutingRepository routingRepo;
-    private final EncryptionUtils encryptionUtils;
     private final StorageRouter storageRouter;
     private final UserRepository userRepo;
     private final GameRepository gameRepo;
@@ -71,195 +55,6 @@ public class AdminStorageController {
     private final MediaRepository mediaRepo;
     private final ContractRepository contractRepo;
     private final SourceSnapshotRepository snapshotRepo;
-
-    // ── Accounts ─────────────────────────────────────────────
-
-    @GetMapping("/accounts")
-    @Operation(summary = "Lấy danh sách storage accounts")
-    public ResponseEntity<ApiResponse<List<StorageAccountResponse>>> listAccounts() {
-        List<StorageAccountResponse> list = accountRepo.findAll().stream()
-                .map(this::toAccountResponse).toList();
-        return ResponseEntity.ok(ApiResponse.success(list, "OK"));
-    }
-
-    @PostMapping("/accounts")
-    @Operation(summary = "Thêm storage account mới (AWS S3 hoặc SeaweedFS)")
-    public ResponseEntity<ApiResponse<StorageAccountResponse>> createAccount(
-            @Valid @RequestBody StorageAccountRequest req) {
-        StorageAccount account = new StorageAccount();
-        account.setName(req.getName());
-        account.setProvider(req.getProvider());
-        account.setConfig(encryptionUtils.encrypt(req.getConfig()));
-        account.setActive(req.isActive());
-        StorageAccount saved = accountRepo.save(account);
-        return ResponseEntity.ok(ApiResponse.success(toAccountResponse(saved), "Storage account created"));
-    }
-
-    @PutMapping("/accounts/{id}")
-    @Operation(summary = "Cập nhật storage account (bao gồm credentials)")
-    public ResponseEntity<ApiResponse<StorageAccountResponse>> updateAccount(
-            @PathVariable UUID id,
-            @Valid @RequestBody StorageAccountRequest req) {
-        StorageAccount account = accountRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-        account.setName(req.getName());
-        account.setProvider(req.getProvider());
-        account.setConfig(encryptionUtils.encrypt(req.getConfig()));
-        account.setActive(req.isActive());
-        storageRouter.clearCache();
-        return ResponseEntity.ok(ApiResponse.success(toAccountResponse(accountRepo.save(account)), "Updated"));
-    }
-
-    @PatchMapping("/accounts/{id}/name")
-    @Operation(summary = "Đổi tên account (không thay đổi credentials)")
-    public ResponseEntity<ApiResponse<StorageAccountResponse>> renameAccount(
-            @PathVariable UUID id,
-            @RequestBody Map<String, String> body) {
-        StorageAccount account = accountRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-        String newName = body.get("name");
-        if (newName != null && !newName.isBlank()) {
-            account.setName(newName);
-        }
-        return ResponseEntity.ok(ApiResponse.success(toAccountResponse(accountRepo.save(account)), "Renamed"));
-    }
-
-    @DeleteMapping("/accounts/{id}")
-    @Operation(summary = "Xóa storage account")
-    public ResponseEntity<ApiResponse<Void>> deleteAccount(@PathVariable UUID id) {
-        accountRepo.deleteById(id);
-        storageRouter.clearCache();
-        return ResponseEntity.ok(ApiResponse.success(null, "Deleted"));
-    }
-
-    // ── Buckets ──────────────────────────────────────────────
-
-    @GetMapping("/buckets")
-    @Operation(summary = "Lấy danh sách buckets")
-    public ResponseEntity<ApiResponse<List<StorageBucketResponse>>> listBuckets() {
-        List<StorageBucketResponse> list = bucketRepo.findAll().stream()
-                .map(this::toBucketResponse).toList();
-        return ResponseEntity.ok(ApiResponse.success(list, "OK"));
-    }
-
-    @PostMapping("/buckets")
-    @Operation(summary = "Thêm bucket mới")
-    public ResponseEntity<ApiResponse<StorageBucketResponse>> createBucket(
-            @Valid @RequestBody StorageBucketRequest req) {
-        StorageAccount account = accountRepo.findById(req.getAccountId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-        StorageBucket bucket = new StorageBucket();
-        bucket.setAccount(account);
-        bucket.setName(req.getName());
-        bucket.setRegion(req.getRegion());
-        bucket.setPublicUrl(req.getPublicUrl());
-        return ResponseEntity.ok(ApiResponse.success(toBucketResponse(bucketRepo.save(bucket)), "Bucket created"));
-    }
-
-    @DeleteMapping("/buckets/{id}")
-    @Operation(summary = "Xóa bucket")
-    public ResponseEntity<ApiResponse<Void>> deleteBucket(@PathVariable UUID id) {
-        bucketRepo.deleteById(id);
-        storageRouter.clearCache();
-        return ResponseEntity.ok(ApiResponse.success(null, "Deleted"));
-    }
-
-    // ── Routing ──────────────────────────────────────────────
-
-    @GetMapping("/routing")
-    @Operation(summary = "Lấy toàn bộ file routing config")
-    public ResponseEntity<ApiResponse<List<StorageRoutingResponse>>> listRouting() {
-        List<StorageRoutingResponse> list = routingRepo.findAllWithBucketAndAccount().stream()
-                .map(this::toRoutingResponse).toList();
-        return ResponseEntity.ok(ApiResponse.success(list, "OK"));
-    }
-
-    @GetMapping("/routing/file-types")
-    @Operation(summary = "Lấy danh sách file types có thể routing")
-    public ResponseEntity<ApiResponse<List<String>>> listFileTypes() {
-        List<String> types = Arrays.stream(FileType.values()).map(Enum::name).toList();
-        return ResponseEntity.ok(ApiResponse.success(types, "OK"));
-    }
-
-    @PutMapping("/routing")
-    @Operation(summary = "Cập nhật routing cho một file type (drag & drop apply)")
-    public ResponseEntity<ApiResponse<StorageRoutingResponse>> updateRouting(
-            @Valid @RequestBody StorageRoutingRequest req) {
-        StorageBucket bucket = bucketRepo.findById(req.getBucketId())
-                .orElseThrow(() -> new RuntimeException("Bucket not found"));
-
-        StorageRouting routing = routingRepo.findByFileType(req.getFileType())
-                .orElse(new StorageRouting());
-        routing.setFileType(req.getFileType());
-        routing.setBucket(bucket);
-
-        routingRepo.save(routing);
-        StorageRouting saved = routingRepo.findByFileTypeWithJoin(req.getFileType())
-                .orElseThrow(() -> new RuntimeException("Routing not found after save"));
-        storageRouter.clearCache();
-        return ResponseEntity.ok(ApiResponse.success(toRoutingResponse(saved), "Routing updated"));
-    }
-
-    @PutMapping("/routing/batch")
-    @Operation(summary = "Cập nhật nhiều routing cùng lúc")
-    public ResponseEntity<ApiResponse<List<StorageRoutingResponse>>> batchUpdateRouting(
-            @Valid @RequestBody List<StorageRoutingRequest> requests) {
-        List<StorageRoutingResponse> results = requests.stream().map(req -> {
-            StorageBucket bucket = bucketRepo.findById(req.getBucketId())
-                    .orElseThrow(() -> new RuntimeException("Bucket not found: " + req.getBucketId()));
-            StorageRouting routing = routingRepo.findByFileType(req.getFileType())
-                    .orElse(new StorageRouting());
-            routing.setFileType(req.getFileType());
-            routing.setBucket(bucket);
-            routingRepo.save(routing);
-            return toRoutingResponse(routingRepo.findByFileTypeWithJoin(req.getFileType())
-                    .orElseThrow(() -> new RuntimeException("Routing not found after save")));
-        }).toList();
-        storageRouter.clearCache();
-        return ResponseEntity.ok(ApiResponse.success(results, "Batch routing updated"));
-    }
-
-    // ── Mappers ──────────────────────────────────────────────
-
-    private StorageAccountResponse toAccountResponse(StorageAccount a) {
-        StorageAccountResponse r = new StorageAccountResponse();
-        r.setId(a.getId());
-        r.setName(a.getName());
-        r.setProvider(a.getProvider());
-        r.setActive(a.isActive());
-        r.setCreatedAt(a.getCreatedAt());
-        return r;
-    }
-
-    private StorageBucketResponse toBucketResponse(StorageBucket b) {
-        StorageBucketResponse r = new StorageBucketResponse();
-        r.setId(b.getId());
-        r.setAccountId(b.getAccount().getId());
-        r.setAccountName(b.getAccount().getName());
-        r.setProvider(b.getAccount().getProvider());
-        r.setName(b.getName());
-        r.setRegion(b.getRegion());
-        r.setPublicUrl(b.getPublicUrl());
-        r.setCreatedAt(b.getCreatedAt());
-        return r;
-    }
-
-    private StorageRoutingResponse toRoutingResponse(StorageRouting rt) {
-        StorageRoutingResponse r = new StorageRoutingResponse();
-        r.setFileType(rt.getFileType());
-        r.setUpdatedAt(rt.getUpdatedAt());
-
-        // bucket = null → file_type chưa được admin gán bucket
-        StorageBucket bucket = rt.getBucket();
-        if (bucket != null) {
-            r.setBucketId(bucket.getId());
-            r.setBucketName(bucket.getName());
-            r.setAccountId(bucket.getAccount().getId());
-            r.setAccountName(bucket.getAccount().getName());
-            r.setProvider(bucket.getAccount().getProvider());
-        }
-        return r;
-    }
 
     // ── File Management ──────────────────────────────────────
 
@@ -292,8 +87,6 @@ public class AdminStorageController {
                         .createdAt(u.getCreatedAt())
                         .build());
             }
-            // "game_zip" đã gộp vào "source_snapshot": file source game nằm ở SourceSnapshot.bundleUrl
-            // (game = repo + snapshot), không còn Game.file_url.
             case "game_thumbnail" -> {
                 Page<Game> games = gameRepo.searchGameThumbnails(cleanSearch, pageable);
                 resultPage = games.map(g -> UploadedFileResponse.builder()
@@ -546,10 +339,6 @@ public class AdminStorageController {
     }
 
     private String inferProvider(String url) {
-        if (url == null) return "unknown";
-        if (url.contains("s3.amazonaws.com") || url.contains(".s3.") || url.contains("amazonaws.com")) {
-            return "aws_s3";
-        }
         return "seaweedfs";
     }
 
@@ -567,15 +356,7 @@ public class AdminStorageController {
                 path = cleanUrl;
             }
             
-            // URL decode path to correctly restore spaces (%20) and special characters
             path = URLDecoder.decode(path, StandardCharsets.UTF_8);
-            
-            if (cleanUrl.contains("amazonaws.com")) {
-                if (path.startsWith("/")) {
-                    path = path.substring(1);
-                }
-                return path;
-            }
             
             // SeaweedFS/local path
             if (path.startsWith("/godotlaunch/")) {
@@ -655,11 +436,8 @@ public class AdminStorageController {
             String errorMsg = e.getMessage() != null ? e.getMessage() : "";
             String causeMsg = cause != null && cause.getMessage() != null ? cause.getMessage() : "";
             
-            if (e instanceof software.amazon.awssdk.services.s3.model.NoSuchKeyException 
-                    || errorMsg.contains("NoSuchKey") 
-                    || errorMsg.contains("status: 404") 
-                    || causeMsg.contains("status: 404")
-                    || causeMsg.contains("NoSuchKey")) {
+            if (errorMsg.contains("status: 404") 
+                    || causeMsg.contains("status: 404")) {
                 throw new AppException(ErrorCode.FILE_NOT_FOUND);
             }
             throw new RuntimeException("Không thể tải file từ nhà lưu trữ: " + e.getMessage(), e);

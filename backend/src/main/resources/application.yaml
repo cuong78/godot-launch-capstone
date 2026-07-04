@@ -99,3 +99,10 @@ app:
       client-id: ${PAYOS_PAYOUT_CLIENT_ID:${PAYOS_CLIENT_ID:}}
       api-key: ${PAYOS_PAYOUT_API_KEY:${PAYOS_API_KEY:}}
       checksum-key: ${PAYOS_PAYOUT_CHECKSUM_KEY:${PAYOS_CHECKSUM_KEY:}}
+
+storage:
+  seaweedfs:
+    filer-host: ${SEAWEEDFS_FILER_HOST:localhost}
+    filer-port: ${SEAWEEDFS_FILER_PORT:8888}
+    base-path: ${SEAWEEDFS_BASE_PATH:/godotlaunch}
+

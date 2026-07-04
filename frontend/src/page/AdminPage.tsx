@@ -28,6 +28,7 @@ import {
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
 import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType, PlatformSettingsResponse } from '../types';
+import api from '../api/axios';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
@@ -35,8 +36,8 @@ import { marketplaceApi } from '../api/marketplaceApi';
 import { platformSettingsApi } from '../api/platformSettingsApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
-import { AdminStoragePanel } from '../components/AdminStoragePanel';
 import AdminDisputePanel from '../components/AdminDisputePanel';
+import { AdminFileManagementPanel } from '../components/admin/AdminFileManagementPanel';
 import { auditLogApi } from '../api/auditLogApi';
 import {
   AdminUserManagementPanel,
@@ -46,6 +47,7 @@ import {
 } from '../components/admin/AdminUserManagementPanel';
 import { AdminPaymentVerificationPanel } from '../components/admin/AdminPaymentVerificationPanel';
 import { AdminWithdrawalPanel } from '../components/admin/AdminWithdrawalPanel';
+import AiReviewReportCard from '../components/AiReviewReportCard';
 
 interface PendingAsset {
   id: string;
@@ -219,6 +221,31 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   );
   const [additionalTerms, setAdditionalTerms] = useState('');
   const [adminSignatureBase64, setAdminSignatureBase64] = useState<string | null>(null);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+
+  const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+    if (!fileUrl) return;
+    setDownloadingFile(fileUrl);
+    try {
+      const response = await api.get('/api/admin/storage/files/download', {
+        params: { fileUrl, fileType: 'source_bundle' },
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Không thể tải xuống tệp. Vui lòng kiểm tra lại!');
+    } finally {
+      setDownloadingFile(null);
+    }
+  };
 
   const fetchPendingGamesAndContracts = async () => {
     setIsLoadingGames(true);
@@ -1040,15 +1067,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         </div>
                                         
                                         {game.fileUrl ? (
-                                          <a 
-                                            href={game.fileUrl} 
-                                            download 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98]"
+                                          <button
+                                            onClick={() => handleDownloadFile(game.fileUrl, `${game.title || 'game'}-source.zip`)}
+                                            disabled={downloadingFile === game.fileUrl}
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
                                           >
-                                            <Download size={14} /> Download Game Package (ZIP)
-                                          </a>
+                                            {downloadingFile === game.fileUrl ? (
+                                              <>
+                                                <RefreshCw className="animate-spin" size={14} /> Downloading...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Download size={14} /> Download Game Package (ZIP)
+                                              </>
+                                            )}
+                                          </button>
                                             ) : (
                                           <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
                                             Không tìm thấy tệp game ZIP để tải về
@@ -1111,6 +1144,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                               <span className="text-[10px]">Developer không tải lên video gameplay nào</span>
                                             </div>
                                           )}
+                                        </div>
+                                        
+                                        {/* AI REVIEW REPORT */}
+                                        <div className="pt-2">
+                                          <AiReviewReportCard gameId={game.id} />
                                         </div>
                                       </div>
                                     </div>
@@ -1249,15 +1287,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         </div>
 
                                         {displayItem.fileUrl ? (
-                                          <a 
-                                            href={displayItem.fileUrl} 
-                                            download 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98]"
+                                          <button
+                                            onClick={() => handleDownloadFile(displayItem.fileUrl, `${displayItem.title || 'asset'}-package.zip`)}
+                                            disabled={downloadingFile === displayItem.fileUrl}
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
                                           >
-                                            <Download size={14} /> Download Asset Package (ZIP)
-                                          </a>
+                                            {downloadingFile === displayItem.fileUrl ? (
+                                              <>
+                                                <RefreshCw className="animate-spin" size={14} /> Downloading...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Download size={14} /> Download Asset Package (ZIP)
+                                              </>
+                                            )}
+                                          </button>
                                         ) : (
                                           <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
                                             No file package uploaded for this asset
@@ -1347,6 +1391,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           </div>
                                         </div>
 
+                                      </div>
+
+                                      {/* AI REVIEW REPORT */}
+                                      <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                                        <AiReviewReportCard itemId={item.id} />
                                       </div>
                                     </div>
                                   </td>
@@ -1719,7 +1768,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         )}
 
         {/* Tab 5: Storage Management */}
-        {activeTab === 'storage' && <AdminStoragePanel />}
+        {activeTab === 'storage' && <AdminFileManagementPanel />}
         {activeTab === 'disputes' && <AdminDisputePanel />}
 
         {/* Tab 4: Platform Settings */}

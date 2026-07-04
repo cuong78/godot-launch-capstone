@@ -190,8 +190,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         return !isMediaCat && !isTechnicalCat;
       }
       
-      // Marketplace asset: chỉ category media (2D, 3D, Audio)
-      return isMediaCat;
+      // Marketplace asset: gồm category media (2D, 3D, Audio) + technical (scripts, shaders)
+      return isMediaCat || isTechnicalCat;
     });
     if (filtered.length > 0) {
       const isValid = filtered.some((cat) => cat.id === categoryId);
@@ -707,11 +707,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       : "text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  Creator Marketplace
+                  Gói tài nguyên lẻ (Standalone Asset Pack)
                 </span>
                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
-                  List standalone source codes or assets pack directly without
-                  contract requirements.
+                  Đăng bán các tài nguyên lẻ dùng để làm game như nhân vật 2D/3D, âm thanh, hiệu ứng, plugin. (Tải trực tiếp tệp nén ZIP)
                 </span>
               </div>
               {publishProgram === "marketplace" && (
@@ -748,11 +747,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       : "text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  Publish Game to Store
+                  Dự án Game & Mã nguồn (Game Project & Source Code)
                 </span>
                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
-                  Co-publishing model or acquisition on Mobile Stores. Requires
-                  contract signing.
+                  Đăng bán mã nguồn dự án game trên Chợ, hoặc nộp game để hợp tác phát hành lên Store di động. (Yêu cầu liên kết GitHub Repo)
                 </span>
               </div>
               {publishProgram === "game" && (
@@ -823,8 +821,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       ));
                     }
 
-                    // Marketplace asset: chỉ category media (2D, 3D, Audio)
-                    return mediaResources.map((cat) => (
+                    // Marketplace asset: gồm category media (2D, 3D, Audio) + technical (scripts, shaders)
+                    return [...mediaResources, ...technicalResources].map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
                       </option>
@@ -890,13 +888,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   onChange={(e) => setPublishingType(e.target.value as any)}
                   className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
                 >
+                  <option value="marketplace_listing">
+                    Marketplace Listing (Sell Source Code on Marketplace - Direct Listing, No Contract)
+                  </option>
                   <option value="full_acquisition">
-                    Full Acquisition (Sell all rights to Platform - Contract
-                    Required)
+                    Full Acquisition (Sell all rights to Platform - Contract Required)
                   </option>
                   <option value="co_publishing">
-                    Co-Publishing (% Revenue Share with Platform - Contract
-                    Required)
+                    Co-Publishing (% Revenue Share with Platform - Contract Required)
                   </option>
                 </select>
               </div>
@@ -1155,7 +1154,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             )}
 
             {/* 2. Thumbnail image */}
-            {publishProgram === "game" && (
+            {(publishProgram === "game" || publishProgram === "marketplace") && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Image size={16} className="text-amber-500" /> Primary Cover
