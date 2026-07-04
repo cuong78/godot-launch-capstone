@@ -37,9 +37,6 @@ public class BannedIp {
     @Column(name = "related_user_id")
     private UUID relatedUserId;
 
-    @Column(name = "banned_by")
-    private UUID bannedBy;
-
     @Column(name = "banned_at", nullable = false, insertable = false, updatable = false)
     private Instant bannedAt;
 

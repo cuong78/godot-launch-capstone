@@ -17,14 +17,12 @@ import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.repository.ContractRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
-import com.godotlaunch.backend.repository.ChatMediaRepository;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
 import com.godotlaunch.backend.entity.Contract;
 import com.godotlaunch.backend.entity.SourceSnapshot;
-import com.godotlaunch.backend.entity.ChatMedia;
 import com.godotlaunch.backend.dto.response.UploadedFileResponse;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.impl.StorageRouter;
@@ -73,7 +71,6 @@ public class AdminStorageController {
     private final MediaRepository mediaRepo;
     private final ContractRepository contractRepo;
     private final SourceSnapshotRepository snapshotRepo;
-    private final ChatMediaRepository chatMediaRepo;
 
     // ── Accounts ─────────────────────────────────────────────
 
@@ -405,25 +402,6 @@ public class AdminStorageController {
                             .build();
                 });
             }
-            case "chat_media" -> {
-                Page<ChatMedia> chatMediaList = chatMediaRepo.searchChatMedia(cleanSearch, pageable);
-                resultPage = chatMediaList.map(cm -> {
-                    String senderName = cm.getChat() != null && cm.getChat().getSender() != null ?
-                            (cm.getChat().getSender().getFullName() != null ? cm.getChat().getSender().getFullName() : cm.getChat().getSender().getEmail())
-                            : "Anonymous Chat User";
-                    return UploadedFileResponse.builder()
-                            .id("chatmedia-" + cm.getId())
-                            .fileName(extractFileName(cm.getUrl()))
-                            .fileType("game_media")
-                            .fileUrl(cm.getUrl())
-                            .storageProvider(inferProvider(cm.getUrl()))
-                            .ownerId(cm.getId())
-                            .ownerType("ChatMedia")
-                            .ownerName("Chat từ: " + senderName)
-                            .createdAt(cm.getCreatedAt())
-                            .build();
-                });
-            }
             case "cccd_image" -> {
                 Page<User> users = userRepo.searchKycImages(cleanSearch, pageable);
                 List<UploadedFileResponse> list = new java.util.ArrayList<>();
@@ -544,7 +522,6 @@ public class AdminStorageController {
                     snapshotRepo.save(s);
                 }
             });
-            case "chatmedia" -> chatMediaRepo.deleteById(uuid);
         }
 
         return ResponseEntity.ok(ApiResponse.success(null, "Xóa tập tin thành công"));

@@ -48,8 +48,8 @@ public class Order {
     @JoinColumn(name = "game_id")
     private Game game;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transaction_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id", unique = true)
     private Transaction transaction;
 
     @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)

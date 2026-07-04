@@ -32,7 +32,6 @@ public class StoreDownloadStat {
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
 
-    // ext_platform_enum: google_play | app_store. Map String + cast để không phụ thuộc enum Java riêng.
     @Column(name = "platform", nullable = false, columnDefinition = "ext_platform_enum")
     @ColumnTransformer(write = "?::ext_platform_enum")
     private String platform;
