@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.dto.response;
 
-import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

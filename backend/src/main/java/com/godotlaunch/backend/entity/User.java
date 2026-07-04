@@ -49,6 +49,9 @@ public class User {
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
+    @Column(name = "preferred_language", nullable = false, length = 10)
+    private String preferredLanguage = "vi";
+
     @Column(name = "github_id", unique = true, length = 50)
     private String githubId;
 
@@ -93,9 +96,6 @@ public class User {
 
     @Column(name = "kyc_back_image_url", columnDefinition = "TEXT")
     private String kycBackImageUrl;
-
-    @Column(name = "preferred_language", nullable = false, length = 10)
-    private String preferredLanguage = "vi";
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

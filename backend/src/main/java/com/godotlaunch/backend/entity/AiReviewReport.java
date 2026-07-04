@@ -34,7 +34,6 @@ public class AiReviewReport {
     @JoinColumn(name = "asset_id")
     private Asset asset;
 
-    // điểm từng tiêu chí (0-100, null = module bị skip/lỗi)
     @Column(name = "code_quality_score")
     private Integer codeQualityScore;
 
@@ -47,12 +46,10 @@ public class AiReviewReport {
     @Column(name = "nsfw_flag", nullable = false)
     private boolean nsfwFlag = false;
 
-    // VARCHAR(20) trong DB — enum String thường, không phải Postgres named enum
     @Enumerated(EnumType.STRING)
     @Column(name = "overall_recommendation", nullable = false, length = 20)
     private AiRecommendation overallRecommendation = AiRecommendation.review;
 
-    // Khuyến nghị giá (gộp từ bảng ai_reports cũ) — đề xuất, admin quyết định
     @Column(name = "suggested_price", precision = 15, scale = 2)
     private BigDecimal suggestedPrice;
 
@@ -62,7 +59,6 @@ public class AiReviewReport {
     @Column(name = "pricing_rationale", columnDefinition = "TEXT")
     private String pricingRationale;
 
-    // JSONB lưu text — serialize bằng Jackson ở tầng service
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "flags", columnDefinition = "jsonb")
     private String flags;

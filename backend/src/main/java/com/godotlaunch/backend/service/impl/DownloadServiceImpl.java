@@ -6,7 +6,6 @@ import com.godotlaunch.backend.entity.Order;
 import com.godotlaunch.backend.entity.Payment;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.FileType;
-import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.OrderRepository;

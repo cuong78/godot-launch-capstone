@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.entity;
 
+import com.godotlaunch.backend.entity.enums.DisputeStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,10 +11,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * Tranh chấp bản quyền source: B (reporter) tố A (reported seller) đánh cắp.
- * Admin phán xử theo cây quyết định TH1/2/3.
- */
+
 @Entity
 @Table(name = "disputes")
 @Getter
@@ -48,8 +46,9 @@ public class Dispute {
     @Column(name = "evidence_note", columnDefinition = "TEXT")
     private String evidenceNote;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 30, nullable = false)
-    private String status = "open";
+    private DisputeStatus status = DisputeStatus.open;
 
     @Column(name = "resolution_note", columnDefinition = "TEXT")
     private String resolutionNote;

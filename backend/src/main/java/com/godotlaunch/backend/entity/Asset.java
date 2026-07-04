@@ -29,11 +29,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Asset bán ở marketplace (3D model, sprite, audio, source code lẻ).
- * Tách bạch khỏi Game (Game lo luồng lên store / co-publishing).
- * Trước đây tên MarketplaceItem — đổi tên cho trực quan (V56).
- */
+
 @Entity
 @Table(name = "assets")
 @Getter

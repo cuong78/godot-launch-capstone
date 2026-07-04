@@ -12,7 +12,6 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.DisputeRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
-import com.godotlaunch.backend.service.BannedIdentityService;
 import com.godotlaunch.backend.service.DisputeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +31,6 @@ public class DisputeServiceImpl implements DisputeService {
     private final DisputeRepository disputeRepository;
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
-    private final BannedIdentityService bannedIdentityService;
 
     private static final int REFUND_DAYS = 5;
     private static final int SPAM_REPORT_LIMIT = 3;
@@ -167,13 +165,11 @@ public class DisputeServiceImpl implements DisputeService {
     private void banSeller(User seller, String reason) {
         seller.setStatus("banned");
         userRepository.save(seller);
-        bannedIdentityService.banUser(seller, reason);
     }
 
     private void banReporter(User reporter, String reason) {
         reporter.setStatus("banned");
         userRepository.save(reporter);
-        bannedIdentityService.banUser(reporter, reason);
     }
 
     private void safeNotify(UUID userId, String message) {

@@ -26,10 +26,6 @@ public class Notification {
     @JoinColumn(name = "recipient_id", nullable = false)
     private User recipient;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sender_id", nullable = false)
-    private User sender;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 50)
     private NotificationType type;

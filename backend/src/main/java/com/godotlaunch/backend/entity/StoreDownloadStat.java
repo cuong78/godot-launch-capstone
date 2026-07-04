@@ -5,17 +5,12 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.ColumnTransformer;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/**
- * Aggregate stats từ Google Play / App Store API — cron job pull hàng ngày.
- * UNIQUE (game_id, platform, stat_date): 1 dòng / game / platform / ngày.
- */
 @Entity
 @Table(name = "store_download_stats")
 @Getter
@@ -31,10 +26,6 @@ public class StoreDownloadStat {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
-
-    @Column(name = "platform", nullable = false, columnDefinition = "ext_platform_enum")
-    @ColumnTransformer(write = "?::ext_platform_enum")
-    private String platform;
 
     @Column(name = "stat_date", nullable = false)
     private LocalDate statDate;

@@ -2,8 +2,10 @@
 Mục đích: nếu chưa link github trước thì phải link , nếu đã rồi thì phải tới bước quét faceid, kyc  (hoàng)
 
 
-2. push game   (nếu game có hợp đồng thì nói lên sự hợp đồng, nếu như game market thì admin approved là xong  
-thêm if else Cấp quyền GitHub bot cho private repo, kyc, quét AI, clone về (snapshot) , AI review , tạo report cho admin ,  contract và sign giữa admin và developer)  ( kỳ anh )
+2. push game 
+1 repo nếu private thì có bot đi vào ,  2.1 nếu marketplace thì virus,lưu lại tất cả commit, ai review, admin đánh giá,  
+2.2 nếu to store ,nói lên hợp đồng, từ chối thẳng và từ chối có lý do để admin xem sét và ký, sau khi ký phải nói được cấu chuyện admin push lên store ( đăng ký chplay lấy api về làm)
+ ( kỳ anh )
 
 
 3. push asset ( nôm na giống game, nhưng đơn giản hơn )
@@ -21,10 +23,11 @@ thêm if else Cấp quyền GitHub bot cho private repo, kyc, quét AI, clone v�
 
 
 7. Dispute Flow
-Mục đích: user tố cáo tranh chấp bản quyền/source, admin xử lý, ban user .
+Mục đích: user tố cáo tranh chấp bản quyền/source, admin xử lý( nói rỏ ra flow), ban user .
 Cương
 
 8. AI review  
 Cương 
+
 
 

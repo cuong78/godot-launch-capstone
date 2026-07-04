@@ -11,7 +11,6 @@ import com.godotlaunch.backend.entity.Transaction;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
-import com.godotlaunch.backend.entity.enums.OrderStatus;
 import com.godotlaunch.backend.entity.enums.OrderType;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.entity.enums.TxnStatus;

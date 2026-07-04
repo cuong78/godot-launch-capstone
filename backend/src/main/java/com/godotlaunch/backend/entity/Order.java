@@ -1,7 +1,6 @@
 package com.godotlaunch.backend.entity;
 
 import com.godotlaunch.backend.entity.enums.OrderType;
-import com.godotlaunch.backend.entity.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -42,13 +41,6 @@ public class Order {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "order_type", nullable = false, columnDefinition = "order_type_enum")
     private OrderType orderType;
-
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "order_status", nullable = false, columnDefinition = "order_status_enum")
-    private OrderStatus orderStatus = OrderStatus.PENDING;
-
-
 
     @Column(name = "price_paid", nullable = false, precision = 15, scale = 2)
     private BigDecimal pricePaid;

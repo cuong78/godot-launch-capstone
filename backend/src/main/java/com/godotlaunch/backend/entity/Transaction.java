@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.entity;
 
-import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -42,6 +41,13 @@ public class Transaction {
     @JoinColumn(name = "asset_id")
     private Asset asset;
 
+    // Chỉ có giá trị với type=revenue_share/commission — chốt cứng hợp đồng
+    // (và % tại thời điểm đó) đã dùng để tính khoản chia này, để tra soát sau
+    // này không phụ thuộc việc Contract có bị sửa tiếp không.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "contract_id")
+    private Contract contract;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payment_id", unique = true)
     private Payment payment;
@@ -50,24 +56,16 @@ public class Transaction {
     @JoinColumn(name = "order_id")
     private Order order;
 
+    // Số tiền thay đổi trên ĐÚNG ví này (không phải giá gộp cả đơn hàng).
+    // Ví dụ 1 order thành công → 3 row: buyer (-giá), seller (+net), platform (+commission).
+    // Muốn biết tổng quan cả đơn hàng: join các Transaction cùng order_id.
     @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
-
-    @Column(name = "platform_commission", nullable = false, precision = 15, scale = 2)
-    private BigDecimal platformCommission = BigDecimal.ZERO;
-
-    @Column(name = "net_amount", nullable = false, precision = 15, scale = 2)
-    private BigDecimal netAmount;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "type", nullable = false, columnDefinition = "txn_type_enum")
     private TxnType type;
-
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "status", nullable = false, columnDefinition = "txn_status_enum")
-    private TxnStatus status = TxnStatus.pending;
 
     @Column(name = "reference_id", length = 100)
     private String referenceId;

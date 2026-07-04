@@ -50,6 +50,13 @@ public class Game {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
+    // Trỏ tới index.html bản Web build (Godot export "Web") đã giải nén trên
+    // storage — cho buyer chơi thử ngay trên trình duyệt trước khi mua, KHÔNG
+    // lộ source (WebAssembly đã biên dịch). NULL nếu seller không cung cấp.
+    // Seller tự chịu trách nhiệm giới hạn nội dung bản demo.
+    @Column(name = "web_demo_url", columnDefinition = "TEXT")
+    private String webDemoUrl;
+
     @Column(name = "github_repo_url", columnDefinition = "TEXT")
     private String githubRepoUrl;
 

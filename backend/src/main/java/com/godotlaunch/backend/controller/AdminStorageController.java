@@ -15,7 +15,6 @@ import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
 import com.godotlaunch.backend.entity.Contract;
 import com.godotlaunch.backend.entity.SourceSnapshot;
-import com.godotlaunch.backend.entity.ChatMedia;
 import com.godotlaunch.backend.service.impl.StorageRouter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

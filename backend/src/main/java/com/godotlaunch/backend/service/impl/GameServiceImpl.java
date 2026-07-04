@@ -152,7 +152,7 @@ public class GameServiceImpl implements GameService {
         if (!result.isClean()) {
             game.setStatus(GameStatus.rejected);
             gameRepository.save(game);
-            saveSnapshotForGame(game, creator, repoUrl, result);
+            saveSnapshotForGame(game, result);
             auditLogService.publish(
                     creator.getId(), ActorRole.developer, AuditAction.security_alert,
                     AuditTarget.game, gameId, null, null,
@@ -174,7 +174,7 @@ public class GameServiceImpl implements GameService {
         game.setStatus(GameStatus.pending);
         gameRepository.save(game);
 
-        saveSnapshotForGame(game, creator, repoUrl, result);
+        saveSnapshotForGame(game, result);
 
         auditLogService.publish(
                 creator.getId(), ActorRole.developer, AuditAction.game_submitted,

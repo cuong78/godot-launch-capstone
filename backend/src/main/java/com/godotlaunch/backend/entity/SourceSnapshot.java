@@ -12,8 +12,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Bằng chứng bất biến mỗi lần submit code (game / marketplace source_code).
- * Lưu commit SHA + hash toàn bộ source để due diligence + phán xử tranh chấp.
+ * Bản chụp bất biến source code mỗi lần submit game — lưu trữ bundle + kết quả kiểm duyệt an toàn
+ * (virus scan, secret leak, đúng project Godot). Mỗi lần submit tạo 1 row mới, không ghi đè.
  */
 @Entity
 @Table(name = "source_snapshots")
@@ -31,21 +31,8 @@ public class SourceSnapshot {
     @JoinColumn(name = "game_id")
     private Game game;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "submitted_by", nullable = false)
-    private User submittedBy;
-
-    @Column(name = "repo_url", columnDefinition = "TEXT", nullable = false)
-    private String repoUrl;
-
-    @Column(name = "commit_sha", length = 40)
-    private String commitSha;
-
     @Column(name = "bundle_hash", length = 64, nullable = false)
     private String bundleHash;
-
-    @Column(name = "file_count", nullable = false)
-    private Integer fileCount = 0;
 
     @Column(name = "is_godot_project", nullable = false)
     private boolean isGodotProject = false;
@@ -55,11 +42,6 @@ public class SourceSnapshot {
 
     @Column(name = "virus_scanned", nullable = false)
     private boolean virusScanned = false;
-
-    // JSONB lưu dạng text — serialize/deserialize bằng Jackson ở tầng service khi cần
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "file_hashes", columnDefinition = "jsonb")
-    private String fileHashes;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "secrets_found", columnDefinition = "jsonb")

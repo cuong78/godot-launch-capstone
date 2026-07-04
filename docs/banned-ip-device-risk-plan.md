@@ -12,7 +12,6 @@ Huong moi: khong dung IP lam dinh danh chinh. IP chi la mot tin hieu mang. Quyet
 - IP address.
 - First-party device token.
 - Fingerprint hash.
-- Hanh vi spam theo thoi gian.
 
 
 

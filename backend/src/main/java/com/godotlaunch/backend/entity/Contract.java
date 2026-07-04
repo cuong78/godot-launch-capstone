@@ -25,8 +25,10 @@ public class Contract {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "game_id", nullable = false)
+    // 1 game chỉ có đúng 1 hợp đồng — chào lại = sửa trực tiếp row này
+    // (rejectionReason ghi lý do/điều khoản mới, không tạo row mới).
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "game_id", nullable = false, unique = true)
     private Game game;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -55,18 +57,6 @@ public class Contract {
     @Column(name = "lump_sum_amount")
     private String lumpSumAmount;
 
-    @Column(name = "dispute_resolution_clause", columnDefinition = "TEXT")
-    private String disputeResolutionClause;
-
-    @Column(name = "additional_terms", columnDefinition = "TEXT")
-    private String additionalTerms;
-
-    @Column(name = "buyer_representative")
-    private String buyerRepresentative;
-
-    @Column(name = "buyer_position")
-    private String buyerPosition;
-
     @Column(name = "seller_representative")
     private String sellerRepresentative;
 
@@ -79,17 +69,11 @@ public class Contract {
     @Column(name = "seller_signature_base64", columnDefinition = "TEXT")
     private String sellerSignatureBase64;
 
-    @Column(name = "buyer_signature_base64", columnDefinition = "TEXT")
-    private String buyerSignatureBase64;
-
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
     @Column(name = "signed_at_seller")
     private Instant signedAtSeller;
-
-    @Column(name = "signed_at_buyer")
-    private Instant signedAtBuyer;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

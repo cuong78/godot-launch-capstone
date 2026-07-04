@@ -9,7 +9,6 @@ import com.godotlaunch.backend.dto.response.KycStatusResponse;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.UserRepository;
-import com.godotlaunch.backend.service.BannedIdentityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -44,7 +43,6 @@ import com.godotlaunch.backend.util.ByteArrayMultipartFile;
 public class KycController {
 
     private final UserRepository userRepository;
-    private final BannedIdentityService bannedIdentityService;
     private final StorageRouter storageRouter;
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -122,11 +120,6 @@ public class KycController {
 
         if (user.isKycVerified()) {
             return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "KYC đã được xác thực trước đó."));
-        }
-
-        // Chặn nếu số CCCD/passport này thuộc danh tính đã bị ban (tránh đăng ký lại sau khi vi phạm)
-        if (bannedIdentityService.isKycBanned(request.getIdNumber())) {
-            throw new AppException(ErrorCode.IDENTITY_BANNED);
         }
 
         // Upload images if provided
