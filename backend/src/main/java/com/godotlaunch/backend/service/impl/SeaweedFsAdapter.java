@@ -1,7 +1,5 @@
 package com.godotlaunch.backend.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.godotlaunch.backend.service.StorageService;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,8 +15,6 @@ import java.time.Duration;
 
 /**
  * Adapter cho SeaweedFS dùng HTTP REST API (thay thế gRPC Client để tránh lỗi routing IP Volume Server trong Docker).
- *
- * Config JSON: { "filerHost": "localhost", "filerGrpcPort": 18888, "filerHttpPort": 8888, "basePath": "/godotlaunch" }
  */
 public class SeaweedFsAdapter implements StorageService {
 
@@ -27,23 +23,13 @@ public class SeaweedFsAdapter implements StorageService {
     private final int filerHttpPort;
     private final String basePath;
 
-    public SeaweedFsAdapter(String configJson) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode cfg = mapper.readTree(configJson);
-
-            this.filerHost = cfg.get("filerHost").asText();
-            this.filerHttpPort = cfg.has("filerHttpPort") ? cfg.get("filerHttpPort").asInt() : 8888;
-            this.basePath = cfg.has("basePath")
-                    ? cfg.get("basePath").asText().replaceAll("/$", "")
-                    : "/godotlaunch";
-
-            this.httpClient = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
-                    .build();
-        } catch (Exception e) {
-            throw new RuntimeException("Invalid SeaweedFS HTTP config", e);
-        }
+    public SeaweedFsAdapter(String filerHost, int filerHttpPort, String basePath) {
+        this.filerHost = filerHost;
+        this.filerHttpPort = filerHttpPort;
+        this.basePath = basePath != null ? basePath.replaceAll("/$", "") : "/godotlaunch";
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     /**

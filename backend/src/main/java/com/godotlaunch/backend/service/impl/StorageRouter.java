@@ -1,42 +1,42 @@
 package com.godotlaunch.backend.service.impl;
 
-import com.godotlaunch.backend.entity.StorageAccount;
-import com.godotlaunch.backend.entity.StorageBucket;
-import com.godotlaunch.backend.entity.StorageRouting;
 import com.godotlaunch.backend.entity.enums.FileType;
-import com.godotlaunch.backend.repository.StorageRoutingRepository;
-import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.StorageService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
-import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Router trung tâm: nhận upload request, đọc routing config từ DB,
- * khởi tạo đúng adapter (S3 / SeaweedFS) và thực hiện upload.
- *
- * Cache adapter 60s để tránh query DB mỗi request.
- * Khi admin thay đổi routing → gọi clearCache() để apply ngay.
+ * Router trung tâm: Đã đơn giản hóa chỉ dùng SeaweedFS cấu hình tĩnh từ application.yaml.
+ * Giữ nguyên các phương thức để tránh thay đổi diện rộng ở các service khác.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class StorageRouter {
 
-    private final StorageRoutingRepository routingRepository;
-    private final EncryptionUtils encryptionUtils;
+    @Value("${storage.seaweedfs.filer-host:localhost}")
+    private String filerHost;
 
-    // Cache: fileType → adapter
-    private final Map<String, StorageService> adapterCache = new ConcurrentHashMap<>();
-    private volatile long cacheRefreshedAt = 0;
-    private static final long CACHE_TTL_MS = 60_000;
+    @Value("${storage.seaweedfs.filer-port:8888}")
+    private int filerPort;
+
+    @Value("${storage.seaweedfs.base-path:/godotlaunch}")
+    private String basePath;
+
+    private StorageService seaweedAdapter;
+
+    @PostConstruct
+    public void init() {
+        this.seaweedAdapter = new SeaweedFsAdapter(filerHost, filerPort, basePath);
+        log.info("StorageRouter initialized with SeaweedFS adapter: {}:{}{}", filerHost, filerPort, basePath);
+    }
 
     /**
      * Upload file theo fileType, tự resolve đúng provider từ routing config.
@@ -46,9 +46,8 @@ public class StorageRouter {
      * @return public URL
      */
     public String upload(FileType fileType, MultipartFile file, String prefix) {
-        StorageService adapter = resolveAdapter(fileType.name());
         String objectKey = prefix + "/" + UUID.randomUUID() + "_" + sanitizeFilename(file.getOriginalFilename());
-        return adapter.upload(file, objectKey);
+        return seaweedAdapter.upload(file, objectKey);
     }
 
     /**
@@ -70,8 +69,7 @@ public class StorageRouter {
      * @return public URL
      */
     public String uploadWithKey(FileType fileType, MultipartFile file, String objectKey) {
-        StorageService adapter = resolveAdapter(fileType.name());
-        return adapter.upload(file, objectKey);
+        return seaweedAdapter.upload(file, objectKey);
     }
 
     /**
@@ -79,140 +77,54 @@ public class StorageRouter {
      * Caller có trách nhiệm đóng stream.
      */
     public InputStream getInputStream(FileType fileType, String objectKey) {
-        StorageService adapter = resolveAdapter(fileType.name());
-        if (adapter instanceof SeaweedFsAdapter seaweed) {
+        if (seaweedAdapter instanceof SeaweedFsAdapter seaweed) {
             return seaweed.readFile(objectKey);
         }
-        if (adapter instanceof AwsS3Adapter s3) {
-            return s3.readFile(objectKey);
-        }
-        throw new RuntimeException("getInputStream not supported for provider of file type: " + fileType);
+        throw new RuntimeException("seaweedAdapter is not an instance of SeaweedFsAdapter");
     }
 
     /**
      * Đọc file về dạng InputStream tự động phát hiện provider qua URL.
      */
     public InputStream getInputStream(String fileUrl, FileType fileType, String objectKey) {
-        String provider = inferProvider(fileUrl);
-        StorageService adapter = resolveAdapterByProvider(provider);
-        if (adapter instanceof SeaweedFsAdapter seaweed) {
+        if (seaweedAdapter instanceof SeaweedFsAdapter seaweed) {
             return seaweed.readFile(objectKey);
         }
-        if (adapter instanceof AwsS3Adapter s3) {
-            return s3.readFile(objectKey);
-        }
-        throw new RuntimeException("getInputStream not supported for provider: " + provider);
+        throw new RuntimeException("seaweedAdapter is not an instance of SeaweedFsAdapter");
     }
 
     /**
      * Public URL của file theo objectKey — dispatch đúng provider.
      */
     public String getPublicUrl(FileType fileType, String objectKey) {
-        return resolveAdapter(fileType.name()).getPublicUrl(objectKey);
+        return seaweedAdapter.getPublicUrl(objectKey);
     }
 
     /**
      * Provider hiện đang route cho fileType này ("aws_s3" | "seaweedfs").
      */
     public String getProvider(FileType fileType) {
-        Optional<StorageRouting> routing = routingRepository.findByFileTypeWithJoin(fileType.name());
-        if (routing.isEmpty()) {
-            throw new RuntimeException(
-                "File type '" + fileType + "' chưa được gán bucket. Admin cần config routing trong Storage Settings.");
-        }
-        return routing.get().getBucket().getAccount().getProvider();
+        return "seaweedfs";
     }
 
     /**
      * Xóa file — dùng khi biết fileType và objectKey (fid với SeaweedFS, key với S3).
      */
     public void delete(FileType fileType, String objectKey) {
-        resolveAdapter(fileType.name()).delete(objectKey);
+        seaweedAdapter.delete(objectKey);
     }
 
     /**
      * Xóa file tự động phát hiện provider qua URL.
      */
     public void delete(String fileUrl, FileType fileType, String objectKey) {
-        String provider = inferProvider(fileUrl);
-        resolveAdapterByProvider(provider).delete(objectKey);
+        seaweedAdapter.delete(objectKey);
     }
-
-    private String inferProvider(String url) {
-        if (url == null) return "seaweedfs";
-        if (url.contains("s3.amazonaws.com") || url.contains(".s3.") || url.contains("amazonaws.com")) {
-            return "aws_s3";
-        }
-        return "seaweedfs";
-    }
-
 
     /**
-     * Xóa cache — gọi sau khi admin cập nhật routing.
+     * Xóa cache — giữ lại để tránh lỗi compile nếu có chỗ gọi.
      */
     public void clearCache() {
-        adapterCache.clear();
-        cacheRefreshedAt = 0;
-        log.info("StorageRouter cache cleared");
-    }
-
-    // ── private ──────────────────────────────────────────────
-
-    private StorageService resolveAdapter(String fileType) {
-        long now = System.currentTimeMillis();
-        if (now - cacheRefreshedAt > CACHE_TTL_MS) {
-            adapterCache.clear();
-            cacheRefreshedAt = now;
-        }
-
-        return adapterCache.computeIfAbsent(fileType, ft -> {
-            // findByFileTypeWithJoin là INNER JOIN → empty nếu file_type chưa gán bucket (bucket = null)
-            Optional<StorageRouting> routing = routingRepository.findByFileTypeWithJoin(ft);
-            StorageBucket bucket;
-            if (routing.isPresent()) {
-                bucket = routing.get().getBucket();
-            } else {
-                // Fallback to the first available assigned bucket in DB if this specific file type is unassigned
-                bucket = routingRepository.findAllWithBucketAndAccount().stream()
-                        .map(StorageRouting::getBucket)
-                        .filter(java.util.Objects::nonNull)
-                        .findFirst()
-                        .orElseThrow(() -> new RuntimeException(
-                            "File type '" + ft + "' chưa được gán bucket và không tìm thấy bất kỳ bucket nào khác để fallback. Admin cần config routing trong Storage Settings."));
-                log.info("StorageRouter: Fallback routing for file type '{}' to bucket '{}'", ft, bucket.getName());
-            }
-            StorageAccount account = bucket.getAccount();
-            String decryptedConfig = encryptionUtils.decrypt(account.getConfig());
-            return buildAdapter(account.getProvider(), decryptedConfig);
-        });
-    }
-
-    public StorageService resolveAdapterByProvider(String provider) {
-        long now = System.currentTimeMillis();
-        if (now - cacheRefreshedAt > CACHE_TTL_MS) {
-            adapterCache.clear();
-            cacheRefreshedAt = now;
-        }
-
-        return adapterCache.computeIfAbsent("provider_" + provider, key -> {
-            StorageBucket bucket = routingRepository.findAllWithBucketAndAccount().stream()
-                    .map(StorageRouting::getBucket)
-                    .filter(java.util.Objects::nonNull)
-                    .filter(b -> b.getAccount().getProvider().equalsIgnoreCase(provider))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException(
-                        "Không tìm thấy bucket nào cấu hình cho provider: " + provider));
-            StorageAccount account = bucket.getAccount();
-            String decryptedConfig = encryptionUtils.decrypt(account.getConfig());
-            return buildAdapter(account.getProvider(), decryptedConfig);
-        });
-    }
-
-    private StorageService buildAdapter(String provider, String configJson) {
-        return switch (provider) {
-            case "aws_s3" -> new AwsS3Adapter(configJson);
-            case "seaweedfs" -> new SeaweedFsAdapter(configJson);
-            default -> throw new RuntimeException("Unknown storage provider: " + provider);
-        };
+        log.info("StorageRouter clearCache called (no-op)");
     }
 }

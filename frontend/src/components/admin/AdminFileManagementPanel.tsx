@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Search,
   Trash2,
-  ExternalLink,
   Copy,
   Check,
   FileText,
@@ -12,16 +11,15 @@ import {
   User,
   RefreshCw,
   AlertTriangle,
-  Cloud,
-  Server,
   ChevronLeft,
   ChevronRight,
   Eye,
   Download,
   HardDrive,
-  FolderOpen
+  FolderOpen,
+  Server
 } from 'lucide-react';
-import { storageApi, UploadedFileResponse, StorageBucketResponse, StorageRoutingResponse } from '../../api/storageApi';
+import { storageApi, UploadedFileResponse } from '../../api/storageApi';
 
 interface CategoryOption {
   value: string;
@@ -41,11 +39,6 @@ export const AdminFileManagementPanel: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Storage Routing & Bucket tree state
-  const [routings, setRoutings] = useState<StorageRoutingResponse[]>([]);
-  const [buckets, setBuckets] = useState<StorageBucketResponse[]>([]);
-  const [isLoadingRouting, setIsLoadingRouting] = useState<boolean>(false);
-
   // Copy state
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
@@ -93,26 +86,6 @@ export const AdminFileManagementPanel: React.FC = () => {
     }
   };
 
-  const loadRoutingAndBuckets = async () => {
-    setIsLoadingRouting(true);
-    try {
-      const [routingRes, bucketRes] = await Promise.all([
-        storageApi.listRouting(),
-        storageApi.listBuckets()
-      ]);
-      if (routingRes.success && routingRes.data) {
-        setRoutings(routingRes.data);
-      }
-      if (bucketRes.success && bucketRes.data) {
-        setBuckets(bucketRes.data);
-      }
-    } catch (err) {
-      console.error("Failed to load storage routing", err);
-    } finally {
-      setIsLoadingRouting(false);
-    }
-  };
-
   useEffect(() => {
     fetchFiles();
   }, [category, page, size, mediaFilter]);
@@ -120,10 +93,6 @@ export const AdminFileManagementPanel: React.FC = () => {
   useEffect(() => {
     setMediaFilter('all');
   }, [category]);
-
-  useEffect(() => {
-    loadRoutingAndBuckets();
-  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,42 +165,6 @@ export const AdminFileManagementPanel: React.FC = () => {
     }
   };
 
-  // Mapping frontend category values to backend FileType strings
-  const categoryToFileTypes: Record<string, string[]> = {
-    game_zip: ['source_bundle'],
-    marketplace_zip: ['source_bundle'],
-    game_thumbnail: ['game_media'],
-    marketplace_thumbnail: ['asset_media'],
-    media_file: ['game_media', 'asset_media'],
-    avatar: ['avatar'],
-    contract_pdf: ['pdf_contract'],
-    source_snapshot: ['source_bundle'],
-    chat_media: ['game_media'],
-    cccd_image: ['cccd_image'],
-  };
-
-  // Tree helper: Find categories routed to specific bucket
-  const getAssignedCategories = (bucketId: string) => {
-    const fileTypes = routings
-      .filter((r) => r.bucketId && r.bucketId.toString().toLowerCase() === bucketId.toString().toLowerCase())
-      .map((r) => r.fileType);
-    return categories.filter((cat) => {
-      const mappedTypes = categoryToFileTypes[cat.value] || [];
-      return mappedTypes.some(type => fileTypes.includes(type));
-    });
-  };
-
-  // Tree helper: Find unrouted categories
-  const getUnroutedCategories = () => {
-    const assignedTypes = routings
-      .filter((r) => r.bucketId != null && r.bucketId !== '')
-      .map((r) => r.fileType);
-    return categories.filter((cat) => {
-      const mappedTypes = categoryToFileTypes[cat.value] || [];
-      return !mappedTypes.some(type => assignedTypes.includes(type));
-    });
-  };
-
   // Helper render file preview icon/thumbnail
   const renderPreview = (file: UploadedFileResponse) => {
     const isImage = file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) || 
@@ -272,7 +205,7 @@ export const AdminFileManagementPanel: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Quản lý Tập tin Hệ thống</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Quản lý và dọn dẹp trực tiếp các file tải lên trên AWS S3 và SeaweedFS</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Quản lý trực quan và dọn dẹp các tệp tin lưu trữ trên SeaweedFS</p>
         </div>
         <button
           onClick={fetchFiles}
@@ -284,143 +217,39 @@ export const AdminFileManagementPanel: React.FC = () => {
         </button>
       </div>
 
-      {/* Unified Tree Explorer Layout */}
+      {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        {/* Left Column: Explorer Tree Sidebar */}
+        {/* Left Column: Category Menu */}
         <div className="lg:col-span-1 bg-white/50 dark:bg-slate-900/30 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-4 space-y-4">
           <h4 className="text-xs uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800/60 pb-2">
-            <FolderOpen size={14} className="text-amber-500" /> Explorer Tree
+            <FolderOpen size={14} className="text-amber-500" /> Danh mục Tập tin
           </h4>
           
-          {isLoadingRouting ? (
-            <div className="text-xs text-slate-500 animate-pulse py-4 text-center">Loading storage tree...</div>
-          ) : (
-            <div className="space-y-5">
-              {/* Section: AWS S3 */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                  <Cloud size={14} className="text-orange-500" /> AWS S3
-                </div>
-                <div className="pl-3.5 space-y-3 border-l border-slate-200 dark:border-slate-800 ml-1.5">
-                  {buckets.filter(b => b.provider === 'aws_s3').map(b => {
-                    const assigned = getAssignedCategories(b.id);
-                    return (
-                      <div key={b.id} className="space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono truncate" title={b.name}>
-                          <HardDrive size={11} className="text-slate-400 shrink-0" /> {b.name}
-                        </div>
-                        <div className="pl-3 space-y-1">
-                          {assigned.length === 0 ? (
-                            <div className="text-[10px] text-slate-400 dark:text-slate-650 italic pl-1">Trống</div>
-                          ) : (
-                            assigned.map(cat => (
-                              <button
-                                key={cat.value}
-                                onClick={() => {
-                                  setCategory(cat.value);
-                                  setPage(0);
-                                }}
-                                className={`flex items-center gap-1.5 w-full text-left px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                                  category === cat.value
-                                    ? 'bg-amber-400 text-slate-950 font-bold shadow-sm'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-800/40'
-                                }`}
-                              >
-                                {cat.icon}
-                                <span className="truncate">{cat.label}</span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {buckets.filter(b => b.provider === 'aws_s3').length === 0 && (
-                    <div className="text-[10px] text-slate-400 dark:text-slate-650 italic pl-1">Chưa cấu hình S3</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Section: SeaweedFS */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                  <Server size={14} className="text-blue-400" /> SeaweedFS
-                </div>
-                <div className="pl-3.5 space-y-3 border-l border-slate-200 dark:border-slate-800 ml-1.5">
-                  {buckets.filter(b => b.provider === 'seaweedfs').map(b => {
-                    const assigned = getAssignedCategories(b.id);
-                    return (
-                      <div key={b.id} className="space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono truncate" title={b.name}>
-                          <HardDrive size={11} className="text-slate-400 shrink-0" /> {b.name}
-                        </div>
-                        <div className="pl-3 space-y-1">
-                          {assigned.length === 0 ? (
-                            <div className="text-[10px] text-slate-400 dark:text-slate-650 italic pl-1">Trống</div>
-                          ) : (
-                            assigned.map(cat => (
-                              <button
-                                key={cat.value}
-                                onClick={() => {
-                                  setCategory(cat.value);
-                                  setPage(0);
-                                }}
-                                className={`flex items-center gap-1.5 w-full text-left px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                                  category === cat.value
-                                    ? 'bg-amber-400 text-slate-950 font-bold shadow-sm'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-800/40'
-                                }`}
-                              >
-                                {cat.icon}
-                                <span className="truncate">{cat.label}</span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {buckets.filter(b => b.provider === 'seaweedfs').length === 0 && (
-                    <div className="text-[10px] text-slate-400 dark:text-slate-650 italic pl-1">Chưa cấu hình SeaweedFS</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Section: Unrouted */}
-              {getUnroutedCategories().length > 0 && (
-                <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800/60">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-855 dark:text-slate-355">
-                    <AlertTriangle size={14} className="text-slate-400" /> Chưa định tuyến
-                  </div>
-                  <div className="pl-3.5 space-y-1 border-l border-slate-200 dark:border-slate-800 ml-1.5">
-                    {getUnroutedCategories().map(cat => (
-                      <button
-                        key={cat.value}
-                        onClick={() => {
-                          setCategory(cat.value);
-                          setPage(0);
-                        }}
-                        className={`flex items-center gap-1.5 w-full text-left px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                          category === cat.value
-                            ? 'bg-amber-400 text-slate-950 font-bold shadow-sm'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-800/40'
-                        }`}
-                      >
-                        {cat.icon}
-                        <span className="truncate">{cat.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="space-y-1">
+            {categories.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => {
+                  setCategory(cat.value);
+                  setPage(0);
+                }}
+                className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  category === cat.value
+                    ? 'bg-amber-400 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-800/40'
+                }`}
+              >
+                {cat.icon}
+                <span className="truncate">{cat.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Right Column: Search form, Statistics and Table */}
         <div className="lg:col-span-3 space-y-6">
           {/* KPI Counters banner */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl flex items-center gap-3">
               <div className="p-2.5 bg-amber-400/10 text-amber-500 rounded-xl">
                 <Archive size={18} />
@@ -432,22 +261,12 @@ export const AdminFileManagementPanel: React.FC = () => {
             </div>
 
             <div className="p-4 bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl flex items-center gap-3">
-              <div className="p-2.5 bg-orange-500/10 text-orange-400 rounded-xl">
-                <Cloud size={18} />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Nhà lưu trữ AWS S3</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-semibold">Được định tuyến theo loại file</p>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl flex items-center gap-3">
               <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl">
                 <Server size={18} />
               </div>
               <div>
-                <p className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Nhà lưu trữ SeaweedFS</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-semibold">Lưu trữ local & tối ưu hóa dung lượng</p>
+                <p className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Hệ thống lưu trữ</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-semibold">SeaweedFS (Hoạt động · Tối ưu dung lượng)</p>
               </div>
             </div>
           </div>
@@ -530,7 +349,7 @@ export const AdminFileManagementPanel: React.FC = () => {
               <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-55 dark:bg-slate-900/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-mono">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-mono">
                       <th className="p-3 w-16">Xem trước</th>
                       <th className="p-3">Tên tập tin</th>
                       <th className="p-3">Phân loại</th>
@@ -545,7 +364,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                       <tr key={file.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-900/5 transition-colors">
                         <td className="p-3">{renderPreview(file)}</td>
                         <td className="p-3 max-w-xs">
-                          <div className="font-semibold truncate text-slate-855 dark:text-slate-155" title={file.fileName}>
+                          <div className="font-semibold truncate text-slate-800 dark:text-slate-100" title={file.fileName}>
                             {file.fileName}
                           </div>
                           <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 truncate select-all max-w-[200px]" title={file.fileUrl}>
@@ -558,15 +377,9 @@ export const AdminFileManagementPanel: React.FC = () => {
                           </span>
                         </td>
                         <td className="p-3">
-                          {file.storageProvider === 'aws_s3' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-400/10 border border-orange-400/20 text-orange-400 text-[10px] font-bold font-mono rounded">
-                              <Cloud size={10} /> AWS S3
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-400/10 border border-blue-400/20 text-blue-400 text-[10px] font-bold font-mono rounded">
-                              <Server size={10} /> SeaweedFS
-                            </span>
-                          )}
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-400/10 border border-blue-400/20 text-blue-400 text-[10px] font-bold font-mono rounded">
+                            <Server size={10} /> SeaweedFS
+                          </span>
                         </td>
                         <td className="p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">{file.ownerName}</div>
@@ -581,7 +394,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => handleCopyUrl(file.fileUrl, file.id)}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-450 hover:text-slate-750 dark:hover:text-white rounded-lg transition-all relative cursor-pointer"
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all relative cursor-pointer"
                               title="Sao chép URL"
                             >
                               {copiedId === file.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
@@ -589,7 +402,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                             <button
                               onClick={() => handleDownload(file, true)}
                               disabled={downloadingId !== null}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-455 hover:text-slate-750 dark:hover:text-white rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
                               title="Xem trực tiếp"
                             >
                               {downloadingId === file.id + '-view' ? <RefreshCw size={14} className="animate-spin" /> : <Eye size={14} />}
@@ -597,14 +410,14 @@ export const AdminFileManagementPanel: React.FC = () => {
                             <button
                               onClick={() => handleDownload(file, false)}
                               disabled={downloadingId !== null}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-455 hover:text-slate-750 dark:hover:text-white rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
                               title="Tải về máy"
                             >
                               {downloadingId === file.id + '-download' ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
                             </button>
                             <button
                               onClick={() => handleDeleteClick(file)}
-                              className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-955/20 text-slate-455 hover:text-rose-500 rounded-lg transition-all cursor-pointer"
+                              className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 rounded-lg transition-all cursor-pointer"
                               title="Xóa tập tin"
                             >
                               <Trash2 size={14} />
@@ -659,10 +472,10 @@ export const AdminFileManagementPanel: React.FC = () => {
               <h4 className="font-display font-bold text-slate-900 dark:text-white text-base">Xác nhận xóa tập tin</h4>
             </div>
 
-            <div className="text-xs text-slate-655 dark:text-slate-355 space-y-2 leading-relaxed">
+            <div className="text-xs text-slate-600 dark:text-slate-400 space-y-2 leading-relaxed">
               <p>Bạn có chắc chắn muốn xóa file này? Hành động này sẽ thực hiện:</p>
               <ul className="list-disc pl-4 space-y-1">
-                <li>Xóa vật lý file gốc trên nhà lưu trữ <span className="font-bold uppercase text-amber-500">{deleteTarget.storageProvider}</span>.</li>
+                <li>Xóa vật lý file gốc trên nhà lưu trữ <span className="font-bold uppercase text-amber-500">SeaweedFS</span>.</li>
                 <li>Hủy liên kết và gán giá trị <span className="font-mono bg-slate-100 dark:bg-slate-950 px-1 rounded border border-slate-200 dark:border-slate-800">NULL</span> (hoặc xóa dòng tương ứng) trong DB cho:</li>
               </ul>
               <div className="p-3 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-200 dark:border-slate-800/50 mt-2 font-mono text-[10px] space-y-1">
@@ -676,7 +489,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-355 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition-all cursor-pointer"
               >
                 Hủy bỏ
               </button>
@@ -684,7 +497,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                 type="button"
                 onClick={confirmDelete}
                 disabled={isDeleting}
-                className="flex items-center gap-1.5 px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl text-xs shadow-md shadow-rose-500/10 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-600 text-white font-bold rounded-xl text-xs shadow-md shadow-rose-500/10 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
                 Xác nhận xóa

@@ -19,7 +19,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuditLog {
+public class    AuditLog {
 
     @Id
     private UUID id;
