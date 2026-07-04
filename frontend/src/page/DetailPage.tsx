@@ -14,6 +14,7 @@ interface DetailPageProps {
   handleAddToCart: (asset: Asset) => void;
   handleCheckout: () => void;
   handleBuyNow: (asset: Asset) => void;
+  isPreparingBuyNow?: boolean;
   assets: Asset[];
   handleViewAssetDetails: (asset: Asset) => void;
 }
@@ -28,6 +29,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   handleAddToCart,
   handleCheckout,
   handleBuyNow,
+  isPreparingBuyNow = false,
   assets,
   handleViewAssetDetails
 }) => {
@@ -248,9 +250,10 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               </Button>
               <button
                 onClick={() => handleBuyNow(focusedAsset)}
+                disabled={isPreparingBuyNow}
                 className="w-full py-2.5 px-4 bg-transparent border border-sky-400 dark:border-sky-800 hover:bg-sky-500/20 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-sky-600 dark:text-white font-display text-center transition-studio cursor-pointer"
               >
-                Buy Now via Bank Transfer
+                {isPreparingBuyNow ? 'Preparing payment...' : 'Buy Now via Bank Transfer'}
               </button>
             </div>
 

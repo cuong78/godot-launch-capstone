@@ -24,10 +24,17 @@ const resolveLocale = (language: string) => {
   }
 };
 
-const formatMoney = (amount: number, locale = 'vi-VN', freeLabel = 'FREE') =>
+const resolveCurrency = (language: string) => (language === 'vi' ? 'VND' : 'USD');
+
+const formatMoney = (
+  amount: number,
+  locale = 'vi-VN',
+  currency = 'VND',
+  freeLabel = 'FREE'
+) =>
   amount === 0
     ? freeLabel
-    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'VND' }).format(amount);
+    : new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount);
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   cart,
@@ -37,7 +44,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   onRemoveItem,
 }) => {
   const { t, i18n } = useTranslation(['payment']);
-  const locale = resolveLocale(i18n.resolvedLanguage || i18n.language || 'vi');
+  const activeLanguage = i18n.resolvedLanguage || i18n.language || 'vi';
+  const locale = resolveLocale(activeLanguage);
+  const currency = resolveCurrency(activeLanguage);
   const totalAmount = cart.reduce((sum, item) => sum + item.price, 0);
   const unsupportedItems = cart.filter((item) => !item.itemType);
   const hasMultipleItems = cart.length > 1;
@@ -62,7 +71,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         </div>
         <div className="rounded-xl border border-amber-500/20 bg-amber-400/10 px-4 py-3">
           <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500 font-mono">{t('payment:checkout.totalPayment')}</p>
-          <p className="mt-1 font-display text-xl font-bold text-slate-850 dark:text-white">{formatMoney(totalAmount, locale, t('payment:common.free'))}</p>
+          <p className="mt-1 font-display text-xl font-bold text-slate-850 dark:text-white">{formatMoney(totalAmount, locale, currency, t('payment:common.free'))}</p>
         </div>
       </div>
 
@@ -120,7 +129,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between gap-4 md:flex-col md:items-end">
-                    <span className="font-display text-lg font-bold text-amber-500">{formatMoney(item.price, locale, t('payment:common.free'))}</span>
+                    <span className="font-display text-lg font-bold text-amber-500">{formatMoney(item.price, locale, currency, t('payment:common.free'))}</span>
                     <button
                       type="button"
                       onClick={() => onRemoveItem(item.id)}
@@ -170,7 +179,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
               <div className="flex items-center justify-between border-t border-slate-200/80 pt-3 text-sm font-bold dark:border-slate-800/80">
                 <span className="text-slate-800 dark:text-white">{t('payment:checkout.totalAmount')}</span>
-                <span className="text-amber-500">{formatMoney(totalAmount, locale, t('payment:common.free'))}</span>
+                <span className="text-amber-500">{formatMoney(totalAmount, locale, currency, t('payment:common.free'))}</span>
               </div>
             </div>
 

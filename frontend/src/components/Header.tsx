@@ -60,6 +60,21 @@ interface DesktopMenuItem {
   featured?: boolean;
 }
 
+const resolveCurrencyLocale = (language: string) => {
+  switch (language) {
+    case "en":
+      return "en-US";
+    case "ja":
+      return "ja-JP";
+    case "vi":
+    default:
+      return "vi-VN";
+  }
+};
+
+const resolveCurrencyCode = (language: string) =>
+  language === "vi" ? "VND" : "USD";
+
 export function Header({
   currentScreen,
   setCurrentScreen,
@@ -83,7 +98,37 @@ export function Header({
   const [openDesktopMenu, setOpenDesktopMenu] =
     React.useState<DesktopMenuKey | null>(null);
   const desktopMenuCloseTimeoutRef = React.useRef<number | null>(null);
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation(["common", "payment"]);
+  const activeLanguage = i18n.resolvedLanguage || i18n.language || "vi";
+  const currencyLocale = resolveCurrencyLocale(activeLanguage);
+  const currencyCode = resolveCurrencyCode(activeLanguage);
+  const formatCartMoney = React.useCallback(
+    (amount: number) =>
+      amount === 0
+        ? t("payment:common.free")
+        : new Intl.NumberFormat(currencyLocale, {
+            style: "currency",
+            currency: currencyCode,
+          }).format(amount),
+    [currencyCode, currencyLocale, t],
+  );
+  const groupedCartItems = React.useMemo(() => {
+    const itemMap = new Map<string, { item: Asset; quantity: number }>();
+
+    cart.forEach((item) => {
+      const key = `${item.id}:${item.itemType ?? "unknown"}`;
+      const existing = itemMap.get(key);
+
+      if (existing) {
+        existing.quantity += 1;
+        return;
+      }
+
+      itemMap.set(key, { item, quantity: 1 });
+    });
+
+    return Array.from(itemMap.values());
+  }, [cart]);
   const desktopSearchClassName = currentUser
     ? "hidden md:flex shrink-0 w-[210px] xl:w-[260px] 2xl:w-[320px] relative"
     : "hidden md:flex shrink-0 w-[250px] lg:w-[310px] xl:w-[360px] relative";
@@ -517,9 +562,9 @@ export function Header({
 
                   {cart.length > 0 ? (
                     <div className="space-y-3 my-3 max-h-60 overflow-y-auto">
-                      {cart.map((item) => (
+                      {groupedCartItems.map(({ item, quantity }) => (
                         <div
-                          key={item.id}
+                          key={`${item.id}:${item.itemType ?? "unknown"}`}
                           className="flex items-center justify-between gap-2 border-b border-slate-50 dark:border-slate-855 pb-2"
                         >
                           <div className="flex items-center gap-2">
@@ -533,16 +578,19 @@ export function Header({
                               <p className="text-sm font-semibold text-slate-800 dark:text-white truncate max-w-[140px]">
                                 {item.title}
                               </p>
-                              <p className="text-[10px] text-slate-400">
-                                {item.category}
+                              <p className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                                <span>{item.category}</span>
+                                {quantity > 1 && (
+                                  <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-bold text-sky-600 dark:text-sky-400">
+                                    x{quantity}
+                                  </span>
+                                )}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-mono font-bold dark:text-amber-400">
-                              {item.price === 0
-                                ? "Free"
-                                : `$${item.price.toFixed(2)}`}
+                              {formatCartMoney(item.price * quantity)}
                             </span>
                             <button
                               onClick={(e) => handleRemoveFromCart(item.id, e)}
@@ -556,10 +604,9 @@ export function Header({
                       <div className="flex items-center justify-between font-display font-semibold text-sm text-slate-800 dark:text-slate-200 pt-1">
                         <span>Total Checkout Value:</span>
                         <span className="text-base font-mono font-bold text-sky-600 dark:text-amber-400">
-                          $
-                          {cart
-                            .reduce((sum, item) => sum + item.price, 0)
-                            .toFixed(2)}
+                          {formatCartMoney(
+                            cart.reduce((sum, item) => sum + item.price, 0),
+                          )}
                         </span>
                       </div>
                       <button
