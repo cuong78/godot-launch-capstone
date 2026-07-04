@@ -16,7 +16,7 @@ storage_routing: file_type → bucket_id
 storage_buckets → storage_accounts (config encrypted AES-256)
     ↓
     ┌──────────────┬────────────────┐
-    │ AwsS3Adapter │ SeaweedFsAdapter│
+    │ AwsS3Adapter │SeaweedFsAdapter│
     └──────────────┴────────────────┘
 ```
 

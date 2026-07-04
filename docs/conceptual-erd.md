@@ -1,11 +1,41 @@
 # Conceptual ERD — GodotLaunch (đầy đủ 36 bảng)
 
-> Dùng để VẼ conceptual diagram. Mọi cardinality dưới đây **suy từ FK/constraint thật trong `V1__init_schema.sql`**, không phỏng đoán.
+> Dùng để VẼ conceptual diagram. Cardinality mặc định **suy từ FK/constraint thật trong `V1__init_schema.sql`**.
+> Những chỗ có ghi **NGHIỆP VỤ** là ràng buộc do flow sản phẩm yêu cầu, có thể mạnh hơn schema hiện tại.
 > Conceptual chia theo **5 view nghiệp vụ**. Một entity có thể xuất hiện ở nhiều view (đúng tinh thần conceptual) — entity dùng chung tô **mờ/xám**, entity trọng tâm của view tô **đậm**.
 
 ---
 
 ## 0. Quy ước Crow's Foot (đọc ở đầu phía thực thể)
+
+### 0.1. Ký hiệu nguyên tử
+
+Crow's Foot không chỉ có các cụm `||`, `o|`, `o<`, `|<`. Mỗi đầu quan hệ được ghép từ các ký hiệu nhỏ:
+
+| Ký hiệu | Tên | Nghĩa |
+|---|---|---|
+| `|` | one | một |
+| `<` | many | nhiều |
+| `o` | optional / zero | tùy chọn, có thể không có |
+
+Khi vẽ quan hệ, các ký hiệu này thường được ghép thành 2 phần:
+
+```text
+[minimum][maximum]
+```
+
+Ví dụ:
+
+| Tổ hợp | Cách đọc | Nghĩa |
+|---|---|---|
+| `||` | one and only one | tối thiểu 1, tối đa 1 |
+| `o|` | zero or one | tối thiểu 0, tối đa 1 |
+| `o<` | zero or many | tối thiểu 0, tối đa nhiều |
+| `|<` | one or many | tối thiểu 1, tối đa nhiều |
+
+> Trong bảng quan hệ bên dưới mình dùng **tổ hợp cardinality** (`||`, `o|`, `o<`, `|<`) thay vì chỉ ghi `|` hoặc `<`, vì quan hệ ERD cần cả **minimum** và **maximum** ở mỗi đầu.
+
+### 0.2. Quy ước suy từ schema
 
 | Ký hiệu | Tên | Nghĩa | Suy từ schema |
 |---|---|---|---|
@@ -14,7 +44,16 @@
 | `o<` | zero or many | tùy chọn, nhiều | đầu "con" mặc định |
 | `|<` | one or many | bắt buộc ≥1, nhiều | **chỉ khi nghiệp vụ ép tối thiểu 1** (schema không tự suy ra được) |
 
-> **Lưu ý quan trọng:** SQL FK chỉ biểu diễn được *tối đa*, không ép *tối thiểu ≥1* ở phía con → trong DB này **không có quan hệ nào dùng `|<`**. Nếu giảng viên/nghiệp vụ yêu cầu "A bắt buộc có ≥1 B" thì bạn tự đổi `o<`→`|<` ở quan hệ đó (ghi rõ đó là ràng buộc nghiệp vụ).
+
+> **Lưu ý quan trọng:** SQL FK chỉ biểu diễn tốt chiều "mỗi dòng con trỏ tới tối đa/đúng 1 dòng cha". Nó **không tự ép một dòng cha phải có ít nhất 1 dòng con**. Vì vậy trong DB này, các quan hệ cha → con thường là `o<` thay vì `|<`.
+>
+> Nói cách khác:
+> - `||` xuất hiện nhiều ở phía **entity được dòng con bắt buộc tham chiếu tới qua FK NOT NULL**: mỗi `Game` phải có đúng 1 `Developer`, mỗi `Payment` phải thuộc đúng 1 `Order`.
+> - `o<` xuất hiện nhiều ở phía **tập con không bắt buộc**: 1 `Developer` có thể tạo 0 hoặc nhiều `Game`; 1 `CommunityChat` có thể có 0 hoặc nhiều `ChatReaction`.
+> - `o|` xuất hiện ít hơn vì chỉ xảy ra khi FK nullable hoặc quan hệ tối đa 1, ví dụ `Category` có 0 hoặc 1 category cha qua `parent_id nullable`.
+> - `|<` chỉ dùng khi có ràng buộc nghiệp vụ "bắt buộc phải có ít nhất 1 con", ví dụ `Game/Asset` phải có ít nhất 1 `Media`.
+>
+> Nếu giảng viên/nghiệp vụ yêu cầu "A bắt buộc có ≥1 B" thì bạn có thể đổi `o<` → `|<` ở quan hệ đó, nhưng cần ghi chú rõ đó là **ràng buộc nghiệp vụ**, không phải suy trực tiếp từ FK.
 > Cách viết quan hệ: **Cha `cardinality` ──động từ──< `cardinality` Con**.
 
 ---
@@ -44,7 +83,7 @@
 | 3 | Game **gắn** GameTag | `||` | `o<` | game_tags.game_id (PK) |
 | 4 | Tag **gắn** GameTag | `||` | `o<` | game_tags.tag_id (PK) |
 | 5 | Game **có** GameVersion | `||` | `o<` | game_versions.game_id NOT NULL |
-| 6 | Game **có** Media | `||` | `o<` | media.game_id (arc) |
+| 6 | Game **có** Media | `||` | `|<` | media.game_id (arc) + **NGHIỆP VỤ:** tạo/submit game phải có media, không được rỗng |
 | 7 | Game **sinh** SourceSnapshot | `||` | `o<` | source_snapshots.game_id |
 | 8 | Game **ký** Contract | `||` | `o<` | contracts.game_id NOT NULL |
 | 9 | Game **xuất bản** ExternalPublish | `||` | `o<` | external_publishes.game_id NOT NULL |
@@ -54,8 +93,8 @@
 | 13 | Category **phân loại** Asset | `o|` | `o<` | assets.category_id nullable (FK SET NULL) |
 | 14 | Asset **gắn** AssetTag | `||` | `o<` | asset_tags.asset_id (PK) |
 | 15 | Tag **gắn** AssetTag | `||` | `o<` | asset_tags.tag_id (PK) |
-| 16 | Asset **có** Media | `||` | `o<` | media.asset_id (arc) |
-| 17 | Developer **sở hữu** Wallet | `||` | `o|` | wallets.user_id NOT NULL + **UNIQUE** |
+| 16 | Asset **có** Media | `||` | `|<` | media.asset_id (arc) + **NGHIỆP VỤ:** tạo asset/listing phải có media, không được rỗng |
+| 17 | Developer **sở hữu** Wallet | `||` | `||` | wallets.user_id NOT NULL + **UNIQUE** + **NGHIỆP VỤ:** user đăng ký xong có wallet mặc định 0đ |
 | 18 | Wallet **ghi** Transaction | `||` | `o<` | transactions.wallet_id NOT NULL |
 | 19 | Wallet **yêu cầu** WithdrawalRequest | `||` | `o<` | withdrawal_requests.wallet_id NOT NULL |
 
@@ -77,7 +116,7 @@
 | 4 | Customer(buyer) **đặt** Order | `||` | `o<` | orders.buyer_id NOT NULL |
 | 5 | Game **được mua qua** Order | `o|` | `o<` | orders.game_id nullable (arc) |
 | 6 | Asset **được mua qua** Order | `o|` | `o<` | orders.asset_id nullable (arc) |
-| 7 | Order **có** Payment | `||` | `o|` | payments.order_id NOT NULL + **UNIQUE(order_id)** |
+| 7 | Order **có** Payment | `||` | `||` | payments.order_id NOT NULL + **UNIQUE(order_id)** + **NGHIỆP VỤ:** order checkout luôn có đúng 1 payment session |
 | 8 | Order **liên kết** Transaction | `o|` | `o<` | orders.transaction_id nullable |
 | 9 | Order **dẫn tới** Review | `||` | `o<` | reviews.order_id NOT NULL |
 | 10 | Customer **viết** Review | `||` | `o<` | reviews.user_id NOT NULL |
@@ -161,6 +200,7 @@
 |---|---|---|---|---|
 | 1 | Role **phân cho** User | `||` | `o<` | users.role_id NOT NULL |
 | 2 | Category **cha-con** Category | `o|` | `o<` | categories.parent_id nullable (self-FK) |
+| 3 | User **sở hữu** Wallet | `||` | `||` | wallets.user_id NOT NULL + **UNIQUE** + **NGHIỆP VỤ:** đăng ký xong có wallet mặc định 0đ |
 
 > `User` là **siêu-hub** (gần như mọi bảng FK về users). Ở conceptual, để tránh rối, **không** nối hết về 1 box User trung tâm — thay vào đó tách 3 vai (Developer/Customer/Admin) theo từng view như trên. Role gắn User ở View 5 hoặc một "Identity sub-diagram" nhỏ.
 
@@ -218,3 +258,54 @@
 3. **Đặt tên quan hệ bằng động từ nghiệp vụ** ("Developer *tạo* Game") — đặc trưng conceptual.
 4. **Exclusive arc** (game XOR asset ở CartItem/Order/Review/Media/AiReviewReport): vẽ 2 nhánh `o|` tới Game và Asset, ghi chú "đúng 1".
 5. **Self-reference** (Category cha-con, CommunityChat reply/share): vẽ vòng tự thân `o|──o<`.
+
+---
+
+## 10. Có cần dùng `|`, `<`, hoặc `|<` ở quan hệ nào không?
+
+### 10.1. Có cần ghi riêng `|` và `<` không?
+
+Không cần ghi riêng `|` hoặc `<` trong bảng quan hệ, vì một đầu Crow's Foot cần đủ **minimum + maximum**.
+
+Ví dụ:
+
+| Ghi riêng | Chưa đủ vì | Nên ghi |
+|---|---|---|
+| `|` | Chỉ nói "one", chưa nói optional hay mandatory | `||` hoặc `o|` |
+| `<` | Chỉ nói "many", chưa nói zero-many hay one-many | `o<` hoặc `|<` |
+
+Nói ngắn gọn:
+
+```text
+|  = one       (ký hiệu nguyên tử)
+<  = many      (ký hiệu nguyên tử)
+|< = one-many  (tổ hợp hoàn chỉnh: tối thiểu 1, tối đa nhiều)
+```
+
+### 10.2. Khi nào dùng `|<` trong bản này?
+
+Sau khi đối chiếu nghiệp vụ chính:
+
+- **Game bắt buộc có ít nhất 1 Media** khi tạo/submit, vì game không được rỗng về phần trình bày/preview → `Game ||──có──|< Media`.
+- **Asset bắt buộc có ít nhất 1 Media** khi tạo listing, vì asset không được rỗng về phần trình bày/preview → `Asset ||──có──|< Media`.
+- **User/Developer bắt buộc có đúng 1 Wallet** sau khi đăng ký, số dư mặc định 0đ → `User/Developer ||──sở hữu──|| Wallet`.
+- Game submit qua GitHub repo → tạo `SourceSnapshot`, nhưng `Game` có thể đang ở `draft` nên **không phải mọi Game đều có snapshot**. Chỉ game đã submit hợp lệ mới bắt buộc có snapshot.
+- Order trong flow checkout luôn có Payment record để theo dõi `pending/processing/paid/cancelled`, nên bản conceptual dùng `Order ||──có──|| Payment` dù DB chỉ enforce phía `Payment.order_id`.
+- Contract chỉ áp dụng cho `full_acquisition` / `co_publishing`, không áp dụng mọi Game.
+- Community post có thể không có comment/reaction/media/share.
+- StorageAccount có thể được tạo trước khi có Bucket; Bucket có thể chưa được gán Routing.
+
+Vì vậy, bản này nâng cardinality theo rule nghiệp vụ đã chốt ở 3 nhóm chính: **Game/Asset → Media**, **User/Developer → Wallet**, và **Order → Payment**. Các quan hệ còn lại vẫn giữ `o<` hoặc `o|` nếu entity cha có thể tồn tại mà chưa có entity con ở một số trạng thái lifecycle.
+
+### 10.3. Những chỗ có thể đổi sang `|<` nếu vẽ theo trạng thái nghiệp vụ cụ thể
+
+Chỉ dùng các dòng dưới nếu diagram của bạn ghi rõ scope là một trạng thái nghiệp vụ hẹp, không phải toàn bộ entity:
+
+| Scope hẹp | Quan hệ có thể vẽ | Lý do nghiệp vụ |
+|---|---|---|
+| Submitted/Pending Game | `Game ||──sinh──|< SourceSnapshot` | Game đã submit repo hợp lệ thì phải có ít nhất 1 snapshot |
+| Active Asset Listing | `Asset ||──có file──|| File/SourceBundle` *(không phải entity riêng trong ERD hiện tại)* | Asset active phải có file tải hợp lệ |
+| Paid Order | `Order ||──ghi nhận──|| Transaction` | Order đã paid phải có transaction doanh thu |
+| Face-verified Developer | `Developer ||──face-verify──|| FaceEmbedding` | Developer đã face-verified thì phải có embedding đã đăng ký |
+
+> Khuyến nghị cho bản nộp ERD tổng quát: dùng cardinality mạnh cho các rule nghiệp vụ chính thức đã chốt như **Game/Asset phải có Media**, **User có Wallet mặc định 0đ**, và **Order checkout có Payment**. Các trạng thái hẹp như `Submitted Game`, `Paid Order`, hoặc `Face-verified Developer` nên để trong ghi chú nếu không muốn diagram bị quá đặc thù theo lifecycle.

@@ -37,7 +37,6 @@ public class CommunityChatServiceImpl implements CommunityChatService {
     private final CommunityChatRepository communityChatRepository;
     private final ChatMediaRepository chatMediaRepository;
     private final ChatReactionRepository chatReactionRepository;
-    private final UserIpLogRepository userIpLogRepository;
     private final HttpServletRequest httpServletRequest;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
@@ -92,7 +91,6 @@ public class CommunityChatServiceImpl implements CommunityChatService {
             }
         }
 
-        logIp(currentUser, "post_chat");
 
         auditLogService.publishAuto(
                 AuditAction.post_created,
@@ -223,7 +221,6 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         communityChatRepository.save(parentPost);
         broadcastPostUpdate(parentPost);
 
-        logIp(currentUser, "post_chat");
 
         notificationService.createAndSendNotification(
                 parentPost.getSender(),
@@ -478,17 +475,6 @@ public class CommunityChatServiceImpl implements CommunityChatService {
         return ip;
     }
 
-    private void logIp(User user, String action) {
-        String ipAddress = getClientIp(httpServletRequest);
-        String userAgent = httpServletRequest.getHeader("User-Agent");
-        UserIpLog log = UserIpLog.builder()
-                .user(user)
-                .ipAddress(ipAddress)
-                .action(action)
-                .userAgent(userAgent)
-                .build();
-        userIpLogRepository.save(log);
-    }
 
     private CommunityChatResponse mapToResponse(CommunityChat chat) {
         if (chat == null) {
