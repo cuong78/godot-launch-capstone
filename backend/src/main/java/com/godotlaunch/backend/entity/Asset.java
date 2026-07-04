@@ -54,6 +54,13 @@ public class Asset {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "asset_tags",
+            joinColumns = @JoinColumn(name = "asset_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<Tag> tags = new HashSet<>();
+
+
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
@@ -69,11 +76,6 @@ public class Asset {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "asset_tags",
-            joinColumns = @JoinColumn(name = "asset_id"),
-            inverseJoinColumns = @JoinColumn(name = "tag_id"))
-    private Set<Tag> tags = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

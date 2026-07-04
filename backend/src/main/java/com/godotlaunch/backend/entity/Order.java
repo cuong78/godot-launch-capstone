@@ -30,6 +30,14 @@ public class Order {
     @JoinColumn(name = "buyer_id", nullable = false)
     private User buyer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asset_id")
+    private Asset asset;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "game_id")
+    private Game game;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "order_type", nullable = false, columnDefinition = "order_type_enum")
@@ -40,20 +48,7 @@ public class Order {
     @Column(name = "order_status", nullable = false, columnDefinition = "order_status_enum")
     private OrderStatus orderStatus = OrderStatus.PENDING;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "asset_id")
-    private Asset asset;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id")
-    private Game game;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transaction_id", unique = true)
-    private Transaction transaction;
-
-    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
-    private Payment payment;
 
     @Column(name = "price_paid", nullable = false, precision = 15, scale = 2)
     private BigDecimal pricePaid;

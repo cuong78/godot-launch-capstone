@@ -6,5 +6,6 @@ public enum TxnType {
     withdrawal,
     revenue_share,
     commission,
-    refund
+    refund,
+    wallet_topup
 }

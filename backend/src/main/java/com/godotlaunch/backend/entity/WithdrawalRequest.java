@@ -35,6 +35,10 @@ public class WithdrawalRequest {
     @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id", unique = true)
+    private Transaction transaction;
+
     @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
@@ -71,9 +75,6 @@ public class WithdrawalRequest {
     @Column(name = "status", nullable = false, columnDefinition = "withdrawal_status_enum")
     private WithdrawalStatus status = WithdrawalStatus.pending;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "processed_by")
-    private User processedBy;
 
     @Column(name = "processed_at")
     private Instant processedAt;
@@ -81,9 +82,6 @@ public class WithdrawalRequest {
     @Column(name = "remark", columnDefinition = "TEXT")
     private String remark;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transaction_id", unique = true)
-    private Transaction transaction;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

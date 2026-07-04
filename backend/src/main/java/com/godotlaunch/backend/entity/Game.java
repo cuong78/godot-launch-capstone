@@ -34,6 +34,13 @@ public class Game {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "game_tags",
+            joinColumns = @JoinColumn(name = "game_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<Tag> tags = new HashSet<>();
+
+
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
@@ -71,11 +78,6 @@ public class Game {
     @Column(name = "is_source_listed", nullable = false)
     private boolean isSourceListed = false;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "game_tags",
-            joinColumns = @JoinColumn(name = "game_id"),
-            inverseJoinColumns = @JoinColumn(name = "tag_id"))
-    private Set<Tag> tags = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

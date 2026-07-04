@@ -38,6 +38,7 @@ public class Dispute {
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
 
+
     @Column(name = "reason", columnDefinition = "TEXT", nullable = false)
     private String reason;
 
@@ -59,9 +60,6 @@ public class Dispute {
     @Column(name = "refund_deadline")
     private Instant refundDeadline;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "resolved_by")
-    private User resolvedBy;
 
     @Column(name = "resolved_at")
     private Instant resolvedAt;
