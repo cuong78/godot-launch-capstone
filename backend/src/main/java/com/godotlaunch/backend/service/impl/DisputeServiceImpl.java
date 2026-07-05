@@ -7,6 +7,7 @@ import com.godotlaunch.backend.dto.response.DisputeResponse;
 import com.godotlaunch.backend.entity.Dispute;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.User;
+import com.godotlaunch.backend.entity.enums.DisputeStatus;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.DisputeRepository;
@@ -50,7 +51,7 @@ public class DisputeServiceImpl implements DisputeService {
         dispute.setReason(request.getReason());
         dispute.setEvidenceRepoUrl(request.getEvidenceRepoUrl());
         dispute.setEvidenceNote(request.getEvidenceNote());
-        dispute.setStatus("open");
+        dispute.setStatus(DisputeStatus.open);
 
         // Dispute chỉ cho game: xác định seller (A) + auto-suspend game
         Game game = gameRepository.findById(request.getGameId())
@@ -85,9 +86,8 @@ public class DisputeServiceImpl implements DisputeService {
                 .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
 
         String resolution = request.getResolution();
-        dispute.setStatus(resolution);
+        dispute.setStatus(DisputeStatus.valueOf(resolution));
         dispute.setResolutionNote(request.getResolutionNote());
-        dispute.setResolvedBy(admin);
         dispute.setResolvedAt(Instant.now());
 
         switch (resolution) {
@@ -189,7 +189,7 @@ public class DisputeServiceImpl implements DisputeService {
                 .reason(d.getReason())
                 .evidenceRepoUrl(d.getEvidenceRepoUrl())
                 .evidenceNote(d.getEvidenceNote())
-                .status(d.getStatus())
+                .status(d.getStatus() != null ? d.getStatus().name() : null)
                 .resolutionNote(d.getResolutionNote())
                 .refundAmount(d.getRefundAmount())
                 .refundDeadline(d.getRefundDeadline())

@@ -7,7 +7,6 @@ import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.Transaction;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Wallet;
-import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.GameRepository;
@@ -114,11 +113,8 @@ public class WalletServiceImpl implements WalletService {
         txn.setWallet(wallet);
         txn.setRelatedUser(buyer);
         txn.setGame(game);
-        txn.setAmount(amount);
-        txn.setPlatformCommission(platformCommission);
-        txn.setNetAmount(netAmount);
+        txn.setAmount(netAmount);
         txn.setType(TxnType.revenue_share);
-        txn.setStatus(TxnStatus.completed);
         txn.setReferenceId(referenceId);
 
         transactionRepository.save(txn);
@@ -145,10 +141,7 @@ public class WalletServiceImpl implements WalletService {
                 .gameId(txn.getGame() != null ? txn.getGame().getId() : null)
                 .gameTitle(txn.getGame() != null ? txn.getGame().getTitle() : null)
                 .amount(txn.getAmount())
-                .platformCommission(txn.getPlatformCommission())
-                .netAmount(txn.getNetAmount())
                 .type(txn.getType())
-                .status(txn.getStatus())
                 .referenceId(txn.getReferenceId())
                 .createdAt(txn.getCreatedAt())
                 .build();

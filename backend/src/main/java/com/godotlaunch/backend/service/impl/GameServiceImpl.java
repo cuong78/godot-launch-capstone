@@ -210,19 +210,14 @@ public class GameServiceImpl implements GameService {
     }
 
     /** Lưu snapshot bất biến cho game (commit SHA + hash). */
-    private void saveSnapshotForGame(Game game, User creator, String repoUrl, SourceProcessResult result) {
+    private void saveSnapshotForGame(Game game, SourceProcessResult result) {
         try {
             SourceSnapshot snap = new SourceSnapshot();
             snap.setGame(game);
-            snap.setSubmittedBy(creator);
-            snap.setRepoUrl(repoUrl);
-            snap.setCommitSha(result.getCommitSha());
             snap.setBundleHash(result.getBundleHash());
-            snap.setFileCount(result.getFileCount());
             snap.setGodotProject(result.isGodotProject());
             snap.setVirusClean(result.isClean());
             snap.setVirusScanned(result.isScanned());
-            snap.setFileHashes(toJson(result.getFileHashes()));
             snap.setSecretsFound(toJson(result.getSecrets()));
             // Upload source bundle (zip) lên storage cho AI đọc lại + admin/người mua tải
             snap.setBundleUrl(uploadSourceBundle(result, "games/" + game.getId()));

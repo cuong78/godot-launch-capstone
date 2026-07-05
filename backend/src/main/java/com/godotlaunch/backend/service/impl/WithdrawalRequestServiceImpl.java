@@ -16,7 +16,6 @@ import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.WithdrawalRequest;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
-import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.entity.enums.WithdrawalStatus;
 import com.godotlaunch.backend.exception.AppException;
@@ -200,7 +199,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
         WithdrawalStatus previousStatus = withdrawal.getStatus();
         withdrawal.setStatus(WithdrawalStatus.processing);
-        withdrawal.setProcessedBy(admin);
         withdrawal.setProcessedAt(Instant.now());
         withdrawal.setTransferReference(transferReference);
         withdrawal.setPayosPayoutId(payoutResponse.getPayoutId());
@@ -248,7 +246,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
         WithdrawalStatus previousStatus = withdrawal.getStatus();
         withdrawal.setStatus(WithdrawalStatus.processing);
-        withdrawal.setProcessedBy(admin);
 
         WithdrawalRequest updated = withdrawalRequestRepository.save(withdrawal);
         auditLogService.publishAuto(
@@ -296,7 +293,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
         WithdrawalStatus previousStatus = withdrawal.getStatus();
         withdrawal.setStatus(WithdrawalStatus.rejected);
-        withdrawal.setProcessedBy(admin);
         withdrawal.setProcessedAt(Instant.now());
         withdrawal.setRemark(mergeRemarkSections(withdrawal.getRemark(), "Admin rejection reason", request.getRemark()));
 
@@ -381,7 +377,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(developer.getId(), RESERVED_STATUSES)
         );
         BigDecimal totalRevenue = safeAmount(
-                transactionRepository.sumNetAmountByWalletIdAndTypeInAndStatus(wallet.getId(), REVENUE_TXN_TYPES, TxnStatus.completed)
+                transactionRepository.sumAmountByWalletIdAndTypeIn(wallet.getId(), REVENUE_TXN_TYPES)
         );
         BigDecimal availableBalance = wallet.getBalance().subtract(pendingBalance);
         if (availableBalance.compareTo(BigDecimal.ZERO) < 0) {
@@ -429,8 +425,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .payosStatus(withdrawal.getPayosStatus())
                 .payosCreatedAt(withdrawal.getPayosCreatedAt())
                 .status(withdrawal.getStatus())
-                .processedById(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy().getId() : null)
-                .processedByFullName(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy().getFullName() : null)
+                .processedById(null)
+                .processedByFullName(null)
                 .processedAt(withdrawal.getProcessedAt())
                 .remark(withdrawal.getRemark())
                 .createdAt(withdrawal.getCreatedAt())
@@ -460,8 +456,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .payosStatus(withdrawal.getPayosStatus())
                 .payosCreatedAt(withdrawal.getPayosCreatedAt())
                 .status(withdrawal.getStatus())
-                .processedById(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy().getId() : null)
-                .processedByFullName(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy().getFullName() : null)
+                .processedById(null)
+                .processedByFullName(null)
                 .processedAt(withdrawal.getProcessedAt())
                 .remark(withdrawal.getRemark())
                 .createdAt(withdrawal.getCreatedAt())

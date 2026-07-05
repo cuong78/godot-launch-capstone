@@ -8,7 +8,6 @@ import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.WithdrawalRequest;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
-import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.entity.enums.WithdrawalStatus;
 import com.godotlaunch.backend.exception.AppException;
@@ -118,12 +117,9 @@ public class WithdrawalStatusSynchronizerImpl implements WithdrawalStatusSynchro
 
             Transaction transaction = new Transaction();
             transaction.setWallet(wallet);
-            transaction.setRelatedUser(withdrawal.getProcessedBy());
+            transaction.setRelatedUser(null);
             transaction.setAmount(withdrawal.getAmount().negate());
-            transaction.setPlatformCommission(BigDecimal.ZERO);
-            transaction.setNetAmount(withdrawal.getAmount().negate());
             transaction.setType(TxnType.withdrawal);
-            transaction.setStatus(TxnStatus.completed);
             transaction.setReferenceId(firstNonBlank(
                     withdrawal.getPayosReferenceId(),
                     payoutStatus.getTransferReference(),
@@ -135,7 +131,6 @@ public class WithdrawalStatusSynchronizerImpl implements WithdrawalStatusSynchro
 
             withdrawal.setTransaction(transaction);
             withdrawal.setStatus(WithdrawalStatus.completed);
-            withdrawal.setProcessedBy(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy() : admin);
             withdrawal.setProcessedAt(withdrawal.getProcessedAt() != null ? withdrawal.getProcessedAt() : Instant.now());
 
             WithdrawalRequest updated = withdrawalRequestRepository.save(withdrawal);
@@ -162,7 +157,6 @@ public class WithdrawalStatusSynchronizerImpl implements WithdrawalStatusSynchro
 
         if (isFailureStatus(remoteStatus)) {
             withdrawal.setStatus(WithdrawalStatus.failed);
-            withdrawal.setProcessedBy(withdrawal.getProcessedBy() != null ? withdrawal.getProcessedBy() : admin);
             withdrawal.setProcessedAt(withdrawal.getProcessedAt() != null ? withdrawal.getProcessedAt() : Instant.now());
             withdrawal.setRemark(mergeRemarkSections(
                     withdrawal.getRemark(),

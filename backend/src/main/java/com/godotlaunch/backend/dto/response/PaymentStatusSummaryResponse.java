@@ -17,7 +17,6 @@ import java.util.UUID;
 public class PaymentStatusSummaryResponse {
     private UUID paymentId;
     private UUID orderId;
-    private OrderStatus orderStatus;
     private PaymentStatus paymentStatus;
     private String checkoutUrl;
     private String downloadUrl;

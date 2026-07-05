@@ -80,14 +80,12 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void createAndSendNotification(User recipient, User sender, NotificationType type, String message, String targetId) {
-        // Don't send notification to oneself
-        if (recipient.getId().equals(sender.getId())) {
+        if (recipient == null) {
             return;
         }
 
         Notification notification = new Notification();
         notification.setRecipient(recipient);
-        notification.setSender(sender);
         notification.setType(type);
         notification.setMessage(message);
         notification.setTargetId(targetId);
@@ -120,15 +118,9 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private NotificationResponse mapToResponse(Notification notification) {
-        UserSummary senderSummary = UserSummary.builder()
-                .id(notification.getSender().getId())
-                .fullName(notification.getSender().getFullName())
-                .avatarUrl(notification.getSender().getAvatarUrl())
-                .build();
-
         return NotificationResponse.builder()
                 .id(notification.getId())
-                .sender(senderSummary)
+                .sender(null)
                 .type(notification.getType())
                 .message(notification.getMessage())
                 .targetId(notification.getTargetId())
@@ -140,14 +132,6 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void markChatNotificationsAsRead(UUID recipientId, UUID senderId) {
-        List<Notification> unread = notificationRepository.findAllByRecipientIdAndIsReadFalse(recipientId).stream()
-                .filter(n -> n.getType() == NotificationType.CHAT_MESSAGE && n.getSender().getId().equals(senderId))
-                .collect(Collectors.toList());
-        if (!unread.isEmpty()) {
-            for (Notification n : unread) {
-                n.setRead(true);
-            }
-            notificationRepository.saveAll(unread);
-        }
+        // Chat notifications are no longer stored in database
     }
 }

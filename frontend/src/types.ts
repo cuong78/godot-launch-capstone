@@ -105,7 +105,6 @@ export interface TransactionResponse {
   id: string;
   type: string;
   amount: number;
-  status: string;
   referenceId?: string;
   createdAt?: string;
 }
@@ -496,8 +495,6 @@ export interface MarketplaceItemResponse {
   updatedAt?: string;
 }
 
-export type OrderStatus = "PENDING" | "PAID";
-
 export type PaymentStatus =
   | "PENDING"
   | "PROCESSING"
@@ -522,7 +519,6 @@ export interface PaymentResponse {
   sellerId: string;
   sellerEmail: string;
   sellerFullName: string;
-  orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
   amount: number;
   currency: string;
@@ -540,7 +536,6 @@ export interface PaymentResponse {
 export interface PaymentStatusResponse {
   paymentId: string;
   orderId: string;
-  orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
   checkoutUrl?: string | null;
   downloadUrl?: string | null;

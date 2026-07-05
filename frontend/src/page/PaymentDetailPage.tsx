@@ -168,7 +168,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
   }, [payments, selectedOrderId]);
 
   const paidPayments = React.useMemo(
-    () => payments.filter((payment) => payment.paymentStatus === 'PAID' && payment.orderStatus === 'PAID'),
+    () => payments.filter((payment) => payment.paymentStatus === 'PAID'),
     [payments]
   );
 
@@ -504,12 +504,6 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.reference')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
                     {activePayment.paymentReference || t('payment:common.waitingReference')}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.orderStatus')}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
-                    {activePayment.orderStatus}
                   </p>
                 </div>
               </div>

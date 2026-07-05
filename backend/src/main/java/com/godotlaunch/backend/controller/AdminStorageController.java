@@ -189,7 +189,7 @@ public class AdminStorageController {
                             .storageProvider(inferProvider(s.getBundleUrl()))
                             .ownerId(s.getId())
                             .ownerType("SourceSnapshot")
-                            .ownerName("Backup: " + gameTitle + " (sha: " + s.getCommitSha() + ")")
+                            .ownerName("Backup: " + gameTitle)
                             .createdAt(s.getCreatedAt())
                             .build();
                 });

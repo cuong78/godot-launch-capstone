@@ -61,10 +61,8 @@ public class ContractServiceImpl implements ContractService {
         boolean isReIssued = false;
         List<Contract> activeContracts = contractRepository.findByGameId(request.getGameId());
         for (Contract c : activeContracts) {
-            if (c.getStatus() == ContractStatus.pending || c.getStatus() == ContractStatus.negotiating || c.getStatus() == ContractStatus.re_issued) {
-                if (c.getStatus() == ContractStatus.negotiating || c.getStatus() == ContractStatus.re_issued) {
-                    isReIssued = true;
-                }
+            if (c.getStatus() == ContractStatus.pending) {
+                isReIssued = true;
                 c.setStatus(ContractStatus.cancelled);
                 contractRepository.save(c);
             }
@@ -79,20 +77,10 @@ public class ContractServiceImpl implements ContractService {
         } else {
             contract.setLumpSumAmount(request.getLumpSumAmount());
         }
-        contract.setDisputeResolutionClause(request.getDisputeResolutionClause());
-        contract.setAdditionalTerms(request.getAdditionalTerms());
-        contract.setBuyerRepresentative(request.getBuyerRepresentative());
-        contract.setBuyerPosition(request.getBuyerPosition());
         contract.setSellerRepresentative(request.getSellerRepresentative());
         contract.setSellerAddress(request.getSellerAddress());
         contract.setSellerTaxCode(request.getSellerTaxCode());
-        contract.setStatus(isReIssued ? ContractStatus.re_issued : ContractStatus.pending);
-
-        if (request.getBuyerSignatureBase64() == null || request.getBuyerSignatureBase64().trim().isEmpty()) {
-            throw new RuntimeException("Chữ ký của Admin là bắt buộc");
-        }
-        contract.setBuyerSignatureBase64(request.getBuyerSignatureBase64());
-        contract.setSignedAtBuyer(Instant.now());
+        contract.setStatus(ContractStatus.pending);
 
         contract.setTermsHash("N/A");
         contract.setPdfUrl("");
@@ -157,8 +145,8 @@ public class ContractServiceImpl implements ContractService {
         if (!contract.getSeller().getId().equals(developerId)) {
             throw new RuntimeException("Unauthorized to sign this contract");
         }
-        if (contract.getStatus() != ContractStatus.pending && contract.getStatus() != ContractStatus.re_issued) {
-            throw new RuntimeException("Contract is not in pending or re-issued status");
+        if (contract.getStatus() != ContractStatus.pending) {
+            throw new RuntimeException("Contract is not in pending status");
         }
 
         if (signatureBase64 == null || signatureBase64.trim().isEmpty()) {
@@ -223,12 +211,10 @@ public class ContractServiceImpl implements ContractService {
         if (contract.getSignedAtSeller() == null) {
             throw new RuntimeException("Developer must sign first");
         }
-        if (contract.getStatus() != ContractStatus.pending && contract.getStatus() != ContractStatus.re_issued) {
-            throw new RuntimeException("Contract is not in pending or re-issued status");
+        if (contract.getStatus() != ContractStatus.pending) {
+            throw new RuntimeException("Contract is not in pending status");
         }
 
-        contract.setSignedAtBuyer(Instant.now());
-        contract.setBuyerSignatureBase64(signatureBase64);
         contract.setStatus(ContractStatus.signed);
 
         contractRepository.save(contract);
@@ -269,11 +255,11 @@ public class ContractServiceImpl implements ContractService {
         if (!contract.getSeller().getId().equals(developerId)) {
             throw new RuntimeException("Unauthorized to reject this contract");
         }
-        if (contract.getStatus() != ContractStatus.pending && contract.getStatus() != ContractStatus.re_issued) {
-            throw new RuntimeException("Contract is not in pending or re-issued status");
+        if (contract.getStatus() != ContractStatus.pending) {
+            throw new RuntimeException("Contract is not in pending status");
         }
 
-        contract.setStatus(ContractStatus.negotiating);
+        contract.setStatus(ContractStatus.cancelled);
         contract.setRejectionReason(rejectionReason);
         
         Game game = contract.getGame();
@@ -316,17 +302,17 @@ public class ContractServiceImpl implements ContractService {
                 .status(contract.getStatus())
                 .revenueSplit(contract.getRevenueSplit())
                 .lumpSumAmount(contract.getLumpSumAmount())
-                .disputeResolutionClause(contract.getDisputeResolutionClause())
-                .additionalTerms(contract.getAdditionalTerms())
-                .buyerRepresentative(contract.getBuyerRepresentative())
-                .buyerPosition(contract.getBuyerPosition())
+                .disputeResolutionClause(null)
+                .additionalTerms(null)
+                .buyerRepresentative(null)
+                .buyerPosition(null)
                 .sellerRepresentative(contract.getSellerRepresentative())
                 .sellerAddress(contract.getSellerAddress())
                 .sellerTaxCode(contract.getSellerTaxCode())
                 .signedAtSeller(contract.getSignedAtSeller())
-                .signedAtBuyer(contract.getSignedAtBuyer())
+                .signedAtBuyer(null)
                 .sellerSignatureBase64(contract.getSellerSignatureBase64())
-                .buyerSignatureBase64(contract.getBuyerSignatureBase64())
+                .buyerSignatureBase64(null)
                 .rejectionReason(contract.getRejectionReason())
                 .createdAt(contract.getCreatedAt())
                 .build();
