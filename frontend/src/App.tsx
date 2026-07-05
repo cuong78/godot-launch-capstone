@@ -647,7 +647,7 @@ export default function App() {
     description: game.description || '',
     image: game.thumbnailUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
     tag: game.publishingType ? `Publishing: ${game.publishingType}` : 'Game',
-    tagList: [game.publishingType || 'Marketplace', game.status || 'Published'],
+    tagList: game.tags && game.tags.length > 0 ? game.tags : [game.publishingType || 'Marketplace', game.status || 'Published'],
     version: '1.0.0',
     lastUpdated: 'Just now',
     details: {
@@ -657,7 +657,9 @@ export default function App() {
       featuresList: ['Premium Godot game project', 'Verified clean and safe source code']
     },
     screenshots: game.screenshots,
-    videoUrl: game.videoUrl
+    videoUrl: game.videoUrl,
+    webDemoUrl: game.webDemoUrl,
+    itemType: 'source_code'
   });
 
   useEffect(() => {
@@ -672,7 +674,7 @@ export default function App() {
 
         const mapped = res.data.map(mapMarketplaceItemToAsset);
         setAssets(prev => {
-          const nonMarketplaceCatalog = prev.filter(item => !item.itemType);
+          const nonMarketplaceCatalog = prev.filter(item => item.itemType !== 'asset');
           return [...mapped, ...nonMarketplaceCatalog];
         });
       } catch (err) {
@@ -710,7 +712,7 @@ export default function App() {
     }
   }, [currentScreen]);
 
-  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation'>('overview');
+  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation' | 'demo'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);
 
   // Sync state changes with URL address bar

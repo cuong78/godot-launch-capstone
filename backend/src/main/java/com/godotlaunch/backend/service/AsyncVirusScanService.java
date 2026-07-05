@@ -18,8 +18,7 @@ import com.godotlaunch.backend.service.AuditLogService;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,7 +32,7 @@ import java.util.UUID;
 public class AsyncVirusScanService {
 
     private final ClamAVService clamAVService;
-    private final AwsS3Service awsS3Service;
+    private final SeaweedFsService seaweedFsService;
     private final GameRepository gameRepository;
     private final AssetRepository assetRepository;
     private final StorageRouter storageRouter;
@@ -61,14 +60,14 @@ public class AsyncVirusScanService {
         try {
             // Bước 1: Quét virus dạng Stream trực tiếp từ S3 qua ClamAV daemon
             boolean isClean;
-            try (ResponseInputStream<GetObjectResponse> inputStream = awsS3Service.getObjectStream(objectKey)) {
+            try (InputStream inputStream = seaweedFsService.getObjectStream(objectKey)) {
                 isClean = clamAVService.scanStream(inputStream);
             }
 
             if (!isClean) {
                 log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin tải lên của gameId: {}. Tiến hành xóa tệp và từ chối game.", gameId);
                 updateGameStatus(gameId, GameStatus.rejected);
-                awsS3Service.deleteObject(objectKey);
+                seaweedFsService.deleteObject(objectKey);
 
                 auditLogService.publish(
                         game.getCreator().getId(),
@@ -88,7 +87,7 @@ public class AsyncVirusScanService {
 
             // Bước 2: Tải file nén về giải nén an toàn để chống Zip Bomb / Zip Slip và kiểm tra cấu trúc
             tempDir = Files.createTempDirectory("godot_scan_" + gameId.toString());
-            try (ResponseInputStream<GetObjectResponse> inputStream = awsS3Service.getObjectStream(objectKey)) {
+            try (InputStream inputStream = seaweedFsService.getObjectStream(objectKey)) {
                 SafeZipUnpacker.unzipSafely(inputStream, tempDir);
             }
 
@@ -111,9 +110,9 @@ public class AsyncVirusScanService {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với gameId: {}: {}", gameId, e.getMessage());
             updateGameStatus(gameId, GameStatus.rejected);
             try {
-                awsS3Service.deleteObject(objectKey);
+                seaweedFsService.deleteObject(objectKey);
             } catch (Exception ex) {
-                log.warn("Không thể xóa file độc hại trên S3: {}", objectKey, ex);
+                log.warn("Không thể xóa file độc hại trên storage: {}", objectKey, ex);
             }
 
             auditLogService.publish(

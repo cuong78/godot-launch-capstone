@@ -10,7 +10,7 @@ import com.godotlaunch.backend.entity.enums.ContractType;
 import com.godotlaunch.backend.repository.ContractRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
-import com.godotlaunch.backend.service.AwsS3Service;
+import com.godotlaunch.backend.service.SeaweedFsService;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.service.AuditLogService;
@@ -33,18 +33,18 @@ public class ContractServiceImpl implements ContractService {
     private final ContractRepository contractRepository;
     private final GameRepository gameRepository;
     private final UserRepository userRepository;
-    private final AwsS3Service awsS3Service;
+    private final SeaweedFsService seaweedFsService;
     private final EmailService emailService;
     private final AuditLogService auditLogService;
 
     public ContractServiceImpl(ContractRepository contractRepository, GameRepository gameRepository,
                                UserRepository userRepository,
-                               AwsS3Service awsS3Service, EmailService emailService,
+                               SeaweedFsService seaweedFsService, EmailService emailService,
                                AuditLogService auditLogService) {
         this.contractRepository = contractRepository;
         this.gameRepository = gameRepository;
         this.userRepository = userRepository;
-        this.awsS3Service = awsS3Service;
+        this.seaweedFsService = seaweedFsService;
         this.emailService = emailService;
         this.auditLogService = auditLogService;
     }
@@ -284,7 +284,7 @@ public class ContractServiceImpl implements ContractService {
         if (publicPdfUrl != null && publicPdfUrl.contains(".amazonaws.com/")) {
             try {
                 String key = publicPdfUrl.substring(publicPdfUrl.indexOf(".com/") + 5);
-                publicPdfUrl = awsS3Service.generatePresignedGetUrl(key, Duration.ofMinutes(30));
+                publicPdfUrl = seaweedFsService.generatePresignedGetUrl(key, Duration.ofMinutes(30));
             } catch (Exception e) {
                 // Fallback to original URL
             }

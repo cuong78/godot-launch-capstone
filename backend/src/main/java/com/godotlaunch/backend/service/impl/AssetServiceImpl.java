@@ -15,7 +15,7 @@ import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.AsyncVirusScanService;
-import com.godotlaunch.backend.service.AwsS3Service;
+import com.godotlaunch.backend.service.SeaweedFsService;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.AssetService;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +45,7 @@ public class AssetServiceImpl implements AssetService {
     private final CategoryRepository categoryRepository;
     private final GameRepository gameRepository;
     private final com.godotlaunch.backend.repository.TagRepository tagRepository;
-    private final AwsS3Service awsS3Service;
+    private final SeaweedFsService seaweedFsService;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
     private final StorageRouter storageRouter;
@@ -186,7 +186,7 @@ public class AssetServiceImpl implements AssetService {
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         String objectKey = buildObjectKey(item.getId());
-        return awsS3Service.generatePresignedUploadUrl(objectKey, contentType);
+        return seaweedFsService.generatePresignedUploadUrl(objectKey, contentType);
     }
 
     @Override
@@ -247,7 +247,11 @@ public class AssetServiceImpl implements AssetService {
             deleteItemMediaByType(itemId, type);
         }
 
-        String objectKey = "marketplace/items/" + itemId + "/media/" + UUID.randomUUID();
+        String ext = "";
+        if (file != null && file.getOriginalFilename() != null && file.getOriginalFilename().contains(".")) {
+            ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
+        }
+        String objectKey = "marketplace/items/" + itemId + "/media/" + UUID.randomUUID() + ext;
         String mediaUrl = storageRouter.uploadWithKey(FileType.asset_media, file, objectKey);
 
         com.godotlaunch.backend.entity.Media media = new com.godotlaunch.backend.entity.Media();
@@ -318,7 +322,7 @@ public class AssetServiceImpl implements AssetService {
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
         String actualKey = objectKey != null ? objectKey : buildObjectKey(item.getId());
-        String fileUrl = awsS3Service.getFileUrl(actualKey);
+        String fileUrl = seaweedFsService.getFileUrl(actualKey);
         item.setFileUrl(fileUrl);
         assetRepository.save(item);
 
@@ -373,7 +377,7 @@ public class AssetServiceImpl implements AssetService {
         // Delete S3 zip file
         try {
             String objectKey = "marketplace/items/" + item.getId().toString() + "/project.zip";
-            awsS3Service.deleteObject(objectKey);
+            seaweedFsService.deleteObject(objectKey);
             log.info("Deleted S3 file for rejected marketplace item: {}", id);
         } catch (Exception e) {
             log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
@@ -419,7 +423,7 @@ public class AssetServiceImpl implements AssetService {
 
         try {
             String objectKey = "marketplace/items/" + item.getId().toString() + "/project.zip";
-            awsS3Service.deleteObject(objectKey);
+            seaweedFsService.deleteObject(objectKey);
             log.info("Deleted S3 file for removed marketplace item: {}", id);
         } catch (Exception e) {
             log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
@@ -503,7 +507,7 @@ public class AssetServiceImpl implements AssetService {
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
-            return awsS3Service.generatePresignedGetUrl(objectKey, Duration.ofHours(24));
+            return seaweedFsService.generatePresignedGetUrl(objectKey, Duration.ofHours(24));
         } catch (Exception e) {
             log.warn("Failed to generate presigned GET URL for objectKey: {}, returning raw URL. Error: {}", objectKey, e.getMessage());
             return rawUrl;

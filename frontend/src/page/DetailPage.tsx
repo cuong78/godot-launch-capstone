@@ -10,7 +10,7 @@ interface DetailPageProps {
   selectedThumbIndex: number;
   setSelectedThumbIndex: (index: number) => void;
   activeDetailTab: string;
-  setActiveDetailTab: (tab: "overview" | "tech" | "documentation") => void;
+  setActiveDetailTab: (tab: "overview" | "tech" | "documentation" | "demo") => void;
   handleAddToCart: (asset: Asset) => void;
   handleCheckout: () => void;
   handleBuyNow: (asset: Asset) => void;
@@ -158,9 +158,32 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   Documentation
                 </button>
               )}
+              {focusedAsset.webDemoUrl && (
+                <button
+                  onClick={() => setActiveDetailTab('demo')}
+                  className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-studio ${activeDetailTab === 'demo' ? 'border-amber-400 text-slate-800 dark:text-white' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                >
+                  Play Game Demo
+                </button>
+              )}
             </div>
 
-            {activeDetailTab === 'documentation' ? (
+            {activeDetailTab === 'demo' && focusedAsset.webDemoUrl ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 flex items-center justify-center">
+                  <iframe
+                    src={focusedAsset.webDemoUrl}
+                    sandbox="allow-scripts allow-same-origin"
+                    className="w-full h-full border-none"
+                    loading="lazy"
+                    title={`${focusedAsset.title} Play Demo`}
+                  />
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center font-mono">
+                  Web demo is compiled to WebAssembly. Gameplay is live, source code is hidden and secure.
+                </p>
+              </div>
+            ) : activeDetailTab === 'documentation' ? (
               <div className="space-y-4 animate-fade-in">
                 <div className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-850">
                   {focusedAsset.documentation}

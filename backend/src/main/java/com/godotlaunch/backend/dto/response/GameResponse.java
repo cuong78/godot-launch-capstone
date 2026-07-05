@@ -31,6 +31,8 @@ public class GameResponse {
     private List<String> screenshots;
     private String videoUrl;
     private String fileUrl;
+    private String webDemoUrl;
+    private List<String> tags;
     private String githubRepoUrl;
     private String githubBranch;
     private java.time.Instant createdAt;

@@ -89,12 +89,14 @@ class AiReviewRequest(BaseModel):
     videoUrl: Optional[str] = None      # video intro → cắt frame
     screenshotUrls: list[str] = []      # ảnh đã upload (URL) → tải về quét
     frameCount: int = 8
+    tags: list[str] = []                # danh sách tags được chọn bởi developer
 
 
 class AiReviewResponse(BaseModel):
     codeQualityScore: Optional[int] = None
     mediaMatchScore: Optional[int] = None
     descriptionMatchScore: Optional[int] = None
+    tagsMatchScore: Optional[int] = None
     nsfwFlag: bool = False
     overallRecommendation: str = "review"   # 'approve' | 'review' | 'reject'
     # khuyến nghị giá (chỉ có với code + DeepSeek bật)
@@ -229,16 +231,29 @@ def process_source(req: SourceProcessRequest):
 def _url_to_b64(url: str) -> Optional[str]:
     """Tải ảnh từ URL → base64. None nếu lỗi (fail-soft, không crash review)."""
     try:
-        if "localhost" in url:
-            url = url.replace("localhost", "host.docker.internal")
-        elif "127.0.0.1" in url:
-            url = url.replace("127.0.0.1", "host.docker.internal")
-        r = _requests.get(url, timeout=30)
+        # Thử tải trực tiếp trước (phù hợp khi chạy local không qua Docker)
+        r = _requests.get(url, timeout=15)
         r.raise_for_status()
         if len(r.content) > 15 * 1024 * 1024:  # bỏ ảnh > 15MB
             return None
         return _b64.b64encode(r.content).decode("ascii")
     except Exception:
+        # Nếu lỗi và URL chứa localhost/127.0.0.1, thử thay bằng host.docker.internal (phù hợp khi chạy trong Docker)
+        try:
+            fallback_url = url
+            if "localhost" in url:
+                fallback_url = url.replace("localhost", "host.docker.internal")
+            elif "127.0.0.1" in url:
+                fallback_url = url.replace("127.0.0.1", "host.docker.internal")
+            
+            if fallback_url != url:
+                r = _requests.get(fallback_url, timeout=15)
+                r.raise_for_status()
+                if len(r.content) > 15 * 1024 * 1024:
+                    return None
+                return _b64.b64encode(r.content).decode("ascii")
+        except Exception:
+            pass
         return None
 
 
@@ -255,6 +270,7 @@ def ai_review(req: AiReviewRequest):
     raw = {}
     code_quality = None
     description_match = None
+    tags_match_score = None
     suggested_price = None
     revenue_split = None
     pricing_rationale = None
@@ -286,9 +302,19 @@ def ai_review(req: AiReviewRequest):
             suggested_price = code_res.get("suggestedPrice")
             revenue_split = code_res.get("suggestedRevenueSplit")
             pricing_rationale = code_res.get("pricingRationale")
-            for s in code_res.get("rule", {}).get("secrets", []):
+            rule_res = code_res.get("rule", {})
+            for s in rule_res.get("secrets", []):
                 flags.append({"type": "secret_hardcoded", "severity": "high",
                               "detail": f"Secret nghi ngờ trong {s['file']} ({s['type']})"})
+            if not rule_res.get("hasLicense"):
+                flags.append({"type": "missing_license", "severity": "low",
+                              "detail": "Missing LICENSE file in repository."})
+            if not rule_res.get("hasReadme"):
+                flags.append({"type": "missing_readme", "severity": "low",
+                              "detail": "Missing README.md file in repository."})
+            if rule_res.get("hasUnwantedCache"):
+                flags.append({"type": "unwanted_cache_pushed", "severity": "medium",
+                              "detail": "Godot build cache (.godot/ or .import/) found in repo. Exclude them in .gitignore."})
             ds = code_res.get("deepseek") or {}
             for issue in ds.get("issues", []):
                 flags.append({"type": "code_" + str(issue.get("type", "issue")),
@@ -303,13 +329,16 @@ def ai_review(req: AiReviewRequest):
 
     # ── 2a. Text analyzer (Kiểm duyệt ngôn từ nhạy cảm trong Tên và Mô tả) ──
     try:
-        text_res = text_analyzer.analyze(req.title, req.description)
+        text_res = text_analyzer.analyze(req.title, req.description, req.tags)
         raw["text"] = text_res
+        tags_match_score = text_res.get("tagsMatchScore")
         for issue in text_res.get("issues", []):
+            is_tag_issue = issue.get("field") == "tags"
+            prefix = "Tag không khớp nội dung" if is_tag_issue else "Văn bản nhạy cảm"
             flags.append({
                 "type": "text_" + str(issue.get("type", "issue")),
                 "severity": issue.get("severity", "medium"),
-                "detail": f"Văn bản nhạy cảm: {issue.get('detail')}"
+                "detail": f"{prefix}: {issue.get('detail')}"
             })
     except Exception as e:
         raw["textError"] = str(e)[:200]
@@ -366,6 +395,7 @@ def ai_review(req: AiReviewRequest):
         codeQualityScore=code_quality,
         mediaMatchScore=media_match,
         descriptionMatchScore=description_match,
+        tagsMatchScore=tags_match_score,
         nsfwFlag=nsfw_flag,
         overallRecommendation=recommendation,
         suggestedPrice=suggested_price,

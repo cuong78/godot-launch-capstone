@@ -54,4 +54,5 @@ public interface GameService {
     void deleteGameMediaByUrl(UUID gameId, String mediaUrl, String updaterEmail);
     void approveGame(UUID gameId);
     void rejectGame(UUID gameId, String reason);
+    void uploadWebDemo(UUID gameId, MultipartFile file, String creatorEmail);
 }

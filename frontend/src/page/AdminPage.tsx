@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   ShieldAlert, 
@@ -183,7 +183,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'withdrawal' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
   
   // Real Game Moderation state
-  const [pendingGames, setPendingGames] = useState<GameResponse[]>([]);
+  const [allGames, setAllGames] = useState<GameResponse[]>([]);
   const [contracts, setContracts] = useState<ContractResponse[]>([]);
   const [isLoadingGames, setIsLoadingGames] = useState<boolean>(false);
   const [gamesError, setGamesError] = useState<string | null>(null);
@@ -192,7 +192,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
 
   // Real Marketplace Moderation state
-  const [pendingMarketplaceItems, setPendingMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
+  const [allMarketplaceItems, setAllMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
   const [isLoadingMarketplace, setIsLoadingMarketplace] = useState<boolean>(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [expandedMarketplaceId, setExpandedMarketplaceId] = useState<string | null>(null);
@@ -200,10 +200,53 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [marketplaceDetailLoadingId, setMarketplaceDetailLoadingId] = useState<string | null>(null);
   const [moderationSubTab, setModerationSubTab] = useState<'games' | 'marketplace'>('games');
 
+  // Status filter state: 'pending' | 'approved_published' | 'rejected'
+  const [moderationStatusFilter, setModerationStatusFilter] = useState<'pending' | 'approved_published' | 'rejected'>('pending');
+
+  const pendingGames = useMemo(() => {
+    return allGames.filter((game: GameResponse) => {
+      const status = game.status?.toLowerCase();
+      if (moderationStatusFilter === 'pending') {
+        return status === 'pending';
+      }
+      if (moderationStatusFilter === 'approved_published') {
+        return status === 'approved' || status === 'published';
+      }
+      if (moderationStatusFilter === 'rejected') {
+        return status === 'rejected';
+      }
+      return false;
+    });
+  }, [allGames, moderationStatusFilter]);
+
+  const pendingMarketplaceItems = useMemo(() => {
+    return allMarketplaceItems.filter((item: MarketplaceItemResponse) => {
+      const status = item.status?.toLowerCase();
+      if (moderationStatusFilter === 'pending') {
+        return status === 'pending';
+      }
+      if (moderationStatusFilter === 'approved_published') {
+        return status === 'active';
+      }
+      if (moderationStatusFilter === 'rejected') {
+        return status === 'rejected';
+      }
+      return false;
+    });
+  }, [allMarketplaceItems, moderationStatusFilter]);
+
   // Contract Offer states
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<GameResponse | null>(null);
+
+  // Rejection modal states
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectItemId, setRejectItemId] = useState<string>('');
+  const [rejectItemTitle, setRejectItemTitle] = useState<string>('');
+  const [rejectItemType, setRejectItemType] = useState<'game' | 'marketplace'>('game');
+  const [rejectReason, setRejectReason] = useState<string>('Violated store policies');
+  const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [selectedContract, setSelectedContract] = useState<ContractResponse | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerMode, setViewerMode] = useState<'view' | 'sign-admin'>('view');
@@ -257,13 +300,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       ]);
       
       if (gamesRes.success && gamesRes.data) {
-        const filtered = gamesRes.data.filter((game: GameResponse) => 
-          game.status?.toLowerCase() === 'pending' || 
-          game.status?.toLowerCase() === 'approved'
-        );
-        setPendingGames(filtered);
+        setAllGames(gamesRes.data);
       } else {
-        setGamesError(gamesRes.message || 'Failed to load pending games');
+        setGamesError(gamesRes.message || 'Failed to load games');
       }
 
       if (contractsRes.success && contractsRes.data) {
@@ -280,11 +319,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setIsLoadingMarketplace(true);
     setMarketplaceError(null);
     try {
-      const res = await marketplaceApi.getAllMarketplaceItems('pending');
+      const res = await marketplaceApi.getAllMarketplaceItems();
       if (res.success && res.data) {
-        setPendingMarketplaceItems(res.data);
+        setAllMarketplaceItems(res.data);
       } else {
-        setMarketplaceError(res.message || 'Failed to load pending marketplace items');
+        setMarketplaceError(res.message || 'Failed to load marketplace items');
       }
     } catch (err: any) {
       setMarketplaceError(err.response?.data?.message || err.message || 'Failed to fetch marketplace submissions');
@@ -482,19 +521,44 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleRejectGame = async (id: string, title: string) => {
-    const reason = window.prompt(`Enter rejection reason for "${title}":`, "Violated store policies");
-    if (reason === null) return; // cancel
+  const handleRejectGame = (id: string, title: string) => {
+    setRejectItemId(id);
+    setRejectItemTitle(title);
+    setRejectItemType('game');
+    setRejectReason('Violated store policies');
+    setIsRejectModalOpen(true);
+  };
+
+  const handleConfirmRejection = async () => {
+    if (!rejectReason.trim()) {
+      alert("Please enter a rejection reason.");
+      return;
+    }
+    setIsSubmittingReject(true);
     try {
-      const res = await gameApi.rejectGame(id, reason || "Violated store policies");
-      if (res.success) {
-        alert(`Game "${title}" rejected. Creator notified.`);
-        fetchPendingGamesAndContracts();
+      if (rejectItemType === 'game') {
+        const res = await gameApi.rejectGame(rejectItemId, rejectReason);
+        if (res.success) {
+          alert(`Game "${rejectItemTitle}" rejected. Creator notified.`);
+          setIsRejectModalOpen(false);
+          fetchPendingGamesAndContracts();
+        } else {
+          alert(res.message || 'Failed to reject game');
+        }
       } else {
-        alert(res.message || 'Failed to reject game');
+        const res = await marketplaceApi.rejectMarketplaceItem(rejectItemId, rejectReason);
+        if (res.success) {
+          alert(`Marketplace item "${rejectItemTitle}" rejected. Creator notified.`);
+          setIsRejectModalOpen(false);
+          fetchPendingMarketplaceItems();
+        } else {
+          alert(res.message || 'Failed to reject marketplace item');
+        }
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to reject game');
+      alert(err.response?.data?.message || err.message || 'Failed to reject item');
+    } finally {
+      setIsSubmittingReject(false);
     }
   };
 
@@ -515,20 +579,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleRejectMarketplaceItem = async (id: string, title: string) => {
-    const reason = window.prompt(`Enter rejection reason for "${title}":`, "Violated store policies");
-    if (reason === null) return; // cancel
-    try {
-      const res = await marketplaceApi.rejectMarketplaceItem(id, reason || "Violated store policies");
-      if (res.success) {
-        alert(`Marketplace item "${title}" rejected. Creator notified.`);
-        fetchPendingMarketplaceItems();
-      } else {
-        alert(res.message || 'Failed to reject marketplace item');
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to reject marketplace item');
-    }
+  const handleRejectMarketplaceItem = (id: string, title: string) => {
+    setRejectItemId(id);
+    setRejectItemTitle(title);
+    setRejectItemType('marketplace');
+    setRejectReason('Violated store policies');
+    setIsRejectModalOpen(true);
   };
 
   const handleOpenContractModal = (game: GameResponse) => {
@@ -795,8 +851,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         {activeTab === 'moderation' && (
           <div className="space-y-4">
             <div>
-              <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Asset Submission Queue</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Review, test, and approve community-uploaded packages before they go public</p>
+              <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Game & Asset Moderation Queue</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Review, test, and approve community-uploaded games and assets before they go public</p>
             </div>
 
             {/* Moderation Sub-Tabs */}
@@ -806,7 +862,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
                   moderationSubTab === 'games'
                     ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
-                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
                 }`}
               >
                 <Gamepad2 size={14} />
@@ -822,16 +878,50 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-205 cursor-pointer ${
                   moderationSubTab === 'marketplace'
                     ? 'bg-amber-400 text-slate-950 shadow-md font-bold'
-                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
                 }`}
               >
                 <ShoppingBag size={14} />
-                Marketplace Submissions
+                Asset Submissions
                 <span className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
                   moderationSubTab === 'marketplace' ? 'bg-slate-950 text-amber-400' : 'bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400'
                 }`}>
                   {pendingMarketplaceItems.length}
                 </span>
+              </button>
+            </div>
+
+            {/* Status Filter Pills */}
+            <div className="flex flex-wrap gap-2 mb-4 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200/60 dark:border-slate-800/40 w-fit">
+              <button
+                onClick={() => setModerationStatusFilter('pending')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
+                  moderationStatusFilter === 'pending'
+                    ? 'bg-amber-400 text-slate-950 shadow-sm font-bold font-display'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                Pending
+              </button>
+              <button
+                onClick={() => setModerationStatusFilter('approved_published')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
+                  moderationStatusFilter === 'approved_published'
+                    ? 'bg-amber-400 text-slate-950 shadow-sm font-bold font-display'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                Approved / Published
+              </button>
+              <button
+                onClick={() => setModerationStatusFilter('rejected')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
+                  moderationStatusFilter === 'rejected'
+                    ? 'bg-amber-400 text-slate-950 shadow-sm font-bold font-display'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                Rejected
               </button>
             </div>
 
@@ -941,6 +1031,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                       >
                                         <X size={14} />
                                       </button>
+                                    </div>
+                                  ) : game.status?.toLowerCase() === 'rejected' ? (
+                                    <div className="flex flex-col items-center justify-center gap-1">
+                                      <span className="inline-block px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-[10px] font-bold font-display">
+                                        Rejected
+                                      </span>
+                                    </div>
+                                  ) : game.publishingType === 'marketplace_listing' ? (
+                                    <div className="flex flex-col items-center justify-center gap-1">
+                                      {game.status?.toLowerCase() === 'published' ? (
+                                        <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
+                                          Live
+                                        </span>
+                                      ) : (
+                                        <span className="inline-block px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg text-[10px] font-bold font-display">
+                                          Approved
+                                        </span>
+                                      )}
                                     </div>
                                   ) : (
                                     <div className="flex flex-col items-center justify-center gap-1">
@@ -1212,8 +1320,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 <td className="p-3">
                                   <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                     {item.title}
-                                    <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse">
-                                      Pending
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border ${
+                                      item.status?.toLowerCase() === 'pending'
+                                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse'
+                                        : item.status?.toLowerCase() === 'active'
+                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                        : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                                    }`}>
+                                      {item.status || 'Pending'}
                                     </span>
                                   </div>
                                   <div className="text-[10px] text-slate-500 dark:text-slate-455">by {item.sellerFullName || item.sellerEmail}</div>
@@ -1228,22 +1342,36 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   {item.price === 0 ? 'Miễn phí' : `${item.price.toLocaleString('vi-VN')} đ`}
                                 </td>
                                 <td className="p-3 text-center">
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    <button
-                                      onClick={() => handleApproveMarketplaceItem(item)}
-                                      className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                      title="Approve Asset"
-                                    >
-                                      <Check size={14} />
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectMarketplaceItem(item.id, item.title)}
-                                      className="p-1.5 bg-rose-50 dark:bg-rose-955/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                      title="Reject Asset"
-                                    >
-                                      <X size={14} />
-                                    </button>
-                                  </div>
+                                  {item.status?.toLowerCase() === 'pending' ? (
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <button
+                                        onClick={() => handleApproveMarketplaceItem(item)}
+                                        className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                        title="Approve Asset"
+                                      >
+                                        <Check size={14} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectMarketplaceItem(item.id, item.title)}
+                                        className="p-1.5 bg-rose-50 dark:bg-rose-955/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                        title="Reject Asset"
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center gap-1">
+                                      {item.status?.toLowerCase() === 'active' ? (
+                                        <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
+                                          Active
+                                        </span>
+                                      ) : (
+                                        <span className="inline-block px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-[10px] font-bold font-display">
+                                          Rejected
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                               
@@ -2061,6 +2189,66 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             />
           </div>
         </div>
+      )}
+
+      {/* Rejection Reason Modal */}
+      {isRejectModalOpen && createPortal(
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5 animate-scale-up">
+            
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-display font-bold text-base text-slate-900 dark:text-white">
+                Rejection Reason
+              </h3>
+              <button
+                onClick={() => setIsRejectModalOpen(false)}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-studio active:scale-95"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">Item Details</span>
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-850">
+                {rejectItemTitle}
+              </h4>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Reason for Rejection *
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Please enter a detailed rejection reason..."
+                rows={4}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-450 dark:placeholder:text-slate-600"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold rounded-lg text-xs transition-studio"
+                onClick={() => setIsRejectModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingReject || !rejectReason.trim()}
+                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-studio active:scale-95"
+                onClick={handleConfirmRejection}
+              >
+                {isSubmittingReject ? "Rejecting..." : "Reject Submission"}
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
       )}
 
     </>

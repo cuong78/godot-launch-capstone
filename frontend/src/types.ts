@@ -30,6 +30,7 @@ export interface Asset {
   videoUrl?: string;
   documentation?: string;
   supportedPlatforms?: string;
+  webDemoUrl?: string;
 }
 
 export interface Project {
@@ -184,6 +185,7 @@ export interface AiReviewReport {
   codeQualityScore?: number | null;
   mediaMatchScore?: number | null;
   descriptionMatchScore?: number | null;
+  tagsMatchScore?: number | null;
   nsfwFlag?: boolean;
   overallRecommendation: AiRecommendation;
   suggestedPrice?: number | null;
@@ -408,6 +410,7 @@ export interface GameResponse {
   screenshots?: string[];
   videoUrl?: string;
   fileUrl?: string;
+  webDemoUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }

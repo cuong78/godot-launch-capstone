@@ -46,10 +46,11 @@ public class AiReviewClient {
      * @param branch         nhánh; null = default
      * @param videoUrl       URL video intro → cắt frame; null nếu không có
      * @param screenshotUrls URL các ảnh đã upload → CLIP + NSFW
+     * @param tags           danh sách các tags được chọn bởi developer
      */
     public AiReviewResult review(String contentType, String repoUrl, String token, String branch,
                                  String title, String description, String category,
-                                 String videoUrl, List<String> screenshotUrls) {
+                                 String videoUrl, List<String> screenshotUrls, List<String> tags) {
         String url = serviceUrl + "/ai/review";
 
         Map<String, Object> body = new HashMap<>();
@@ -62,6 +63,7 @@ public class AiReviewClient {
         if (category != null) body.put("category", category);
         if (videoUrl != null) body.put("videoUrl", videoUrl);
         body.put("screenshotUrls", screenshotUrls == null ? List.of() : screenshotUrls);
+        body.put("tags", tags == null ? List.of() : tags);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

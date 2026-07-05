@@ -93,6 +93,7 @@ public class AdminAiReviewController {
                 .codeQualityScore(r.getCodeQualityScore())
                 .mediaMatchScore(r.getMediaMatchScore())
                 .descriptionMatchScore(r.getDescriptionMatchScore())
+                .tagsMatchScore(r.getTagsMatchScore())
                 .nsfwFlag(r.isNsfwFlag())
                 .overallRecommendation(r.getOverallRecommendation() != null
                         ? r.getOverallRecommendation().name() : null)

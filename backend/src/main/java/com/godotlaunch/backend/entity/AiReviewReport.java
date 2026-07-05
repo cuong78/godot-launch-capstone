@@ -43,6 +43,9 @@ public class AiReviewReport {
     @Column(name = "description_match_score")
     private Integer descriptionMatchScore;
 
+    @Column(name = "tags_match_score")
+    private Integer tagsMatchScore;
+
     @Column(name = "nsfw_flag", nullable = false)
     private boolean nsfwFlag = false;
 

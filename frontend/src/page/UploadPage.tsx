@@ -64,6 +64,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Step State
   const [step, setStep] = useState<1 | 2>(1);
   const [gameId, setGameId] = useState<string | null>(null);
+  
+  // Game Web Demo upload states
+  const [demoFile, setDemoFile] = useState<File | null>(null);
+  const [demoUploadStatus, setDemoUploadStatus] = useState<"idle" | "uploading" | "completed" | "failed">("idle");
+  const [demoUploadProgress, setDemoUploadProgress] = useState<number>(0);
 
   // Publish Program Switch ('game' or 'marketplace')
   const [publishProgram, setPublishProgram] = useState<"game" | "marketplace">(
@@ -333,6 +338,25 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     }
   };
 
+  const handleUploadDemo = async (file: File) => {
+    if (!gameId) return;
+    setDemoUploadStatus("uploading");
+    setDemoUploadProgress(0);
+    try {
+      const res = await gameApi.uploadWebDemo(gameId, file, (percent) => {
+        setDemoUploadProgress(percent);
+      });
+      if (res.success) {
+        setDemoUploadStatus("completed");
+      } else {
+        setDemoUploadStatus("failed");
+      }
+    } catch (err) {
+      console.error("Failed to upload web demo:", err);
+      setDemoUploadStatus("failed");
+    }
+  };
+
   // Upload single file helper directly to S3
   const uploadFileToS3 = async (
     file: File,
@@ -479,13 +503,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const handleSubmitRepo = async () => {
     if (!gameId) return;
     if (!gameRepoUrl.trim()) {
-      setUploadError("Vui lòng nhập link repo GitHub.");
+      setUploadError("Please enter your GitHub repository link.");
       return;
     }
     setRepoSubmitting(true);
     setUploadError(null);
     setScanStatus("scanning");
-    setScanMessage("Đang verify repo, clone và quét bảo mật source code...");
+    setScanMessage("Verifying repo, cloning and scanning source code security...");
     try {
       const res = await gameApi.submitGameRepo(
         gameId,
@@ -496,10 +520,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setRepoSubmitted(true);
         setUploadStatus((prev) => ({ ...prev, game: "completed" }));
         setScanStatus("clean");
-        setScanMessage("Repo đã verify và quét sạch. Đang chờ duyệt.");
+        setScanMessage("Repo verified and clean. Awaiting approval.");
       } else {
         setScanStatus("failed");
-        setUploadError(res.message || "Submit repo thất bại.");
+        setUploadError(res.message || "Failed to submit repository.");
       }
     } catch (err: any) {
       // Repo private mà bot chưa có quyền → hiện hướng dẫn mời bot
@@ -515,7 +539,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       } else {
         setScanStatus("failed");
         setUploadError(
-          err.response?.data?.message || err.message || "Submit repo thất bại.",
+          err.response?.data?.message || err.message || "Failed to submit repository.",
         );
       }
     } finally {
@@ -532,16 +556,16 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       const res = await gameApi.acceptBot(gameRepoUrl.trim());
       if (res.success && res.data.granted) {
         setShowBotInvite(false);
-        await handleSubmitRepo(); // bot đã có quyền → submit lại
+        await handleSubmitRepo(); // bot has permission -> retry submit
       } else {
         setUploadError(
           res.message ||
-            "Chưa tìm thấy lời mời. Hãy chắc chắn bạn đã mời bot vào repo.",
+            "Invitation not found. Please ensure you have invited the bot to your repository.",
         );
       }
     } catch (err: any) {
       setUploadError(
-        err.response?.data?.message || "Không kết nối được. Thử lại sau.",
+        err.response?.data?.message || "Could not connect. Please try again later.",
       );
     } finally {
       setBotChecking(false);
@@ -571,7 +595,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           );
         }
       } catch (err: any) {
-        setUploadError(err.response?.data?.message || "Upload ảnh thất bại.");
+        setUploadError(err.response?.data?.message || "Failed to upload image.");
         setAssetImages((prev) => prev.filter((_, i) => i !== idx));
       }
     }
@@ -609,11 +633,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setUploadStatus((prev) => ({ ...prev, [statusKey]: "completed" }));
       } else {
         setUploadStatus((prev) => ({ ...prev, [statusKey]: "failed" }));
-        setUploadError(res.message || "Upload thất bại.");
+        setUploadError(res.message || "Upload failed.");
       }
     } catch (err: any) {
       setUploadStatus((prev) => ({ ...prev, [statusKey]: "failed" }));
-      setUploadError(err.response?.data?.message || "Upload thất bại.");
+      setUploadError(err.response?.data?.message || "Upload failed.");
     }
   };
 
@@ -707,10 +731,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       : "text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  Gói tài nguyên lẻ (Standalone Asset Pack)
+                  Standalone Asset Pack
                 </span>
                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
-                  Đăng bán các tài nguyên lẻ dùng để làm game như nhân vật 2D/3D, âm thanh, hiệu ứng, plugin. (Tải trực tiếp tệp nén ZIP)
+                  Publish standalone assets for game development such as 2D/3D characters, audio, effects, plugins (Direct ZIP download).
                 </span>
               </div>
               {publishProgram === "marketplace" && (
@@ -747,10 +771,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       : "text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  Dự án Game & Mã nguồn (Game Project & Source Code)
+                  Game Project & Source Code
                 </span>
                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
-                  Đăng bán mã nguồn dự án game trên Chợ, hoặc nộp game để hợp tác phát hành lên Store di động. (Yêu cầu liên kết GitHub Repo)
+                  List game project source code on the Marketplace, or submit a game for store publishing partnership (GitHub Repo link required).
                 </span>
               </div>
               {publishProgram === "game" && (
@@ -777,9 +801,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             />
 
             <Input
-              label="Proposed Price (VNĐ)"
-              prefix="đ"
-              placeholder="e.g. 50 000 (Set 0 for Free)"
+              label="Proposed Price (VND)"
+              prefix="VND"
+              placeholder="e.g. 50,000 (Set 0 for Free)"
               type="text"
               value={price}
               onChange={(e) => handlePriceChange(e.target.value)}
@@ -821,7 +845,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       ));
                     }
 
-                    // Marketplace asset: gồm category media (2D, 3D, Audio) + technical (scripts, shaders)
                     return [...mediaResources, ...technicalResources].map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
@@ -832,17 +855,17 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               )}
             </div>
 
-            {/* Tags (chọn nhiều) */}
+            {/* Tags (select multiple) */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
                 Tags{" "}
                 <span className="text-xs font-normal text-slate-500">
-                  (chọn nhiều — mô tả từ khóa cho game/asset)
+                  (select multiple — key descriptors for your game/asset)
                 </span>
               </label>
               {tags.length === 0 ? (
                 <div className="text-xs text-slate-500 py-2">
-                  Đang tải tags...
+                  Loading tags...
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
@@ -867,7 +890,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               )}
               {selectedTagIds.length > 0 && (
                 <span className="text-[11px] text-slate-500 mt-0.5">
-                  {selectedTagIds.length} tag đã chọn
+                  {selectedTagIds.length} tags selected
                 </span>
               )}
             </div>
@@ -900,10 +923,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 </select>
               </div>
             )}
-
-
           </div>
-
 
           {publishProgram === "marketplace" && (
             <div className="border-t border-slate-150 dark:border-slate-800 pt-6 space-y-6">
@@ -941,7 +961,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                           active
                             ? "bg-amber-500 border-amber-500 text-black shadow-sm"
-                            : "bg-white dark:bg-slate-900 border-slate-350 dark:border-slate-850 text-slate-650 dark:text-slate-300 hover:border-amber-400"
+                            : "bg-white dark:bg-slate-900 border-slate-350 dark:border-slate-855 text-slate-650 dark:text-slate-300 hover:border-amber-400"
                         }`}
                       >
                         {platform}
@@ -993,17 +1013,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
 
-            {/* GAME → repo GitHub | ASSET (marketplace) → upload ZIP */}
             {publishProgram === "game" ? (
               <div className="space-y-2.5">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <FileText size={16} className="text-amber-500" /> Repository
-                  GitHub{" "}
-                  {publishProgram === "game" ? "của Game" : "Source Code"} *
+                  <FileText size={16} className="text-amber-500" /> GitHub Repository *
                 </label>
                 <p className="text-xs text-slate-500">
-                  Hệ thống sẽ verify repo thuộc tài khoản GitHub của bạn, clone
-                  về, quét bảo mật và lưu bằng chứng (commit snapshot).
+                  The system will verify the repository belongs to your GitHub account, clone it, scan for security vulnerabilities, and take a commit snapshot.
                 </p>
                 <input
                   type="text"
@@ -1015,7 +1031,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 />
                 <input
                   type="text"
-                  placeholder="Branch (tùy chọn, mặc định: nhánh chính)"
+                  placeholder="Branch (optional, default: main branch)"
                   value={gameRepoBranch}
                   onChange={(e) => setGameRepoBranch(e.target.value)}
                   disabled={repoSubmitted}
@@ -1030,8 +1046,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   >
                     {repoSubmitting ? (
                       <>
-                        <RefreshCw size={14} className="animate-spin" /> Đang xử
-                        lý...
+                        <RefreshCw size={14} className="animate-spin" /> Processing...
                       </>
                     ) : (
                       <>
@@ -1041,15 +1056,75 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   </button>
                 ) : (
                   <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> Repo verified, cloned & quét sạch
+                    <CheckCircle2 size={13} /> Repo verified, cloned & scanned clean
                   </span>
+                )}
+
+                {gameId && (
+                  <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Upload size={16} className="text-amber-500" /> Web Demo ZIP (Optional)
+                    </label>
+                    <p className="text-xs text-slate-500">
+                      Upload an HTML5/WebAssembly build (.zip) so users can play the demo directly in their web browser.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept=".zip"
+                        onChange={async (e) => {
+                          const file = e.target.files ? e.target.files[0] : null;
+                          if (file) {
+                            setDemoFile(file);
+                            await handleUploadDemo(file);
+                          }
+                        }}
+                        className="hidden"
+                        id="web-demo-zip-input"
+                      />
+                      <label
+                        htmlFor="web-demo-zip-input"
+                        className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-255 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer flex items-center gap-1.5 transition-studio"
+                      >
+                        <Upload size={14} /> Select Demo ZIP
+                      </label>
+                      <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
+                        {demoFile
+                          ? `${demoFile.name} (${(demoFile.size / (1024 * 1024)).toFixed(2)} MB)`
+                          : "No file chosen (Recommended < 50MB)"}
+                      </span>
+                    </div>
+                    {demoUploadStatus === "uploading" && (
+                      <div className="space-y-1.5 mt-1.5">
+                        <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
+                          <span>Uploading demo...</span>
+                          <span>{demoUploadProgress}%</span>
+                        </div>
+                        <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
+                          <div
+                            className="bg-sky-500 h-full rounded-full transition-all duration-350"
+                            style={{ width: `${demoUploadProgress}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                    {demoUploadStatus === "completed" && (
+                      <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                        <CheckCircle2 size={13} /> Web demo uploaded and verified!
+                      </span>
+                    )}
+                    {demoUploadStatus === "failed" && (
+                      <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
+                        <AlertTriangle size={13} /> Demo upload failed. Please verify ZIP structure.
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
               <div className="space-y-2.5">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <FileText size={16} className="text-amber-500" /> Marketplace
-                  Item ZIP (.zip) *
+                  <FileText size={16} className="text-amber-500" /> Marketplace Item ZIP (.zip) *
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -1065,7 +1140,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   />
                   <label
                     htmlFor="game-zip-input"
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
                   >
                     <Upload size={14} /> Select ZIP File
                   </label>
@@ -1102,13 +1177,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
 
-            {/* Ảnh preview cho ASSET (asset_media) */}
+            {/* Preview Images for Asset */}
             {publishProgram === "marketplace" && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Image size={16} className="text-amber-500" /> Ảnh preview{" "}
+                  <Image size={16} className="text-amber-500" /> Preview Images{" "}
                   <span className="text-xs font-normal text-slate-500">
-                    (để buyer xem trước asset)
+                    (for buyers to preview the asset)
                   </span>
                 </label>
                 <input
@@ -1121,9 +1196,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 />
                 <label
                   htmlFor="asset-img-input"
-                  className="inline-flex px-4 py-2.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer items-center gap-1.5"
+                  className="inline-flex px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer items-center gap-1.5"
                 >
-                  <Upload size={14} /> Thêm ảnh
+                  <Upload size={14} /> Add Image
                 </label>
                 {assetImages.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -1198,7 +1273,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 )}
                 {uploadStatus["thumbnail"] === "completed" && (
                   <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> S3 Upload Complete
+                    <CheckCircle2 size={13} /> Upload Complete
                   </span>
                 )}
                 {uploadStatus["thumbnail"] === "failed" && (
@@ -1356,7 +1431,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 )}
                 {uploadStatus["video"] === "completed" && (
                   <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> S3 Upload Complete
+                    <CheckCircle2 size={13} /> Upload Complete
                   </span>
                 )}
                 {uploadStatus["video"] === "failed" && (

@@ -19,7 +19,8 @@ import com.godotlaunch.backend.service.GitHubRepoService;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.godotlaunch.backend.service.AsyncVirusScanService;
-import com.godotlaunch.backend.service.AwsS3Service;
+import com.godotlaunch.backend.service.SeaweedFsService;
+import com.godotlaunch.backend.service.ClamAVService;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.GameService;
 import com.godotlaunch.backend.repository.GameRepository;
@@ -58,7 +59,8 @@ public class GameServiceImpl implements GameService {
     private List<Media> gameMedia(UUID gameId) {
         return mediaRepository.findByGame_Id(gameId);
     }
-    private final AwsS3Service awsS3Service;
+    private final SeaweedFsService seaweedFsService;
+    private final ClamAVService clamAVService;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
     private final StorageRouter storageRouter;
@@ -75,16 +77,20 @@ public class GameServiceImpl implements GameService {
         return FileType.game_media;
     }
 
-    /** Build objectKey cố định/random theo loại media. */
-    private String buildMediaObjectKey(UUID gameId, String fileType) {
+    /** Build objectKey cố định/random theo loại media với đuôi mở rộng gốc. */
+    private String buildMediaObjectKey(UUID gameId, String fileType, MultipartFile file) {
+        String ext = "";
+        if (file != null && file.getOriginalFilename() != null && file.getOriginalFilename().contains(".")) {
+            ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
+        }
         if ("thumbnail".equalsIgnoreCase(fileType)) {
-            return "games/" + gameId + "/thumbnail";
+            return "games/" + gameId + "/thumbnail" + ext;
         }
         if ("video".equalsIgnoreCase(fileType)) {
-            return "games/" + gameId + "/video";
+            return "games/" + gameId + "/video" + ext;
         }
         // screenshot: mỗi cái 1 key random
-        return "games/" + gameId + "/screenshots/" + UUID.randomUUID();
+        return "games/" + gameId + "/screenshots/" + UUID.randomUUID() + ext;
     }
 
     @Override
@@ -100,6 +106,7 @@ public class GameServiceImpl implements GameService {
         game.setCreator(creator);
         game.setStatus(GameStatus.draft);
         game.setPublishingType(request.getPublishingType());
+        game.setSourceListed(request.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing);
         game.setGithubRepoUrl(request.getGithubRepoUrl());
         game.setGithubBranch(request.getGithubBranch());
 
@@ -305,6 +312,7 @@ public class GameServiceImpl implements GameService {
         }
         if (request.getPublishingType() != null) {
             game.setPublishingType(request.getPublishingType());
+            game.setSourceListed(request.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing);
         }
 
         Game updatedGame = gameRepository.save(game);
@@ -377,7 +385,7 @@ public class GameServiceImpl implements GameService {
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
-            return awsS3Service.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
+            return seaweedFsService.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
         } catch (Exception e) {
             log.warn("Failed to generate presigned GET URL for objectKey: {}, returning raw URL. Error: {}", objectKey, e.getMessage());
             return rawUrl;
@@ -419,6 +427,8 @@ public class GameServiceImpl implements GameService {
                 .screenshots(screenshots)
                 .videoUrl(videoUrl)
                 .fileUrl(getPresignedGetUrl(fileUrl))
+                .webDemoUrl(game.getWebDemoUrl())
+                .tags(game.getTags() == null ? java.util.List.of() : game.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList())
                 .githubRepoUrl(game.getGithubRepoUrl())
                 .githubBranch(game.getGithubBranch())
                 .createdAt(game.getCreatedAt())
@@ -444,7 +454,7 @@ public class GameServiceImpl implements GameService {
             objectKey = "games/" + gameId.toString() + "/game.zip";
         }
 
-        return awsS3Service.generatePresignedUploadUrl(objectKey, contentType);
+        return seaweedFsService.generatePresignedUploadUrl(objectKey, contentType);
     }
 
     @Override
@@ -455,14 +465,14 @@ public class GameServiceImpl implements GameService {
 
         if ("thumbnail".equalsIgnoreCase(fileType)) {
             String actualKey = objectKey != null ? objectKey : "games/" + gameId.toString() + "/thumbnail";
-            String thumbnailUrl = awsS3Service.getFileUrl(actualKey);
+            String thumbnailUrl = seaweedFsService.getFileUrl(actualKey);
             game.setThumbnailUrl(thumbnailUrl);
             gameRepository.save(game);
         } else if ("screenshot".equalsIgnoreCase(fileType) || "image".equalsIgnoreCase(fileType) || "video".equalsIgnoreCase(fileType)) {
             if (objectKey == null) {
                 throw new IllegalArgumentException("objectKey is required to confirm media uploads (screenshots or videos)");
             }
-            String mediaUrl = awsS3Service.getFileUrl(objectKey);
+            String mediaUrl = seaweedFsService.getFileUrl(objectKey);
             boolean isVideo = "video".equalsIgnoreCase(fileType);
 
             // Video chỉ có 1 cái/game → upload mới thay thế cái cũ (không giữ lịch sử).
@@ -494,7 +504,7 @@ public class GameServiceImpl implements GameService {
         }
 
         FileType ft = resolveMediaFileType(fileType);
-        String objectKey = buildMediaObjectKey(gameId, fileType);
+        String objectKey = buildMediaObjectKey(gameId, fileType, file);
 
         // Upload qua StorageRouter — route đúng provider (S3 / SeaweedFS) theo routing config
         String mediaUrl = storageRouter.uploadWithKey(ft, file, objectKey);
@@ -603,8 +613,8 @@ public class GameServiceImpl implements GameService {
             String zipKey = "games/" + gameId.toString() + "/game.zip";
             String thumbnailKey = "games/" + gameId.toString() + "/thumbnail";
 
-            awsS3Service.deleteObject(zipKey);
-            awsS3Service.deleteObject(thumbnailKey);
+            seaweedFsService.deleteObject(zipKey);
+            seaweedFsService.deleteObject(thumbnailKey);
 
             game.setThumbnailUrl(null);
 
@@ -613,7 +623,7 @@ public class GameServiceImpl implements GameService {
             for (Media media : mediaList) {
                 String mediaKey = extractObjectKeyFromUrl(media.getMediaUrl());
                 if (mediaKey != null) {
-                    awsS3Service.deleteObject(mediaKey);
+                    seaweedFsService.deleteObject(mediaKey);
                 }
             }
             mediaRepository.deleteByGame_Id(gameId);
@@ -663,5 +673,175 @@ public class GameServiceImpl implements GameService {
         }
         
         return url;
+    }
+
+    @Override
+    @Transactional
+    public void uploadWebDemo(UUID gameId, MultipartFile file, String creatorEmail) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+
+        if (!game.getCreator().getEmail().equalsIgnoreCase(creatorEmail)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // 1. Quét virus file ZIP bằng ClamAV
+        try (java.io.InputStream scanStream = file.getInputStream()) {
+            boolean isClean = clamAVService.scanStream(scanStream);
+            if (!isClean) {
+                log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin Web Demo tải lên của gameId: {}", gameId);
+                auditLogService.publishAuto(
+                        AuditAction.security_alert,
+                        AuditTarget.game,
+                        gameId,
+                        null,
+                        null,
+                        "PHÁT HIỆN MÃ ĐỘC trong file Web Demo zip tải lên."
+                );
+                throw new AppException(ErrorCode.SECURITY_CHECK_FAILED);
+            }
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Lỗi đọc file upload để quét virus", e);
+        }
+
+        // 2. Giải nén an toàn và validate cấu trúc
+        java.nio.file.Path tempDir = null;
+        try {
+            tempDir = java.nio.file.Files.createTempDirectory("web_demo_" + gameId.toString());
+            try (java.io.InputStream zipStream = file.getInputStream()) {
+                com.godotlaunch.backend.util.SafeZipUnpacker.unzipSafely(zipStream, tempDir);
+            }
+
+            // Tìm thư mục chứa file .html trong tệp ZIP đã giải nén
+            java.nio.file.Path demoRoot = findDemoRoot(tempDir);
+            if (demoRoot == null) {
+                log.warn("Không tìm thấy thư mục chứa file .html trong tệp ZIP");
+                throw new AppException(ErrorCode.INVALID_FILE_STRUCTURE, "Không tìm thấy file .html trong gói ZIP tải lên.");
+            }
+
+            // Kiểm tra cấu trúc ZIP: bắt buộc phải có đủ các file đuôi .html, .js, .wasm, .pck tại thư mục demo
+            java.io.File[] files = demoRoot.toFile().listFiles();
+            boolean hasHtml = false;
+            boolean hasJs = false;
+            boolean hasWasm = false;
+            boolean hasPck = false;
+            String htmlFileName = null;
+
+            if (files != null) {
+                for (java.io.File f : files) {
+                    if (f.isFile()) {
+                        String name = f.getName().toLowerCase();
+                        if (name.endsWith(".html")) {
+                            hasHtml = true;
+                            htmlFileName = f.getName();
+                        } else if (name.endsWith(".js")) {
+                            hasJs = true;
+                        } else if (name.endsWith(".wasm")) {
+                            hasWasm = true;
+                        } else if (name.endsWith(".pck")) {
+                            hasPck = true;
+                        }
+                    }
+                }
+            }
+
+            java.util.List<String> missing = new java.util.ArrayList<>();
+            if (!hasHtml) missing.add("*.html");
+            if (!hasJs) missing.add("*.js");
+            if (!hasWasm) missing.add("*.wasm");
+            if (!hasPck) missing.add("*.pck");
+
+            if (!missing.isEmpty()) {
+                String errorMsg = "Cấu trúc tệp tin tải lên không hợp lệ. Thiếu các tệp tin đuôi: " + String.join(", ", missing);
+                log.warn("Thiếu các tệp tin bắt buộc trong ZIP: {}", missing);
+                throw new AppException(ErrorCode.INVALID_FILE_STRUCTURE, errorMsg);
+            }
+
+            // 3. Upload toàn bộ các file đã giải nén đệ quy lên SeaweedFS
+            uploadDirectoryRecursive(demoRoot.toFile(), demoRoot.toFile(), gameId);
+
+            // 4. Lưu URL của file html tìm thấy làm entry point
+            String indexKey = "games/" + gameId.toString() + "/web_demo/" + htmlFileName;
+            String webDemoUrl = seaweedFsService.getFileUrl(indexKey);
+            game.setWebDemoUrl(webDemoUrl);
+            gameRepository.save(game);
+
+            log.info("Upload Web Demo thành công cho game {}: webDemoUrl = {}", gameId, webDemoUrl);
+
+        } catch (Exception e) {
+            log.error("Lỗi khi xử lý giải nén/tải lên Web Demo cho game {}", gameId, e);
+            if (e instanceof AppException) {
+                throw (AppException) e;
+            }
+            throw new RuntimeException("Lỗi xử lý Web Demo", e);
+        } finally {
+            // Dọn dẹp thư mục tạm
+            if (tempDir != null) {
+                try {
+                    deleteDirectoryRecursive(tempDir.toFile());
+                } catch (Exception e) {
+                    log.warn("Không thể xóa thư mục tạm: {}", tempDir, e);
+                }
+            }
+        }
+    }
+
+    private void uploadDirectoryRecursive(java.io.File root, java.io.File current, UUID gameId) throws java.io.IOException {
+        java.io.File[] files = current.listFiles();
+        if (files == null) return;
+        for (java.io.File file : files) {
+            if (file.isDirectory()) {
+                uploadDirectoryRecursive(root, file, gameId);
+            } else {
+                // Tính relative path
+                String relativePath = root.toURI().relativize(file.toURI()).getPath();
+                String objectKey = "games/" + gameId.toString() + "/web_demo/" + relativePath;
+
+                // Xác định content type
+                String contentType = determineContentType(file.getName());
+
+                try (java.io.InputStream is = new java.io.FileInputStream(file)) {
+                    seaweedFsService.uploadStream(is, objectKey, contentType);
+                }
+            }
+        }
+    }
+
+    private java.nio.file.Path findDemoRoot(java.nio.file.Path startPath) {
+        try (java.util.stream.Stream<java.nio.file.Path> stream = java.nio.file.Files.walk(startPath)) {
+            return stream
+                    .filter(java.nio.file.Files::isDirectory)
+                    .filter(path -> {
+                        java.io.File[] files = path.toFile().listFiles((dir, name) -> name.toLowerCase().endsWith(".html"));
+                        return files != null && files.length > 0;
+                    })
+                    .findFirst()
+                    .orElse(null);
+        } catch (java.io.IOException e) {
+            log.error("Lỗi khi tìm kiếm thư mục demo", e);
+            return null;
+        }
+    }
+
+    private String determineContentType(String fileName) {
+        String name = fileName.toLowerCase();
+        if (name.endsWith(".html") || name.endsWith(".htm")) return "text/html";
+        if (name.endsWith(".js")) return "application/javascript";
+        if (name.endsWith(".wasm")) return "application/wasm";
+        if (name.endsWith(".pck")) return "application/octet-stream";
+        if (name.endsWith(".css")) return "text/css";
+        if (name.endsWith(".png")) return "image/png";
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+        return "application/octet-stream";
+    }
+
+    private void deleteDirectoryRecursive(java.io.File path) {
+        java.io.File[] files = path.listFiles();
+        if (files != null) {
+            for (java.io.File f : files) {
+                deleteDirectoryRecursive(f);
+            }
+        }
+        path.delete();
     }
 }

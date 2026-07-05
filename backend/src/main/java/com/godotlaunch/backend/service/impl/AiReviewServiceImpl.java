@@ -18,7 +18,7 @@ import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.service.AiReviewService;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.GitHubRepoService;
-import com.godotlaunch.backend.service.AwsS3Service;
+import com.godotlaunch.backend.service.SeaweedFsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -45,7 +45,7 @@ public class AiReviewServiceImpl implements AiReviewService {
     private final MediaRepository mediaRepository;
     private final GitHubRepoService gitHubRepoService;
     private final AuditLogService auditLogService;
-    private final AwsS3Service awsS3Service;
+    private final SeaweedFsService seaweedFsService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -62,14 +62,24 @@ public class AiReviewServiceImpl implements AiReviewService {
             String token = safeCloneToken(game.getGithubRepoUrl());
             String videoUrl = getPresignedGetUrl(firstGameMediaUrl(gameId, "video"));
             List<String> screenshots = gameMediaUrls(gameId,
-                    "screenshot", "thumbnail").stream()
+                    "screenshot", "thumbnail", "image").stream()
                     .map(this::getPresignedGetUrl)
                     .collect(java.util.stream.Collectors.toList());
+
+            if (game.getThumbnailUrl() != null && !game.getThumbnailUrl().isBlank()) {
+                String thumbPresigned = getPresignedGetUrl(game.getThumbnailUrl());
+                if (!screenshots.contains(thumbPresigned)) {
+                    screenshots.add(0, thumbPresigned);
+                }
+            }
+
+            List<String> tags = game.getTags() == null ? List.of() :
+                    game.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList();
 
             AiReviewResult result = aiReviewClient.review(
                     "code", game.getGithubRepoUrl(), token, game.getGithubBranch(),
                     game.getTitle(), game.getDescription(), category,
-                    videoUrl, screenshots);
+                    videoUrl, screenshots, tags);
 
             if (result == null) return;
 
@@ -107,10 +117,20 @@ public class AiReviewServiceImpl implements AiReviewService {
                     .map(this::getPresignedGetUrl)
                     .collect(java.util.stream.Collectors.toList());
 
+            if (item.getThumbnailUrl() != null && !item.getThumbnailUrl().isBlank()) {
+                String thumbPresigned = getPresignedGetUrl(item.getThumbnailUrl());
+                if (!screenshots.contains(thumbPresigned)) {
+                    screenshots.add(0, thumbPresigned);
+                }
+            }
+
+            List<String> tags = item.getTags() == null ? List.of() :
+                    item.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList();
+
             AiReviewResult result = aiReviewClient.review(
                     "asset", null, null, null,
                     item.getTitle(), item.getDescription(), category,
-                    videoUrl, screenshots);
+                    videoUrl, screenshots, tags);
 
             if (result == null) return;
 
@@ -138,7 +158,7 @@ public class AiReviewServiceImpl implements AiReviewService {
         String objectKey = extractObjectKeyFromUrl(rawUrl);
         if (objectKey == null) return rawUrl;
         try {
-            return awsS3Service.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
+            return seaweedFsService.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
         } catch (Exception e) {
             log.warn("Failed to generate presigned GET URL for objectKey: {}, returning raw URL. Error: {}", objectKey, e.getMessage());
             return rawUrl;
@@ -176,6 +196,7 @@ public class AiReviewServiceImpl implements AiReviewService {
         report.setCodeQualityScore(result.getCodeQualityScore());
         report.setMediaMatchScore(result.getMediaMatchScore());
         report.setDescriptionMatchScore(result.getDescriptionMatchScore());
+        report.setTagsMatchScore(result.getTagsMatchScore());
         report.setNsfwFlag(result.isNsfwFlag());
         report.setOverallRecommendation(parseRecommendation(result.getOverallRecommendation()));
         report.setSuggestedPrice(result.getSuggestedPrice());

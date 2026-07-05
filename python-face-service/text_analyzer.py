@@ -13,6 +13,7 @@ Trả về:
     "descriptionAccurate": bool | None,  # DeepSeek: description có thật không, None nếu skip
     "titleScore": int,           # 0-100, điểm phù hợp tên (100 = hoàn toàn sạch)
     "descriptionScore": int,     # 0-100, điểm phù hợp mô tả
+    "tagsMatchScore": int | None, # 0-100, tag có khớp tên+mô tả không; None nếu không có tags
     "skipped": bool,             # DeepSeek bị bỏ qua
     "reason": str
   }
@@ -55,26 +56,30 @@ def _keyword_check(text: str, field: str) -> list[dict]:
     return issues
 
 
-def _deepseek_eval(title: str, description: str) -> dict:
+def _deepseek_eval(title: str, description: str, tags: list = []) -> dict:
     """
     Dùng DeepSeek đánh giá:
     1. Tên có phù hợp, không nhạy cảm không?
     2. Mô tả có phù hợp, không phóng đại/sai lệch không?
     3. Có nội dung 18+, bạo lực, cờ bạc không?
+    4. Thẻ tags được chọn có phù hợp với game không?
 
     Trả về dict hoặc {"skipped": true, "reason": ...}
     """
     if not DEEPSEEK_API_KEY:
         return {"skipped": True, "reason": "DEEPSEEK_API_KEY không được cấu hình"}
 
+    tags_str = ", ".join(tags) if tags else "None"
     prompt = f"""Bạn là chuyên gia kiểm duyệt nội dung cho nền tảng game Godot Engine.
-Hãy đánh giá tên và mô tả game dưới đây theo các tiêu chí:
+Hãy đánh giá tên, mô tả game và danh sách các thẻ tags dưới đây theo các tiêu chí:
 1. Tên game có phù hợp, lịch sự, không chứa ngôn từ nhạy cảm/phản cảm không?
 2. Mô tả có trung thực, phù hợp, không phóng đại hay chứa nội dung nhạy cảm không?
 3. Có nội dung người lớn (18+), bạo lực thực, cờ bạc, ma túy hoặc vi phạm pháp luật không?
+4. Danh sách các thẻ tags do developer tự chọn: [{tags_str}] có phù hợp với tên và mô tả game không? Có tag nào lạc đề, sai lệch thể loại, hoặc mang tính spam/không phù hợp không?
 
 TÊN GAME: {title[:200]}
 MÔ TẢ: {description[:800]}
+TAGS CHỌN: {tags_str}
 
 Trả về JSON với format (không được thêm markdown):
 {{
@@ -83,8 +88,10 @@ Trả về JSON với format (không được thêm markdown):
   "titleSensitive": <true/false>,
   "descriptionSensitive": <true/false>,
   "descriptionAccurate": <true/false/null — liệu mô tả có vẻ trung thực không>,
+  "tagsAppropriate": <true/false/null — liệu danh sách tags có phù hợp và chính xác không>,
+  "tagsMatchScore": <0-100, null nếu không có tags — điểm mức độ tags khớp với tên+mô tả game>,
   "issues": [
-    {{"field": "title"|"description", "type": "<vd: offensive_language|adult_content|misleading|gambling|violence>", "severity": "high"|"medium"|"low", "detail": "<giải thích ngắn tiếng Việt>"}}
+    {{"field": "title"|"description"|"tags", "type": "<vd: offensive_language|adult_content|misleading|gambling|violence|tags_mismatch>", "severity": "high"|"medium"|"low", "detail": "<giải thích ngắn tiếng Việt>"}}
   ],
   "summary": "<tóm tắt 1 câu bằng tiếng Việt>"
 }}"""
@@ -113,9 +120,9 @@ Trả về JSON với format (không được thêm markdown):
         return {"skipped": True, "reason": f"DeepSeek lỗi: {str(e)[:100]}"}
 
 
-def analyze(title: str = "", description: str = "") -> dict:
+def analyze(title: str = "", description: str = "", tags: list = []) -> dict:
     """
-    Phân tích tên + mô tả game. Entry point cho main.py.
+    Phân tích tên + mô tả game + tags. Entry point cho main.py.
     Luôn trả về dict đầy đủ — fail-soft với keyword check nếu DeepSeek lỗi.
     """
     title = (title or "").strip()
@@ -128,14 +135,20 @@ def analyze(title: str = "", description: str = "") -> dict:
         issues.extend(_keyword_check(title, "title"))
     if description:
         issues.extend(_keyword_check(description, "description"))
+    if tags:
+        for tag in tags:
+            tag_issues = _keyword_check(tag, "tags")
+            for ti in tag_issues:
+                ti["detail"] = f"Sensitive keyword in tag '{tag}': {ti['detail']}"
+                issues.append(ti)
 
     # Lớp 2: DeepSeek (nếu có)
     ds = {}
     skipped = True
-    reason = "Bỏ qua (không có title/description)"
+    reason = "Bỏ qua (không có dữ liệu)"
 
-    if title or description:
-        ds = _deepseek_eval(title, description)
+    if title or description or tags:
+        ds = _deepseek_eval(title, description, tags)
         skipped = bool(ds.get("skipped"))
         reason = ds.get("reason", "")
 
@@ -158,12 +171,23 @@ def analyze(title: str = "", description: str = "") -> dict:
         if not skipped
         else any(i["field"] == "description" for i in issues)
     )
+    tags_appropriate = (
+        ds.get("tagsAppropriate", True)
+        if not skipped
+        else not any(i["field"] == "tags" for i in issues)
+    )
+    tags_match_score = (
+        ds.get("tagsMatchScore") if not skipped
+        else (None if not tags else (100 if tags_appropriate else 30))
+    ) if tags else None
 
     return {
         "issues": issues,
         "titleSensitive": title_sensitive,
         "descriptionSensitive": description_sensitive,
         "descriptionAccurate": ds.get("descriptionAccurate"),
+        "tagsAppropriate": tags_appropriate,
+        "tagsMatchScore": tags_match_score,
         "titleScore": ds.get("titleScore", 100 if not title_sensitive else 30),
         "descriptionScore": ds.get("descriptionScore", 100 if not description_sensitive else 30),
         "summary": ds.get("summary", ""),

@@ -83,6 +83,13 @@ def _rule_based(root: Path) -> dict:
     total_loc = 0
     secrets = []
 
+    # Check extra files
+    has_license = any((root / f).is_file() for f in ["LICENSE", "LICENSE.txt", "license.md", "LICENSE.md"])
+    has_readme = any((root / f).is_file() for f in ["README.md", "README.txt", "readme.md"])
+    
+    # Check for unwanted cache folders pushed to git
+    has_unwanted_cache = (root / ".godot").is_dir() or (root / ".import").is_dir()
+
     import re
     secret_patterns = {
         "aws_key": re.compile(r"AKIA[0-9A-Z]{16}"),
@@ -90,6 +97,17 @@ def _rule_based(root: Path) -> dict:
         "generic_token": re.compile(
             r"(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['\"][0-9a-zA-Z\-_]{16,}['\"]"),
     }
+
+    # Extract config version from project.godot
+    godot_config_version = None
+    if has_project_godot:
+        try:
+            content = (root / "project.godot").read_text(errors="ignore")
+            m = re.search(r"config_version\s*=\s*(\d+)", content)
+            if m:
+                godot_config_version = int(m.group(1))
+        except Exception:
+            pass
 
     for path in root.rglob("*"):
         if not path.is_file():
@@ -120,6 +138,10 @@ def _rule_based(root: Path) -> dict:
         "codeFileCount": code_file_count,
         "totalLoc": total_loc,
         "secrets": secrets,
+        "hasLicense": has_license,
+        "hasReadme": has_readme,
+        "hasUnwantedCache": has_unwanted_cache,
+        "godotConfigVersion": godot_config_version,
     }
 
 

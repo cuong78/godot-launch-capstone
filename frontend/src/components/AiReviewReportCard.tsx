@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Bot, ShieldAlert, CheckCircle2, AlertTriangle, XCircle, RefreshCw,
-  Code2, ImageIcon, FileText, Eye, DollarSign, Percent,
+  Code2, ImageIcon, FileText, Eye, DollarSign, Percent, Tags,
 } from 'lucide-react';
 import { aiReviewApi } from '../api/aiReviewApi';
 import { AiReviewReport, AiRecommendation } from '../types';
@@ -142,10 +142,11 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
           <RecommendationBadge value={report.overallRecommendation} nsfw={report.nsfwFlag} />
 
           {/* Điểm từng tiêu chí */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             <ScoreChip label="Chất lượng code" icon={<Code2 size={12} />} value={report.codeQualityScore} />
             <ScoreChip label="Media khớp" icon={<ImageIcon size={12} />} value={report.mediaMatchScore} />
             <ScoreChip label="Mô tả đúng" icon={<FileText size={12} />} value={report.descriptionMatchScore} />
+            <ScoreChip label="Tags phù hợp" icon={<Tags size={12} />} value={report.tagsMatchScore} />
             <NsfwChip flag={report.nsfwFlag} />
           </div>
 

@@ -22,6 +22,7 @@ public class AiReviewReportResponse {
     private Integer codeQualityScore;
     private Integer mediaMatchScore;
     private Integer descriptionMatchScore;
+    private Integer tagsMatchScore;
     private boolean nsfwFlag;
 
     private String overallRecommendation;   // approve | review | reject

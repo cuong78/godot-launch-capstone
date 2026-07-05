@@ -9,7 +9,6 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.OrderRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.UserRepository;
-import com.godotlaunch.backend.service.AwsS3Service;
 import com.godotlaunch.backend.service.DownloadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +31,6 @@ public class DownloadServiceImpl implements DownloadService {
     private final UserRepository userRepository;
     private final SourceSnapshotRepository sourceSnapshotRepository;
     private final StorageRouter storageRouter;
-    private final AwsS3Service awsS3Service;
 
     @Override
     @Transactional

@@ -138,5 +138,25 @@ export const gameApi = {
   rejectGame: async (id: string, reason: string): Promise<ApiResponse<void>> => {
     const response = await api.post<ApiResponse<void>>(`/api/v1/admin/games/${id}/reject`, { reason });
     return response.data;
+  },
+
+  uploadWebDemo: async (
+    gameId: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<void>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<ApiResponse<void>>(
+      `/api/v1/games/${gameId}/web-demo`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
+        },
+      }
+    );
+    return response.data;
   }
 };

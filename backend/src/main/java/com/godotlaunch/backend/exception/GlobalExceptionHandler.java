@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
                 .success(false)
                 .status(errorCode.getHttpStatus().value())
                 .code(errorCode.name())
-                .message(errorCode.getMessage())
+                .message(ex.getMessage())
                 .build();
         return new ResponseEntity<>(response, errorCode.getHttpStatus());
     }

@@ -13,8 +13,8 @@ import java.io.InputStream;
 import java.util.UUID;
 
 /**
- * Router trung tâm: Đã đơn giản hóa chỉ dùng SeaweedFS cấu hình tĩnh từ application.yaml.
- * Giữ nguyên các phương thức để tránh thay đổi diện rộng ở các service khác.
+ * Central storage controller. Hardcoded to route exclusively to SeaweedFS.
+ * Preserves method signatures to minimize refactoring across services.
  */
 @Slf4j
 @Service
@@ -35,46 +35,33 @@ public class StorageRouter {
     @PostConstruct
     public void init() {
         this.seaweedAdapter = new SeaweedFsAdapter(filerHost, filerPort, basePath);
-        log.info("StorageRouter initialized with SeaweedFS adapter: {}:{}{}", filerHost, filerPort, basePath);
+        log.info("StorageRouter initialized exclusively with SeaweedFS: {}:{}{}", filerHost, filerPort, basePath);
     }
 
     /**
-     * Upload file theo fileType, tự resolve đúng provider từ routing config.
-     * @param fileType loại file (avatar, thumbnail, game_zip, ...)
-     * @param file     file upload
-     * @param prefix   prefix trong bucket (ví dụ: "avatars")
-     * @return public URL
+     * Upload file, defaulting to SeaweedFS Filer.
      */
     public String upload(FileType fileType, MultipartFile file, String prefix) {
         String objectKey = prefix + "/" + UUID.randomUUID() + "_" + sanitizeFilename(file.getOriginalFilename());
         return seaweedAdapter.upload(file, objectKey);
     }
 
-    /**
-     * Làm sạch tên file: bỏ dấu cách, ngoặc, ký tự đặc biệt (gây lỗi URL với SeaweedFS,
-     * và rắc rối khi truy cập). Giữ chữ/số/dấu chấm/gạch ngang/gạch dưới.
-     */
     private String sanitizeFilename(String filename) {
         if (filename == null || filename.isBlank()) {
             return "file";
         }
-        // Thay mọi ký tự không an toàn bằng '_', gộp '_' liên tiếp
-        String cleaned = filename.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("_+", "_");
-        return cleaned.isBlank() ? "file" : cleaned;
+        return filename.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("_+", "_");
     }
 
     /**
-     * Upload với objectKey cố định (không random) — dùng khi cần đọc lại file
-     * theo key đã biết, ví dụ virus scan marketplace zip.
-     * @return public URL
+     * Upload with a specific fixed objectKey to SeaweedFS.
      */
     public String uploadWithKey(FileType fileType, MultipartFile file, String objectKey) {
         return seaweedAdapter.upload(file, objectKey);
     }
 
     /**
-     * Đọc file về dạng InputStream theo objectKey — dispatch đúng provider.
-     * Caller có trách nhiệm đóng stream.
+     * Read file from SeaweedFS by key.
      */
     public InputStream getInputStream(FileType fileType, String objectKey) {
         if (seaweedAdapter instanceof SeaweedFsAdapter seaweed) {
@@ -84,7 +71,7 @@ public class StorageRouter {
     }
 
     /**
-     * Đọc file về dạng InputStream tự động phát hiện provider qua URL.
+     * Read file from SeaweedFS by URL.
      */
     public InputStream getInputStream(String fileUrl, FileType fileType, String objectKey) {
         if (seaweedAdapter instanceof SeaweedFsAdapter seaweed) {
@@ -94,35 +81,35 @@ public class StorageRouter {
     }
 
     /**
-     * Public URL của file theo objectKey — dispatch đúng provider.
+     * Get public URL from SeaweedFS.
      */
     public String getPublicUrl(FileType fileType, String objectKey) {
         return seaweedAdapter.getPublicUrl(objectKey);
     }
 
     /**
-     * Provider hiện đang route cho fileType này ("aws_s3" | "seaweedfs").
+     * Active provider for this fileType. Always returns seaweedfs.
      */
     public String getProvider(FileType fileType) {
         return "seaweedfs";
     }
 
     /**
-     * Xóa file — dùng khi biết fileType và objectKey (fid với SeaweedFS, key với S3).
+     * Delete file from SeaweedFS.
      */
     public void delete(FileType fileType, String objectKey) {
         seaweedAdapter.delete(objectKey);
     }
 
     /**
-     * Xóa file tự động phát hiện provider qua URL.
+     * Delete file from SeaweedFS by URL.
      */
     public void delete(String fileUrl, FileType fileType, String objectKey) {
         seaweedAdapter.delete(objectKey);
     }
 
     /**
-     * Xóa cache — giữ lại để tránh lỗi compile nếu có chỗ gọi.
+     * Clear Cache (No-op).
      */
     public void clearCache() {
         log.info("StorageRouter clearCache called (no-op)");

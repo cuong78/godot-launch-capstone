@@ -17,6 +17,7 @@ public class AiReviewResult {
     private Integer codeQualityScore;
     private Integer mediaMatchScore;
     private Integer descriptionMatchScore;
+    private Integer tagsMatchScore;                // tag có khớp tên+mô tả game không, 0-100
     private boolean nsfwFlag;
     private String overallRecommendation;          // approve | review | reject
     private BigDecimal suggestedPrice;             // giá AI gợi ý (USD)

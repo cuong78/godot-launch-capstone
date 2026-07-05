@@ -162,4 +162,15 @@ public class GameController {
         gameService.deleteGameMediaByUrl(id, mediaUrl, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Media item deleted successfully"), "Success"));
     }
+
+    @PostMapping(value = "/{id}/web-demo", consumes = "multipart/form-data")
+    @Operation(summary = "Upload Game Web Demo", description = "Upload bản Web export (.zip) của game để chơi thử. Giải nén tĩnh lên SeaweedFS.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadWebDemo(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        gameService.uploadWebDemo(id, file, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("message", "Web demo uploaded and activated successfully"), "Success"));
+    }
 }

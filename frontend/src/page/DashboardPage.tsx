@@ -50,25 +50,26 @@ interface DashboardPageProps {
   setCurrentScreen: (screen: any) => void;
 }
 
-const getContractStatusLabel = (status: string, signedAtSeller?: string | null) => {
-  switch (status) {
+const getContractStatusLabel = (status: string, signedAtSeller: boolean) => {
+  switch (status?.toLowerCase()) {
     case 'signed':
-      return { text: 'Hoàn tất', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
+      return { text: 'Completed', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
     case 'negotiating':
-      return { text: 'Thương lượng', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
+      return { text: 'Negotiating', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
+    case 'pending':
+      return signedAtSeller
+        ? { text: 'Signed (Awaiting Counter-sign)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
+        : { text: 'Reissued / Awaiting Sign', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+    case 'cancelled':
+      return { text: 'Cancelled', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+    case 'expired':
+      return { text: 'Expired', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
     case 're_issued':
       return signedAtSeller
-        ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
-        : { text: 'Cấp lại / Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
-    case 'cancelled':
-      return { text: 'Đã hủy', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
-    case 'expired':
-      return { text: 'Hết hạn', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
-    case 'pending':
+        ? { text: 'Signed (Awaiting Counter-sign)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
+        : { text: 'Awaiting Sign', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
     default:
-      return signedAtSeller
-        ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
-        : { text: 'Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+      return { text: status || 'Unknown', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
   }
 };
 
@@ -162,19 +163,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   };
 
   const handleDeleteMarketplaceItem = async (id: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn gỡ sản phẩm này khỏi Creator Marketplace?")) {
+    if (!window.confirm("Are you sure you want to remove this product from the Creator Marketplace?")) {
       return;
     }
     try {
       const res = await marketplaceApi.deleteMarketplaceItem(id);
       if (res.success) {
-        alert("Đã gỡ sản phẩm thành công!");
+        alert("Product successfully removed!");
         fetchMyMarketplaceItems();
       } else {
-        alert(res.message || "Không thể gỡ sản phẩm");
+        alert(res.message || "Failed to remove product");
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || "Lỗi khi gỡ sản phẩm");
+      alert(err.response?.data?.message || err.message || "Error removing product");
     }
   };
 
@@ -217,15 +218,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         sellerTaxCode
       );
       if (response.success) {
-        alert('Ký hợp đồng thành công! Hợp đồng đã hoàn tất và trò chơi đã được phê duyệt xuất bản.');
+        alert('Contract signed successfully! The contract is complete and the game is now approved for publishing.');
         setIsSignModalOpen(false);
         fetchMyGames();
         fetchMyContracts();
       } else {
-        alert(response.message || 'Lỗi ký hợp đồng');
+        alert(response.message || 'Error signing contract');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Lỗi thực hiện ký hợp đồng');
+      alert(err.response?.data?.message || err.message || 'Error performing contract signing');
     } finally {
       setIsSubmittingSignature(false);
     }
@@ -238,20 +239,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [currentUser]);
 
   const gameFilterOptions = [
-    { label: 'Tất cả', value: 'all' },
-    { label: 'Đã xuất bản / Hoàn tất', value: 'published_signed' },
-    { label: 'Chờ ký / Chờ duyệt', value: 'pending_signing' },
-    { label: 'Thương lượng', value: 'negotiating' },
-    { label: 'Bị từ chối', value: 'rejected' },
-    { label: 'Bản nháp', value: 'draft' }
+    { label: 'All', value: 'all' },
+    { label: 'Published / Completed', value: 'published_signed' },
+    { label: 'Awaiting Sign / Pending', value: 'pending_signing' },
+    { label: 'Negotiating', value: 'negotiating' },
+    { label: 'Rejected', value: 'rejected' },
+    { label: 'Draft', value: 'draft' }
   ];
 
   const assetFilterOptions = [
-    { label: 'Tất cả', value: 'all' },
-    { label: 'Đang bán', value: 'active' },
-    { label: 'Chờ duyệt', value: 'pending' },
-    { label: 'Bị từ chối', value: 'rejected' },
-    { label: 'Gỡ bỏ', value: 'removed' }
+    { label: 'All', value: 'all' },
+    { label: 'Active', value: 'active' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Rejected', value: 'rejected' },
+    { label: 'Removed', value: 'removed' }
   ];
 
   const filteredGames = myGames
@@ -333,7 +334,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
           <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Gross Sales Revenue</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">{financeStats.totalRevenue.toLocaleString('vi-VN')} đ</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{financeStats.totalRevenue.toLocaleString('vi-VN')} VND</span>
             <span className="text-[10px] text-emerald-500 font-bold font-mono">+12%</span>
           </div>
           <div className="w-full bg-slate-100 dark:bg-slate-950 h-1.5 rounded-full overflow-hidden">
@@ -385,19 +386,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={() => setActiveTab('my-games')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'my-games' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <Gamepad2 size={14} /> Game Phát Hành ({myGames.length})
+              <Gamepad2 size={14} /> Published Games ({myGames.length})
             </button>
             <button
               onClick={() => setActiveTab('marketplace-items')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'marketplace-items' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <ShoppingBag size={14} /> Tài Nguyên Chợ ({myMarketplaceItems.length})
+              <ShoppingBag size={14} /> Marketplace Assets ({myMarketplaceItems.length})
             </button>
             <button
               onClick={() => setActiveTab('git-repos')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'git-repos' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <Calendar size={14} /> Dự án Git (Mock) ({projectRepositories.length})
+              <Calendar size={14} /> Git Projects (Mock) ({projectRepositories.length})
             </button>
             <button
               onClick={() => setActiveTab('payment-center')}
@@ -413,7 +414,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {/* Game Status Filter Chips */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Trạng thái game:
+                  Game Status:
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {gameFilterOptions.map(option => (
@@ -434,11 +435,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
               {isLoadingGames ? (
                 <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
-                  <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách game...
+                  <RefreshCw className="animate-spin" size={18} /> Loading games...
                 </div>
               ) : gamesError ? (
                 <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                  Lỗi tải danh sách game: {gamesError}
+                  Error loading games: {gamesError}
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
@@ -446,11 +447,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
                         <th className="p-3 w-10"></th>
-                        <th className="p-3">Thông tin chi tiết</th>
-                        <th className="p-3">Thể loại</th>
-                        <th className="p-3">Loại phát hành</th>
-                        <th className="p-3">Giá đề xuất</th>
-                        <th className="p-3 text-center">Trạng thái</th>
+                        <th className="p-3">Details</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Publishing Type</th>
+                        <th className="p-3">Proposed Price</th>
+                        <th className="p-3 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
@@ -462,7 +463,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 <button
                                   onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                   className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
-                                  title={expandedGameId === game.id ? "Ẩn Chi Tiết" : "Xem Chi Tiết"}
+                                  title={expandedGameId === game.id ? "Hide Details" : "View Details"}
                                 >
                                   {expandedGameId === game.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                 </button>
@@ -473,27 +474,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   <button
                                     onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                     className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer"
-                                    title="Xem nhanh nội dung"
+                                    title="Quick Preview"
                                   >
                                     <Eye size={12} />
                                   </button>
                                 </div>
                                 <div className="text-[10px] text-slate-400 font-mono">ID: {game.id}</div>
                               </td>
-                              <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Chưa phân loại'}</td>
+                              <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Unassigned'}</td>
                               <td className="p-3">
                                 <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
                                   game.publishingType === 'full_acquisition'
                                     ? 'bg-amber-450/10 text-amber-500 border-amber-500/20'
                                     : game.publishingType === 'co_publishing'
                                     ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
-                                    : 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-205 dark:border-slate-800'
+                                    : 'bg-slate-100 dark:bg-slate-955 text-slate-500 border-slate-205 dark:border-slate-800'
                                 }`}>
                                   {game.publishingType ? game.publishingType.toUpperCase() : 'MARKETPLACE_LISTING'}
                                 </span>
                               </td>
                               <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                                {game.priceProposed === 0 ? 'Miễn phí' : `${game.priceProposed.toLocaleString('vi-VN')} đ`}
+                                {game.priceProposed === 0 ? 'Free' : `${game.priceProposed.toLocaleString('vi-VN')} VND`}
                               </td>
                               <td className="p-3 text-center">
                                 <div className="flex flex-col items-center gap-1.5 justify-center">
@@ -536,7 +537,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               className="flex items-center gap-1 px-2.5 py-1 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded text-[10px] transition-studio cursor-pointer animate-pulse whitespace-nowrap shadow-sm"
                                             >
                                               <PenTool size={10} />
-                                              Ký Hợp đồng
+                                              Sign Contract
                                             </button>
                                           );
                                         } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
@@ -551,7 +552,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               className="flex items-center gap-1 px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded text-[10px] transition-studio cursor-pointer whitespace-nowrap shadow-sm"
                                             >
                                               <Eye size={10} />
-                                              Đã ký
+                                              Signed
                                             </button>
                                           );
                                         } else if (contract.status === 'signed') {
@@ -566,7 +567,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded text-[10px] transition-studio cursor-pointer whitespace-nowrap shadow-sm"
                                             >
                                               <FileText size={10} />
-                                              Chi tiết
+                                              Details
                                             </button>
                                           );
                                         } else if (contract.status === 'negotiating') {
@@ -588,7 +589,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <div className="space-y-4">
                                       <div>
                                         <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
-                                          <Image size={12} /> Ảnh bìa (Thumbnail)
+                                          <Image size={12} /> Cover Thumbnail
                                         </h4>
                                         <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
                                           {game.thumbnailUrl ? (
@@ -607,9 +608,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       </div>
                                       
                                       <div className="space-y-1.5">
-                                        <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Mô tả chi tiết</h4>
-                                        <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                          {game.description || "Không có mô tả chi tiết."}
+                                        <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Detailed Description</h4>
+                                        <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-955/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                          {game.description || "No detailed description provided."}
                                         </p>
                                       </div>
                                       
@@ -621,19 +622,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           rel="noopener noreferrer"
                                           className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
                                         >
-                                          <Download size={14} /> Tải về tệp game ZIP
+                                          <Download size={14} /> Download Game ZIP
                                         </a>
                                       ) : (
                                         <div className="text-center py-2.5 px-4 bg-slate-550/10 border border-slate-500/20 text-slate-550 rounded-xl text-xs font-semibold">
-                                          Chưa có tệp game ZIP được tải lên
+                                          No Game ZIP package uploaded yet
                                         </div>
                                       )}
 
                                       {/* Alert box for rejected games */}
                                       {game.status?.toLowerCase() === 'rejected' && (
                                         <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-1">
-                                          <span className="font-bold flex items-center gap-1.5 text-xs"><AlertTriangle size={14} /> Game bị từ chối phê duyệt</span>
-                                          <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">Vui lòng kiểm tra địa chỉ email liên kết tài khoản của bạn để biết lý do từ chối chi tiết và các phản hồi từ ban quản trị hệ thống.</p>
+                                          <span className="font-bold flex items-center gap-1.5 text-xs"><AlertTriangle size={14} /> Game rejected by administrators</span>
+                                          <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">Please check your registered email address for details on rejection reason and administrative feedback.</p>
                                         </div>
                                       )}
 
@@ -644,10 +645,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           return (
                                             <div className="p-4 bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
                                               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                <FileCheck size={12} className="text-sky-500" /> Hợp đồng phát hành
+                                                <FileCheck size={12} className="text-sky-500" /> Publishing Contract
                                               </span>
                                               <div className="flex justify-between items-center text-xs">
-                                                <span className="text-slate-500">Trạng thái:</span>
+                                                <span className="text-slate-500">Status:</span>
                                                 {(() => {
                                                   const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
                                                   return (
@@ -670,7 +671,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   }}
                                                   className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded-lg text-xs transition-studio cursor-pointer"
                                                 >
-                                                  <PenTool size={14} /> Ký hợp đồng điện tử
+                                                  <PenTool size={14} /> Sign Electronic Contract
                                                 </button>
                                               )}
                                               {((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) && (
@@ -682,7 +683,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   }}
                                                   className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-sky-550 hover:bg-sky-600 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer"
                                                 >
-                                                  <Eye size={14} /> Xem chi tiết hợp đồng đã ký
+                                                  <Eye size={14} /> View Signed Contract Details
                                                 </button>
                                               )}
                                               {contract.status === 'negotiating' && null}
@@ -695,7 +696,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   }}
                                                   className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer"
                                                 >
-                                                  <FileText size={14} /> Xem & Tải hợp đồng
+                                                  <FileText size={14} /> View & Download Contract
                                                 </button>
                                               )}
                                             </div>
@@ -709,7 +710,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
                                       <div className="space-y-2">
                                         <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                          <Image size={12} className="text-sky-500" /> Ảnh chụp màn hình (Screenshots)
+                                          <Image size={12} className="text-sky-500" /> Screenshots
                                         </h4>
                                         {game.screenshots && game.screenshots.length > 0 ? (
                                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -734,9 +735,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             ))}
                                           </div>
                                         ) : (
-                                          <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-950/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                          <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
                                             <Image size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
-                                            <span className="text-[10px]">Chưa có ảnh chụp màn hình nào</span>
+                                            <span className="text-[10px]">No screenshots uploaded yet</span>
                                           </div>
                                         )}
                                       </div>
@@ -755,9 +756,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             />
                                           </div>
                                         ) : (
-                                          <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-950/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                          <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
                                             <Video size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
-                                            <span className="text-[10px]">Chưa có video gameplay nào</span>
+                                            <span className="text-[10px]">No gameplay video uploaded yet</span>
                                           </div>
                                         )}
                                       </div>
@@ -769,11 +770,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           </React.Fragment>
                         ))
                       ) : (
-                        <tr>
-                          <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20">
+                        <tr>                          <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20">
                             {myGames.length === 0
-                              ? 'Bạn chưa đăng tải game hoặc tài nguyên nào. Nhấn "Deploy Asset" ở trên để bắt đầu!'
-                              : 'Không tìm thấy game nào có trạng thái đã chọn.'}
+                              ? 'You have not uploaded any games or assets yet. Click "Deploy Asset" above to get started!'
+                              : 'No games found with the selected status.'}
                           </td>
                         </tr>
                       )}
@@ -790,7 +790,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {/* Asset Status Filter Chips */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Trạng thái tài nguyên:
+                  Asset Status:
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {assetFilterOptions.map(option => (
@@ -810,24 +810,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
 
               {isLoadingMarketplace ? (
-                <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
-                  <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách tài nguyên...
+                <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 rounded-xl">
+                  <RefreshCw className="animate-spin" size={18} /> Loading marketplace assets...
                 </div>
               ) : marketplaceError ? (
                 <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                  Lỗi tải danh sách tài nguyên: {marketplaceError}
+                  Error loading assets: {marketplaceError}
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
-                        <th className="p-3">Thông tin chi tiết</th>
-                        <th className="p-3">Loại sản phẩm</th>
-                        <th className="p-3">Phân loại</th>
-                        <th className="p-3">Giá bán</th>
-                        <th className="p-3 text-center">Trạng thái</th>
-                        <th className="p-3 text-center">Thao tác</th>
+                        <th className="p-3">Details</th>
+                        <th className="p-3">Product Type</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Price</th>
+                        <th className="p-3 text-center">Status</th>
+                        <th className="p-3 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
@@ -845,9 +845,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 RESOURCE ASSET
                               </span>
                             </td>
-                            <td className="p-3 text-slate-600 dark:text-slate-350">{item.categoryName || 'Chưa phân loại'}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-350">{item.categoryName || 'Unassigned'}</td>
                             <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                              {item.price === 0 ? 'Miễn phí' : `${item.price.toLocaleString('vi-VN')} đ`}
+                              {item.price === 0 ? 'Free' : `${item.price.toLocaleString('vi-VN')} VND`}
                             </td>
                             <td className="p-3 text-center">
                               <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
@@ -859,16 +859,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   ? 'bg-rose-500/10 text-rose-505 border-rose-500/20'
                                   : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
                               }`}>
-                                {item.status === 'active' ? 'Đang bán' :
-                                 item.status === 'pending' ? 'Chờ duyệt' :
-                                 item.status === 'rejected' ? 'Bị từ chối' : 'Gỡ bỏ'}
+                                {item.status === 'active' ? 'Active' :
+                                 item.status === 'pending' ? 'Pending' :
+                                 item.status === 'rejected' ? 'Rejected' : 'Removed'}
                               </span>
                             </td>
                             <td className="p-3 text-center">
                               <button
                                 onClick={() => handleDeleteMarketplaceItem(item.id)}
                                 className="p-1.5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded transition-colors cursor-pointer"
-                                title="Gỡ sản phẩm"
+                                title="Remove Product"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -877,10 +877,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20">
+                          <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-955/20">
                             {myMarketplaceItems.length === 0
-                              ? 'Bạn chưa đăng bán sản phẩm nào trên Creator Marketplace. Nhấn "Deploy Asset" ở trên để bắt đầu!'
-                              : 'Không tìm thấy tài nguyên nào có trạng thái đã chọn.'}
+                              ? 'You have not listed any assets on the Creator Marketplace yet. Click "Deploy Asset" above to get started!'
+                              : 'No assets found with the selected status.'}
                           </td>
                         </tr>
                       )}
@@ -1013,7 +1013,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               const res = await contractApi.signByDeveloper(selectedContract.id, sig, rep, addr, tax);
               return { success: res.success, message: res.message };
             } catch (err: any) {
-              return { success: false, message: err.response?.data?.message || err.message || 'Lỗi ký hợp đồng' };
+              return { success: false, message: err.response?.data?.message || err.message || 'Error signing contract' };
             }
           }}
           onRejectDeveloper={async (reason) => {
@@ -1021,7 +1021,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               const res = await contractApi.rejectByDeveloper(selectedContract.id, reason);
               return { success: res.success, message: res.message };
             } catch (err: any) {
-              return { success: false, message: err.response?.data?.message || err.message || 'Lỗi từ chối hợp đồng' };
+              return { success: false, message: err.response?.data?.message || err.message || 'Error rejecting contract' };
             }
           }}
         />
