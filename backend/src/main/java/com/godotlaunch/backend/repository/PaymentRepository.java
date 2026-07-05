@@ -13,13 +13,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
-    Optional<Payment> findByOrderId(UUID orderId);
     Optional<Payment> findByPayosOrderCode(Long payosOrderCode);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.payosOrderCode = :orderCode")
     Optional<Payment> findByPayosOrderCodeForUpdate(@Param("orderCode") Long orderCode);
     boolean existsByPayosOrderCode(Long payosOrderCode);
     List<Payment> findTop50ByOrderByCreatedAtDesc();
-    List<Payment> findByOrderBuyerIdOrderByCreatedAtDesc(UUID buyerId);
+    List<Payment> findByWalletUserIdOrderByCreatedAtDesc(UUID userId);
     List<Payment> findByPaymentStatusOrderByCreatedAtDesc(PaymentStatus paymentStatus);
+    Optional<Payment> findByWalletIdAndPaymentReferenceAndPaymentStatus(UUID walletId, String paymentReference, PaymentStatus paymentStatus);
 }

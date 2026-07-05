@@ -29,7 +29,6 @@ public class PaymentResponse {
     private UUID sellerId;
     private String sellerEmail;
     private String sellerFullName;
-    private OrderStatus orderStatus;
     private PaymentStatus paymentStatus;
     private BigDecimal amount;
     private String currency;

@@ -346,7 +346,6 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                   <tr>
                     <th className="p-3">{t('wallet:transactions.columns.type')}</th>
                     <th className="p-3">{t('wallet:transactions.columns.amount')}</th>
-                    <th className="p-3">{t('wallet:transactions.columns.status')}</th>
                     <th className="p-3">{t('wallet:transactions.columns.reference')}</th>
                     <th className="p-3">{t('wallet:transactions.columns.time')}</th>
                   </tr>
@@ -354,7 +353,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                 <tbody className="divide-y divide-slate-100 text-sm text-slate-700 dark:divide-slate-800 dark:text-slate-300">
                   {transactions.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">{t('wallet:transactions.empty')}</td>
+                      <td colSpan={4} className="p-6 text-center text-slate-400 dark:text-slate-500">{t('wallet:transactions.empty')}</td>
                     </tr>
                   ) : (
                     transactions.map((txn) => (
@@ -363,7 +362,6 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
                         <td className={`p-3 font-medium ${Number(txn.amount) < 0 ? 'text-rose-500' : 'text-amber-600'}`}>
                           {formatMoney(Number(txn.amount), summaryCurrency, locale, t('wallet:common.notAvailable'))}
                         </td>
-                        <td className="p-3 text-xs uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{txn.status || 'N/A'}</td>
                         <td className="p-3 font-mono text-xs text-slate-500 dark:text-slate-400">{txn.referenceId || '—'}</td>
                         <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(txn.createdAt?.toString(), locale, t('wallet:common.notAvailable'))}</td>
                       </tr>

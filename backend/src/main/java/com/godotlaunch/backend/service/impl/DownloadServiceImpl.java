@@ -3,10 +3,8 @@ package com.godotlaunch.backend.service.impl;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Order;
-import com.godotlaunch.backend.entity.Payment;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.FileType;
-import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.OrderRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
@@ -45,13 +43,9 @@ public class DownloadServiceImpl implements DownloadService {
         Order order = orderRepository.findById(purchaseId)
                 .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
 
-        Payment payment = order.getPayment();
         Asset item = order.getAsset();
 
         if (!order.getBuyer().getId().equals(buyer.getId())
-                || order.getOrderStatus() != OrderStatus.PAID
-                || payment == null
-                || payment.getPaymentStatus() != PaymentStatus.PAID
                 || item == null) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }

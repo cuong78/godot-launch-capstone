@@ -6,7 +6,6 @@ import com.godotlaunch.backend.entity.Transaction;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.WithdrawalRequest;
-import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.entity.enums.WithdrawalStatus;
 import com.godotlaunch.backend.repository.TransactionRepository;
@@ -108,7 +107,6 @@ class WithdrawalStatusSynchronizerImplTest {
         withdrawal.setPayosPayoutId("po_123");
         withdrawal.setPayosReferenceId(withdrawal.getId().toString());
         withdrawal.setStatus(WithdrawalStatus.processing);
-        withdrawal.setProcessedBy(adminUser);
     }
 
     @Test
@@ -187,9 +185,7 @@ class WithdrawalStatusSynchronizerImplTest {
         assertEquals(WithdrawalStatus.completed, result.getStatus());
         assertEquals(new BigDecimal("150000"), wallet.getBalance());
         assertEquals(TxnType.withdrawal, savedTransaction.getType());
-        assertEquals(TxnStatus.completed, savedTransaction.getStatus());
         assertEquals(new BigDecimal("-100000"), savedTransaction.getAmount());
-        assertEquals(new BigDecimal("-100000"), savedTransaction.getNetAmount());
         assertEquals("Withdrawal via PayOS", savedTransaction.getDescription());
         assertEquals(withdrawal.getId().toString(), savedTransaction.getReferenceId());
     }

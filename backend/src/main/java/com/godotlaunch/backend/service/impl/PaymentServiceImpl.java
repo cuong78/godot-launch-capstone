@@ -13,7 +13,6 @@ import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.OrderType;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
-import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.dto.request.PaymentGatewayCreateRequest;
@@ -87,16 +86,25 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.OWN_PRODUCT_PURCHASE_NOT_ALLOWED);
         }
 
-        Order order = orderRepository.findByBuyerIdAndAssetId(buyer.getId(), item.getId())
-                .orElseGet(() -> createOrder(buyer, item));
+        if (orderRepository.existsByBuyerIdAndAssetId(buyer.getId(), item.getId())) {
+            throw new AppException(ErrorCode.BAD_REQUEST);
+        }
 
-        Payment payment = order.getPayment();
+        Wallet buyerWallet = walletRepository.findByUserId(buyer.getId())
+                .orElseGet(() -> createWallet(buyer));
+
+        String buyRef = "BUY_ASSET:" + item.getId();
+
+        Payment payment = paymentRepository.findByWalletIdAndPaymentReferenceAndPaymentStatus(
+                buyerWallet.getId(), buyRef, PaymentStatus.PENDING).orElse(null);
+
         if (payment == null) {
             payment = new Payment();
-            payment.setOrder(order);
+            payment.setWallet(buyerWallet);
             payment.setPaymentStatus(PaymentStatus.PENDING);
             payment.setAmount(item.getPrice());
             payment.setCurrency(DEFAULT_CURRENCY);
+            payment.setPaymentReference(buyRef);
             payment = paymentRepository.save(payment);
         } else {
             payment = syncPaymentFromGateway(payment);
@@ -105,16 +113,18 @@ public class PaymentServiceImpl implements PaymentService {
                 return mapToResponse(paymentRepository.save(payment));
             }
 
-            payment = refreshPendingPaymentPricing(order, payment, item);
+            if (payment.getAmount().compareTo(item.getPrice()) != 0) {
+                payment.setAmount(item.getPrice());
+                payment = paymentRepository.save(payment);
+            }
 
             if (isActiveCheckout(payment)) {
-                return mapToResponse(paymentRepository.save(payment));
+                return mapToResponse(payment);
             }
         }
 
         if (payment.getAmount().compareTo(BigDecimal.ZERO) == 0) {
             payment.setCheckoutUrl(null);
-            payment.setPaymentReference(buildFreePaymentReference(payment.getId()));
             payment = completePaidPayment(payment, Instant.now(), null);
             return mapToResponse(payment);
         }
@@ -138,7 +148,6 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPayosPaymentLinkId(gatewayResponse.getPaymentLinkId());
         payment.setPayosTransactionId(null);
         payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
-        payment.setPaymentReference(buildPaymentReference(payment.getId()));
         payment.setPaidAt(null);
 
         return mapToResponse(paymentRepository.save(payment));
@@ -227,8 +236,7 @@ public class PaymentServiceImpl implements PaymentService {
                 firstNonBlank(webhook.getTransactionReference(), gatewayStatus.getTransactionReference())
         );
 
-        log.info("PayOS payment {} has been confirmed and finalized for order {}",
-                completedPayment.getId(), completedPayment.getOrder().getId());
+        log.info("PayOS payment {} has been confirmed and finalized", completedPayment.getId());
         return mapToResponse(completedPayment);
     }
 
@@ -236,7 +244,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional(readOnly = true)
     public List<PaymentResponse> getCurrentUserPayments(String requesterEmail) {
         User requester = getUserByEmail(requesterEmail);
-        return paymentRepository.findByOrderBuyerIdOrderByCreatedAtDesc(requester.getId()).stream()
+        return paymentRepository.findByWalletUserIdOrderByCreatedAtDesc(requester.getId()).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -244,8 +252,13 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentResponse getPaymentByOrder(UUID orderId, String requesterEmail) {
-        Payment payment = paymentRepository.findByOrderId(orderId)
+        Transaction txn = transactionRepository.findByOrderIdAndPaymentIsNotNull(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
+
+        Payment payment = txn.getPayment();
+        if (payment == null) {
+            throw new AppException(ErrorCode.PAYMENT_NOT_FOUND);
+        }
 
         User requester = getUserByEmail(requesterEmail);
         ensureRequesterCanAccess(payment, requester);
@@ -272,7 +285,6 @@ public class PaymentServiceImpl implements PaymentService {
         return PaymentStatusSummaryResponse.builder()
                 .paymentId(payment.getId())
                 .orderId(payment.getOrderId())
-                .orderStatus(payment.getOrderStatus())
                 .paymentStatus(payment.getPaymentStatus())
                 .checkoutUrl(payment.getCheckoutUrl())
                 .downloadUrl(payment.getDownloadUrl())
@@ -292,7 +304,6 @@ public class PaymentServiceImpl implements PaymentService {
         order.setBuyer(buyer);
         order.setAsset(item);
         order.setOrderType(resolveOrderType(item));
-        order.setOrderStatus(OrderStatus.PENDING);
         order.setPricePaid(item.getPrice());
         return orderRepository.save(order);
     }
@@ -327,7 +338,7 @@ public class PaymentServiceImpl implements PaymentService {
             return;
         }
 
-        if (!payment.getOrder().getBuyer().getId().equals(requester.getId())) {
+        if (!payment.getWallet().getUser().getId().equals(requester.getId())) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
     }
@@ -348,8 +359,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private boolean isCompletedPayment(Payment payment) {
-        return payment.getPaymentStatus() == PaymentStatus.PAID
-                && payment.getOrder().getOrderStatus() == OrderStatus.PAID;
+        return payment.getPaymentStatus() == PaymentStatus.PAID;
     }
 
     private Payment refreshPendingPaymentPricing(Order order, Payment payment, Asset item) {
@@ -429,42 +439,78 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private Payment completePaidPayment(Payment payment, Instant paidAt, String transactionReference) {
-        Order order = payment.getOrder();
-        Asset item = order.getAsset();
+        Wallet buyerWallet = payment.getWallet();
+        buyerWallet.setBalance(buyerWallet.getBalance().add(payment.getAmount()));
+        walletRepository.save(buyerWallet);
 
-        if (order.getTransaction() == null) {
-            BigDecimal platformCommission = calculatePlatformCommission(payment.getAmount());
-            BigDecimal sellerRevenue = payment.getAmount().subtract(platformCommission);
+        String paymentReference = payment.getPaymentReference();
+        if (paymentReference != null && paymentReference.startsWith("BUY_ASSET:")) {
+            UUID assetId = UUID.fromString(paymentReference.substring("BUY_ASSET:".length()));
+            Asset item = assetRepository.findById(assetId)
+                    .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+            User buyer = buyerWallet.getUser();
 
-            Wallet sellerWallet = walletRepository.findByUserId(item.getSeller().getId())
-                    .orElseGet(() -> createWallet(item.getSeller()));
-
-            if (!DEFAULT_CURRENCY.equalsIgnoreCase(sellerWallet.getCurrency())) {
-                sellerWallet.setCurrency(DEFAULT_CURRENCY);
+            Order order = orderRepository.findByBuyerIdAndAssetId(buyer.getId(), item.getId()).orElse(null);
+            if (order == null) {
+                order = new Order();
+                order.setBuyer(buyer);
+                order.setAsset(item);
+                order.setOrderType(resolveOrderType(item));
+                order.setPricePaid(item.getPrice());
+                order = orderRepository.save(order);
             }
 
-            Transaction transaction = new Transaction();
-            transaction.setWallet(sellerWallet);
-            transaction.setRelatedUser(order.getBuyer());
-            // Asset = tài nguyên lẻ, không gắn game (game-source purchase wire ở Phase 2)
-            transaction.setGame(null);
-            transaction.setAsset(item);
-            transaction.setAmount(payment.getAmount());
-            transaction.setPlatformCommission(platformCommission);
-            transaction.setNetAmount(sellerRevenue);
-            transaction.setType(resolveTransactionType(item));
-            transaction.setStatus(TxnStatus.completed);
-            transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+            if (!transactionRepository.existsByOrderId(order.getId())) {
+                BigDecimal platformCommission = calculatePlatformCommission(payment.getAmount());
+                BigDecimal sellerRevenue = payment.getAmount().subtract(platformCommission);
 
-            Transaction savedTransaction = transactionRepository.save(transaction);
-            sellerWallet.setBalance(sellerWallet.getBalance().add(sellerRevenue));
-            walletRepository.save(sellerWallet);
+                Wallet sellerWallet = walletRepository.findByUserId(item.getSeller().getId())
+                        .orElseGet(() -> createWallet(item.getSeller()));
 
-            order.setTransaction(savedTransaction);
+                if (!DEFAULT_CURRENCY.equalsIgnoreCase(sellerWallet.getCurrency())) {
+                    sellerWallet.setCurrency(DEFAULT_CURRENCY);
+                }
+
+                Transaction transaction = new Transaction();
+                transaction.setWallet(sellerWallet);
+                transaction.setRelatedUser(buyer);
+                transaction.setGame(null);
+                transaction.setAsset(item);
+                transaction.setAmount(sellerRevenue);
+                transaction.setType(resolveTransactionType(item));
+                transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+                transaction.setOrder(order);
+                transaction.setPayment(payment);
+                transactionRepository.save(transaction);
+
+                sellerWallet.setBalance(sellerWallet.getBalance().add(sellerRevenue));
+                walletRepository.save(sellerWallet);
+
+                buyerWallet.setBalance(buyerWallet.getBalance().subtract(payment.getAmount()));
+                walletRepository.save(buyerWallet);
+
+                Transaction buyerTxn = new Transaction();
+                buyerTxn.setWallet(buyerWallet);
+                buyerTxn.setRelatedUser(item.getSeller());
+                buyerTxn.setAsset(item);
+                buyerTxn.setAmount(payment.getAmount().negate());
+                buyerTxn.setType(resolveTransactionType(item));
+                buyerTxn.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+                buyerTxn.setOrder(order);
+                buyerTxn.setPayment(payment);
+                transactionRepository.save(buyerTxn);
+            }
+        } else {
+            if (!transactionRepository.findByPaymentId(payment.getId()).isPresent()) {
+                Transaction transaction = new Transaction();
+                transaction.setWallet(buyerWallet);
+                transaction.setAmount(payment.getAmount());
+                transaction.setType(TxnType.wallet_topup);
+                transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference()));
+                transaction.setPayment(payment);
+                transactionRepository.save(transaction);
+            }
         }
-
-        order.setOrderStatus(OrderStatus.PAID);
-        orderRepository.save(order);
 
         payment.setPaymentStatus(PaymentStatus.PAID);
         payment.setPaidAt(payment.getPaidAt() != null ? payment.getPaidAt() : paidAt);
@@ -579,22 +625,58 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private PaymentResponse mapToResponse(Payment payment) {
-        Order order = payment.getOrder();
-        Asset item = order.getAsset();
+        UUID assetId = null;
+        String assetTitle = null;
+        UUID orderId = null;
+        UUID buyerId = payment.getWallet().getUser().getId();
+        String buyerEmail = payment.getWallet().getUser().getEmail();
+        String buyerFullName = payment.getWallet().getUser().getFullName();
+        UUID sellerId = null;
+        String sellerEmail = null;
+        String sellerFullName = null;
+
+        String ref = payment.getPaymentReference();
+        if (ref != null && ref.startsWith("BUY_ASSET:")) {
+            try {
+                assetId = UUID.fromString(ref.substring("BUY_ASSET:".length()));
+                Asset asset = assetRepository.findById(assetId).orElse(null);
+                if (asset != null) {
+                    assetTitle = asset.getTitle();
+                    sellerId = asset.getSeller().getId();
+                    sellerEmail = asset.getSeller().getEmail();
+                    sellerFullName = asset.getSeller().getFullName();
+                }
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+            Transaction txn = transactionRepository.findByPaymentId(payment.getId()).orElse(null);
+            if (txn != null && txn.getOrder() != null) {
+                orderId = txn.getOrder().getId();
+                if (txn.getAsset() != null) {
+                    assetId = txn.getAsset().getId();
+                    assetTitle = txn.getAsset().getTitle();
+                    sellerId = txn.getAsset().getSeller().getId();
+                    sellerEmail = txn.getAsset().getSeller().getEmail();
+                    sellerFullName = txn.getAsset().getSeller().getFullName();
+                }
+            }
+        }
 
         return PaymentResponse.builder()
                 .id(payment.getId())
-                .orderId(order.getId())
-                .assetId(item.getId())
-                .assetTitle(item.getTitle())
+                .orderId(orderId)
+                .assetId(assetId)
+                .assetTitle(assetTitle)
                 .assetType("asset")
-                .buyerId(order.getBuyer().getId())
-                .buyerEmail(order.getBuyer().getEmail())
-                .buyerFullName(order.getBuyer().getFullName())
-                .sellerId(item.getSeller().getId())
-                .sellerEmail(item.getSeller().getEmail())
-                .sellerFullName(item.getSeller().getFullName())
-                .orderStatus(order.getOrderStatus())
+                .buyerId(buyerId)
+                .buyerEmail(buyerEmail)
+                .buyerFullName(buyerFullName)
+                .sellerId(sellerId)
+                .sellerEmail(sellerEmail)
+                .sellerFullName(sellerFullName)
                 .paymentStatus(payment.getPaymentStatus())
                 .amount(payment.getAmount())
                 .currency(payment.getCurrency())
@@ -604,25 +686,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .checkoutUrl(payment.getCheckoutUrl())
                 .paymentReference(payment.getPaymentReference())
                 .paidAt(payment.getPaidAt())
-                .downloadUrl(resolveDownloadUrl(order, item, payment))
+                .downloadUrl(orderId != null && assetId != null ? "/api/v1/downloads/" + orderId : null)
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();
     }
 
-    private String resolveDownloadUrl(Order order, Asset item, Payment payment) {
-        if (order.getOrderStatus() != OrderStatus.PAID
-                || payment.getPaymentStatus() != PaymentStatus.PAID) {
-            return null;
-        }
-
-        // Asset = file đã upload: có file thật (khác 'pending') mới cho tải.
-        boolean hasFile = StringUtils.hasText(item.getFileUrl())
-                && !"pending".equalsIgnoreCase(item.getFileUrl());
-        if (!hasFile) {
-            return null;
-        }
-
-        return "/api/v1/downloads/" + order.getId();
-    }
 }

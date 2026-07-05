@@ -291,10 +291,6 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
                       <span className="font-semibold text-amber-500 text-right">{formatMoney(selectedPayment.amount)}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Order Status</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.orderStatus}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
                       <span className="text-slate-500 dark:text-slate-400">Payment Status</span>
                       <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.paymentStatus}</span>
                     </div>

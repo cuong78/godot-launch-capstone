@@ -9,7 +9,6 @@ import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.WithdrawalRequest;
-import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.WithdrawalStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.TransactionRepository;
@@ -124,7 +123,7 @@ class WithdrawalRequestServiceImplTest {
         when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
         when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumNetAmountByWalletIdAndTypeInAndStatus(eq(wallet.getId()), anySet(), eq(TxnStatus.completed)))
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
                 .thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet()))
                 .thenReturn(new BigDecimal("100000"));
@@ -211,7 +210,7 @@ class WithdrawalRequestServiceImplTest {
         withdrawal.setStatus(WithdrawalStatus.completed);
         when(withdrawalStatusSynchronizer.synchronize(withdrawal.getId(), adminUser.getEmail())).thenReturn(withdrawal);
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumNetAmountByWalletIdAndTypeInAndStatus(eq(wallet.getId()), anySet(), eq(TxnStatus.completed)))
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
                 .thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet()))
                 .thenReturn(BigDecimal.ZERO);

@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.dto.response;
 
-import com.godotlaunch.backend.entity.enums.TxnStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,10 +24,7 @@ public class TransactionResponse {
     private UUID gameId;
     private String gameTitle;
     private BigDecimal amount;
-    private BigDecimal platformCommission;
-    private BigDecimal netAmount;
     private TxnType type;
-    private TxnStatus status;
     private String referenceId;
     private Instant createdAt;
 }

@@ -10,7 +10,7 @@ import com.godotlaunch.backend.entity.Order;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
-    boolean existsByBuyerIdAndAssetIdAndOrderStatus(UUID buyerId, UUID assetId, OrderStatus orderStatus);
+    boolean existsByBuyerIdAndAssetId(UUID buyerId, UUID assetId);
 
     Optional<Order> findByBuyerIdAndAssetId(UUID buyerId, UUID assetId);
 }

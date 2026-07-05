@@ -299,10 +299,6 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
                   <p className="mt-2 font-display text-lg font-bold text-amber-500">{formatMoney(payment.amount, locale, t('payment:common.free'))}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.orderStatus')}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{payment.orderStatus}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.paidAt')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{formatTimestamp(payment.paidAt, locale, t('payment:common.notAvailable'))}</p>
                 </div>
