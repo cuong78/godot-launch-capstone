@@ -1,0 +1,159 @@
+@startuml Withdraw
+
+title Rút tiền — Admin approve tự động gọi payout, ví Platform CHỈ bị trừ khi payout THÀNH CÔNG THẬT
+
+actor Developer as Dev
+participant "Frontend" as FE
+participant "WithdrawalController" as WdCtrl
+participant "WithdrawalRequestServiceImpl" as WdSvc
+participant "WalletRepository" as WalletRepo
+participant "PayoutGateway\n(PayOS/Bảo Kim client)" as Gateway
+participant "PayOS/Bảo Kim" as Payout
+participant "WithdrawalStatusSynchronizer" as Sync
+participant "TransactionRepository" as TxnRepo
+actor Admin
+
+note over Dev, TxnRepo #FFF3CD
+  Diagram vẽ theo mô hình MỚI đã chốt (Transaction chỉ có field
+  `amount`, không còn platformCommission/netAmount/status —
+  xem V8/V9). Code WithdrawalStatusSynchronizerImpl HIỆN TẠI vẫn
+  dùng field cũ, cần viết lại khi implement.
+end note
+
+== Bước 1: Developer tạo yêu cầu rút tiền ==
+
+Dev -> FE: Nhập số tiền + thông tin ngân hàng\n(bankName, bankAccount, accountHolder)
+FE -> WdCtrl: POST /api/developer/withdrawals\n{ amount, bankName, bankAccount, accountHolder, note }
+WdCtrl -> WdSvc: createDeveloperWithdrawal(request, email)
+
+WdSvc -> WalletRepo: getOrCreateLockedWallet(developer)
+WalletRepo --> WdSvc: wallet (khóa row — tránh race condition\nnếu dev bấm rút nhiều lần liên tiếp)
+
+WdSvc -> WdSvc: tính availableBalance\n(balance trừ đi các khoản đang pending/processing)
+alt amount > availableBalance
+  WdSvc --> FE: 400 INSUFFICIENT_BALANCE
+  FE --> Dev: Không đủ số dư khả dụng để rút
+else Đủ số dư
+  WdSvc -> WdSvc: new WithdrawalRequest\n(status = pending, transferReference tự sinh)
+  WdSvc -> WdSvc: save
+  WdSvc --> FE: WithdrawalRequest tạo thành công (pending)
+  FE --> Dev: Yêu cầu rút tiền đã gửi — chờ admin duyệt
+end
+
+note right of WdSvc #FFDDDD
+  **Ví Developer CHƯA bị trừ ở bước này** — chỉ mới trừ khỏi
+  "số dư khả dụng" (availableBalance, để chặn rút trùng), tiền
+  thật trong wallet.balance chỉ trừ SAU KHI payout thành công
+  thật (Bước 4) — tránh mất tiền oan nếu payout thất bại.
+end note
+
+== Bước 2: Admin xem và quyết định ==
+
+Admin -> WdCtrl: GET /api/admin/withdrawals (danh sách pending)
+WdCtrl --> Admin: Danh sách yêu cầu rút tiền
+
+Admin -> WdSvc: Xem chi tiết 1 yêu cầu, quyết định
+
+alt Admin TỪ CHỐI
+  Admin -> WdCtrl: POST /api/admin/withdrawals/{id}/reject { remark }
+  WdCtrl -> WdSvc: rejectWithdrawal(id, remark, adminEmail)
+  WdSvc -> WdSvc: check status == pending/processing\n(nếu không -> INVALID_WITHDRAWAL_STATUS)
+  WdSvc -> WdSvc: check remark không rỗng\n(bắt buộc phải có lý do từ chối)
+  WdSvc -> WdSvc: withdrawal.status = rejected\nprocessedBy = admin, processedAt = now
+  WdSvc --> Dev: Thông báo — bị từ chối (kèm lý do)
+  note right of WdSvc: Không có tiền nào bị trừ —\nví Developer/Platform giữ nguyên
+else Admin CHẤP NHẬN (approve)
+  Admin -> WdCtrl: POST /api/admin/withdrawals/{id}/approve
+  WdCtrl -> WdSvc: approveWithdrawal(id, adminEmail)
+  WdSvc -> WdSvc: check status == pending\n(nếu không -> INVALID_WITHDRAWAL_STATUS)
+
+  note over WdSvc, Payout #DDFFDD
+    **"Admin chấp nhận gửi tiền về cho user"** — approve KHÔNG
+    chỉ đổi status, mà TỰ ĐỘNG kích hoạt payout thật ngay lập tức.
+    Admin không tự tay chuyển khoản — hệ thống gọi PayOS/Bảo Kim.
+  end note
+
+  WdSvc -> Gateway: getBalance() — kiểm tra ví\nnguồn (platform) còn đủ tiền không
+  Gateway -> Payout: GET /balance
+  Payout --> Gateway: balance hiện tại
+  Gateway --> WdSvc: balance
+
+  alt Ví platform bên PayOS/Bảo Kim KHÔNG đủ tiền
+    WdSvc --> FE: 400 INSUFFICIENT_PAYOUT_BALANCE
+    FE --> Admin: Không thể duyệt — ví nguồn không đủ tiền
+  else Đủ tiền
+    WdSvc -> Gateway: createPayout(amount, bankAccount,\naccountHolder, transferReference)
+    Gateway -> Payout: POST /payouts (tạo lệnh chuyển khoản)
+    Payout --> Gateway: payoutId, referenceId, status
+
+    alt Payout tạo lệnh thất bại ngay lập tức
+      Gateway --> WdSvc: status = FAILED
+      WdSvc --> FE: 400 PAYOUT_CREATE_FAILED
+      FE --> Admin: Tạo lệnh chuyển khoản thất bại
+    else Payout đã nhận lệnh (đang xử lý)
+      Gateway --> WdSvc: payoutId, status = PROCESSING
+      WdSvc -> WdSvc: withdrawal.status = processing\nprocessedBy = admin, payosPayoutId = payoutId
+      WdSvc -> WdSvc: save
+      WdSvc --> FE: Đã gửi lệnh chuyển khoản — đang xử lý
+      FE --> Admin: Trạng thái: processing
+    end
+  end
+end
+
+== Bước 3: Polling định kỳ — đồng bộ trạng thái payout thật ==
+
+note over Sync, Payout #FFDDDD
+  PayOS/Bảo Kim payout KHÔNG có webhook đáng tin cậy —
+  polling định kỳ (cronjob) để biết payout đã chuyển
+  tiền thành công thật hay chưa.
+end note
+
+loop Polling định kỳ (cronjob) cho tới khi có KẾT QUẢ CUỐI
+  Sync -> Gateway: getPayoutStatus(payosPayoutId)
+  Gateway -> Payout: GET /payouts/{payoutId}
+  Payout --> Gateway: trạng thái thật
+  Gateway --> Sync: remoteStatus
+
+  alt remoteStatus = THÀNH CÔNG (tiền đã vào tài khoản Dev)
+    note over Sync, TxnRepo #DDFFDD
+      **Bước 4 — CHỈ TỚI ĐÂY ví Platform mới thực sự bị trừ**
+      (yêu cầu flow.md #6: "ví admin sẽ bị trừ tiền"). Trừ dựa
+      trên xác nhận PayOS thật, không trừ sớm hơn.
+    end note
+    Sync -> WalletRepo: findByUserIdWithLock(platform.systemUserId)
+    WalletRepo --> Sync: platformWallet
+    alt platformWallet.balance < withdrawal.amount
+      Sync -> Sync: throw INSUFFICIENT_BALANCE\n(bất thường — đã check ở Bước 2 nhưng vẫn double-check)
+    else Đủ tiền
+      Sync -> WalletRepo: platformWallet.balance -= withdrawal.amount
+      WalletRepo -> WalletRepo: save(platformWallet)
+
+      Sync -> TxnRepo: new Transaction\n{wallet=platformWallet, relatedUser=developer,\ntype=withdrawal, amount = -withdrawal.amount}
+      TxnRepo -> TxnRepo: save
+
+      Sync -> Sync: withdrawal.status = completed\nwithdrawal.processedAt = now (nếu chưa có)
+      Sync -> Sync: save
+      Sync --> Dev: Thông báo — rút tiền thành công,\ntiền đã về tài khoản ngân hàng
+    end
+    break
+      note right of Sync: Có kết quả cuối -> DỪNG polling
+    end
+  else remoteStatus = THẤT BẠI
+    Sync -> Sync: withdrawal.status = failed\nremark += lý do thất bại từ PayOS
+    Sync -> Sync: save
+    note right of Sync #FFDDDD
+      Ví Platform CHƯA từng bị trừ (đúng thiết kế) -> KHÔNG
+      cần hoàn tiền. availableBalance của Dev tự động trả lại
+      bình thường (vì chỉ trừ balance thật lúc completed).
+    end note
+    Sync --> Dev: Thông báo — rút tiền thất bại,\ncó thể tạo yêu cầu rút lại
+    break
+      note right of Sync: Có kết quả cuối -> DỪNG polling
+    end
+  else Vẫn đang xử lý (chưa có kết quả)
+    Sync -> Sync: chưa đổi gì
+    note right of Sync: Không break -> vòng loop tiếp tục,\nchờ tới lượt polling kế tiếp
+  end
+end
+
+@enduml

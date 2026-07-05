@@ -1,0 +1,99 @@
+@startuml Push-Asset
+
+title Push Asset — đơn giản hơn Game: không repo/private, không hợp đồng, chỉ 1 nhánh lên Marketplace qua admin duyệt
+
+actor Developer as Dev
+participant "Frontend" as FE
+participant "AssetController" as AssetCtrl
+participant "AssetServiceImpl" as AssetSvc
+participant "StorageRouter" as Storage
+participant "AsyncVirusScanService" as VirusSvc
+participant "AiReviewService" as AiSvc
+actor Admin
+
+note over Dev, AiSvc #FFF3CD
+  Khác Game: KHÔNG có GitHub/repo/bot, KHÔNG có Contract/ký hợp đồng.
+  Chỉ 1 con đường duy nhất: upload file trực tiếp -> admin duyệt
+  thủ công -> lên Marketplace. Không có nhánh "to Store".
+
+  KHÔNG check lại faceVerified ở đây — điều kiện đó đã được
+  đảm bảo từ luồng "Become Developer" (GitHub + Face + KYC,
+  xem 1-become-developer-sequence.puml). Push Asset chỉ cần
+  role = developer, không re-check từng điều kiện con.
+end note
+
+== Bước 1: Tạo Asset (draft) ==
+
+Dev -> FE: Nhập title, description, price, category, tags
+FE -> AssetCtrl: POST /api/assets { title, description, price, categoryId, tagIds }
+note right of AssetCtrl: @PreAuthorize("hasAnyRole('DEVELOPER','ADMIN')")\n-> đã đủ điều kiện Become Developer mới gọi được
+AssetCtrl -> AssetSvc: createAsset(request, sellerEmail)
+
+AssetSvc -> AssetSvc: new Asset(status = pending, fileUrl = "pending")
+AssetSvc --> FE: assetId
+FE --> Dev: Asset draft đã tạo — tiếp tục upload file
+
+== Bước 2: Upload file asset (thay cho repo + clone của Game) ==
+
+Dev -> FE: Chọn file asset (source/model/audio zip)
+FE -> AssetCtrl: POST /api/assets/{id}/upload-file (multipart)
+AssetCtrl -> AssetSvc: uploadItemFile(itemId, file, uploaderEmail)
+
+AssetSvc -> AssetSvc: check item.seller == uploader
+alt Không phải chủ sở hữu
+  AssetSvc --> FE: 403 ACCESS_DENIED
+end
+
+AssetSvc -> Storage: uploadWithKey(FileType.source_bundle, file, objectKey)
+Storage --> AssetSvc: fileUrl
+AssetSvc -> AssetSvc: item.fileUrl = fileUrl
+AssetSvc --> FE: Upload thành công (file đã lưu)
+
+note right of AssetSvc #FFDDDD
+  Virus scan chạy BẤT ĐỒNG BỘ (khác Game: Game scan
+  ĐỒNG BỘ trước khi trả kết quả, vì phải chặn ngay
+  nếu dính mã độc trước khi cho submit tiếp).
+  Asset: file đã lưu trước, scan chạy nền song song.
+end note
+AssetSvc -> VirusSvc: scanAndProcessAsset(itemId, objectKey)\n(async, không block response)
+
+note right of AssetSvc #FFDDDD
+  AI review chỉ MEDIA-ONLY (CLIP + NSFW) — KHÔNG có
+  code quality/Godot project check (asset không phải
+  source code project, không repo để phân tích).
+end note
+AssetSvc -> AiSvc: reviewAssetAsync(itemId)\n(sau khi transaction commit, async)
+
+== Bước 3: Upload media (ảnh/video preview) ==
+
+Dev -> FE: Upload thumbnail/screenshot/video
+FE -> AssetCtrl: POST /api/assets/{id}/upload-media { mediaType, file }
+AssetCtrl -> AssetSvc: uploadItemMedia(itemId, mediaType, file, uploaderEmail)
+AssetSvc -> Storage: uploadWithKey(FileType.asset_media, file, objectKey)
+Storage --> AssetSvc: mediaUrl
+AssetSvc -> AssetSvc: lưu Media(asset, mediaType, mediaUrl)
+alt mediaType == thumbnail
+  AssetSvc -> AssetSvc: item.thumbnailUrl = mediaUrl
+end
+AssetSvc --> FE: Media đã lưu
+FE --> Dev: Asset.status vẫn = pending — chờ admin duyệt
+
+== Bước 4: Admin duyệt (thủ công — KHÔNG tự động lên Marketplace) ==
+
+Admin -> AssetCtrl: Vào Admin Dashboard, xem Asset pending
+AssetCtrl --> Admin: Hiện thông tin asset + ảnh/video\n+ AI report (media match, NSFW)\n+ kết quả virus scan (nếu đã xong)
+
+Admin -> AssetSvc: Xem xét, quyết định
+alt Admin REJECT
+  AssetSvc -> AssetSvc: check status == pending\n(nếu không -> lỗi state)
+  AssetSvc -> AssetSvc: item.status = rejected
+  AssetSvc -> Storage: xóa file zip đã upload
+  AssetSvc --> Dev: Email — bị từ chối (lý do)
+else Admin APPROVE
+  AssetSvc -> AssetSvc: check status == pending\n(nếu không -> lỗi state)
+  AssetSvc -> AssetSvc: item.status = active
+  AssetSvc --> Dev: Email — đã duyệt
+  AssetSvc --> FE: Asset hiển thị công khai trên Marketplace
+end
+
+@enduml

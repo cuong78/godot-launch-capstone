@@ -1,0 +1,159 @@
+@startuml Become-Developer
+
+title Become Developer (nghiệp vụ MỚI) — role CHỈ nâng lên Developer khi đủ CẢ 3: Link GitHub + Face Verify + KYC
+
+actor User as U
+participant "Frontend" as FE
+participant "GitHubOAuthServiceImpl" as GH
+participant "GitHub API" as GHAPI
+participant "UserRepository" as UserRepo
+participant "RoleRepository" as RoleRepo
+participant "FaceVerifyController" as FaceCtrl
+participant "FaceServiceClient\n(python-face-service)" as FaceSvc
+participant "KycController" as KycCtrl
+participant "OCR Service\n(python-face-service)" as OcrSvc
+participant "GameController" as GameCtrl
+
+note over U, RoleRepo #FFF3CD
+  **Nguyên tắc nghiệp vụ:** role vẫn là CUSTOMER cho tới khi đủ CẢ 3 điều kiện.
+  Thiếu bất kỳ điều kiện nào -> chưa được công nhận Developer, chưa submit game được.
+end note
+
+== Bước 1: Link GitHub (CHƯA nâng role) ==
+
+U -> FE: Bấm "Link GitHub"
+FE -> GH: GET /oauth/github/callback?code=...
+GH -> GHAPI: Exchange code -> access_token
+GHAPI --> GH: access_token
+GH -> GHAPI: GET /user (profile)
+GHAPI --> GH: profile {id, login, email, avatar}
+
+alt github_id đã tồn tại trong DB (user cũ link lại)
+  GH -> UserRepo: findByGithubId(profile.id)
+  UserRepo --> GH: user
+else email trùng user đã có (chưa từng link GitHub)
+  GH -> UserRepo: findByEmail(email)
+  UserRepo --> GH: user
+  GH -> GH: user.githubId = profile.id
+else user hoàn toàn mới
+  GH -> GH: new User(email, fullName, avatarUrl)
+end
+
+GH -> GH: user.githubUsername = profile.login
+GH -> GH: user.githubTokenEnc = encrypt(access_token)
+GH -> GH: user.githubLinkedAt = now()
+GH -> UserRepo: save(user)
+
+note over GH #FFDDDD
+  **Role KHÔNG đổi ở bước này** — vẫn là CUSTOMER.
+  Chỉ mới thỏa điều kiện (1/3): đã link GitHub.
+end note
+
+GH --> FE: githubLinkedAt != null, role vẫn CUSTOMER
+FE --> U: Đã liên kết GitHub — tiếp tục Face Verify
+
+== Bước 2: Face Verify (bắt buộc, 1 lần) ==
+
+U -> FE: Vào "Developer Onboarding" -> Face Verify
+FE -> FaceCtrl: GET /api/developer/face-verify/status
+FaceCtrl --> FE: { faceVerified: false }
+
+U -> FE: Quay/chụp khuôn mặt
+FE -> FaceCtrl: POST /api/developer/face-verify\n{ faceImageBase64 }
+note right of FaceCtrl
+  Điều kiện gọi API: đã link GitHub (bước 1).
+  KHÔNG còn đòi hỏi role=DEVELOPER sẵn có nữa
+  (role chỉ được cấp SAU KHI đủ cả 3 bước).
+end note
+
+FaceCtrl -> FaceSvc: isDuplicateFace(faceImageBase64)
+FaceSvc --> FaceCtrl: isDuplicate
+
+alt isDuplicate == true
+  FaceCtrl --> FE: 409 FACE_DUPLICATE
+  FE --> U: Khuôn mặt đã được đăng ký bởi tài khoản khác
+else không trùng
+  FaceCtrl -> FaceSvc: registerFace(user.id, faceImageBase64)
+  FaceSvc -> FaceSvc: lưu FaceEmbedding (pgvector)
+  FaceCtrl -> FaceCtrl: user.faceVerified = true
+  FaceCtrl -> UserRepo: save(user)
+
+  note over FaceCtrl #FFDDDD
+    **Role vẫn CHƯA đổi** — thỏa điều kiện (2/3):
+    GitHub linked + Face verified. Còn thiếu KYC.
+  end note
+
+  FaceCtrl --> FE: { faceVerified: true }
+  FE --> U: Xác thực khuôn mặt thành công — tiếp tục KYC
+end
+
+== Bước 3: KYC OCR (bắt buộc, 1 lần) ==
+
+U -> FE: Upload ảnh CCCD/Passport (mặt trước)
+FE -> KycCtrl: POST /api/developer/kyc/ocr\n{ imageBase64, documentType }
+KycCtrl -> OcrSvc: POST /ocr/document
+OcrSvc --> KycCtrl: { idNumber, fullName, dateOfBirth, address }
+KycCtrl --> FE: KycOcrResponse (chưa lưu DB)
+FE --> U: Hiển thị thông tin OCR để xác nhận
+
+U -> FE: Kiểm tra/chỉnh sửa thông tin, bấm Xác nhận
+FE -> KycCtrl: POST /api/developer/kyc/confirm\n{ idNumber, fullName, ..., frontImageBase64, backImageBase64 }
+
+alt user.kycVerified == true (đã xác thực trước đó)
+  KycCtrl --> FE: trả trạng thái hiện tại, không làm lại
+else chưa xác thực
+  note right of KycCtrl #FFDDDD
+    **Check bắt buộc: idNumber KHÔNG được trùng user khác**
+    Mỗi người chỉ có 1 CCCD/Passport thật -> 1 idNumber
+    chỉ được gắn với đúng 1 tài khoản trong hệ thống.
+    (encrypt rồi so equality — EncryptionUtils AES-ECB
+    là deterministic nên so được trên ciphertext)
+  end note
+  KycCtrl -> UserRepo: existsByKycIdNumber(encrypt(idNumber))
+
+  alt idNumber đã thuộc user KHÁC
+    UserRepo --> KycCtrl: true (trùng)
+    KycCtrl --> FE: 409 KYC_ID_NUMBER_DUPLICATED
+    FE --> U: Số CCCD/Passport này đã được dùng\nbởi tài khoản khác — từ chối xác thực
+  else idNumber chưa tồn tại / thuộc chính user này
+    UserRepo --> KycCtrl: false
+    KycCtrl -> KycCtrl: upload ảnh CCCD lên storage (FileType.cccd_image)
+    KycCtrl -> KycCtrl: lưu kycFullName, kycIdNumber, kycAddress,\nkycDocumentType, kycFrontImageUrl, kycBackImageUrl
+    KycCtrl -> KycCtrl: user.kycVerified = true\nuser.kycVerifiedAt = now()
+    KycCtrl -> UserRepo: save(user)
+
+    note over KycCtrl #DDFFDD
+      **Đủ CẢ 3 điều kiện (3/3)** — GitHub linked +
+      Face verified + KYC verified. NÂNG ROLE tại đây.
+    end note
+
+    KycCtrl -> RoleRepo: findByName("developer")
+    RoleRepo --> KycCtrl: developerRole
+    KycCtrl -> KycCtrl: user.setRole(developerRole)
+    KycCtrl -> UserRepo: save(user)
+    KycCtrl -> KycCtrl: generate JWT mới (role=developer)
+
+    KycCtrl --> FE: KycStatusResponse (kycVerified=true) + JWT mới
+    FE --> U: Chúc mừng — bạn đã là Developer
+  end
+end
+
+== Kết quả: Developer đủ điều kiện Push Game ==
+
+note over U, GameCtrl #DDFFDD
+  role=developer CHỈ tồn tại khi đủ cả 3: githubLinkedAt != null
+  + faceVerified=true + kycVerified=true.
+  Thiếu 1 trong 3 -> vẫn là CUSTOMER, không submit được game.
+end note
+
+U -> FE: Submit game (repo URL + branch)
+FE -> GameCtrl: POST /api/games/{id}/submit-repo
+note right of GameCtrl
+  Submit game chỉ cần role=developer (đã đủ 3 điều kiện ở trên).
+  KHÔNG re-check Face/KYC mỗi lần submit — verify lại là:
+  ownership repo (chống lấy cắp repo người khác) + virus scan
+  + Godot project check.
+end note
+GameCtrl --> FE: Game.status = pending (chờ AI review + admin)
+
+@enduml

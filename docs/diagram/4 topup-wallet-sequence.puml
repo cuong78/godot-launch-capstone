@@ -1,0 +1,126 @@
+@startuml TopUp-Wallet
+
+title Nạp tiền vào ví — Payment CHỈ dùng để nạp ví (mô hình MỚI, khác code Payment cũ hiện tại)
+
+actor User as U
+participant "Frontend" as FE
+participant "PaymentController" as PayCtrl
+participant "PaymentServiceImpl" as PaySvc
+participant "PaymentGateway\n(PayOS client)" as Gateway
+participant "PayOS" as PayOS
+participant "WalletRepository" as WalletRepo
+participant "TransactionRepository" as TxnRepo
+
+note over U, TxnRepo #FFF3CD
+  **Lưu ý quan trọng:** code PaymentServiceImpl HIỆN TẠI vẫn gắn
+  Payment trực tiếp với Order/Asset (mô hình CŨ). Diagram này vẽ
+  theo mô hình MỚI đã chốt: Payment CHỈ dùng để nạp ví
+  (Payment.wallet, TxnType.wallet_topup) — KHÔNG còn Payment.order.
+  Mua hàng (Order) là bước SAU, tách biệt, trừ thẳng từ số dư ví
+  (xem 5-buy-game-asset-sequence.puml).
+end note
+
+== Bước 1: Tạo yêu cầu nạp tiền ==
+
+U -> FE: Nhập số tiền muốn nạp
+FE -> PayCtrl: POST /api/payments/topup { amount }
+PayCtrl -> PaySvc: createTopUpPayment(amount, userEmail)
+
+PaySvc -> WalletRepo: findByUserId(user.id)\n(hoặc tạo mới nếu chưa có ví)
+WalletRepo --> PaySvc: wallet
+
+PaySvc -> PaySvc: tìm Payment PENDING chưa hết hạn\ncủa chính user này (nếu có)
+
+alt Có Payment PENDING còn hiệu lực (chưa hết hạn, chưa hủy)
+  note right of PaySvc #DDFFDD
+    **Retry dùng lại — KHÔNG tạo Payment mới.**
+    Update NGAY row Payment cũ (payos_order_code,
+    checkout_url) — giống nguyên tắc đã áp dụng cho
+    luồng mua hàng cũ: 1 lần nạp = 1 row Payment.
+  end note
+  PaySvc -> Gateway: getPaymentStatus(payosOrderCode)
+  Gateway -> PayOS: GET /v2/payment-requests/{orderCode}
+  PayOS --> Gateway: status hiện tại
+  Gateway --> PaySvc: status
+
+  alt Link cũ vẫn còn hiệu lực (chưa hết hạn)
+    PaySvc --> FE: trả lại checkoutUrl cũ
+  else Link cũ hết hạn / bị hủy
+    PaySvc -> Gateway: createPayment(amount, ...)
+    Gateway -> PayOS: POST /v2/payment-requests
+    PayOS --> Gateway: checkoutUrl, orderCode mới
+    Gateway --> PaySvc: kết quả
+    PaySvc -> PaySvc: OVERWRITE payos_order_code + checkout_url\ntrên CÙNG row Payment (không tạo row mới)
+    PaySvc --> FE: checkoutUrl mới
+  end
+else Không có Payment PENDING nào
+  PaySvc -> PaySvc: new Payment(wallet=user.wallet,\ntype=wallet_topup, amount, status=PENDING)
+  PaySvc -> Gateway: createPayment(amount, returnUrl, cancelUrl)
+  Gateway -> PayOS: POST /v2/payment-requests
+  PayOS --> Gateway: checkoutUrl, orderCode
+  Gateway --> PaySvc: kết quả
+  PaySvc -> PaySvc: lưu payosOrderCode, checkoutUrl vào Payment
+  PaySvc --> FE: checkoutUrl
+end
+
+FE --> U: Redirect sang trang thanh toán PayOS
+
+== Bước 2: User thanh toán trên PayOS ==
+
+U -> PayOS: Thanh toán (chuyển khoản/thẻ/QR)
+
+alt User hủy / bỏ ngang / hết hạn
+  PayOS --> FE: redirect cancelUrl
+  FE -> PayCtrl: (không có gì để làm — Payment vẫn PENDING\ncho tới khi polling/webhook xác nhận)
+  note right of PaySvc #FFDDDD
+    Payment.status chuyển FAILED/CANCELLED/EXPIRED
+    qua polling/webhook (bước 3) — KHÔNG tạo row mới,
+    UPDATE ngay chính row Payment này. Muốn nạp lại
+    thì quay lại Bước 1 (dùng lại row PENDING/tạo mới
+    nếu row cũ đã ở trạng thái cuối).
+  end note
+else Thanh toán thành công
+  PayOS --> FE: redirect returnUrl
+end
+
+== Bước 3: Xác nhận thanh toán (webhook HOẶC polling) ==
+
+alt PayOS gọi Webhook (cần ngrok ở local, tự động ở production)
+  PayOS -> PayCtrl: POST /api/payments/webhook { orderCode, amount, status }
+  PayCtrl -> PaySvc: handleWebhook(payload)
+else Polling thủ công (không cần ngrok — dùng khi test local)
+  FE -> PayCtrl: GET /api/payments/{id}/sync\n(sau khi user quay lại từ PayOS)
+  PayCtrl -> PaySvc: syncPaymentFromGateway(payment)
+  PaySvc -> Gateway: getPaymentStatus(payosOrderCode)
+  Gateway -> PayOS: GET /v2/payment-requests/{orderCode}
+  PayOS --> Gateway: status thật
+  Gateway --> PaySvc: status
+end
+
+alt Số tiền webhook/status KHÔNG khớp amount đã lưu
+  PaySvc --> PayCtrl: throw PAYMENT_AMOUNT_MISMATCH
+  PayCtrl --> FE: 400 lỗi — từ chối xử lý
+else Khớp, status = PAID
+  PaySvc -> PaySvc: check Payment CHƯA từng completed\n(idempotent — tránh cộng ví 2 lần nếu webhook gọi lại)
+  alt Đã completed trước đó rồi
+    PaySvc --> PayCtrl: trả kết quả hiện tại, KHÔNG cộng ví lần nữa
+  else Chưa completed — xử lý lần đầu
+    PaySvc -> PaySvc: payment.status = PAID\npayment.paidAt = now
+
+    PaySvc -> WalletRepo: wallet.balance += amount
+    WalletRepo -> WalletRepo: save(wallet)
+
+    PaySvc -> TxnRepo: new Transaction(wallet, type=wallet_topup,\namount=+soTien, payment=paymentNay)
+    TxnRepo -> TxnRepo: save(transaction)
+
+    PaySvc --> PayCtrl: OK
+    PayCtrl --> FE: Nạp tiền thành công
+    FE --> U: Số dư ví đã cập nhật
+  end
+else status khác PAID (đang chờ / thất bại)
+  PaySvc -> PaySvc: payment.status = PROCESSING/FAILED/CANCELLED/EXPIRED\n(UPDATE row Payment hiện tại)
+  PaySvc --> PayCtrl: trạng thái hiện tại
+  PayCtrl --> FE: Hiển thị trạng thái, cho phép thử lại (quay lại Bước 1)
+end
+
+@enduml

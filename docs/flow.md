@@ -15,10 +15,10 @@ Mục đích: nếu chưa link github trước thì phải link , nếu đã r�
 4) luồng nạp tiền vào ví 
 ( tú)
 
-5. mua game, mua asset (nếu ví không đủ tiền, thì sẽ yêu cầu nạp vào ví, sau khi nạp vào ví rồi lấy tiền đó đi mua chứ không phải mua thanh toán trực tiếp, sau khi mua thành công thì ví seller sẽ tăng lên số tiền theo phần trăm,  tải game (phải nói lên được seller được tải nhiều lần) )  
+5. mua game, mua asset (nếu ví không đủ tiền, thì sẽ yêu cầu nạp vào ví, sau khi nạp vào ví rồi lấy tiền đó đi mua chứ không phải mua thanh toán trực tiếp, sau khi mua thành công thì ví seller sẽ tăng lên số tiền theo phần trăm,  tải game (phải nói lên được seller được tải nhiều lần), buyer ví trừ tiền, ví nền tảng cộng tiền )  
 (tú)
 
-6. rút tiền (phải nói lên được admin chấp nhận gửi tiền về cho user)
+6. rút tiền (phải nói lên được admin chấp nhận gửi tiền về cho user, và ví admin sẽ bị trừ tiền, và ví bên admin phải sync được với hệ thống payos( ví bảo kim) có nghĩa là ví dụ tài khoản ví admin hết tiền thì admin phải qua bên trang payos kích vào ví bảo kim để nạp tiền, thì tôi muốn nó hiện số dư bao nhiêu trên màn hình để admin follow cho dễ ( lưu ý ví này chỉ để chuyển tiền về cho user)  admin sẽ có thêm một ví là nhận tiền. bởi vì payos (ví bảo kim) có hai loại ví, nó ko cộng dồn lại với nhau   )
 (Hoàng)
 
 
@@ -26,7 +26,7 @@ Mục đích: nếu chưa link github trước thì phải link , nếu đã r�
 Mục đích: user tố cáo tranh chấp bản quyền/source, admin xử lý( nói rỏ ra flow), ban user .
 Cương
 
-8. AI review  
+8. AI review  , check đạo văn 
 Cương 
 
 

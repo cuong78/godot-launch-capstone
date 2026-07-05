@@ -1,0 +1,123 @@
+@startuml Buy-Game-Asset
+
+title Mua Game / Mua Asset — trừ thẳng từ ví (KHÔNG thanh toán trực tiếp), ghi sổ kép 3 chuyển động ví
+
+actor Buyer as B
+participant "Frontend" as FE
+participant "OrderController" as OrderCtrl
+participant "OrderServiceImpl" as OrderSvc
+participant "WalletRepository" as WalletRepo
+participant "OrderRepository" as OrderRepo
+participant "TransactionRepository" as TxnRepo
+participant "DownloadService" as DlSvc
+
+note over B, DlSvc #FFF3CD
+  Mua hàng KHÔNG phải "thanh toán trực tiếp" — bắt buộc phải có
+  đủ tiền TRONG VÍ trước. Không đủ thì yêu cầu nạp ví trước
+  (xem 4-topup-wallet-sequence.puml), nạp xong mới quay lại mua.
+end note
+
+== Bước 1: Kiểm tra ví đủ tiền chưa ==
+
+B -> FE: Chọn Game/Asset, bấm Mua
+FE -> OrderCtrl: POST /api/orders { targetId, orderType }
+OrderCtrl -> OrderSvc: buy(buyerEmail, targetId, orderType)
+
+OrderSvc -> OrderSvc: check seller != buyer\n(không được tự mua sản phẩm của mình)
+alt Là chính sản phẩm của buyer
+  OrderSvc --> FE: 400 OWN_PRODUCT_PURCHASE_NOT_ALLOWED
+end
+
+OrderSvc -> WalletRepo: findByUserId(buyer.id)
+WalletRepo --> OrderSvc: buyerWallet
+
+alt buyerWallet.balance < price
+  OrderSvc --> FE: 402 INSUFFICIENT_BALANCE\n{ shortfall: price - balance }
+  FE --> B: "Ví không đủ tiền — cần nạp thêm {shortfall}"
+  B -> FE: Bấm "Nạp tiền ngay"
+  note right of FE
+    Chuyển sang luồng Nạp tiền vào ví
+    (4-topup-wallet-sequence.puml). Nạp XONG mới quay lại
+    đây bấm Mua lại — KHÔNG tự động mua tiếp sau khi nạp.
+  end note
+  FE --> B: Quay lại trang sản phẩm, bấm Mua lại
+else buyerWallet.balance >= price
+  note right of OrderSvc #DDFFDD
+    Đủ tiền -> xử lý ĐỒNG BỘ, TỨC THỜI trong 1 transaction
+    SQL duy nhất. KHÔNG có trạng thái "đang chờ" nào —
+    Order sinh ra là đã thanh toán xong (không có orderStatus).
+  end note
+end
+
+== Bước 2: Trừ ví buyer + tạo Order (1 transaction SQL) ==
+
+OrderSvc -> WalletRepo: buyerWallet.balance -= price
+WalletRepo -> WalletRepo: save(buyerWallet)
+
+OrderSvc -> OrderRepo: new Order(buyer, asset/game, orderType, pricePaid=price)
+OrderRepo -> OrderRepo: save(order)
+note right of OrderRepo
+  KHÔNG có orderStatus — sự TỒN TẠI của row Order
+  chính là bằng chứng đã thanh toán thành công.
+end note
+
+== Bước 3: Ghi sổ KÉP — 3 Transaction cho 3 ví (yêu cầu flow.md #5) ==
+
+note over OrderSvc, TxnRepo #DDFFDD
+  1 Order thành công = 3 row Transaction riêng, mỗi row chỉ
+  ghi ĐÚNG số tiền thay đổi trên ví của nó (không phải giá
+  gộp cả đơn hàng — xem Transaction.java). Muốn biết tổng quan
+  cả đơn hàng: join 3 Transaction cùng order_id.
+end note
+
+OrderSvc -> TxnRepo: Transaction #1\n{wallet=buyerWallet, order, type=asset_purchase/\nsource_code_purchase, amount = -price}
+TxnRepo -> TxnRepo: save
+
+OrderSvc -> OrderSvc: tính platformCommission (theo %)\ntính sellerRevenue = price - platformCommission
+OrderSvc -> WalletRepo: findByUserId(seller.id)\n(hoặc tạo ví nếu seller chưa có)
+WalletRepo --> OrderSvc: sellerWallet
+OrderSvc -> WalletRepo: sellerWallet.balance += sellerRevenue
+WalletRepo -> WalletRepo: save(sellerWallet)
+OrderSvc -> TxnRepo: Transaction #2\n{wallet=sellerWallet, order, type=revenue_share,\namount = +sellerRevenue}
+TxnRepo -> TxnRepo: save
+
+OrderSvc -> WalletRepo: findByUserId(platform.systemUserId)
+WalletRepo --> OrderSvc: platformWallet
+OrderSvc -> WalletRepo: platformWallet.balance += platformCommission
+WalletRepo -> WalletRepo: save(platformWallet)
+OrderSvc -> TxnRepo: Transaction #3\n{wallet=platformWallet, order, type=commission,\namount = +platformCommission}
+TxnRepo -> TxnRepo: save
+
+OrderSvc --> FE: Mua thành công
+FE --> B: Đã mua — có thể tải về
+
+== Bước 4: Tải Game/Asset (seller được tải lại NHIỀU LẦN — yêu cầu flow.md #5) ==
+
+B -> FE: Bấm "Tải xuống"
+FE -> DlSvc: GET /api/downloads/{orderId}
+DlSvc -> DlSvc: check Order thuộc về buyer này\n(chỉ người đã mua mới tải được)
+
+alt Chưa từng mua / Order không tồn tại
+  DlSvc --> FE: 403 ACCESS_DENIED
+else Đã mua hợp lệ
+  DlSvc -> DlSvc: lấy fileUrl mới nhất\n(SourceSnapshot.bundleUrl / Asset.fileUrl)
+  DlSvc -> DlSvc: game/asset.downloadCount += 1
+
+  note right of DlSvc #FFDDDD
+    **Không giới hạn số lần tải** — buyer bấm tải lại bao
+    nhiêu lần cũng được (máy hỏng, đổi máy, mất file...).
+    KHÔNG phải "mua 1 lần = tải 1 lần duy nhất".
+  end note
+
+  DlSvc --> FE: presigned URL / file stream
+  FE --> B: Tải file về máy
+end
+
+B -> FE: (sau này) Bấm "Tải lại" lần nữa
+FE -> DlSvc: GET /api/downloads/{orderId}\n(cùng orderId như trước)
+DlSvc -> DlSvc: check quyền — VẪN hợp lệ vì Order\nlà bằng chứng sở hữu VĨNH VIỄN
+DlSvc -> DlSvc: downloadCount += 1 (lần thứ N)
+DlSvc --> FE: Cho tải lại bình thường
+FE --> B: Tải lần N — không bị chặn
+
+@enduml
