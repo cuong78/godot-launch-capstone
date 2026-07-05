@@ -1,16 +1,18 @@
 import api from './axios';
-import { 
-  ApiResponse, 
-  WalletResponse, 
-  PageResponse, 
-  TransactionResponse, 
+import {
+  ApiResponse,
+  WalletResponse,
+  PageResponse,
+  TransactionResponse,
   DeveloperWalletSummaryResponse,
   WithdrawalResponse,
   WithdrawalDetailResponse,
-  CreateWithdrawalRequest, 
+  CreateWithdrawalRequest,
   ApproveWithdrawalRequest,
   RejectWithdrawalRequest,
-  ReviewWithdrawalRequest 
+  ReviewWithdrawalRequest,
+  CreateTopUpRequest,
+  PaymentResponse
 } from '../types';
 
 export const walletApi = {
@@ -27,22 +29,27 @@ export const walletApi = {
   },
 
   getDeveloperWalletSummary: async (): Promise<ApiResponse<DeveloperWalletSummaryResponse>> => {
-    const response = await api.get<ApiResponse<DeveloperWalletSummaryResponse>>('/api/v1/developer/wallet');
+    const response = await api.get<ApiResponse<DeveloperWalletSummaryResponse>>('/api/v1/wallets/summary');
+    return response.data;
+  },
+
+  createTopUp: async (data: CreateTopUpRequest): Promise<ApiResponse<PaymentResponse>> => {
+    const response = await api.post<ApiResponse<PaymentResponse>>('/api/v1/payments/topup', data);
     return response.data;
   },
 
   createDeveloperWithdrawal: async (data: CreateWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
-    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>('/api/v1/developer/withdrawals', data);
+    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>('/api/v1/wallets/withdrawals', data);
     return response.data;
   },
 
   getDeveloperWithdrawals: async (): Promise<ApiResponse<WithdrawalResponse[]>> => {
-    const response = await api.get<ApiResponse<WithdrawalResponse[]>>('/api/v1/developer/withdrawals');
+    const response = await api.get<ApiResponse<WithdrawalResponse[]>>('/api/v1/wallets/withdrawals');
     return response.data;
   },
 
   getDeveloperWithdrawalDetail: async (id: string): Promise<ApiResponse<WithdrawalDetailResponse>> => {
-    const response = await api.get<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/developer/withdrawals/${id}`);
+    const response = await api.get<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/wallets/withdrawals/${id}`);
     return response.data;
   },
 

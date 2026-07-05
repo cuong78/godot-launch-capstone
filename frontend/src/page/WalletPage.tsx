@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Clock3, Landmark, ReceiptText, RefreshCw, TrendingUp, Wallet2 } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, Clock3, Landmark, ReceiptText, RefreshCw, TrendingUp, Wallet2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
 import { walletApi } from '../api/walletApi';
+import { useAuth } from '../hooks/useAuth';
 import {
   CreateWithdrawalRequest,
   DeveloperWalletSummaryResponse,
@@ -72,6 +73,8 @@ const getStatusMeta = (status: WithdrawalStatus, t: any) => {
 
 export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => void }> = ({ setCurrentScreen }) => {
   const { t, i18n } = useTranslation(['wallet']);
+  const { currentUser } = useAuth();
+  const isCustomer = currentUser?.role === 'customer';
   const locale = resolveLocale(i18n.resolvedLanguage || i18n.language || 'vi');
   const [walletSummary, setWalletSummary] = useState<DeveloperWalletSummaryResponse | null>(null);
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
@@ -85,18 +88,26 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [topUpAmount, setTopUpAmount] = useState('');
+  const [topUpError, setTopUpError] = useState<string | null>(null);
+  const [isTopUpSubmitting, setIsTopUpSubmitting] = useState(false);
 
   const loadWalletSummary = async () => {
     setIsLoadingSummary(true);
+    setSummaryError(null);
     try {
       const response = await walletApi.getDeveloperWalletSummary();
       if (response.success && response.data) {
         setWalletSummary(response.data);
+      } else {
+        setSummaryError(response.message || t('wallet:messages.summaryLoadFailed'));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load wallet summary', error);
+      setSummaryError(error.response?.data?.message || error.message || t('wallet:messages.summaryLoadFailed'));
     } finally {
       setIsLoadingSummary(false);
     }
@@ -188,7 +199,38 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
     }
   };
 
+  const handleTopUp = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setTopUpError(null);
+
+    const parsedAmount = Number(topUpAmount);
+    if (Number.isNaN(parsedAmount) || parsedAmount < 10000) {
+      setTopUpError(t('wallet:topup.messages.invalidAmount'));
+      return;
+    }
+
+    setIsTopUpSubmitting(true);
+    try {
+      const response = await walletApi.createTopUp({ amount: parsedAmount });
+      if (response.success && response.data?.checkoutUrl) {
+        window.location.href = response.data.checkoutUrl;
+      } else {
+        setTopUpError(response.message || t('wallet:topup.messages.submitFailed'));
+      }
+    } catch (error: any) {
+      setTopUpError(error.response?.data?.message || error.message || t('wallet:topup.messages.submitFailed'));
+    } finally {
+      setIsTopUpSubmitting(false);
+    }
+  };
+
   const summaryCurrency = walletSummary?.currency || resolveCurrency();
+  const renderSummaryValue = (value?: number) =>
+    walletSummary
+      ? formatMoney(Number(value), summaryCurrency, locale, t('wallet:common.notAvailable'))
+      : isLoadingSummary
+        ? t('wallet:common.loading')
+        : summaryError || t('wallet:common.notAvailable');
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -202,9 +244,11 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
             >
               <ArrowLeft size={14} className="mr-1 inline-block" /> {t('wallet:page.backToDashboard')}
             </button>
-            <h1 className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">{t('wallet:page.title')}</h1>
+            <h1 className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">
+              {isCustomer ? t('wallet:page.titleCustomer') : t('wallet:page.title')}
+            </h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-              {t('wallet:page.subtitle')}
+              {isCustomer ? t('wallet:page.subtitleCustomer') : t('wallet:page.subtitle')}
             </p>
           </div>
           <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={() => {
@@ -216,7 +260,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
           </Button>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className={`mt-6 grid grid-cols-1 gap-4 ${isCustomer ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
           <div className="rounded-3xl border border-emerald-200/70 bg-emerald-50/80 p-5 dark:border-emerald-900/50 dark:bg-emerald-950/20">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-emerald-500/15 p-3 text-emerald-600 dark:text-emerald-400">
@@ -225,7 +269,7 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-700/70 dark:text-emerald-300/70">{t('wallet:cards.availableBalance')}</p>
                 <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
-                  {walletSummary ? formatMoney(Number(walletSummary.availableBalance), summaryCurrency, locale, t('wallet:common.notAvailable')) : t('wallet:common.loading')}
+                  {renderSummaryValue(walletSummary?.availableBalance)}
                 </p>
               </div>
             </div>
@@ -240,29 +284,31 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-700/70 dark:text-sky-300/70">{t('wallet:cards.pendingWithdrawal')}</p>
                 <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
-                  {walletSummary ? formatMoney(Number(walletSummary.pendingBalance), summaryCurrency, locale, t('wallet:common.notAvailable')) : t('wallet:common.loading')}
+                  {renderSummaryValue(walletSummary?.pendingBalance)}
                 </p>
               </div>
             </div>
             <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">{t('wallet:cards.pendingDescription')}</p>
           </div>
 
-          <div className="rounded-3xl border border-amber-200/70 bg-amber-50/80 p-5 dark:border-amber-900/50 dark:bg-amber-950/20">
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-400">
-                <TrendingUp size={18} />
+          {!isCustomer && (
+            <div className="rounded-3xl border border-amber-200/70 bg-amber-50/80 p-5 dark:border-amber-900/50 dark:bg-amber-950/20">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-amber-500/15 p-3 text-amber-600 dark:text-amber-400">
+                  <TrendingUp size={18} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-700/70 dark:text-amber-300/70">{t('wallet:cards.totalRevenue')}</p>
+                  <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
+                    {renderSummaryValue(walletSummary?.totalRevenue)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-700/70 dark:text-amber-300/70">{t('wallet:cards.totalRevenue')}</p>
-                <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
-                  {walletSummary ? formatMoney(Number(walletSummary.totalRevenue), summaryCurrency, locale, t('wallet:common.notAvailable')) : t('wallet:common.loading')}
-                </p>
-              </div>
+              <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
+                {t('wallet:cards.revenueDescription')}
+              </p>
             </div>
-            <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
-              {t('wallet:cards.revenueDescription')}
-            </p>
-          </div>
+          )}
         </div>
 
         <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
@@ -396,6 +442,39 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
         </section>
 
         <aside className="space-y-6">
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-emerald-400/15 p-3 text-emerald-500">
+                <ArrowDownToLine size={18} />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">{t('wallet:topup.title')}</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('wallet:topup.subtitle')}</p>
+              </div>
+            </div>
+
+            {topUpError && (
+              <div className="mt-4 rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
+                {topUpError}
+              </div>
+            )}
+
+            <form className="mt-6 space-y-4" onSubmit={handleTopUp}>
+              <Input
+                label={t('wallet:topup.amountLabel')}
+                placeholder={t('wallet:topup.amountPlaceholder')}
+                type="number"
+                min={10000}
+                value={topUpAmount}
+                onChange={(e) => setTopUpAmount(e.target.value)}
+                required
+              />
+              <Button type="submit" variant="primary" size="md" className="w-full" disabled={isTopUpSubmitting}>
+                {isTopUpSubmitting ? t('wallet:topup.submitting') : t('wallet:topup.submit')}
+              </Button>
+            </form>
+          </div>
+
           <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-amber-400/15 p-3 text-amber-500">

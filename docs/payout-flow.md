@@ -167,17 +167,17 @@ Lưu ý:
 
 ## 6. Endpoint hiện có
 
-## 6.1. Developer APIs
+## 6.1. Wallet APIs (customer & developer)
 
-### `GET /api/v1/developer/wallet`
+### `GET /api/v1/wallets/summary`
 
-Lấy tóm tắt ví doanh thu của developer.
+Lấy tóm tắt ví (số dư khả dụng, đang chờ xử lý, doanh thu) của user hiện tại (customer hoặc developer).
 
-### `GET /api/v1/developer/withdrawals`
+### `GET /api/v1/wallets/withdrawals`
 
-Lấy lịch sử withdrawal của developer hiện tại.
+Lấy lịch sử withdrawal của user hiện tại.
 
-### `POST /api/v1/developer/withdrawals`
+### `POST /api/v1/wallets/withdrawals`
 
 Tạo withdrawal request mới.
 
@@ -193,9 +193,9 @@ Request:
 }
 ```
 
-### `GET /api/v1/developer/withdrawals/{id}`
+### `GET /api/v1/wallets/withdrawals/{id}`
 
-Lấy chi tiết một withdrawal request của chính developer đó.
+Lấy chi tiết một withdrawal request của chính user đó.
 
 ## 6.2. Admin APIs
 
@@ -611,7 +611,7 @@ UI admin hiện tại đã bỏ phần Dynamic QR khỏi trọng tâm vận hàn
 ## 16.1. Developer tạo request
 
 ```http
-POST /api/v1/developer/withdrawals
+POST /api/v1/wallets/withdrawals
 Authorization: Bearer <developer-token>
 Content-Type: application/json
 ```

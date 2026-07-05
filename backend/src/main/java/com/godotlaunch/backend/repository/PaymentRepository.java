@@ -17,6 +17,9 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.payosOrderCode = :orderCode")
     Optional<Payment> findByPayosOrderCodeForUpdate(@Param("orderCode") Long orderCode);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Payment p where p.id = :id")
+    Optional<Payment> findByIdForUpdate(@Param("id") UUID id);
     boolean existsByPayosOrderCode(Long payosOrderCode);
     List<Payment> findTop50ByOrderByCreatedAtDesc();
     List<Payment> findByWalletUserIdOrderByCreatedAtDesc(UUID userId);

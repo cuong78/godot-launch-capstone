@@ -507,6 +507,10 @@ export interface CreatePaymentRequest {
   marketplaceItemId: string;
 }
 
+export interface CreateTopUpRequest {
+  amount: number;
+}
+
 export interface PaymentResponse {
   id: string;
   orderId: string;

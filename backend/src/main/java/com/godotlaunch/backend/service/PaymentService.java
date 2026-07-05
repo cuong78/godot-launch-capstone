@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.service;
 
 import com.godotlaunch.backend.dto.request.CreatePaymentRequest;
+import com.godotlaunch.backend.dto.request.CreateTopUpRequest;
 import com.godotlaunch.backend.dto.response.PaymentResponse;
 import com.godotlaunch.backend.dto.response.PaymentStatusSummaryResponse;
 
@@ -9,6 +10,7 @@ import java.util.UUID;
 
 public interface PaymentService {
     PaymentResponse createPayOSPayment(CreatePaymentRequest request, String buyerEmail);
+    PaymentResponse createTopUpPayment(CreateTopUpRequest request, String buyerEmail);
     PaymentResponse confirmPayment(UUID paymentId, String requesterEmail);
     PaymentResponse cancelPayment(UUID paymentId, String requesterEmail);
     PaymentResponse handleWebhook(Object payload);

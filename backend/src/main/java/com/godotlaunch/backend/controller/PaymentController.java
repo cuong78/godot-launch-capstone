@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.request.CreatePaymentRequest;
+import com.godotlaunch.backend.dto.request.CreateTopUpRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.PaymentResponse;
 import com.godotlaunch.backend.dto.response.PaymentStatusSummaryResponse;
@@ -38,6 +39,16 @@ public class PaymentController {
             Principal principal) {
         PaymentResponse payment = paymentService.createPayOSPayment(request, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(payment, "PayOS payment session created successfully"));
+    }
+
+    @PostMapping("/topup")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'DEVELOPER')")
+    @Operation(summary = "Create a PayOS payment session to top up wallet balance")
+    public ResponseEntity<ApiResponse<PaymentResponse>> createTopUp(
+            @Valid @RequestBody CreateTopUpRequest request,
+            Principal principal) {
+        PaymentResponse payment = paymentService.createTopUpPayment(request, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(payment, "Wallet top-up payment session created successfully"));
     }
 
     @PostMapping("/{paymentId}/confirm")
