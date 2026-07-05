@@ -5,17 +5,18 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Data
 public class CreateGameRequest {
     @NotBlank(message = "Title is required")
     private String title;
-    
+
     private String description;
-    
+
     private BigDecimal priceProposed;
-    
+
     private UUID categoryId;
 
     private PublishingType publishingType;
@@ -24,4 +25,7 @@ public class CreateGameRequest {
     private String githubRepoUrl;
 
     private String githubBranch;
+
+    // Tags do developer chọn (nhiều-nhiều, giống marketplace item)
+    private List<UUID> tagIds;
 }

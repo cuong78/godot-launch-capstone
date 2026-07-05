@@ -299,6 +299,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         priceProposed: priceNum,
         categoryId: categoryId || undefined,
         publishingType,
+        tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       });
       if (res.success && res.data?.gameId) {
         setGameId(res.data.gameId);

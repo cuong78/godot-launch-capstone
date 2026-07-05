@@ -34,7 +34,7 @@ export const Input: React.FC<InputProps> = ({
             error
               ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
               : 'border-slate-300 dark:border-slate-800 focus:ring-sky-500/10 focus:border-sky-500'
-          } rounded-lg ${prefix ? 'pl-8' : ''} text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 outline-none transition-studio focus:ring-4`}
+          } rounded-lg ${prefix ? (prefix.length > 1 ? 'pl-14' : 'pl-8') : ''} text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 outline-none transition-studio focus:ring-4`}
           {...props}
         />
       </div>

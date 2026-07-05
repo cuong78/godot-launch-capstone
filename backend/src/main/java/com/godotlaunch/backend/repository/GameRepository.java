@@ -14,6 +14,8 @@ import java.util.UUID;
 @Repository
 public interface GameRepository extends JpaRepository<Game, UUID> {
     List<Game> findByStatus(GameStatus status);
+    List<Game> findAllByOrderByCreatedAtDesc();
+    List<Game> findByStatusOrderByCreatedAtDesc(GameStatus status);
 
     @Query("SELECT g FROM Game g WHERE g.thumbnailUrl IS NOT NULL AND g.thumbnailUrl <> '' " +
            "AND (:search IS NULL OR :search = '' OR " +

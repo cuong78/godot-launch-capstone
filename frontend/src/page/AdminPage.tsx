@@ -204,35 +204,47 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [moderationStatusFilter, setModerationStatusFilter] = useState<'pending' | 'approved_published' | 'rejected'>('pending');
 
   const pendingGames = useMemo(() => {
-    return allGames.filter((game: GameResponse) => {
-      const status = game.status?.toLowerCase();
-      if (moderationStatusFilter === 'pending') {
-        return status === 'pending';
-      }
-      if (moderationStatusFilter === 'approved_published') {
-        return status === 'approved' || status === 'published';
-      }
-      if (moderationStatusFilter === 'rejected') {
-        return status === 'rejected';
-      }
-      return false;
-    });
+    return allGames
+      .filter((game: GameResponse) => {
+        const status = game.status?.toLowerCase();
+        if (moderationStatusFilter === 'pending') {
+          return status === 'pending';
+        }
+        if (moderationStatusFilter === 'approved_published') {
+          return status === 'approved' || status === 'published';
+        }
+        if (moderationStatusFilter === 'rejected') {
+          return status === 'rejected';
+        }
+        return false;
+      })
+      .sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
   }, [allGames, moderationStatusFilter]);
 
   const pendingMarketplaceItems = useMemo(() => {
-    return allMarketplaceItems.filter((item: MarketplaceItemResponse) => {
-      const status = item.status?.toLowerCase();
-      if (moderationStatusFilter === 'pending') {
-        return status === 'pending';
-      }
-      if (moderationStatusFilter === 'approved_published') {
-        return status === 'active';
-      }
-      if (moderationStatusFilter === 'rejected') {
-        return status === 'rejected';
-      }
-      return false;
-    });
+    return allMarketplaceItems
+      .filter((item: MarketplaceItemResponse) => {
+        const status = item.status?.toLowerCase();
+        if (moderationStatusFilter === 'pending') {
+          return status === 'pending';
+        }
+        if (moderationStatusFilter === 'approved_published') {
+          return status === 'active';
+        }
+        if (moderationStatusFilter === 'rejected') {
+          return status === 'rejected';
+        }
+        return false;
+      })
+      .sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
   }, [allMarketplaceItems, moderationStatusFilter]);
 
   // Contract Offer states
@@ -1173,12 +1185,52 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             {game.description || "Không có mô tả chi tiết từ developer."}
                                           </p>
                                         </div>
-                                        
+
+                                        <div className="space-y-1.5">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Tags</h4>
+                                          {game.tags && game.tags.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {game.tags.map((tag, idx) => (
+                                                <span
+                                                  key={idx}
+                                                  className="px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300"
+                                                >
+                                                  {tag}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-[11px] text-slate-400 dark:text-slate-600">Không có tags nào được chọn</p>
+                                          )}
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">GitHub Repository</h4>
+                                          {game.githubRepoUrl ? (
+                                            <a
+                                              href={game.githubRepoUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline break-all"
+                                            >
+                                              <FileText size={12} className="shrink-0" />
+                                              {game.githubRepoUrl}
+                                              {game.githubBranch && (
+                                                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-450">
+                                                  @{game.githubBranch}
+                                                </span>
+                                              )}
+                                            </a>
+                                          ) : (
+                                            <p className="text-[11px] text-slate-400 dark:text-slate-600">Không có repo</p>
+                                          )}
+                                        </div>
+
                                         {game.fileUrl ? (
                                           <button
                                             onClick={() => handleDownloadFile(game.fileUrl, `${game.title || 'game'}-source.zip`)}
                                             disabled={downloadingFile === game.fileUrl}
-                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
                                           >
                                             {downloadingFile === game.fileUrl ? (
                                               <>
@@ -1418,7 +1470,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <button
                                             onClick={() => handleDownloadFile(displayItem.fileUrl, `${displayItem.title || 'asset'}-package.zip`)}
                                             disabled={downloadingFile === displayItem.fileUrl}
-                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-450 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-955 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
                                           >
                                             {downloadingFile === displayItem.fileUrl ? (
                                               <>

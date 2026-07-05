@@ -54,6 +54,7 @@ public class GameServiceImpl implements GameService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final MediaRepository mediaRepository;
+    private final com.godotlaunch.backend.repository.TagRepository tagRepository;
 
     /** Helper: tìm media của game này. */
     private List<Media> gameMedia(UUID gameId) {
@@ -114,6 +115,11 @@ public class GameServiceImpl implements GameService {
             Category category = categoryRepository.findById(request.getCategoryId())
                     .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
             game.setCategory(category);
+        }
+
+        // Tags (nhiều-nhiều, do developer chọn ở UploadPage)
+        if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
+            game.setTags(new java.util.HashSet<>(tagRepository.findByIdIn(request.getTagIds())));
         }
 
         Game savedGame = gameRepository.save(game);
@@ -273,7 +279,7 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional(readOnly = true)
     public List<GameResponse> getAllGames() {
-        return gameRepository.findAll().stream()
+        return gameRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -281,7 +287,7 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional(readOnly = true)
     public List<GameResponse> getGamesByStatus(GameStatus status) {
-        return gameRepository.findByStatus(status).stream()
+        return gameRepository.findByStatusOrderByCreatedAtDesc(status).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }

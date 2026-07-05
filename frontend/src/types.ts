@@ -383,6 +383,7 @@ export interface CreateGameRequest {
   publishingType?: "full_acquisition" | "co_publishing" | "marketplace_listing";
   githubRepoUrl?: string;
   githubBranch?: string;
+  tagIds?: string[];
 }
 
 export interface UpdateGameRequest {
@@ -411,6 +412,9 @@ export interface GameResponse {
   videoUrl?: string;
   fileUrl?: string;
   webDemoUrl?: string;
+  tags?: string[];
+  githubRepoUrl?: string;
+  githubBranch?: string;
   createdAt?: string;
   updatedAt?: string;
 }
