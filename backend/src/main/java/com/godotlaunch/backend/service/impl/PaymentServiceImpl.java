@@ -31,6 +31,8 @@ import com.godotlaunch.backend.repository.PaymentGateway;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.PaymentService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
+import com.godotlaunch.backend.entity.Game;
+import com.godotlaunch.backend.repository.GameRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,6 +70,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentGateway paymentGateway;
     private final PlatformSettingsService platformSettingsService;
     private final EmailService emailService;
+    private final GameRepository gameRepository;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
@@ -539,7 +542,6 @@ public class PaymentServiceImpl implements PaymentService {
                 transaction.setType(resolveTransactionType(item));
                 transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
                 transaction.setOrder(order);
-                transaction.setPayment(payment);
                 transactionRepository.save(transaction);
 
                 sellerWallet.setBalance(sellerWallet.getBalance().add(sellerRevenue));
@@ -706,6 +708,7 @@ public class PaymentServiceImpl implements PaymentService {
     private PaymentResponse mapToResponse(Payment payment) {
         UUID assetId = null;
         String assetTitle = null;
+        String assetType = "asset";
         UUID orderId = null;
         UUID buyerId = payment.getWallet().getUser().getId();
         String buyerEmail = payment.getWallet().getUser().getEmail();
@@ -724,6 +727,22 @@ public class PaymentServiceImpl implements PaymentService {
                     sellerId = asset.getSeller().getId();
                     sellerEmail = asset.getSeller().getEmail();
                     sellerFullName = asset.getSeller().getFullName();
+                    assetType = "asset";
+                }
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        } else if (ref != null && ref.startsWith("BUY_GAME:")) {
+            try {
+                UUID gameId = UUID.fromString(ref.substring("BUY_GAME:".length()));
+                Game game = gameRepository.findById(gameId).orElse(null);
+                if (game != null) {
+                    assetId = game.getId();
+                    assetTitle = game.getTitle();
+                    sellerId = game.getCreator().getId();
+                    sellerEmail = game.getCreator().getEmail();
+                    sellerFullName = game.getCreator().getFullName();
+                    assetType = "game_source";
                 }
             } catch (Exception e) {
                 // Ignore parsing errors
@@ -740,6 +759,14 @@ public class PaymentServiceImpl implements PaymentService {
                     sellerId = txn.getAsset().getSeller().getId();
                     sellerEmail = txn.getAsset().getSeller().getEmail();
                     sellerFullName = txn.getAsset().getSeller().getFullName();
+                    assetType = "asset";
+                } else if (txn.getGame() != null) {
+                    assetId = txn.getGame().getId();
+                    assetTitle = txn.getGame().getTitle();
+                    sellerId = txn.getGame().getCreator().getId();
+                    sellerEmail = txn.getGame().getCreator().getEmail();
+                    sellerFullName = txn.getGame().getCreator().getFullName();
+                    assetType = "game_source";
                 }
             }
         }
@@ -749,7 +776,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .orderId(orderId)
                 .assetId(assetId)
                 .assetTitle(assetTitle)
-                .assetType("asset")
+                .assetType(assetType)
+                .marketplaceItemId(assetId)
+                .marketplaceItemTitle(assetTitle)
+                .marketplaceItemType(assetType)
                 .buyerId(buyerId)
                 .buyerEmail(buyerEmail)
                 .buyerFullName(buyerFullName)

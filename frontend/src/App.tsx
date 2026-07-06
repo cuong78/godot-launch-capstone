@@ -46,6 +46,7 @@ import { gameApi } from './api/gameApi';
 import { communityApi } from './api/communityApi';
 import { marketplaceApi } from './api/marketplaceApi';
 import { paymentApi } from './api/paymentApi';
+import { orderApi } from './api/orderApi';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
@@ -650,6 +651,7 @@ export default function App() {
     image: game.thumbnailUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
     tag: game.publishingType ? `Publishing: ${game.publishingType}` : 'Game',
     tagList: [game.publishingType || 'Marketplace', game.status || 'Published'],
+    itemType: 'source_code',
     version: '1.0.0',
     lastUpdated: 'Just now',
     details: {
@@ -930,26 +932,31 @@ export default function App() {
     setIsPlacingOrder(true);
     try {
       const checkoutItem = cart[0];
-      const response = await paymentApi.createPayment({ marketplaceItemId: checkoutItem.id });
+      const orderType = checkoutItem.itemType === 'source_code' ? 'source_code_purchase' : 'asset_purchase';
+
+      const response = await orderApi.createOrder({
+        targetId: checkoutItem.id,
+        orderType: orderType
+      });
+
       if (!response.success || !response.data) {
-        throw new Error(response.message || `Không thể tạo đơn thanh toán cho ${checkoutItem.title}.`);
+        throw new Error(response.message || `Không thể tạo đơn hàng thanh toán cho ${checkoutItem.title}.`);
       }
 
-      const createdPayment = response.data;
-      syncTrackedPayment(createdPayment);
+      showToast("Mua thành công!", "success");
       setCart([]);
       setIsCartOpen(false);
 
-      if (createdPayment.paymentStatus === 'PAID' || !createdPayment.checkoutUrl) {
-        setCurrentScreen('payment');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        showToast("Đơn hàng đã sẵn sàng. Bạn có thể theo dõi trạng thái và tải file trong Payment Center.", "success");
-        return;
+      // Tải lại lịch sử mua hàng để cập nhật trạng thái
+      const historyResponse = await paymentApi.getMyPayments();
+      if (historyResponse.success && historyResponse.data) {
+        replaceTrackedPayments(historyResponse.data);
       }
 
-      window.location.href = createdPayment.checkoutUrl;
+      setCurrentScreen('payment');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      showToast(err.response?.data?.message || err.message || 'Không thể tạo PayOS checkout session.', 'error');
+      showToast(err.response?.data?.message || err.message || 'Không thể thực hiện mua bằng ví.', 'error');
     } finally {
       setIsPlacingOrder(false);
     }
@@ -1163,6 +1170,10 @@ export default function App() {
               }}
               onPlaceOrder={handlePlaceOrder}
               onRemoveItem={(id) => handleRemoveFromCart(id)}
+              onGoToWallet={() => {
+                setCurrentScreen('wallet');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
           </ProtectedRoute>
         )}
