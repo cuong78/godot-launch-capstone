@@ -18,4 +18,7 @@ public class KycStatusResponse {
     private Instant kycVerifiedAt;
     private String kycFrontImageUrl;
     private String kycBackImageUrl;
+    // Chỉ có giá trị khi lần confirm này vừa nâng role lên developer (đủ 3 điều kiện
+    // become-developer) — frontend dùng để refresh session ngay, không cần đăng nhập lại.
+    private String token;
 }

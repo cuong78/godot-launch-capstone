@@ -177,14 +177,14 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
             }
 
             // STEP 5: Update current user
+            // Lưu ý: KHÔNG còn tự nâng role lên developer ở đây nữa — role chỉ được
+            // nâng khi đủ cả 3 điều kiện (GitHub + Face Verify + KYC), xem
+            // KycController.confirmKyc(). Role vẫn là customer sau bước link này
+            // (prepareLinkSession() ở trên đã đảm bảo chỉ customer mới gọi tới đây).
             currentUser.setGithubId(profile.getId());
             currentUser.setGithubUsername(profile.getLogin());
             currentUser.setGithubTokenEnc(encryptedToken);
             currentUser.setGithubLinkedAt(Instant.now());
-
-            Role developerRole = roleRepository.findByName("developer")
-                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-            currentUser.setRole(developerRole);
 
             userRepository.save(currentUser);
 
@@ -247,6 +247,10 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
         User user;
         boolean isNewUser = false;
 
+        // Lưu ý: KHÔNG còn tự nâng role lên developer ở các nhánh dưới đây nữa — role
+        // chỉ được nâng khi đủ cả 3 điều kiện (GitHub + Face Verify + KYC), xem
+        // KycController.confirmKyc(). User cũ đã là developer/admin từ trước giữ nguyên
+        // role (không có bước hạ cấp); user mới/chưa nâng role thì giữ customer.
         if (userByGithub.isPresent()) {
             // CASE 1: github_id exists in DB
             user = userByGithub.get();
@@ -255,12 +259,6 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
             user.setGithubLinkedAt(Instant.now());
             if ("banned".equals(user.getStatus())) {
                 throw new AppException(ErrorCode.USER_BANNED);
-            }
-            if (!"admin".equalsIgnoreCase(user.getRole().getName())
-                    && !"developer".equalsIgnoreCase(user.getRole().getName())) {
-                Role developerRole = roleRepository.findByName("developer")
-                        .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-                user.setRole(developerRole);
             }
             user = userRepository.save(user);
         } else {
@@ -274,12 +272,6 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
                 user.setGithubLinkedAt(Instant.now());
                 if ("banned".equals(user.getStatus())) {
                     throw new AppException(ErrorCode.USER_BANNED);
-                }
-                if (!"admin".equalsIgnoreCase(user.getRole().getName())
-                        && !"developer".equalsIgnoreCase(user.getRole().getName())) {
-                    Role developerRole = roleRepository.findByName("developer")
-                            .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-                    user.setRole(developerRole);
                 }
                 user = userRepository.save(user);
             } else {
@@ -297,9 +289,9 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
                 String randomPassword = UUID.randomUUID().toString();
                 user.setPasswordHash(passwordEncoder.encode(randomPassword));
 
-                Role developerRole = roleRepository.findByName("developer")
+                Role customerRole = roleRepository.findByName("customer")
                         .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-                user.setRole(developerRole);
+                user.setRole(customerRole);
 
                 user = userRepository.save(user);
                 isNewUser = true;

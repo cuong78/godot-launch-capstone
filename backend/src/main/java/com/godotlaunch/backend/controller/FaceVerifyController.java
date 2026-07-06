@@ -28,11 +28,14 @@ public class FaceVerifyController {
     private final UserRepository userRepository;
 
     @GetMapping("/face-verify/status")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get face verification status", description = "Returns whether the current developer has completed face verification.")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> getFaceVerifyStatus(Principal principal) {
-        User user = userRepository.findByEmail(principal.getName())
+        // Fetch kèm role trong cùng query — tránh LazyInitializationException khi đọc
+        // user.getRole() sau đó (open-in-view=false nên session đóng ngay sau khi trả về).
+        User user = userRepository.findWithRoleByEmail(principal.getName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        requireGithubLinkedOrDeveloper(user);
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of("faceVerified", user.isFaceVerified()),
                 "Face verification status retrieved"
@@ -40,7 +43,7 @@ public class FaceVerifyController {
     }
 
     @PostMapping("/face-verify")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Submit face for verification",
         description = "Checks face is not duplicate, registers embedding, sets face_verified = true. One-time only."
@@ -49,8 +52,11 @@ public class FaceVerifyController {
             @Valid @RequestBody FaceVerifyRequest request,
             Principal principal) {
 
-        User user = userRepository.findByEmail(principal.getName())
+        // Fetch kèm role trong cùng query — tránh LazyInitializationException khi đọc
+        // user.getRole() sau đó (open-in-view=false nên session đóng ngay sau khi trả về).
+        User user = userRepository.findWithRoleByEmail(principal.getName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        requireGithubLinkedOrDeveloper(user);
 
         if (user.isFaceVerified()) {
             return ResponseEntity.ok(ApiResponse.success(
@@ -82,5 +88,16 @@ public class FaceVerifyController {
                 Map.of("faceVerified", true),
                 "Xác thực khuôn mặt thành công."
         ));
+    }
+
+    // Điều kiện gọi API: đã link GitHub (đang trong luồng become-developer),
+    // hoặc đã là developer/admin từ trước (không đòi hỏi role=developer sẵn có nữa).
+    private void requireGithubLinkedOrDeveloper(User user) {
+        boolean eligible = user.getGithubId() != null
+                || "developer".equalsIgnoreCase(user.getRole().getName())
+                || "admin".equalsIgnoreCase(user.getRole().getName());
+        if (!eligible) {
+            throw new AppException(ErrorCode.GITHUB_NOT_LINKED);
+        }
     }
 }
