@@ -386,7 +386,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
 
                 return (
                   <button
-                    key={payment.orderId}
+                    key={payment.id}
                     type="button"
                     onClick={() => setSelectedOrderId(payment.orderId)}
                     className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-studio ${
@@ -402,7 +402,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                           {payment.marketplaceItemTitle}
                         </p>
                         <p className="mt-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                          {t('payment:center.sessions.orderPrefix')} {payment.orderId.slice(0, 8).toUpperCase()}
+                          {t('payment:center.sessions.orderPrefix')} {(payment.orderId || payment.id).slice(0, 8).toUpperCase()}
                         </p>
                       </div>
                       <span

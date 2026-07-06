@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Upload, CheckCircle, AlertCircle, Loader2, X, FileText, Edit3 } from 'lucide-react';
 import { kycApi, KycOcrResult, KycConfirmPayload } from '../api/kycApi';
+import { useAuth } from '../hooks/useAuth';
 
 type Step = 'upload' | 'processing' | 'review' | 'submitting' | 'success';
 type DocType = 'cccd' | 'passport';
@@ -8,6 +9,11 @@ type DocType = 'cccd' | 'passport';
 interface Props {
   onSuccess: (status: { fullName: string; idNumber: string; address: string | null; dateOfBirth: string | null }) => void;
   onClose: () => void;
+  // Cho phép caller tùy chỉnh nội dung theo ngữ cảnh gọi (become-developer, ký hợp đồng...).
+  // Mặc định giữ nguyên text gốc (luồng ký hợp đồng) để không đổi hành vi các nơi đã dùng
+  // modal này từ trước.
+  subtitle?: string;
+  successDescription?: string;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -17,7 +23,13 @@ const FIELD_LABELS: Record<string, string> = {
   address: 'Địa chỉ thường trú',
 };
 
-export default function KycOcrModal({ onSuccess, onClose }: Props) {
+export default function KycOcrModal({
+  onSuccess,
+  onClose,
+  subtitle = 'Yêu cầu trước khi ký hợp đồng lần đầu',
+  successDescription = 'Thông tin đã được lưu. Đang điền vào hợp đồng...',
+}: Props) {
+  const { loginWithToken } = useAuth();
   const [step, setStep] = useState<Step>('upload');
   const [docType, setDocType] = useState<DocType>('cccd');
   const [frontPreviewUrl, setFrontPreviewUrl] = useState<string | null>(null);
@@ -106,6 +118,17 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
         backImageBase64: backBase64 || undefined
       });
       if (res.success) {
+        // Nếu lần confirm này vừa nâng role lên developer (đủ 3 điều kiện become-developer),
+        // backend trả kèm token mới — áp dụng ngay để refresh session, không cần đăng nhập lại.
+        // Với luồng ký hợp đồng cũ, token luôn null (user đã là developer từ trước) nên đây là no-op.
+        if (res.data?.token) {
+          try {
+            await loginWithToken(res.data.token);
+          } catch (tokenErr) {
+            console.error('Failed to apply refreshed session token', tokenErr);
+          }
+        }
+
         setStep('success');
         setTimeout(() => {
           onSuccess({
@@ -147,7 +170,7 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
             </div>
             <div>
               <h2 className="text-white font-semibold text-sm">Xác minh danh tính (KYC)</h2>
-              <p className="text-white/40 text-xs">Yêu cầu trước khi ký hợp đồng lần đầu</p>
+              <p className="text-white/40 text-xs">{subtitle}</p>
             </div>
           </div>
           {step !== 'submitting' && step !== 'processing' && (
@@ -367,7 +390,7 @@ export default function KycOcrModal({ onSuccess, onClose }: Props) {
               </div>
               <p className="text-white font-semibold">Xác minh danh tính thành công</p>
               <p className="text-white/50 text-sm text-center">
-                Thông tin đã được lưu. Đang điền vào hợp đồng...
+                {successDescription}
               </p>
             </div>
           )}

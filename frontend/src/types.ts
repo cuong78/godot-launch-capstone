@@ -76,7 +76,8 @@ export type ScreenType =
   | "payment-success"
   | "payment-failed"
   | "payment-cancelled"
-  | "wallet";
+  | "wallet"
+  | "developer-onboarding";
 
 export interface WalletResponse {
   id: string;
@@ -126,8 +127,6 @@ export interface WithdrawalResponse {
   payosStatus?: string;
   payosCreatedAt?: string;
   status: WithdrawalStatus;
-  processedById?: string;
-  processedByFullName?: string;
   processedAt?: string;
   remark?: string;
   createdAt?: string;
@@ -144,8 +143,6 @@ export interface WithdrawalDetailResponse extends WithdrawalResponse {
   preferredQrImageUrl?: string;
 }
 
-export type WithdrawalRequestResponse = WithdrawalResponse;
-
 export interface CreateWithdrawalRequest {
   amount: number;
   bankName: string;
@@ -161,11 +158,6 @@ export interface ApproveWithdrawalRequest {
 
 export interface RejectWithdrawalRequest {
   remark: string;
-}
-
-export interface ReviewWithdrawalRequest {
-  approve: boolean;
-  rejectReason?: string;
 }
 
 export type AiRecommendation = 'approve' | 'review' | 'reject';

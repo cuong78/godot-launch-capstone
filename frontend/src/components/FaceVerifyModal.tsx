@@ -6,11 +6,21 @@ import { faceVerifyApi } from '../api/faceVerifyApi';
 interface FaceVerifyModalProps {
   onSuccess: () => void;
   onClose: () => void;
+  // Cho phép caller tùy chỉnh nội dung theo ngữ cảnh gọi (become-developer, upload asset...).
+  // Mặc định giữ nguyên text gốc (luồng đăng tải Marketplace) để không đổi hành vi các nơi
+  // đã dùng modal này từ trước.
+  description?: string;
+  successMessage?: string;
 }
 
 type Step = 'intro' | 'camera' | 'preview' | 'submitting' | 'success';
 
-export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({ onSuccess, onClose }) => {
+export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
+  onSuccess,
+  onClose,
+  description = 'Trước khi đăng tải lên Marketplace lần đầu, hệ thống cần xác minh danh tính để đảm bảo mỗi người chỉ có một tài khoản developer.',
+  successMessage = 'Bạn có thể đăng tải lên Marketplace. Đang tiếp tục...',
+}) => {
   const [step, setStep] = useState<Step>('intro');
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string>('');
@@ -78,7 +88,7 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({ onSuccess, onC
               <div>
                 <h3 className="font-display text-lg font-bold text-[#ece1d1]">Xác Thực Khuôn Mặt Một Lần</h3>
                 <p className="mt-2 text-sm text-[#d3c5ac]/70">
-                  Trước khi đăng tải lên Marketplace lần đầu, hệ thống cần xác minh danh tính để đảm bảo mỗi người chỉ có một tài khoản developer.
+                  {description}
                 </p>
               </div>
               <ul className="space-y-2 text-left text-xs text-[#d3c5ac]/70">
@@ -174,7 +184,7 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({ onSuccess, onC
               </div>
               <div>
                 <p className="font-display font-bold text-emerald-300">Xác Thực Thành Công!</p>
-                <p className="mt-1 text-xs text-[#d3c5ac]/70">Bạn có thể đăng tải lên Marketplace. Đang tiếp tục...</p>
+                <p className="mt-1 text-xs text-[#d3c5ac]/70">{successMessage}</p>
               </div>
             </div>
           )}

@@ -685,6 +685,21 @@ export function Header({
                         >
                           {t("my_profile")}
                         </button>
+                        {currentUser.role === 'customer' && (
+                          <>
+                            <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+                            <button
+                              onClick={() => {
+                                setIsProfileOpen(false);
+                                setCurrentScreen("developer-onboarding");
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-amber-500 transition-colors hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+                            >
+                              ✨ {t("become_developer")}
+                            </button>
+                          </>
+                        )}
                         <div className="border-t border-slate-100 dark:border-slate-805 my-1" />
                         <button
                           onClick={() => {

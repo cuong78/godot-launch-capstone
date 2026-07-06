@@ -32,7 +32,11 @@ const PRESET_AVATARS = [
   DEV_AVATARS.jammer3,
 ];
 
-export function ProfilePage() {
+interface ProfilePageProps {
+  setCurrentScreen?: (screen: any) => void;
+}
+
+export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
   const { currentUser, updateUser } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -74,7 +78,7 @@ export function ProfilePage() {
   useEffect(() => {
     const linked = searchParams.get("linked");
     if (linked === "true") {
-      setStatusMessage({ type: 'success', text: 'GitHub linked successfully! You are now a Developer.' });
+      setStatusMessage({ type: 'success', text: 'GitHub linked successfully! Please complete Face Verification & KYC to become a Developer.' });
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [searchParams]);
@@ -376,6 +380,18 @@ export function ProfilePage() {
                           disabled={isUnlinking}
                         >
                           {isUnlinking ? 'Unlinking...' : 'Unlink GitHub'}
+                        </Button>
+                      )}
+                      {currentUser.role === 'customer' && setCurrentScreen && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentScreen('developer-onboarding');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                        >
+                          Hoàn tất xác thực & KYC
                         </Button>
                       )}
                     </div>

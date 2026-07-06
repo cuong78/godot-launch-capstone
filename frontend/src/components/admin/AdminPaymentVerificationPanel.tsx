@@ -185,7 +185,7 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
                       <tr key={payment.id} className="border-t border-slate-200/70 dark:border-slate-800/70">
                         <td className="p-4">
                           <div className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">
-                            {payment.orderId.slice(0, 8).toUpperCase()}
+                            {(payment.orderId || payment.id).slice(0, 8).toUpperCase()}
                           </div>
                           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[180px]">
                             {payment.marketplaceItemTitle}
@@ -227,7 +227,7 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
               <div>
                 <h3 className="font-display text-xl font-bold text-slate-850 dark:text-white">Payment Detail</h3>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Order {selectedPayment.orderId.slice(0, 8).toUpperCase()} • {selectedPayment.marketplaceItemTitle}
+                  Order {(selectedPayment.orderId || selectedPayment.id).slice(0, 8).toUpperCase()} • {selectedPayment.marketplaceItemTitle}
                 </p>
               </div>
               <div className="flex items-center gap-2">

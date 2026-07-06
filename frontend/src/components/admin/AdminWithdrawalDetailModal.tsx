@@ -30,7 +30,6 @@ interface AdminWithdrawalDetailModalProps {
   onRejectRemarkChange: (value: string) => void;
   onClose: () => void;
   onApprove: () => void;
-  onSyncStatus: () => void;
   onReject: () => void;
   statusNotice?: WithdrawalStatusNotice | null;
   onDismissStatusNotice: () => void;
@@ -148,7 +147,6 @@ export const AdminWithdrawalDetailModal: React.FC<
   onRejectRemarkChange,
   onClose,
   onApprove,
-  onSyncStatus,
   onReject,
   statusNotice,
   onDismissStatusNotice,
@@ -161,9 +159,6 @@ export const AdminWithdrawalDetailModal: React.FC<
   const canCreatePayout =
     withdrawal.status === "pending" ||
     (withdrawal.status === "approved" && !withdrawal.payosPayoutId);
-  const canSyncStatus =
-    withdrawal.status === "processing" ||
-    (withdrawal.status === "approved" && !!withdrawal.payosPayoutId);
   const canReject =
     withdrawal.status === "pending" ||
     withdrawal.status === "approved" ||
@@ -364,17 +359,6 @@ export const AdminWithdrawalDetailModal: React.FC<
                     {formatMoney(withdrawal.amount, currency)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Processed By
-                  </p>
-                  <p className="mt-2 font-semibold text-slate-900 dark:text-white">
-                    {withdrawal.processedByFullName || "Chưa có"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {formatTimestamp(withdrawal.processedAt)}
-                  </p>
-                </div>
               </div>
             </section>
           </div>
@@ -547,16 +531,6 @@ export const AdminWithdrawalDetailModal: React.FC<
                     Create Payout Order
                   </Button>
                 )}
-                {canSyncStatus && (
-                  <Button
-                    variant="secondary-flat"
-                    size="sm"
-                    onClick={onSyncStatus}
-                    disabled={isBusy}
-                  >
-                    Sync PayOS Status
-                  </Button>
-                )}
                 {canReject && (
                   <Button
                     variant="ghost"
@@ -567,7 +541,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                     Reject Request
                   </Button>
                 )}
-                {!canCreatePayout && !canSyncStatus && !canReject && (
+                {!canCreatePayout && !canReject && (
                   <span className="text-sm text-slate-500 dark:text-slate-400">
                     Withdrawal này đã ở trạng thái cuối và không thể chỉnh sửa
                     thêm.

@@ -37,6 +37,7 @@ import { ChatScreen } from './page/ChatScreen';
 import { CheckoutPage } from './page/CheckoutPage';
 import { PaymentDetailPage } from './page/PaymentDetailPage';
 import { PaymentResultPage } from './page/PaymentResultPage';
+import { DeveloperOnboardingPage } from './page/DeveloperOnboardingPage';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
@@ -443,6 +444,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
     return { screen: 'profile' };
   }
   if (primary === 'admin') return { screen: 'admin' };
+  if (primary === 'developer-onboarding') return { screen: 'developer-onboarding' };
   if (primary === 'auth' && (segments[1] === 'callback' || (segments[1] === 'github' && segments[2] === 'callback'))) {
     return { screen: 'auth-callback' };
   }
@@ -1369,7 +1371,13 @@ export default function App() {
 
         {currentScreen === 'profile' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
-            <ProfilePage />
+            <ProfilePage setCurrentScreen={setCurrentScreen} />
+          </ProtectedRoute>
+        )}
+
+        {currentScreen === 'developer-onboarding' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <DeveloperOnboardingPage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
 

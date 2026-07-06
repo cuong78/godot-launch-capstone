@@ -17,6 +17,9 @@ export interface KycStatus {
   dateOfBirth: string | null;
   address: string | null;
   kycVerifiedAt: string | null;
+  // Chỉ có giá trị khi lần confirm này vừa nâng role lên developer (đủ 3 điều kiện
+  // become-developer) — dùng để refresh session ngay, không cần đăng nhập lại.
+  token?: string | null;
 }
 
 export interface KycConfirmPayload {

@@ -42,7 +42,7 @@ export const PurchasedInventoryPanel: React.FC<PurchasedInventoryPanelProps> = (
   const paidPayments = React.useMemo(
     () =>
       payments
-        .filter((payment) => payment.paymentStatus === 'PAID')
+        .filter((payment) => payment.paymentStatus === 'PAID' && payment.orderId)
         .sort((left, right) => {
           const leftTime = new Date(left.paidAt || left.updatedAt || left.createdAt || 0).getTime();
           const rightTime = new Date(right.paidAt || right.updatedAt || right.createdAt || 0).getTime();

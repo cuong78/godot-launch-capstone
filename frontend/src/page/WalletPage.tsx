@@ -4,10 +4,12 @@ import { ArrowDownToLine, ArrowLeft, Clock3, Landmark, ReceiptText, RefreshCw, T
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
 import { walletApi } from '../api/walletApi';
+import { paymentApi } from '../api/paymentApi';
 import { useAuth } from '../hooks/useAuth';
 import {
   CreateWithdrawalRequest,
   DeveloperWalletSummaryResponse,
+  PaymentResponse,
   ScreenType,
   TransactionResponse,
   WithdrawalResponse,
@@ -94,6 +96,9 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
   const [topUpAmount, setTopUpAmount] = useState('');
   const [topUpError, setTopUpError] = useState<string | null>(null);
   const [isTopUpSubmitting, setIsTopUpSubmitting] = useState(false);
+  const [pendingTopUp, setPendingTopUp] = useState<PaymentResponse | null>(null);
+  const [isResumingTopUp, setIsResumingTopUp] = useState(false);
+  const [isCancellingTopUp, setIsCancellingTopUp] = useState(false);
 
   const loadWalletSummary = async () => {
     setIsLoadingSummary(true);
@@ -136,9 +141,78 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
     }
   };
 
+  const loadPendingTopUp = async () => {
+    try {
+      const response = await paymentApi.getMyPayments();
+      if (!response.success || !response.data) {
+        return;
+      }
+
+      const candidates = response.data
+        .filter((p) => p.paymentReference?.startsWith('TOPUP:') && p.paymentStatus === 'PENDING' && p.checkoutUrl)
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+      const latest = candidates[0];
+      if (!latest) {
+        setPendingTopUp(null);
+        return;
+      }
+
+      // Refresh the real status from PayOS before trusting the stored checkout link.
+      const confirmResponse = await paymentApi.confirmPayment(latest.id);
+      const refreshed = confirmResponse.success && confirmResponse.data ? confirmResponse.data : latest;
+
+      if (refreshed.paymentStatus === 'PENDING' && refreshed.checkoutUrl) {
+        setPendingTopUp(refreshed);
+      } else {
+        setPendingTopUp(null);
+        if (refreshed.paymentStatus === 'PAID') {
+          await loadWalletSummary();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check pending top-up', error);
+    }
+  };
+
+  const handleResumeTopUp = async () => {
+    if (!pendingTopUp) return;
+    setIsResumingTopUp(true);
+    try {
+      const response = await paymentApi.confirmPayment(pendingTopUp.id);
+      const refreshed = response.success && response.data ? response.data : pendingTopUp;
+      if (refreshed.paymentStatus === 'PENDING' && refreshed.checkoutUrl) {
+        window.location.href = refreshed.checkoutUrl;
+      } else {
+        setPendingTopUp(null);
+        if (refreshed.paymentStatus === 'PAID') {
+          await loadWalletSummary();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to resume top-up', error);
+    } finally {
+      setIsResumingTopUp(false);
+    }
+  };
+
+  const handleCancelTopUp = async () => {
+    if (!pendingTopUp) return;
+    setIsCancellingTopUp(true);
+    try {
+      await paymentApi.cancelPayment(pendingTopUp.id);
+    } catch (error) {
+      console.error('Failed to cancel pending top-up', error);
+    } finally {
+      setPendingTopUp(null);
+      setIsCancellingTopUp(false);
+    }
+  };
+
   useEffect(() => {
     loadWalletSummary();
     loadWithdrawals();
+    loadPendingTopUp();
   }, []);
 
   useEffect(() => {
@@ -255,10 +329,47 @@ export const WalletPage: React.FC<{ setCurrentScreen: (screen: ScreenType) => vo
             loadWalletSummary();
             loadWithdrawals();
             loadTransactions();
+            loadPendingTopUp();
           }}>
             {t('wallet:common.refresh')}
           </Button>
         </div>
+
+        {pendingTopUp && (
+          <div className="mt-6 rounded-3xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-900/60 dark:bg-amber-950/30">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="font-semibold text-amber-800 dark:text-amber-300">
+                  {t('wallet:pendingTopup.title')}
+                </p>
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                  {t('wallet:pendingTopup.description', {
+                    amount: formatMoney(Number(pendingTopUp.amount), pendingTopUp.currency ?? summaryCurrency, locale, t('wallet:common.notAvailable')),
+                    createdAt: formatTimestamp(pendingTopUp.createdAt, locale, t('wallet:common.notAvailable')),
+                  })}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleResumeTopUp}
+                  disabled={isResumingTopUp || isCancellingTopUp}
+                >
+                  {isResumingTopUp ? t('wallet:pendingTopup.resuming') : t('wallet:pendingTopup.resume')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelTopUp}
+                  disabled={isResumingTopUp || isCancellingTopUp}
+                >
+                  {isCancellingTopUp ? t('wallet:pendingTopup.cancelling') : t('wallet:pendingTopup.cancel')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className={`mt-6 grid grid-cols-1 gap-4 ${isCustomer ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
           <div className="rounded-3xl border border-emerald-200/70 bg-emerald-50/80 p-5 dark:border-emerald-900/50 dark:bg-emerald-950/20">

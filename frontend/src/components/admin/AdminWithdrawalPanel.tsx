@@ -159,7 +159,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
     if (detail.status === 'processing' || detail.status === 'approved') {
       setStatusNotice({
         title: 'Tiền chưa về tài khoản người dùng',
-        message: 'Lệnh chi đã được tạo nhưng PayOS chưa xác nhận chuyển tiền thành công. Hãy giữ lại withdrawal này trong queue và bấm Sync PayOS Status sau ít phút để cập nhật kết quả mới nhất.',
+        message: 'Lệnh chi đã được tạo nhưng PayOS chưa xác nhận chuyển tiền thành công. Hệ thống sẽ tự động kiểm tra lại với PayOS mỗi 30 giây và cập nhật trạng thái khi có kết quả mới nhất.',
         tone: 'info',
       });
     }
@@ -174,24 +174,13 @@ export const AdminWithdrawalPanel: React.FC = () => {
         remark: completionRemark.trim() || undefined,
       });
       if (response.success) {
-        let nextDetail = response.data;
-
-        if (nextDetail?.status === 'processing' && nextDetail.payosPayoutId) {
-          try {
-            const syncResponse = await walletApi.completeWithdrawal(selectedWithdrawal.id);
-            if (syncResponse.success && syncResponse.data) {
-              nextDetail = syncResponse.data;
-            }
-          } catch (syncError) {
-            console.warn('Initial payout sync after approve did not complete immediately.', syncError);
-          }
-        }
+        const nextDetail = response.data;
 
         const successText =
           nextDetail?.status === 'completed'
             ? 'PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất.'
             : nextDetail?.status === 'processing'
-              ? 'Payout order đã được tạo. Hãy bấm Sync PayOS Status để cập nhật trạng thái chuyển tiền.'
+              ? 'Payout order đã được tạo. Hệ thống sẽ tự động đồng bộ trạng thái với PayOS trong giây lát.'
               : 'Withdrawal đã được approve thành công.';
 
         await syncAfterAction(nextDetail, successText);
@@ -201,34 +190,6 @@ export const AdminWithdrawalPanel: React.FC = () => {
       }
     } catch (err: any) {
       setDetailError(err.response?.data?.message || err.message || 'Không thể approve withdrawal.');
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  const handleSyncStatus = async () => {
-    if (!selectedWithdrawal) return;
-
-    setIsBusy(true);
-    setDetailError(null);
-    try {
-      const response = await walletApi.completeWithdrawal(selectedWithdrawal.id);
-      if (response.success) {
-        const nextDetail = response.data;
-        const successText =
-          nextDetail?.status === 'completed'
-            ? 'PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất.'
-            : nextDetail?.status === 'failed'
-              ? 'PayOS báo payout thất bại. Wallet không bị trừ.'
-              : 'Đã sync trạng thái payout từ PayOS. Giao dịch vẫn đang được xử lý.';
-
-        await syncAfterAction(nextDetail, successText);
-        presentPayoutStatus(nextDetail);
-      } else {
-        setDetailError(response.message || 'Không thể đồng bộ trạng thái payout.');
-      }
-    } catch (err: any) {
-      setDetailError(err.response?.data?.message || err.message || 'Không thể đồng bộ trạng thái payout.');
     } finally {
       setIsBusy(false);
     }
@@ -381,7 +342,6 @@ export const AdminWithdrawalPanel: React.FC = () => {
         onRejectRemarkChange={setRejectRemark}
         onClose={closeModal}
         onApprove={handleApprove}
-        onSyncStatus={handleSyncStatus}
         onReject={handleReject}
         statusNotice={statusNotice}
         onDismissStatusNotice={() => setStatusNotice(null)}

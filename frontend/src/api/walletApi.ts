@@ -10,7 +10,6 @@ import {
   CreateWithdrawalRequest,
   ApproveWithdrawalRequest,
   RejectWithdrawalRequest,
-  ReviewWithdrawalRequest,
   CreateTopUpRequest,
   PaymentResponse
 } from '../types';
@@ -73,18 +72,8 @@ export const walletApi = {
     return response.data;
   },
 
-  completeWithdrawal: async (id: string, data?: ApproveWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
-    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/complete`, data ?? {});
-    return response.data;
-  },
-
   rejectWithdrawal: async (id: string, data: RejectWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
     const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/reject`, data);
-    return response.data;
-  },
-
-  reviewWithdrawal: async (id: string, data: ReviewWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
-    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/withdrawals/admin/${id}/review`, data);
     return response.data;
   }
 };
