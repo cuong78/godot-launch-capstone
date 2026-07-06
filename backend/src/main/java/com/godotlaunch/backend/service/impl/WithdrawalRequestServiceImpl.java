@@ -5,7 +5,6 @@ import com.godotlaunch.backend.dto.request.ApproveWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.CreateWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.PayoutGatewayCreateRequest;
 import com.godotlaunch.backend.dto.request.RejectWithdrawalRequest;
-import com.godotlaunch.backend.dto.request.ReviewWithdrawalRequest;
 import com.godotlaunch.backend.dto.response.DeveloperWalletSummaryResponse;
 import com.godotlaunch.backend.dto.response.PayoutGatewayBalanceResponse;
 import com.godotlaunch.backend.dto.response.PayoutGatewayCreateResponse;
@@ -24,8 +23,8 @@ import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.repository.PayoutGateway;
+import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
-import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +43,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -74,7 +74,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
     private final PayoutGateway payoutGateway;
-    private final WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
+    private final EncryptionUtils encryptionUtils;
 
     @Override
     @Transactional(readOnly = true)
@@ -102,7 +102,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         withdrawal.setAmount(request.getAmount());
         withdrawal.setCurrency(DEFAULT_CURRENCY);
         withdrawal.setBankName(request.getBankName().trim());
-        withdrawal.setBankAccount(request.getBankAccount().trim());
+        withdrawal.setBankAccount(encryptBankAccount(request.getBankAccount().trim()));
         withdrawal.setAccountHolder(request.getAccountHolder().trim());
         withdrawal.setStatus(WithdrawalStatus.pending);
         withdrawal.setRemark(buildRemarkSection("Developer note", request.getNote()));
@@ -190,9 +190,21 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
             throw new AppException(ErrorCode.INSUFFICIENT_PAYOUT_BALANCE);
         }
 
-        PayoutGatewayCreateResponse payoutResponse = payoutGateway.createPayout(
-                buildPayoutCreateRequest(withdrawal, transferReference)
-        );
+        PayoutGatewayCreateResponse payoutResponse;
+        try {
+            payoutResponse = payoutGateway.createPayout(buildPayoutCreateRequest(withdrawal, transferReference));
+        } catch (AppException createEx) {
+            // createPayout() có thể đã gọi PayOS thành công (tiền đã chuyển) nhưng lỗi xảy ra
+            // trước khi ta nhận được response hợp lệ (timeout, response bất thường...). Tra cứu lại
+            // theo referenceId (= withdrawal.id, cố định) để tránh mất dấu payout PayOS đã tạo thật.
+            payoutResponse = payoutGateway.findPayoutByReferenceId(withdrawal.getId().toString())
+                    .orElseThrow(() -> createEx);
+            log.warn(
+                    "createPayout() failed locally but a payout already exists on PayOS for withdrawal {} (payoutId={}). Reconciled instead of failing.",
+                    withdrawal.getId(),
+                    payoutResponse.getPayoutId()
+            );
+        }
         if (hasImmediatePayoutFailure(payoutResponse.getStatus())) {
             throw new AppException(ErrorCode.PAYOUT_CREATE_FAILED);
         }
@@ -221,10 +233,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 Map.of(
                         "status", updated.getStatus().name(),
                         "transferReference", updated.getTransferReference(),
-                        "payosPayoutId", firstNonBlank(updated.getPayosPayoutId(), ""),
-                        "payosReferenceId", firstNonBlank(updated.getPayosReferenceId(), ""),
-                        "payosStatus", firstNonBlank(updated.getPayosStatus(), ""),
-                        "remark", firstNonBlank(updated.getRemark(), "")
+                        "payosPayoutId", Objects.requireNonNullElse(updated.getPayosPayoutId(), ""),
+                        "payosReferenceId", Objects.requireNonNullElse(updated.getPayosReferenceId(), ""),
+                        "payosStatus", Objects.requireNonNullElse(updated.getPayosStatus(), ""),
+                        "remark", Objects.requireNonNullElse(updated.getRemark(), "")
                 ),
                 "Admin created a PayOS payout order and moved the withdrawal into processing."
         );
@@ -264,21 +276,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     @Override
     @Transactional
-    public WithdrawalDetailResponse completeWithdrawal(UUID requestId, ApproveWithdrawalRequest request, String adminEmail) {
-        return synchronizeWithdrawalStatus(requestId, adminEmail);
-    }
-
-    @Override
-    @Transactional
-    public WithdrawalDetailResponse synchronizeWithdrawalStatus(UUID requestId, String adminEmail) {
-        WithdrawalRequest updated = withdrawalStatusSynchronizer.synchronize(requestId, adminEmail);
-        Wallet wallet = getOrCreateWallet(updated.getUser());
-        WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
-        return mapToDetailResponse(updated, wallet, metrics);
-    }
-
-    @Override
-    @Transactional
     public WithdrawalDetailResponse rejectWithdrawal(UUID requestId, RejectWithdrawalRequest request, String adminEmail) {
         User admin = getUserByEmail(adminEmail);
         WithdrawalRequest withdrawal = getWithdrawalForUpdate(requestId);
@@ -310,15 +307,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
         return mapToDetailResponse(updated, wallet, metrics);
-    }
-
-    @Override
-    @Transactional
-    public WithdrawalDetailResponse reviewWithdrawalRequest(UUID requestId, ReviewWithdrawalRequest request, String adminEmail) {
-        if (request.isApprove()) {
-            return approveWithdrawal(requestId, new ApproveWithdrawalRequest(null, null), adminEmail);
-        }
-        return rejectWithdrawal(requestId, new RejectWithdrawalRequest(request.getRejectReason()), adminEmail);
     }
 
     private User getUserByEmail(String email) {
@@ -417,7 +405,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .amount(withdrawal.getAmount())
                 .currency(firstNonBlank(withdrawal.getCurrency(), DEFAULT_CURRENCY))
                 .bankName(withdrawal.getBankName())
-                .bankAccount(withdrawal.getBankAccount())
+                .bankAccount(decryptBankAccount(withdrawal))
                 .accountHolder(withdrawal.getAccountHolder())
                 .transferReference(resolveTransferReference(withdrawal, null))
                 .payosPayoutId(withdrawal.getPayosPayoutId())
@@ -425,8 +413,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .payosStatus(withdrawal.getPayosStatus())
                 .payosCreatedAt(withdrawal.getPayosCreatedAt())
                 .status(withdrawal.getStatus())
-                .processedById(null)
-                .processedByFullName(null)
                 .processedAt(withdrawal.getProcessedAt())
                 .remark(withdrawal.getRemark())
                 .createdAt(withdrawal.getCreatedAt())
@@ -448,7 +434,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .amount(withdrawal.getAmount())
                 .currency(firstNonBlank(withdrawal.getCurrency(), DEFAULT_CURRENCY))
                 .bankName(withdrawal.getBankName())
-                .bankAccount(withdrawal.getBankAccount())
+                .bankAccount(decryptBankAccount(withdrawal))
                 .accountHolder(withdrawal.getAccountHolder())
                 .transferReference(resolveTransferReference(withdrawal, null))
                 .payosPayoutId(withdrawal.getPayosPayoutId())
@@ -456,8 +442,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .payosStatus(withdrawal.getPayosStatus())
                 .payosCreatedAt(withdrawal.getPayosCreatedAt())
                 .status(withdrawal.getStatus())
-                .processedById(null)
-                .processedByFullName(null)
                 .processedAt(withdrawal.getProcessedAt())
                 .remark(withdrawal.getRemark())
                 .createdAt(withdrawal.getCreatedAt())
@@ -482,7 +466,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .amount(withdrawal.getAmount())
                 .currency(firstNonBlank(withdrawal.getCurrency(), DEFAULT_CURRENCY))
                 .bankName(withdrawal.getBankName())
-                .bankAccount(withdrawal.getBankAccount().replaceAll("\\s+", ""))
+                .bankAccount(decryptBankAccount(withdrawal).replaceAll("\\s+", ""))
                 .accountHolder(withdrawal.getAccountHolder())
                 .toBankBin(resolveBankCodeOrThrow(withdrawal.getBankName()))
                 .categories(PAYOUT_CATEGORY)
@@ -525,7 +509,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private String buildQrPayload(WithdrawalRequest withdrawal) {
         return "GodotLaunch Withdrawal\n"
                 + "Bank: " + withdrawal.getBankName() + "\n"
-                + "Account: " + withdrawal.getBankAccount() + "\n"
+                + "Account: " + decryptBankAccount(withdrawal) + "\n"
                 + "Holder: " + withdrawal.getAccountHolder() + "\n"
                 + "Amount: " + withdrawal.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VND\n"
                 + "Reference: " + resolveTransferReference(withdrawal, null);
@@ -537,7 +521,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
             return null;
         }
 
-        String accountNumber = withdrawal.getBankAccount().replaceAll("\\s+", "");
+        String accountNumber = decryptBankAccount(withdrawal).replaceAll("\\s+", "");
         String amount = withdrawal.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString();
         String info = urlEncode(resolveTransferReference(withdrawal, null));
         String accountName = urlEncode(withdrawal.getAccountHolder());
@@ -594,6 +578,20 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     private BigDecimal safeAmount(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private String encryptBankAccount(String plainBankAccount) {
+        return encryptionUtils.encrypt(plainBankAccount);
+    }
+
+    private String decryptBankAccount(WithdrawalRequest withdrawal) {
+        String stored = withdrawal.getBankAccount();
+        try {
+            return encryptionUtils.decrypt(stored);
+        } catch (RuntimeException e) {
+            // Rows created before encryption was introduced still hold plaintext.
+            return stored;
+        }
     }
 
     private boolean isAdmin(User user) {

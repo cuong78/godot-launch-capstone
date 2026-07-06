@@ -4,7 +4,6 @@ import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.PayoutGatewayCreateRequest;
 import com.godotlaunch.backend.dto.response.PayoutGatewayBalanceResponse;
 import com.godotlaunch.backend.dto.response.PayoutGatewayCreateResponse;
-import com.godotlaunch.backend.dto.response.PayoutGatewayFeeEstimateResponse;
 import com.godotlaunch.backend.dto.response.PayoutGatewayStatusResponse;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.PayoutGateway;
@@ -13,10 +12,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import vn.payos.PayOS;
+import vn.payos.core.Page;
 import vn.payos.exception.APIException;
 import vn.payos.exception.ConnectionException;
 import vn.payos.exception.ConnectionTimeoutException;
 import vn.payos.exception.PayOSException;
+import vn.payos.model.v1.payouts.GetPayoutListParams;
 import vn.payos.model.v1.payouts.Payout;
 import vn.payos.model.v1.payouts.PayoutApprovalState;
 import vn.payos.model.v1.payouts.PayoutRequests;
@@ -28,6 +29,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Component
 @Slf4j
@@ -184,15 +186,35 @@ public class PayOSPayoutGateway implements PayoutGateway {
     }
 
     @Override
-    public PayoutGatewayFeeEstimateResponse estimateFee(PayoutGatewayCreateRequest request) {
-        throw unsupported("estimateFee");
-    }
+    public Optional<PayoutGatewayCreateResponse> findPayoutByReferenceId(String referenceId) {
+        long startedAt = System.nanoTime();
+        log.info("Calling PayOS List Payouts API to reconcile referenceId={}.", referenceId);
 
-    private UnsupportedOperationException unsupported(String operation) {
-        log.debug("PayOS payout operation '{}' was invoked before implementation.", operation);
-        return new UnsupportedOperationException(
-                "PayOS payout integration is not implemented yet for operation: " + operation
-        );
+        try {
+            Page<Payout> page = payOS.payouts().list(
+                    GetPayoutListParams.builder().referenceId(referenceId).build()
+            );
+            List<Payout> items = page.getItems();
+            if (items == null || items.isEmpty()) {
+                log.info("No PayOS payout found for referenceId={} after {} ms.", referenceId, toLatencyMs(startedAt));
+                return Optional.empty();
+            }
+
+            PayoutGatewayCreateResponse mapped = mapCreateResponse(items.get(0));
+            log.info(
+                    "PayOS payout reconciled for referenceId={} in {} ms. payoutId={}, status={}",
+                    referenceId,
+                    toLatencyMs(startedAt),
+                    mapped.getPayoutId(),
+                    mapped.getStatus()
+            );
+            return Optional.of(mapped);
+        } catch (Exception ex) {
+            // Best-effort reconciliation only — nếu bước tra cứu này cũng lỗi thì để caller xử lý lỗi gốc,
+            // không throw tiếp ở đây.
+            log.error("Failed to reconcile PayOS payout for referenceId={} after {} ms.", referenceId, toLatencyMs(startedAt), ex);
+            return Optional.empty();
+        }
     }
 
     private PayoutGatewayBalanceResponse mapBalanceResponse(PayoutAccountInfo response) {
