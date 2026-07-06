@@ -104,7 +104,8 @@ public enum ErrorCode {
 
     // Security and File verification
     SECURITY_CHECK_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Phát hiện mã độc trong tệp tin tải lên."),
-    INVALID_FILE_STRUCTURE(HttpStatus.BAD_REQUEST, "Cấu trúc tệp tin tải lên không hợp lệ hoặc thiếu tệp index.html.");
+    INVALID_FILE_STRUCTURE(HttpStatus.BAD_REQUEST, "Cấu trúc tệp tin tải lên không hợp lệ hoặc thiếu tệp index.html."),
+    MEDIA_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Ảnh/video vượt quá dung lượng cho phép.");
 
     private final HttpStatus httpStatus;
     private final String code;

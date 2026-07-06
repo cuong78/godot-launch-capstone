@@ -39,6 +39,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AssetServiceImpl implements AssetService {
 
+    private static final long MAX_IMAGE_SIZE_BYTES = 10L * 1024 * 1024; // 10MB cho thumbnail/screenshot
+    private static final long MAX_VIDEO_SIZE_BYTES = 50L * 1024 * 1024; // 50MB cho video demo
+
     private final AssetRepository assetRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
@@ -234,6 +237,12 @@ public class AssetServiceImpl implements AssetService {
             default -> "asset_image";
         };
 
+        // Chặn ảnh/video gốc quá nặng (VD: ảnh chụp trực tiếp từ điện thoại) làm chậm tải trang cho người xem.
+        long maxSize = "video".equals(type) ? MAX_VIDEO_SIZE_BYTES : MAX_IMAGE_SIZE_BYTES;
+        if (file != null && file.getSize() > maxSize) {
+            throw new AppException(ErrorCode.MEDIA_FILE_TOO_LARGE);
+        }
+
         // thumbnail & video chỉ 1 cái/item → thay thế cái cũ
         if ("thumbnail".equals(type) || "video".equals(type)) {
             deleteItemMediaByType(itemId, type);
@@ -270,7 +279,7 @@ public class AssetServiceImpl implements AssetService {
         }
 
         String targetKey = extractObjectKeyFromUrl(mediaUrl);
-        mediaRepository.findByAsset_Id(itemId).stream()
+        mediaRepository.findByAsset_IdOrderByCreatedAtDesc(itemId).stream()
                 .filter(m -> targetKey != null && targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
                 .findFirst()
                 .ifPresent(m -> {
@@ -450,7 +459,7 @@ public class AssetServiceImpl implements AssetService {
 
     private AssetResponse mapToResponse(Asset item, boolean includePrivateAccess) {
         // Load media 1 lần, tách theo loại (thumbnail/video/screenshot/asset_image)
-        var mediaList = mediaRepository.findByAsset_Id(item.getId());
+        var mediaList = mediaRepository.findByAsset_IdOrderByCreatedAtDesc(item.getId());
         String thumbUrl = mediaList.stream().filter(m -> "thumbnail".equals(m.getMediaType()))
                 .map(m -> getPresignedGetUrl(m.getMediaUrl())).findFirst().orElse(null);
         String vidUrl = mediaList.stream().filter(m -> "video".equals(m.getMediaType()))
@@ -485,7 +494,7 @@ public class AssetServiceImpl implements AssetService {
     }
 
     private String getPresignedGetUrl(String rawUrl) {
-        return rawUrl;
+        return seaweedFsService.resolvePublicUrl(rawUrl);
     }
 
     private String extractObjectKeyFromUrl(String url) {

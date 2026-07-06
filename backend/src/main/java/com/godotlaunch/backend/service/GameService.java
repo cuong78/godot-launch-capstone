@@ -4,8 +4,10 @@ import com.godotlaunch.backend.dto.request.CreateGameRequest;
 import com.godotlaunch.backend.dto.request.UpdateGameRequest;
 import com.godotlaunch.backend.dto.response.GameResponse;
 import com.godotlaunch.backend.entity.enums.GameStatus;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,4 +57,11 @@ public interface GameService {
     void approveGame(UUID gameId);
     void rejectGame(UUID gameId, String reason);
     void uploadWebDemo(UUID gameId, MultipartFile file, String creatorEmail);
+
+    /**
+     * Stream 1 file trong bản Web Demo (html/js/wasm/pck) qua backend thay vì thẳng từ SeaweedFS,
+     * kèm header Cross-Origin-Isolation (COOP/COEP) để Godot Web export dùng Threads chạy đúng hiệu năng.
+     * @param relativePath đường dẫn tương đối bên trong thư mục web_demo (VD: "{version}/index.html")
+     */
+    void streamWebDemoFile(UUID gameId, String relativePath, HttpServletResponse response) throws IOException;
 }

@@ -463,6 +463,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               <td className="p-3">
                                 <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                   {game.title}
+                                  <span className="text-[9px] font-mono bg-slate-105 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-550 dark:text-slate-400 font-semibold border border-slate-200 dark:border-slate-700/80">
+                                    v{game.version || "1.0.0"}
+                                  </span>
                                   <button
                                     onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                     className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer"

@@ -9,11 +9,15 @@ import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.service.GameService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.HandlerMapping;
 
 import java.security.Principal;
 import java.util.List;
@@ -172,5 +176,18 @@ public class GameController {
         gameService.uploadWebDemo(id, file, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of("message", "Web demo uploaded and activated successfully"), "Success"));
+    }
+
+    @GetMapping("/{id}/web-demo/**")
+    @Operation(summary = "Proxy phục vụ file Web Demo", description = "Stream file demo (html/js/wasm/pck) qua backend " +
+            "kèm header Cross-Origin-Isolation (COOP/COEP) để Godot Web export chạy đa luồng đúng chuẩn. Yêu cầu đăng nhập.")
+    public void serveWebDemo(@PathVariable UUID id, HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
+        String path = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+        String bestMatchPattern = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        String rawRelativePath = new AntPathMatcher().extractPathWithinPattern(bestMatchPattern, path);
+        // path lấy từ PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE vẫn giữ nguyên %-encoding gốc trên URL -> phải decode
+        // thủ công trước khi dùng làm tên file, nếu không sẽ bị encode chồng lần nữa lúc gọi SeaweedFS (vd: "%20" -> "%2520").
+        String relativePath = org.springframework.web.util.UriUtils.decode(rawRelativePath, java.nio.charset.StandardCharsets.UTF_8);
+        gameService.streamWebDemoFile(id, relativePath, response);
     }
 }

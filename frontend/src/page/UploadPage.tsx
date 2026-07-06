@@ -926,21 +926,23 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             )}
           </div>
 
-          {publishProgram === "marketplace" && (
-            <div className="border-t border-slate-150 dark:border-slate-800 pt-6 space-y-6">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                <ShieldCheck size={16} className="text-amber-500" /> Specifications
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input
-                  label="Version"
-                  placeholder="e.g. 1.0.0"
-                  value={version}
-                  onChange={(e) => setVersion(e.target.value)}
-                />
-              </div>
+          <div className="border-t border-slate-150 dark:border-slate-800 pt-6 space-y-6">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+              <ShieldCheck size={16} className="text-amber-500" /> Specifications
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Version"
+                placeholder="e.g. 1.0.0"
+                value={publishProgram === "game" ? "1.0.0" : version}
+                onChange={(e) => publishProgram !== "game" && setVersion(e.target.value)}
+                disabled={publishProgram === "game"}
+                helperText={publishProgram === "game" ? "Initial game version defaults to 1.0.0" : undefined}
+              />
+            </div>
 
+            {publishProgram === "marketplace" && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
                   Supported Platforms
@@ -971,8 +973,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   })}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <TextArea
             label="Description & Features"
@@ -1242,6 +1244,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     accept="image/*"
                     onChange={(e) => {
                       const file = e.target.files ? e.target.files[0] : null;
+                      if (file && file.size > 10 * 1024 * 1024) {
+                        alert("Thumbnail image must be smaller than 10MB.");
+                        e.target.value = "";
+                        return;
+                      }
                       setThumbnailFile(file);
                       if (file) uploadFileToStorage(file, "thumbnail", "thumbnail");
                     }}
@@ -1453,6 +1460,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   setUploadStatus({});
                   setUploadProgress({});
                   setScanStatus("idle");
+                  setThumbnailFile(null);
+                  setGameFile(null);
+                  setVideoFile(null);
+                  setDemoFile(null);
+                  setScreenshots([]);
+                  setScreenshotKeys({});
                 }}
               >
                 Back to Details

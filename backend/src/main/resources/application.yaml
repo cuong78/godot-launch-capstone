@@ -68,6 +68,7 @@ spring:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  backend-url: ${BACKEND_URL:http://localhost:8080}
 
   security:
     encryption-key: ${ENCRYPTION_KEY}
@@ -104,5 +105,7 @@ storage:
   seaweedfs:
     filer-host: ${SEAWEEDFS_FILER_HOST:localhost}
     filer-port: ${SEAWEEDFS_FILER_PORT:8888}
+    public-host: ${SEAWEEDFS_PUBLIC_HOST:localhost}
+    public-port: ${SEAWEEDFS_PUBLIC_PORT:8888}
     base-path: ${SEAWEEDFS_BASE_PATH:/godotlaunch}
 

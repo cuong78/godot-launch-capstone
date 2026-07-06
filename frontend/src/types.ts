@@ -428,6 +428,7 @@ export interface GameResponse {
   videoUrl?: string;
   fileUrl?: string;
   webDemoUrl?: string;
+  version?: string;
   tags?: string[];
   githubRepoUrl?: string;
   githubBranch?: string;

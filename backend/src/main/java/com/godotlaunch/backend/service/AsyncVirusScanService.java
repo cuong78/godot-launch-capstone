@@ -5,14 +5,15 @@ import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
+import com.godotlaunch.backend.repository.GameVersionRepository;
 import com.godotlaunch.backend.util.SafeZipUnpacker;
+import com.godotlaunch.backend.util.VersionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.entity.enums.ActorRole;
-import com.godotlaunch.backend.service.AuditLogService;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ public class AsyncVirusScanService {
     private final ClamAVService clamAVService;
     private final SeaweedFsService seaweedFsService;
     private final GameRepository gameRepository;
+    private final GameVersionRepository gameVersionRepository;
     private final AssetRepository assetRepository;
     private final AuditLogService auditLogService;
 
@@ -90,6 +92,10 @@ public class AsyncVirusScanService {
 
             // Sạch và hợp lệ -> chuyển trạng thái sang PENDING để Admin duyệt thủ công
             updateGameStatus(gameId, GameStatus.pending);
+
+            // Cập nhật hoặc nâng cấp GameVersion
+            String fileUrl = seaweedFsService.getFileUrl(objectKey);
+            VersionUtils.updateGameVersionFile(game, fileUrl, gameVersionRepository);
 
             auditLogService.publish(
                     game.getCreator().getId(),

@@ -1,7 +1,7 @@
 import React from 'react';
-import { ChevronRight, Check, Info, Star, Film } from 'lucide-react';
+import { ChevronRight, Check, Info, Star, Film, Play, X } from 'lucide-react';
 import { Button } from '../components/Button';
-import { Asset } from '../types';
+import { Asset, User } from '../types';
 import { IMAGE_SEED_MAP } from '../../assets/images';
 
 interface DetailPageProps {
@@ -10,13 +10,15 @@ interface DetailPageProps {
   selectedThumbIndex: number;
   setSelectedThumbIndex: (index: number) => void;
   activeDetailTab: string;
-  setActiveDetailTab: (tab: "overview" | "tech" | "documentation" | "demo") => void;
+  setActiveDetailTab: (tab: "overview" | "tech" | "documentation") => void;
   handleAddToCart: (asset: Asset) => void;
   handleCheckout: () => void;
   handleBuyNow: (asset: Asset) => void;
   isPreparingBuyNow?: boolean;
   assets: Asset[];
   handleViewAssetDetails: (asset: Asset) => void;
+  currentUser: User | null;
+  showToast: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
 }
 
 export const DetailPage: React.FC<DetailPageProps> = ({
@@ -31,9 +33,22 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   handleBuyNow,
   isPreparingBuyNow = false,
   assets,
-  handleViewAssetDetails
+  handleViewAssetDetails,
+  currentUser,
+  showToast
 }) => {
 
+  const [isPlayDemoOpen, setIsPlayDemoOpen] = React.useState(false);
+
+  const handlePlayDemoClick = () => {
+    if (!currentUser) {
+      showToast("Bạn cần đăng nhập để chơi thử demo!", "warning");
+      setCurrentScreen('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    setIsPlayDemoOpen(true);
+  };
 
   const mediaList = React.useMemo(() => {
     const list: { type: 'image' | 'video'; url: string }[] = [];
@@ -137,7 +152,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
             
             {/* Underlay toggles */}
-            <div className="flex border-b border-slate-100 dark:border-slate-850/80 pb-1.5 gap-4">
+            <div className="flex items-center border-b border-slate-100 dark:border-slate-850/80 pb-1.5 gap-4">
               <button
                 onClick={() => setActiveDetailTab('overview')}
                 className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-studio ${activeDetailTab === 'overview' ? 'border-amber-400 text-slate-800 dark:text-white' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
@@ -160,30 +175,15 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               )}
               {focusedAsset.webDemoUrl && (
                 <button
-                  onClick={() => setActiveDetailTab('demo')}
-                  className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-studio ${activeDetailTab === 'demo' ? 'border-amber-400 text-slate-800 dark:text-white' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                  onClick={handlePlayDemoClick}
+                  className="ml-auto flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-display font-bold text-xs rounded-lg transition-studio active:scale-[0.98] cursor-pointer shadow-sm"
                 >
-                  Play Game Demo
+                  <Play size={13} fill="currentColor" /> Play Game Demo
                 </button>
               )}
             </div>
 
-            {activeDetailTab === 'demo' && focusedAsset.webDemoUrl ? (
-              <div className="space-y-4 animate-fade-in">
-                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 flex items-center justify-center">
-                  <iframe
-                    src={focusedAsset.webDemoUrl}
-                    sandbox="allow-scripts allow-same-origin"
-                    className="w-full h-full border-none"
-                    loading="lazy"
-                    title={`${focusedAsset.title} Play Demo`}
-                  />
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 text-center font-mono">
-                  Web demo is compiled to WebAssembly. Gameplay is live, source code is hidden and secure.
-                </p>
-              </div>
-            ) : activeDetailTab === 'documentation' ? (
+            {activeDetailTab === 'documentation' ? (
               <div className="space-y-4 animate-fade-in">
                 <div className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-850">
                   {focusedAsset.documentation}
@@ -364,6 +364,39 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         </div>
 
       </div>
+
+      {/* Play Game Demo — fullscreen modal, tách khỏi tab Overview/Tech Specs để có không gian chơi thử lớn nhất có thể */}
+      {isPlayDemoOpen && focusedAsset.webDemoUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4 sm:p-8 animate-fade-in"
+          onClick={() => setIsPlayDemoOpen(false)}
+        >
+          <div className="w-full max-w-6xl flex items-center justify-between mb-3">
+            <h3 className="font-display font-bold text-sm text-white truncate">{focusedAsset.title} — Play Demo</h3>
+            <button
+              className="p-2 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-lg transition-studio active:scale-95 cursor-pointer shrink-0"
+              onClick={() => setIsPlayDemoOpen(false)}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div
+            className="relative w-full max-w-6xl aspect-video rounded-xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              src={focusedAsset.webDemoUrl}
+              sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
+              allow="autoplay; fullscreen; gamepad; cross-origin-isolated"
+              className="w-full h-full border-none"
+              title={`${focusedAsset.title} Play Demo`}
+            />
+          </div>
+          <p className="text-xs text-slate-400 text-center font-mono mt-3">
+            Web demo is compiled to WebAssembly. Gameplay is live, source code is hidden and secure.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

@@ -23,7 +23,8 @@ import {
   PenTool,
   Gamepad2,
   ShoppingBag,
-  Database
+  Database,
+  Play
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
@@ -183,6 +184,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [activeScreenshotUrl, setActiveScreenshotUrl] = useState<string | null>(null);
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
+  const [playDemoGame, setPlayDemoGame] = useState<GameResponse | null>(null);
 
   // Real Marketplace Moderation state
   const [allMarketplaceItems, setAllMarketplaceItems] = useState<MarketplaceItemResponse[]>([]);
@@ -953,6 +955,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 <td className="p-3">
                                   <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                     {game.title}
+                                    <span className="text-[9px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-400 font-semibold border border-slate-200 dark:border-slate-800">
+                                      v{game.version || "1.0.0"}
+                                    </span>
                                     <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
                                       game.status?.toLowerCase() === 'pending'
                                         ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse'
@@ -1215,6 +1220,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                                       {/* Middle & Right Column: Screenshots & Video */}
                                       <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
+                                        {/* Play Game Demo: mở modal toàn màn hình để admin chơi thử trực tiếp trước khi duyệt */}
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                            <Play size={12} className="text-amber-500" /> Play Game Demo
+                                          </h4>
+                                          {game.webDemoUrl ? (
+                                            <button
+                                              onClick={() => setPlayDemoGame(game)}
+                                              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                            >
+                                              <Play size={14} fill="currentColor" /> Chơi thử Demo (Fullscreen)
+                                            </button>
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center py-6 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                              <Play size={20} className="mb-1 text-slate-350 dark:text-slate-650" />
+                                              <span className="text-[10px]">Developer chưa tải lên web demo nào</span>
+                                            </div>
+                                          )}
+                                        </div>
+
                                         <div className="space-y-2">
                                           <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
                                             <Image size={12} className="text-amber-500" /> Ảnh chụp màn hình (Screenshots)
@@ -2217,6 +2242,36 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               src={activeScreenshotUrl} 
               alt="Enlarged screenshot" 
               className="w-full h-auto max-h-[85vh] object-contain"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Play Game Demo Modal — fullscreen để admin có đủ không gian chơi thử trước khi duyệt game */}
+      {playDemoGame && playDemoGame.webDemoUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4 sm:p-8 animate-fade-in"
+          onClick={() => setPlayDemoGame(null)}
+        >
+          <div className="w-full max-w-6xl flex items-center justify-between mb-3">
+            <h3 className="font-display font-bold text-sm text-white truncate">{playDemoGame.title} — Play Demo</h3>
+            <button
+              className="p-2 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-lg transition-studio active:scale-95 cursor-pointer shrink-0"
+              onClick={() => setPlayDemoGame(null)}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div
+            className="relative w-full max-w-6xl aspect-video rounded-xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <iframe
+              src={playDemoGame.webDemoUrl}
+              sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
+              allow="autoplay; fullscreen; gamepad; cross-origin-isolated"
+              className="w-full h-full border-none"
+              title={`${playDemoGame.title} Play Demo`}
             />
           </div>
         </div>

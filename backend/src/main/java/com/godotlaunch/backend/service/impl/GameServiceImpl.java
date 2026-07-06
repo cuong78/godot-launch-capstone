@@ -15,7 +15,10 @@ import com.godotlaunch.backend.dto.request.CreateGameRequest;
 import com.godotlaunch.backend.dto.response.SourceProcessResult;
 import com.godotlaunch.backend.config.SourceProcessingClient;
 import com.godotlaunch.backend.service.GitHubRepoService;
+import com.godotlaunch.backend.entity.GameVersion;
+import com.godotlaunch.backend.repository.GameVersionRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
+import com.godotlaunch.backend.util.VersionUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.godotlaunch.backend.service.AsyncVirusScanService;
 import com.godotlaunch.backend.service.SeaweedFsService;
@@ -28,10 +31,9 @@ import com.godotlaunch.backend.repository.CategoryRepository;
 import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.constant.ErrorCode;
-import com.godotlaunch.backend.entity.enums.AuditAction;
-import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.service.AuditLogService;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -49,7 +51,17 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GameServiceImpl implements GameService {
 
+    private static final long MAX_IMAGE_SIZE_BYTES = 10L * 1024 * 1024; // 10MB cho thumbnail/screenshot
+    private static final long MAX_VIDEO_SIZE_BYTES = 50L * 1024 * 1024; // 50MB cho video demo
+
+    @Value("${app.backend-url:http://localhost:8080}")
+    private String backendUrl;
+
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     private final GameRepository gameRepository;
+    private final GameVersionRepository gameVersionRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final MediaRepository mediaRepository;
@@ -57,7 +69,7 @@ public class GameServiceImpl implements GameService {
 
     /** Helper: tìm media của game này. */
     private List<Media> gameMedia(UUID gameId) {
-        return mediaRepository.findByGame_Id(gameId);
+        return mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId);
     }
     private final SeaweedFsService seaweedFsService;
     private final ClamAVService clamAVService;
@@ -76,14 +88,25 @@ public class GameServiceImpl implements GameService {
         if (file != null && file.getOriginalFilename() != null && file.getOriginalFilename().contains(".")) {
             ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
         }
+        // thumbnail/video: key random mỗi lần upload (không tái dùng key cũ) để tránh
+        // browser cache ảnh cũ khi developer thay ảnh mới (cùng URL cũ -> trình duyệt hiển thị bản cache).
         if ("thumbnail".equalsIgnoreCase(fileType)) {
-            return "games/" + gameId + "/thumbnail" + ext;
+            return "games/" + gameId + "/thumbnail_" + UUID.randomUUID() + ext;
         }
         if ("video".equalsIgnoreCase(fileType)) {
-            return "games/" + gameId + "/video" + ext;
+            return "games/" + gameId + "/video_" + UUID.randomUUID() + ext;
         }
         // screenshot: mỗi cái 1 key random
         return "games/" + gameId + "/screenshots/" + UUID.randomUUID() + ext;
+    }
+
+    /** Chặn ảnh/video gốc quá nặng (VD: ảnh chụp trực tiếp từ điện thoại) làm chậm tải trang cho người xem. */
+    private void validateMediaFileSize(String fileType, MultipartFile file) {
+        boolean isVideo = "video".equalsIgnoreCase(fileType);
+        long max = isVideo ? MAX_VIDEO_SIZE_BYTES : MAX_IMAGE_SIZE_BYTES;
+        if (file != null && file.getSize() > max) {
+            throw new AppException(ErrorCode.MEDIA_FILE_TOO_LARGE);
+        }
     }
 
     @Override
@@ -115,6 +138,16 @@ public class GameServiceImpl implements GameService {
         }
 
         Game savedGame = gameRepository.save(game);
+
+        // Khởi tạo GameVersion 1.0.0 mặc định
+        GameVersion initialVersion = new GameVersion();
+        initialVersion.setGame(savedGame);
+        initialVersion.setVersionNumber("1.0.0");
+        initialVersion.setChangelog("Initial draft");
+        initialVersion.setFileUrl("pending");
+        initialVersion.setCurrent(true);
+        gameVersionRepository.save(initialVersion);
+
         return savedGame.getId();
     }
 
@@ -225,8 +258,12 @@ public class GameServiceImpl implements GameService {
             snap.setVirusScanned(result.isScanned());
             snap.setSecretsFound(toJson(result.getSecrets()));
             // Upload source bundle (zip) lên storage cho AI đọc lại + admin/người mua tải
-            snap.setBundleUrl(uploadSourceBundle(result, "games/" + game.getId()));
+            String bundleUrl = uploadSourceBundle(result, "games/" + game.getId());
+            snap.setBundleUrl(bundleUrl);
             sourceSnapshotRepository.save(snap);
+
+            // Cập nhật hoặc nâng cấp GameVersion
+            VersionUtils.updateGameVersionFile(game, bundleUrl, gameVersionRepository);
         } catch (Exception e) {
             log.warn("Không lưu được source snapshot cho game {}: {}", game.getId(), e.getMessage());
         }
@@ -372,7 +409,26 @@ public class GameServiceImpl implements GameService {
     }
 
     private String getPresignedGetUrl(String rawUrl) {
-        return rawUrl;
+        return seaweedFsService.resolvePublicUrl(rawUrl);
+    }
+
+    /**
+     * Web demo (html/js/wasm/pck) phải load qua proxy backend (không phải thẳng URL SeaweedFS) để:
+     * (1) gắn được header Cross-Origin-Isolation (COOP/COEP) cho Godot Web export dùng Threads,
+     * (2) bắt buộc đăng nhập mới chơi được (endpoint /web-demo/** yêu cầu auth, xem SecurityConfig).
+     */
+    private String getWebDemoProxyUrl(UUID gameId, String rawWebDemoUrl) {
+        if (rawWebDemoUrl == null || rawWebDemoUrl.isBlank()) {
+            return null;
+        }
+        String key = extractObjectKeyFromUrl(rawWebDemoUrl);
+        String marker = "/web_demo/";
+        int idx = key == null ? -1 : key.indexOf(marker);
+        if (idx == -1) {
+            return null;
+        }
+        String relativePath = key.substring(idx + marker.length());
+        return backendUrl + "/api/v1/games/" + gameId + "/web-demo/" + relativePath;
     }
 
     private GameResponse mapToResponse(Game game) {
@@ -394,6 +450,15 @@ public class GameServiceImpl implements GameService {
             fileUrl = snaps.get(0).getBundleUrl();
         }
 
+        String versionNumber = "1.0.0";
+        java.util.Optional<GameVersion> currentVerOpt = gameVersionRepository.findByGame_IdAndIsCurrentTrue(game.getId());
+        if (currentVerOpt.isPresent()) {
+            versionNumber = currentVerOpt.get().getVersionNumber();
+            if (fileUrl == null) {
+                fileUrl = currentVerOpt.get().getFileUrl();
+            }
+        }
+
         return GameResponse.builder()
                 .id(game.getId())
                 .title(game.getTitle())
@@ -410,7 +475,8 @@ public class GameServiceImpl implements GameService {
                 .screenshots(screenshots)
                 .videoUrl(videoUrl)
                 .fileUrl(getPresignedGetUrl(fileUrl))
-                .webDemoUrl(game.getWebDemoUrl())
+                .webDemoUrl(getWebDemoProxyUrl(game.getId(), game.getWebDemoUrl()))
+                .version(versionNumber)
                 .tags(game.getTags() == null ? java.util.List.of() : game.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList())
                 .githubRepoUrl(game.getGithubRepoUrl())
                 .githubBranch(game.getGithubBranch())
@@ -426,13 +492,14 @@ public class GameServiceImpl implements GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
+        // thumbnail/video: key random mỗi lần upload để tránh browser cache ảnh/video cũ khi thay file mới
         String objectKey;
         if ("thumbnail".equalsIgnoreCase(fileType)) {
-            objectKey = "games/" + gameId.toString() + "/thumbnail";
+            objectKey = "games/" + gameId.toString() + "/thumbnail_" + UUID.randomUUID().toString();
         } else if ("screenshot".equalsIgnoreCase(fileType) || "image".equalsIgnoreCase(fileType)) {
             objectKey = "games/" + gameId.toString() + "/screenshots/" + UUID.randomUUID().toString();
         } else if ("video".equalsIgnoreCase(fileType)) {
-            objectKey = "games/" + gameId.toString() + "/video";
+            objectKey = "games/" + gameId.toString() + "/video_" + UUID.randomUUID().toString();
         } else {
             objectKey = "games/" + gameId.toString() + "/game.zip";
         }
@@ -447,10 +514,20 @@ public class GameServiceImpl implements GameService {
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
         if ("thumbnail".equalsIgnoreCase(fileType)) {
-            String actualKey = objectKey != null ? objectKey : "games/" + gameId.toString() + "/thumbnail";
-            String thumbnailUrl = seaweedFsService.getFileUrl(actualKey);
+            if (objectKey == null) {
+                throw new IllegalArgumentException("objectKey is required to confirm thumbnail upload");
+            }
+            String oldKey = extractObjectKeyFromUrl(game.getThumbnailUrl());
+            String thumbnailUrl = seaweedFsService.getFileUrl(objectKey);
             game.setThumbnailUrl(thumbnailUrl);
             gameRepository.save(game);
+            if (oldKey != null && !oldKey.equals(objectKey)) {
+                try {
+                    seaweedFsService.deleteObject(oldKey);
+                } catch (Exception e) {
+                    log.warn("Không xóa được thumbnail cũ trên storage: {}", oldKey, e);
+                }
+            }
         } else if ("screenshot".equalsIgnoreCase(fileType) || "image".equalsIgnoreCase(fileType) || "video".equalsIgnoreCase(fileType)) {
             if (objectKey == null) {
                 throw new IllegalArgumentException("objectKey is required to confirm media uploads (screenshots or videos)");
@@ -486,14 +563,25 @@ public class GameServiceImpl implements GameService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
+        validateMediaFileSize(fileType, file);
+
         String objectKey = buildMediaObjectKey(gameId, fileType, file);
 
         // Upload qua SeaweedFsService
         String mediaUrl = seaweedFsService.uploadWithKey(file, objectKey);
 
         if ("thumbnail".equalsIgnoreCase(fileType)) {
+            // Xóa ảnh thumbnail cũ trên storage (key random mỗi lần nên không tự động bị ghi đè)
+            String oldKey = extractObjectKeyFromUrl(game.getThumbnailUrl());
             game.setThumbnailUrl(mediaUrl);
             gameRepository.save(game);
+            if (oldKey != null && !oldKey.equals(objectKey)) {
+                try {
+                    seaweedFsService.deleteObject(oldKey);
+                } catch (Exception e) {
+                    log.warn("Không xóa được thumbnail cũ trên storage: {}", oldKey, e);
+                }
+            }
         } else {
             boolean isVideo = "video".equalsIgnoreCase(fileType);
             // Video chỉ 1 cái/game → thay thế cái cũ
@@ -593,10 +681,13 @@ public class GameServiceImpl implements GameService {
         // Xóa các tệp ZIP, Thumbnail và tất cả Screenshots/Videos trên S3 để giải phóng dung lượng khi bị từ chối
         try {
             String zipKey = "games/" + gameId.toString() + "/game.zip";
-            String thumbnailKey = "games/" + gameId.toString() + "/thumbnail";
-
             seaweedFsService.deleteObject(zipKey);
-            seaweedFsService.deleteObject(thumbnailKey);
+
+            // Key thumbnail là random (UUID) nên phải lấy từ URL đã lưu, không đoán được đường dẫn cố định
+            String thumbnailKey = extractObjectKeyFromUrl(game.getThumbnailUrl());
+            if (thumbnailKey != null) {
+                seaweedFsService.deleteObject(thumbnailKey);
+            }
 
             game.setThumbnailUrl(null);
 
@@ -732,14 +823,32 @@ public class GameServiceImpl implements GameService {
                 throw new AppException(ErrorCode.INVALID_FILE_STRUCTURE, errorMsg);
             }
 
-            // 3. Upload toàn bộ các file đã giải nén đệ quy lên SeaweedFS
-            uploadDirectoryRecursive(demoRoot.toFile(), demoRoot.toFile(), gameId);
+            // 3. Upload toàn bộ các file đã giải nén đệ quy lên SeaweedFS.
+            // Mỗi lần upload dùng 1 thư mục version (UUID) riêng: cho phép cache-control dài hạn (immutable) trên
+            // các asset tĩnh (js/wasm/pck...) để lần chơi lại sau load tức thì từ cache trình duyệt, đồng thời
+            // tránh trộn lẫn file cũ/mới khi developer thay bản demo khác (bug tương tự thumbnail đã gặp trước đó).
+            String oldWebDemoUrl = game.getWebDemoUrl();
+            String demoVersion = UUID.randomUUID().toString();
+            String demoPrefix = "games/" + gameId.toString() + "/web_demo/" + demoVersion;
+            uploadDirectoryRecursive(demoRoot.toFile(), demoRoot.toFile(), demoPrefix);
 
             // 4. Lưu URL của file html tìm thấy làm entry point
-            String indexKey = "games/" + gameId.toString() + "/web_demo/" + htmlFileName;
+            String indexKey = demoPrefix + "/" + htmlFileName;
             String webDemoUrl = seaweedFsService.getFileUrl(indexKey);
             game.setWebDemoUrl(webDemoUrl);
             gameRepository.save(game);
+
+            // 5. Xóa bản demo cũ trên storage (thư mục version cũ) để tránh rác, best-effort
+            if (oldWebDemoUrl != null) {
+                String oldPrefix = extractWebDemoVersionPrefix(oldWebDemoUrl);
+                if (oldPrefix != null && !oldPrefix.equals(demoPrefix)) {
+                    try {
+                        seaweedFsService.deleteObjectRecursive(oldPrefix);
+                    } catch (Exception e) {
+                        log.warn("Không xóa được bản web demo cũ trên storage: {}", oldPrefix, e);
+                    }
+                }
+            }
 
             log.info("Upload Web Demo thành công cho game {}: webDemoUrl = {}", gameId, webDemoUrl);
 
@@ -761,25 +870,69 @@ public class GameServiceImpl implements GameService {
         }
     }
 
-    private void uploadDirectoryRecursive(java.io.File root, java.io.File current, UUID gameId) throws java.io.IOException {
+    @Override
+    @Transactional(readOnly = true)
+    public void streamWebDemoFile(UUID gameId, String relativePath, jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+        if (relativePath == null || relativePath.isBlank() || relativePath.contains("..")) {
+            response.sendError(jakarta.servlet.http.HttpServletResponse.SC_BAD_REQUEST, "Invalid path");
+            return;
+        }
+        if (!gameRepository.existsById(gameId)) {
+            response.sendError(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND, "Game not found");
+            return;
+        }
+
+        String objectKey = "games/" + gameId + "/web_demo/" + relativePath;
+
+        // Cross-Origin-Isolation: bắt buộc để Godot Web export dùng Threads (SharedArrayBuffer) chạy đa luồng
+        response.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+        response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+        response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        response.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        response.setContentType(determineContentType(relativePath));
+        // Spring Security mặc định set X-Frame-Options: DENY -> chặn nhúng iframe khác origin (FE :3000 -> BE :8080).
+        // Trình duyệt hiện đại ưu tiên CSP frame-ancestors hơn X-Frame-Options khi cả 2 cùng có mặt trên response.
+        response.setHeader("Content-Security-Policy", "frame-ancestors 'self' " + frontendUrl);
+
+        try (java.io.InputStream is = seaweedFsService.getObjectStream(objectKey)) {
+            is.transferTo(response.getOutputStream());
+        } catch (Exception e) {
+            log.warn("Không đọc được file web demo: gameId={}, relativePath={}", gameId, relativePath, e);
+            response.reset();
+            response.sendError(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND, "Demo file not found");
+        }
+    }
+
+    private void uploadDirectoryRecursive(java.io.File root, java.io.File current, String demoPrefix) throws java.io.IOException {
         java.io.File[] files = current.listFiles();
         if (files == null) return;
         for (java.io.File file : files) {
             if (file.isDirectory()) {
-                uploadDirectoryRecursive(root, file, gameId);
+                uploadDirectoryRecursive(root, file, demoPrefix);
             } else {
                 // Tính relative path
                 String relativePath = root.toURI().relativize(file.toURI()).getPath();
-                String objectKey = "games/" + gameId.toString() + "/web_demo/" + relativePath;
+                String objectKey = demoPrefix + "/" + relativePath;
 
                 // Xác định content type
                 String contentType = determineContentType(file.getName());
 
+                // demoPrefix có UUID riêng mỗi lần upload -> an toàn để cache dài hạn, không sợ phục vụ nhầm bản cũ
+                String cacheControl = "public, max-age=31536000, immutable";
+
                 try (java.io.InputStream is = new java.io.FileInputStream(file)) {
-                    seaweedFsService.uploadStream(is, objectKey, contentType);
+                    seaweedFsService.uploadStream(is, objectKey, contentType, cacheControl);
                 }
             }
         }
+    }
+
+    /** Từ URL entry point (.../web_demo/{version}/index.html) suy ra thư mục version để xóa khi thay demo mới. */
+    private String extractWebDemoVersionPrefix(String webDemoUrl) {
+        String key = extractObjectKeyFromUrl(webDemoUrl);
+        if (key == null) return null;
+        int lastSlash = key.lastIndexOf('/');
+        return lastSlash > 0 ? key.substring(0, lastSlash) : null;
     }
 
     private java.nio.file.Path findDemoRoot(java.nio.file.Path startPath) {

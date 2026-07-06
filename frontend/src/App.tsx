@@ -648,7 +648,7 @@ export default function App() {
     image: game.thumbnailUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
     tag: game.publishingType ? `Publishing: ${game.publishingType}` : 'Game',
     tagList: game.tags && game.tags.length > 0 ? game.tags : [game.publishingType || 'Marketplace', game.status || 'Published'],
-    version: '1.0.0',
+    version: game.version || '1.0.0',
     lastUpdated: 'Just now',
     details: {
       tilesCount: 'N/A',
@@ -712,7 +712,7 @@ export default function App() {
     }
   }, [currentScreen]);
 
-  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation' | 'demo'>('overview');
+  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);
 
   // Sync state changes with URL address bar
@@ -1231,6 +1231,8 @@ export default function App() {
             handleBuyNow={handleBuyNow}
             assets={assets}
             handleViewAssetDetails={handleViewAssetDetails}
+            currentUser={currentUser}
+            showToast={showToast}
           />
         )}
 

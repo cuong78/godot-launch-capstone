@@ -32,6 +32,7 @@ public class GameResponse {
     private String videoUrl;
     private String fileUrl;
     private String webDemoUrl;
+    private String version;
     private List<String> tags;
     private String githubRepoUrl;
     private String githubBranch;

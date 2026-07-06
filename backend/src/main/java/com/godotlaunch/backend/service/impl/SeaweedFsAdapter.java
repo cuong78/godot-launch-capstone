@@ -86,6 +86,28 @@ public class SeaweedFsAdapter implements StorageService {
     }
 
     /**
+     * Xóa cả 1 thư mục và toàn bộ file bên trong (Filer hỗ trợ ?recursive=true).
+     * objectKeyPrefix = path thư mục tương đối (vd: "games/{id}/web_demo/{oldVersion}")
+     */
+    public void deleteRecursive(String objectKeyPrefix) {
+        String key = objectKeyPrefix.startsWith("/") ? objectKeyPrefix.substring(1) : objectKeyPrefix;
+        String filerUrl = String.format("http://%s:%d%s/%s/?recursive=true", filerHost, filerHttpPort, basePath, encodePath(key));
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(filerUrl))
+                    .DELETE()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200 && response.statusCode() != 204 && response.statusCode() != 404) {
+                throw new IOException("Unexpected response status: " + response.statusCode() + " - " + response.body());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to recursively delete directory from SeaweedFS via HTTP: " + filerUrl, e);
+        }
+    }
+
+    /**
      * Public URL truy cập file qua Filer HTTP (port 8888).
      * objectKey = path tương đối (vd: "avatars/uuid_file.jpg")
      * → http://filerHost:8888/godotlaunch/avatars/uuid_file.jpg
