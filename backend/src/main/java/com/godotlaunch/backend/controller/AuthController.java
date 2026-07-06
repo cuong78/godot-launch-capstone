@@ -11,10 +11,9 @@ import com.godotlaunch.backend.dto.request.VerifyOtpRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
-import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.security.JwtProvider;
 import com.godotlaunch.backend.service.AuthService;
-import com.godotlaunch.backend.service.impl.StorageRouter;
+import com.godotlaunch.backend.service.SeaweedFsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
@@ -33,7 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class AuthController {
 
     private final AuthService authService;
-    private final StorageRouter storageRouter;
+    private final SeaweedFsService seaweedFsService;
     private final JwtProvider jwtProvider;
 
     private static final String COOKIE_NAME = "app_token";
@@ -43,7 +42,7 @@ public class AuthController {
     @PostMapping(value = "/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload user avatar")
     public ResponseEntity<ApiResponse<String>> uploadAvatar(@RequestParam("file") MultipartFile file) {
-        String avatarUrl = storageRouter.upload(FileType.avatar, file, "avatars");
+        String avatarUrl = seaweedFsService.uploadFile(file, "avatars");
         return ResponseEntity.ok(ApiResponse.success(avatarUrl, "Avatar uploaded successfully."));
     }
 

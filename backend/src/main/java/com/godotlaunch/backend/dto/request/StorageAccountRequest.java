@@ -11,11 +11,10 @@ public class StorageAccountRequest {
     private String name;
 
     @NotBlank
-    @Pattern(regexp = "aws_s3|seaweedfs", message = "provider must be 'aws_s3' or 'seaweedfs'")
+    @Pattern(regexp = "seaweedfs", message = "provider must be 'seaweedfs'")
     private String provider;
 
     // Plain JSON config — sẽ được encrypt trước khi lưu
-    // aws_s3:    { "bucket":"...", "region":"...", "accessKey":"...", "secretKey":"..." }
     // seaweedfs: { "masterUrl":"...", "publicBaseUrl":"..." }
     @NotBlank
     private String config;

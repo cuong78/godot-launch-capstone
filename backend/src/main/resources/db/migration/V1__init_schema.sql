@@ -651,7 +651,7 @@ CREATE TABLE public.storage_accounts (
     is_active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT storage_accounts_provider_check CHECK (((provider)::text = ANY (ARRAY[('aws_s3'::character varying)::text, ('seaweedfs'::character varying)::text])))
+    CONSTRAINT storage_accounts_provider_check CHECK (((provider)::text = ANY (ARRAY[('seaweedfs'::character varying)::text])))
 );
 
 CREATE TABLE public.storage_buckets (

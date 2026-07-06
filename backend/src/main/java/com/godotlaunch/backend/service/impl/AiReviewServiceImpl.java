@@ -151,29 +151,11 @@ public class AiReviewServiceImpl implements AiReviewService {
     }
 
     private String getPresignedGetUrl(String rawUrl) {
-        if (rawUrl == null) return null;
-        if (!rawUrl.contains(".amazonaws.com/")) {
-            return rawUrl;
-        }
-        String objectKey = extractObjectKeyFromUrl(rawUrl);
-        if (objectKey == null) return rawUrl;
-        try {
-            return seaweedFsService.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
-        } catch (Exception e) {
-            log.warn("Failed to generate presigned GET URL for objectKey: {}, returning raw URL. Error: {}", objectKey, e.getMessage());
-            return rawUrl;
-        }
+        return rawUrl;
     }
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-
-        // AWS S3
-        String awsMarker = ".amazonaws.com/";
-        int awsIndex = url.indexOf(awsMarker);
-        if (awsIndex != -1) {
-            return url.substring(awsIndex + awsMarker.length());
-        }
 
         // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
         String seaweedMarker = "/godotlaunch/";

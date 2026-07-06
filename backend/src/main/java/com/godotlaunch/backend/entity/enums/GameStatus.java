@@ -5,5 +5,6 @@ public enum GameStatus {
     pending,
     approved,
     rejected,
-    published
+    published,
+    awaiting_store_build   // hop dong da ky, cho admin upload build de push Google Play
 }

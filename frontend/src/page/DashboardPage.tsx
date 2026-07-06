@@ -50,24 +50,16 @@ interface DashboardPageProps {
   setCurrentScreen: (screen: any) => void;
 }
 
-const getContractStatusLabel = (status: string, signedAtSeller: boolean) => {
+const getContractStatusLabel = (status: string) => {
   switch (status?.toLowerCase()) {
     case 'signed':
-      return { text: 'Completed', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
-    case 'negotiating':
-      return { text: 'Negotiating', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
+      return { text: 'Signed', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
     case 'pending':
-      return signedAtSeller
-        ? { text: 'Signed (Awaiting Counter-sign)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
-        : { text: 'Reissued / Awaiting Sign', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+      return { text: 'Awaiting Your Sign', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
     case 'cancelled':
-      return { text: 'Cancelled', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+      return { text: 'Cancelled / Awaiting Re-offer', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
     case 'expired':
       return { text: 'Expired', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
-    case 're_issued':
-      return signedAtSeller
-        ? { text: 'Signed (Awaiting Counter-sign)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
-        : { text: 'Awaiting Sign', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
     default:
       return { text: status || 'Unknown', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
   }
@@ -242,7 +234,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { label: 'All', value: 'all' },
     { label: 'Published / Completed', value: 'published_signed' },
     { label: 'Awaiting Sign / Pending', value: 'pending_signing' },
-    { label: 'Negotiating', value: 'negotiating' },
+    { label: 'Cancelled / Awaiting Re-offer', value: 'negotiating' },
     { label: 'Rejected', value: 'rejected' },
     { label: 'Draft', value: 'draft' }
   ];
@@ -267,13 +259,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }
 
       if (gameStatusFilter === 'pending_signing') {
-        if (contract) return contract.status === 'pending' || contract.status === 're_issued';
+        if (contract) return contract.status === 'pending';
         return game.status?.toLowerCase() === 'pending';
       }
 
       if (gameStatusFilter === 'negotiating') {
-        if (contract) return contract.status === 'negotiating';
-        return false;
+        const latestContract = [...contracts].reverse().find(c => c.gameId === game.id);
+        return latestContract?.status === 'cancelled';
       }
 
       if (gameStatusFilter === 'rejected') {
@@ -501,7 +493,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   {(() => {
                                     const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
                                     if (contract) {
-                                      const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
+                                      const statusInfo = getContractStatusLabel(contract.status);
                                       return (
                                         <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusInfo.colorClass}`}>
                                           {statusInfo.text}
@@ -525,7 +517,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     {(() => {
                                       const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
                                       if (contract) {
-                                        if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
+                                        if (contract.status === 'pending') {
                                           return (
                                             <button
                                               onClick={(e) => {
@@ -538,21 +530,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             >
                                               <PenTool size={10} />
                                               Sign Contract
-                                            </button>
-                                          );
-                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
-                                          return (
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedContract(contract);
-                                                setViewerMode('view');
-                                                setIsViewerOpen(true);
-                                              }}
-                                              className="flex items-center gap-1 px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded text-[10px] transition-studio cursor-pointer whitespace-nowrap shadow-sm"
-                                            >
-                                              <Eye size={10} />
-                                              Signed
                                             </button>
                                           );
                                         } else if (contract.status === 'signed') {
@@ -570,8 +547,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               Details
                                             </button>
                                           );
-                                        } else if (contract.status === 'negotiating') {
-                                          return null;
                                         }
                                       }
                                       return null;
@@ -650,11 +625,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               <div className="flex justify-between items-center text-xs">
                                                 <span className="text-slate-500">Status:</span>
                                                 {(() => {
-                                                  const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
+                                                  const statusInfo = getContractStatusLabel(contract.status);
                                                   return (
                                                     <span className={`font-bold uppercase tracking-wider ${
                                                       contract.status === 'signed' ? 'text-emerald-500' :
-                                                      contract.status === 'negotiating' ? 'text-rose-500' :
+                                                      contract.status === 'cancelled' ? 'text-rose-500' :
                                                       'text-amber-500'
                                                     }`}>
                                                       {statusInfo.text}
@@ -662,7 +637,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   );
                                                 })()}
                                               </div>
-                                              {((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) && (
+                                              {contract.status === 'pending' && (
                                                 <button
                                                   onClick={() => {
                                                     setSelectedContract(contract);
@@ -674,19 +649,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   <PenTool size={14} /> Sign Electronic Contract
                                                 </button>
                                               )}
-                                              {((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) && (
-                                                <button
-                                                  onClick={() => {
-                                                    setSelectedContract(contract);
-                                                    setViewerMode('view');
-                                                    setIsViewerOpen(true);
-                                                  }}
-                                                  className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-sky-550 hover:bg-sky-600 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer"
-                                                >
-                                                  <Eye size={14} /> View Signed Contract Details
-                                                </button>
-                                              )}
-                                              {contract.status === 'negotiating' && null}
                                               {contract.status === 'signed' && (
                                                 <button
                                                   onClick={() => {

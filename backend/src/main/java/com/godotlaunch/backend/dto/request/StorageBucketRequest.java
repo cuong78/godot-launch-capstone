@@ -13,8 +13,5 @@ public class StorageBucketRequest {
 
     @NotBlank
     private String name;
-
-    private String region;     // S3 only
-
     private String publicUrl;  // SeaweedFS only
 }

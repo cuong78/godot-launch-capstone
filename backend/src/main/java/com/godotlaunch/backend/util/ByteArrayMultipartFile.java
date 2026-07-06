@@ -10,7 +10,7 @@ import java.nio.file.Path;
 
 /**
  * MultipartFile in-memory từ byte[] — dùng khi cần upload dữ liệu sinh ra ở backend
- * (vd: source bundle zip nhận base64 từ Python) qua StorageRouter mà không có HTTP upload.
+ * (vd: source bundle zip nhận base64 từ Python) qua SeaweedFsService mà không có HTTP upload.
  */
 public class ByteArrayMultipartFile implements MultipartFile {
 

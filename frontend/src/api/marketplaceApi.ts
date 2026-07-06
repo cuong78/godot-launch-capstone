@@ -85,7 +85,7 @@ export const marketplaceApi = {
     return response.data;
   },
 
-  // Proxy upload: gửi file zip lên backend → StorageRouter (S3 hoặc SeaweedFS theo routing config)
+  // Proxy upload: gửi file zip lên backend → SeaweedFsService
   uploadItemFile: async (
     id: string,
     file: File,

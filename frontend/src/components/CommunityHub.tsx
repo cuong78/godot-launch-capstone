@@ -491,7 +491,7 @@ export function CommunityHub({
                                 📹 Video Attachment
                               </div>
                             ) : (
-                              <img src={url} alt="Uploaded S3 Thumbnail Attachment" className="w-full h-full object-cover opacity-80" />
+                              <img src={url} alt="Uploaded Thumbnail Attachment" className="w-full h-full object-cover opacity-80" />
                             )}
                             <button 
                               type="button"

@@ -17,6 +17,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByGithubId(String githubId);
     boolean existsByEmail(String email);
     List<User> findByFullNameContainingIgnoreCaseAndStatus(String fullName, String status);
+    List<User> findByRole_NameIgnoreCase(String roleName);
 
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"role"})
     Optional<User> findWithRoleById(UUID id);

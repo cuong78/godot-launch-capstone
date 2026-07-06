@@ -7,7 +7,6 @@ import com.godotlaunch.backend.dto.response.AssetResponse;
 import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.User;
-import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.CategoryRepository;
@@ -48,7 +47,6 @@ public class AssetServiceImpl implements AssetService {
     private final SeaweedFsService seaweedFsService;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
-    private final StorageRouter storageRouter;
     private final com.godotlaunch.backend.service.GitHubRepoService gitHubRepoService;
     private final com.godotlaunch.backend.config.SourceProcessingClient sourceProcessingClient;
     private final com.godotlaunch.backend.repository.SourceSnapshotRepository sourceSnapshotRepository;
@@ -63,10 +61,6 @@ public class AssetServiceImpl implements AssetService {
         return "marketplace/items/" + itemId + "/project.zip";
     }
 
-    /** FileType cho upload file asset. Lưu ở Private Bucket qua source_bundle để giữ bảo mật. */
-    private FileType resolveFileType(Asset item) {
-        return FileType.source_bundle;
-    }
 
     @Override
     @Transactional
@@ -201,16 +195,14 @@ public class AssetServiceImpl implements AssetService {
         }
 
         String objectKey = buildObjectKey(item.getId());
-        FileType fileType = resolveFileType(item);
-
-        // Upload qua StorageRouter — tôn trọng routing config (S3 / SeaweedFS)
-        String fileUrl = storageRouter.uploadWithKey(fileType, file, objectKey);
+        // Upload qua SeaweedFsService
+        String fileUrl = seaweedFsService.uploadWithKey(file, objectKey);
         item.setFileUrl(fileUrl);
         assetRepository.save(item);
 
         asyncVirusScanService.scanAndProcessAsset(itemId, objectKey);
-        log.info("Marketplace item {} uploaded via StorageRouter ({}) with key {}, virus scan started",
-                itemId, storageRouter.getProvider(fileType), objectKey);
+        log.info("Marketplace item {} uploaded via SeaweedFsService with key {}, virus scan started",
+                itemId, objectKey);
 
         // Asset (upload file, không repo): AI review media-only (CLIP + NSFW). Fail-soft.
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
@@ -252,7 +244,7 @@ public class AssetServiceImpl implements AssetService {
             ext = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
         }
         String objectKey = "marketplace/items/" + itemId + "/media/" + UUID.randomUUID() + ext;
-        String mediaUrl = storageRouter.uploadWithKey(FileType.asset_media, file, objectKey);
+        String mediaUrl = seaweedFsService.uploadWithKey(file, objectKey);
 
         com.godotlaunch.backend.entity.Media media = new com.godotlaunch.backend.entity.Media();
         media.setAsset(item);
@@ -284,7 +276,7 @@ public class AssetServiceImpl implements AssetService {
                 .ifPresent(m -> {
                     mediaRepository.delete(m);
                     try {
-                        storageRouter.delete(FileType.asset_media, targetKey);
+                        seaweedFsService.deleteObject(targetKey);
                     } catch (Exception e) {
                         log.warn("Đã xóa record asset media nhưng không xóa được file: {}", targetKey, e);
                     }
@@ -309,7 +301,7 @@ public class AssetServiceImpl implements AssetService {
                 .forEach(m -> {
                     String key = extractObjectKeyFromUrl(m.getMediaUrl());
                     if (key != null) {
-                        try { storageRouter.delete(FileType.asset_media, key); } catch (Exception ignored) {}
+                        try { seaweedFsService.deleteObject(key); } catch (Exception ignored) {}
                     }
                     mediaRepository.delete(m);
                 });
@@ -374,13 +366,13 @@ public class AssetServiceImpl implements AssetService {
         item.setStatus(ItemStatus.rejected);
         assetRepository.save(item);
 
-        // Delete S3 zip file
+        // Delete storage zip file
         try {
             String objectKey = "marketplace/items/" + item.getId().toString() + "/project.zip";
             seaweedFsService.deleteObject(objectKey);
-            log.info("Deleted S3 file for rejected marketplace item: {}", id);
+            log.info("Deleted storage file for rejected marketplace item: {}", id);
         } catch (Exception e) {
-            log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
+            log.warn("Failed to delete storage file for item: {}. Error: {}", id, e.getMessage());
         }
 
         emailService.sendAssetStatusNotification(
@@ -424,9 +416,9 @@ public class AssetServiceImpl implements AssetService {
         try {
             String objectKey = "marketplace/items/" + item.getId().toString() + "/project.zip";
             seaweedFsService.deleteObject(objectKey);
-            log.info("Deleted S3 file for removed marketplace item: {}", id);
+            log.info("Deleted storage file for removed marketplace item: {}", id);
         } catch (Exception e) {
-            log.warn("Failed to delete S3 file for item: {}. Error: {}", id, e.getMessage());
+            log.warn("Failed to delete storage file for item: {}. Error: {}", id, e.getMessage());
         }
 
         auditLogService.publishAuto(
@@ -493,36 +485,11 @@ public class AssetServiceImpl implements AssetService {
     }
 
     private String getPresignedGetUrl(String rawUrl) {
-        if (rawUrl == null || "pending".equalsIgnoreCase(rawUrl)) return rawUrl;
-
-        // File trên SeaweedFS (hoặc storage public khác) đã là URL đọc trực tiếp.
-        // Chỉ file AWS S3 mới cần generate presigned GET URL.
-        if (!rawUrl.contains(".amazonaws.com/")) {
-            return rawUrl;
-        }
-
-        if (!rawUrl.contains(".amazonaws.com/")) {
-            return rawUrl;
-        }
-        String objectKey = extractObjectKeyFromUrl(rawUrl);
-        if (objectKey == null) return rawUrl;
-        try {
-            return seaweedFsService.generatePresignedGetUrl(objectKey, Duration.ofHours(24));
-        } catch (Exception e) {
-            log.warn("Failed to generate presigned GET URL for objectKey: {}, returning raw URL. Error: {}", objectKey, e.getMessage());
-            return rawUrl;
-        }
+        return rawUrl;
     }
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-
-        // AWS S3
-        String awsMarker = ".amazonaws.com/";
-        int awsIndex = url.indexOf(awsMarker);
-        if (awsIndex != -1) {
-            return url.substring(awsIndex + awsMarker.length());
-        }
 
         // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
         String seaweedMarker = "/godotlaunch/";

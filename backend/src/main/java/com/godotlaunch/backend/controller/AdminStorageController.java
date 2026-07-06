@@ -2,7 +2,6 @@ package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.UploadedFileResponse;
-import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
@@ -15,7 +14,7 @@ import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
 import com.godotlaunch.backend.entity.Contract;
 import com.godotlaunch.backend.entity.SourceSnapshot;
-import com.godotlaunch.backend.service.impl.StorageRouter;
+import com.godotlaunch.backend.service.SeaweedFsService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -47,7 +46,7 @@ import java.util.UUID;
 @Tag(name = "Admin Storage API", description = "Quản lý tập tin lưu trữ hệ thống")
 public class AdminStorageController {
 
-    private final StorageRouter storageRouter;
+    private final SeaweedFsService seaweedFsService;
     private final UserRepository userRepo;
     private final GameRepository gameRepo;
     private final AssetRepository itemRepo;
@@ -241,13 +240,6 @@ public class AdminStorageController {
             @RequestParam String ownerType,
             @RequestParam String ownerId) {
 
-        FileType type;
-        try {
-            type = FileType.valueOf(fileType.toLowerCase());
-        } catch (IllegalArgumentException e) {
-            type = FileType.game_media;
-        }
-
         String objectKey = extractObjectKey(fileUrl);
         if (objectKey == null || objectKey.isBlank()) {
             throw new RuntimeException("Không thể trích xuất object key từ URL: " + fileUrl);
@@ -255,7 +247,7 @@ public class AdminStorageController {
 
         // 1. Physical delete
         try {
-            storageRouter.delete(fileUrl, type, objectKey);
+            seaweedFsService.deleteObject(objectKey);
         } catch (Exception e) {
             System.err.println("Lỗi khi xóa file vật lý trên storage (bỏ qua để dọn dẹp DB): " + e.getMessage());
         }
@@ -380,17 +372,10 @@ public class AdminStorageController {
     }
 
     @GetMapping("/files/download")
-    @Operation(summary = "Tải xuống hoặc xem file thông qua backend proxy (hỗ trợ cả file private S3 & SeaweedFS)")
+    @Operation(summary = "Tải xuống hoặc xem file thông qua backend proxy (hỗ trợ file SeaweedFS)")
     public ResponseEntity<InputStreamResource> downloadFile(
             @RequestParam String fileUrl,
             @RequestParam String fileType) {
-
-        FileType type;
-        try {
-            type = FileType.valueOf(fileType.toLowerCase());
-        } catch (IllegalArgumentException e) {
-            type = FileType.game_media;
-        }
 
         String objectKey = extractObjectKey(fileUrl);
         if (objectKey == null || objectKey.isBlank()) {
@@ -398,7 +383,7 @@ public class AdminStorageController {
         }
 
         try {
-            InputStream inputStream = storageRouter.getInputStream(fileUrl, type, objectKey);
+            InputStream inputStream = seaweedFsService.getObjectStream(objectKey);
             InputStreamResource resource = new InputStreamResource(inputStream);
 
             String fileName = extractFileName(fileUrl);

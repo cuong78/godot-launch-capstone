@@ -65,13 +65,6 @@ spring:
     encoding: UTF-8
     fallback-to-system-locale: false
 
-aws:
-  s3:
-    bucket-name: ${AWS_S3_BUCKET:placeholder-bucket}
-    region: ${AWS_S3_REGION:ap-southeast-1}
-  credentials:
-    access-key: ${AWS_ACCESS_KEY:placeholder-access-key}
-    secret-key: ${AWS_SECRET_KEY:placeholder-secret-key}
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
@@ -90,6 +83,13 @@ app:
         # Bot account (machine user) để clone private repo developer mời
         bot-username: ${GITHUB_BOT_USERNAME:}
         bot-token: ${GITHUB_BOT_TOKEN:}
+  google-play:
+    mock: ${GOOGLE_PLAY_MOCK:true}
+    poll-interval-ms: ${GOOGLE_PLAY_POLL_INTERVAL_MS:1800000}
+    mock-review-delay-seconds: ${GOOGLE_PLAY_MOCK_REVIEW_DELAY_SECONDS:30}
+    service-account-path: ${GOOGLE_PLAY_SERVICE_ACCOUNT_PATH:}
+    package-name: ${GOOGLE_PLAY_PACKAGE_NAME:}
+
   payos:
     payment:
       client-id: ${PAYOS_PAYMENT_CLIENT_ID:${PAYOS_CLIENT_ID:}}

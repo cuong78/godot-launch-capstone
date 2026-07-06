@@ -7,6 +7,8 @@ import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.ContractStatus;
 import com.godotlaunch.backend.entity.enums.ContractType;
+import com.godotlaunch.backend.entity.enums.GameStatus;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.repository.ContractRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
@@ -16,6 +18,7 @@ import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.ContractService;
 import com.godotlaunch.backend.service.EmailService;
+import com.godotlaunch.backend.service.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,17 +39,19 @@ public class ContractServiceImpl implements ContractService {
     private final SeaweedFsService seaweedFsService;
     private final EmailService emailService;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
 
     public ContractServiceImpl(ContractRepository contractRepository, GameRepository gameRepository,
                                UserRepository userRepository,
                                SeaweedFsService seaweedFsService, EmailService emailService,
-                               AuditLogService auditLogService) {
+                               AuditLogService auditLogService, NotificationService notificationService) {
         this.contractRepository = contractRepository;
         this.gameRepository = gameRepository;
         this.userRepository = userRepository;
         this.seaweedFsService = seaweedFsService;
         this.emailService = emailService;
         this.auditLogService = auditLogService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -57,31 +62,42 @@ public class ContractServiceImpl implements ContractService {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
-        // Cancel any existing active contracts for this game and check if we are re-issuing
-        boolean isReIssued = false;
-        List<Contract> activeContracts = contractRepository.findByGameId(request.getGameId());
-        for (Contract c : activeContracts) {
-            if (c.getStatus() == ContractStatus.pending) {
-                isReIssued = true;
-                c.setStatus(ContractStatus.cancelled);
-                contractRepository.save(c);
-            }
+        if (request.getBuyerSignatureBase64() == null || request.getBuyerSignatureBase64().trim().isEmpty()) {
+            throw new RuntimeException("Chữ ký của Admin (Bên mua) là bắt buộc khi tạo hợp đồng");
         }
 
-        Contract contract = new Contract();
-        contract.setGame(game);
+        // 1 game chỉ có đúng 1 contract row (UNIQUE(game_id)) — chào lại điều khoản mới
+        // phải SỬA TRỰC TIẾP row hiện có, không insert mới (tránh vỡ constraint).
+        Contract contract = contractRepository.findFirstByGameId(request.getGameId())
+                .orElseGet(() -> {
+                    Contract c = new Contract();
+                    c.setGame(game);
+                    return c;
+                });
+
         contract.setSeller(game.getCreator());
         contract.setContractType(request.getContractType());
         if (request.getContractType() == ContractType.co_publishing) {
             contract.setRevenueSplit(request.getRevenueSplit());
+            contract.setLumpSumAmount(null);
         } else {
             contract.setLumpSumAmount(request.getLumpSumAmount());
+            contract.setRevenueSplit(null);
         }
         contract.setSellerRepresentative(request.getSellerRepresentative());
         contract.setSellerAddress(request.getSellerAddress());
         contract.setSellerTaxCode(request.getSellerTaxCode());
-        contract.setStatus(ContractStatus.pending);
 
+        // Vòng chào giá mới — xoá phản hồi/chữ ký của vòng trước
+        contract.setRejectionReason(null);
+        contract.setSellerSignatureBase64(null);
+        contract.setSignedAtSeller(null);
+
+        // Admin ký ngay lúc soạn hợp đồng
+        contract.setBuyerSignatureBase64(request.getBuyerSignatureBase64());
+        contract.setSignedAtBuyer(Instant.now());
+
+        contract.setStatus(ContractStatus.pending);
         contract.setTermsHash("N/A");
         contract.setPdfUrl("");
 
@@ -99,13 +115,19 @@ public class ContractServiceImpl implements ContractService {
             // log warning but don't fail transaction
         }
 
+        notificationService.createAndSendNotification(
+                game.getCreator(), admin, NotificationType.CONTRACT_OFFERED,
+                "Bạn có hợp đồng mới cần xem xét cho game '" + game.getTitle() + "'",
+                contract.getId().toString()
+        );
+
         auditLogService.publishAuto(
                 AuditAction.contract_created,
                 AuditTarget.contract,
                 contract.getId(),
                 null,
                 contract.getStatus().name(),
-                "Contract proposed by Admin for game: " + game.getTitle()
+                "Contract proposed (and signed) by Admin for game: " + game.getTitle()
         );
 
         return mapToResponse(contract);
@@ -176,10 +198,21 @@ public class ContractServiceImpl implements ContractService {
         contract.setStatus(ContractStatus.signed);
         contractRepository.save(contract);
 
-        // Update game status to published
+        // Hợp đồng ký xong CHƯA publish — chỉ mở khoá bước "Upload build" để admin
+        // đẩy game lên Google Play (xem docs/diagram/2 push-game-sequence.puml).
         Game game = contract.getGame();
-        game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.published);
+        GameStatus previousStatus = game.getStatus();
+        game.setStatus(GameStatus.awaiting_store_build);
         gameRepository.save(game);
+
+        User developer = game.getCreator();
+        for (User adminUser : userRepository.findByRole_NameIgnoreCase("admin")) {
+            notificationService.createAndSendNotification(
+                    adminUser, developer, NotificationType.SELLER_RESPONSE,
+                    "Developer đã ký hợp đồng cho game '" + game.getTitle() + "' — sẵn sàng upload build lên Google Play",
+                    contract.getId().toString()
+            );
+        }
 
         auditLogService.publishAuto(
                 AuditAction.contract_signed,
@@ -191,56 +224,12 @@ public class ContractServiceImpl implements ContractService {
         );
 
         auditLogService.publishAuto(
-                AuditAction.game_published,
+                AuditAction.game_updated,
                 AuditTarget.game,
                 game.getId(),
-                com.godotlaunch.backend.entity.enums.GameStatus.pending.name(),
-                com.godotlaunch.backend.entity.enums.GameStatus.published.name(),
-                "Game '" + game.getTitle() + "' published (contract fully signed by developer)."
-        );
-
-        return mapToResponse(contract);
-    }
-
-    @Override
-    @Transactional
-    public ContractResponse signByAdmin(UUID contractId, UUID adminId, String signatureBase64) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Contract not found"));
-
-        if (contract.getSignedAtSeller() == null) {
-            throw new RuntimeException("Developer must sign first");
-        }
-        if (contract.getStatus() != ContractStatus.pending) {
-            throw new RuntimeException("Contract is not in pending status");
-        }
-
-        contract.setStatus(ContractStatus.signed);
-
-        contractRepository.save(contract);
-
-        // Execute Contract terms
-        Game game = contract.getGame();
-        // Update game status to published when contract is fully signed
-        game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.published);
-        gameRepository.save(game);
-
-        auditLogService.publishAuto(
-                AuditAction.contract_signed,
-                AuditTarget.contract,
-                contract.getId(),
-                null,
-                contract.getStatus().name(),
-                "Contract signed by admin (buyer) and fully executed for game: " + contract.getGame().getTitle()
-        );
-
-        auditLogService.publishAuto(
-                AuditAction.game_published,
-                AuditTarget.game,
-                game.getId(),
-                com.godotlaunch.backend.entity.enums.GameStatus.approved.name(),
-                com.godotlaunch.backend.entity.enums.GameStatus.published.name(),
-                "Game '" + game.getTitle() + "' published (contract countersigned by admin)."
+                previousStatus.name(),
+                GameStatus.awaiting_store_build.name(),
+                "Game '" + game.getTitle() + "' chờ admin upload build lên Google Play (contract đã ký)."
         );
 
         return mapToResponse(contract);
@@ -261,12 +250,22 @@ public class ContractServiceImpl implements ContractService {
 
         contract.setStatus(ContractStatus.cancelled);
         contract.setRejectionReason(rejectionReason);
-        
+
         Game game = contract.getGame();
-        game.setStatus(com.godotlaunch.backend.entity.enums.GameStatus.pending);
+        game.setStatus(GameStatus.pending);
         gameRepository.save(game);
 
         contractRepository.save(contract);
+
+        User developer = game.getCreator();
+        for (User adminUser : userRepository.findByRole_NameIgnoreCase("admin")) {
+            notificationService.createAndSendNotification(
+                    adminUser, developer, NotificationType.SELLER_RESPONSE,
+                    "Developer từ chối hợp đồng cho game '" + game.getTitle() + "': " + rejectionReason,
+                    contract.getId().toString()
+            );
+        }
+
         auditLogService.publishAuto(
                 AuditAction.contract_cancelled,
                 AuditTarget.contract,
@@ -310,9 +309,9 @@ public class ContractServiceImpl implements ContractService {
                 .sellerAddress(contract.getSellerAddress())
                 .sellerTaxCode(contract.getSellerTaxCode())
                 .signedAtSeller(contract.getSignedAtSeller())
-                .signedAtBuyer(null)
+                .signedAtBuyer(contract.getSignedAtBuyer())
                 .sellerSignatureBase64(contract.getSellerSignatureBase64())
-                .buyerSignatureBase64(null)
+                .buyerSignatureBase64(contract.getBuyerSignatureBase64())
                 .rejectionReason(contract.getRejectionReason())
                 .createdAt(contract.getCreatedAt())
                 .build();

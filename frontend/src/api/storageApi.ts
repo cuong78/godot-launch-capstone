@@ -4,7 +4,7 @@ import { ApiResponse } from '../types';
 export interface StorageAccountResponse {
   id: string;
   name: string;
-  provider: 'aws_s3' | 'seaweedfs';
+  provider: 'seaweedfs';
   isActive: boolean;
   createdAt: string;
 }
@@ -13,9 +13,8 @@ export interface StorageBucketResponse {
   id: string;
   accountId: string;
   accountName: string;
-  provider: 'aws_s3' | 'seaweedfs';
+  provider: 'seaweedfs';
   name: string;
-  region?: string;
   publicUrl?: string;
   createdAt: string;
 }
@@ -27,13 +26,13 @@ export interface StorageRoutingResponse {
   bucketName?: string | null;
   accountId?: string | null;
   accountName?: string | null;
-  provider?: 'aws_s3' | 'seaweedfs' | null;
+  provider?: 'seaweedfs' | null;
   updatedAt: string;
 }
 
 export interface StorageAccountRequest {
   name: string;
-  provider: 'aws_s3' | 'seaweedfs';
+  provider: 'seaweedfs';
   config: string; // JSON string
   isActive: boolean;
 }
@@ -41,7 +40,6 @@ export interface StorageAccountRequest {
 export interface StorageBucketRequest {
   accountId: string;
   name: string;
-  region?: string;
   publicUrl?: string;
 }
 
@@ -50,7 +48,7 @@ export interface UploadedFileResponse {
   fileName: string;
   fileType: string;
   fileUrl: string;
-  storageProvider: 'aws_s3' | 'seaweedfs' | 'unknown';
+  storageProvider: 'seaweedfs' | 'unknown';
   ownerId: string;
   ownerType: string;
   ownerName: string;

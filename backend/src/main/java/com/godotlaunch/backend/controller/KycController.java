@@ -31,8 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 
-import com.godotlaunch.backend.service.impl.StorageRouter;
-import com.godotlaunch.backend.entity.enums.FileType;
+import com.godotlaunch.backend.service.SeaweedFsService;
 import com.godotlaunch.backend.util.ByteArrayMultipartFile;
 
 @RestController
@@ -43,7 +42,7 @@ import com.godotlaunch.backend.util.ByteArrayMultipartFile;
 public class KycController {
 
     private final UserRepository userRepository;
-    private final StorageRouter storageRouter;
+    private final SeaweedFsService seaweedFsService;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${app.face-service.url:http://localhost:8001}")
@@ -127,7 +126,7 @@ public class KycController {
             try {
                 byte[] bytes = java.util.Base64.getDecoder().decode(cleanBase64(request.getFrontImageBase64()));
                 ByteArrayMultipartFile file = new ByteArrayMultipartFile(bytes, "front", "kyc_front_" + user.getId() + ".jpg", "image/jpeg");
-                String frontUrl = storageRouter.upload(FileType.cccd_image, file, "kyc");
+                String frontUrl = seaweedFsService.uploadFile(file, "kyc");
                 user.setKycFrontImageUrl(frontUrl);
             } catch (Exception e) {
                 log.error("Failed to upload KYC front image", e);
@@ -137,7 +136,7 @@ public class KycController {
             try {
                 byte[] bytes = java.util.Base64.getDecoder().decode(cleanBase64(request.getBackImageBase64()));
                 ByteArrayMultipartFile file = new ByteArrayMultipartFile(bytes, "back", "kyc_back_" + user.getId() + ".jpg", "image/jpeg");
-                String backUrl = storageRouter.upload(FileType.cccd_image, file, "kyc");
+                String backUrl = seaweedFsService.uploadFile(file, "kyc");
                 user.setKycBackImageUrl(backUrl);
             } catch (Exception e) {
                 log.error("Failed to upload KYC back image", e);

@@ -80,7 +80,7 @@ export const gameApi = {
     return response.data;
   },
 
-  // Proxy upload media (thumbnail/screenshot/video) qua backend → StorageRouter (S3/SeaweedFS)
+  // Proxy upload media (thumbnail/screenshot/video) qua backend → SeaweedFsService
   uploadMedia: async (
     gameId: string,
     fileType: 'thumbnail' | 'screenshot' | 'video',

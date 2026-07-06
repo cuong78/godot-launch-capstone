@@ -8,12 +8,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, UUID> {
     List<Contract> findBySellerId(UUID sellerId);
     List<Contract> findByGameId(UUID gameId);
+    Optional<Contract> findFirstByGameId(UUID gameId);
 
     @Query("SELECT c FROM Contract c WHERE c.pdfUrl IS NOT NULL AND c.pdfUrl <> '' " +
            "AND (:search IS NULL OR :search = '' OR " +

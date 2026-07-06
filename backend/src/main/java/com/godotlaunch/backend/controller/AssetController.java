@@ -83,7 +83,7 @@ public class AssetController {
 
     @GetMapping("/{id}/upload-url")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @Operation(summary = "Request S3 presigned upload URL", description = "Generates a secure S3 PUT upload link for file upload (project.zip).")
+    @Operation(summary = "Request SeaweedFS upload URL", description = "Generates a SeaweedFS upload link for file upload (project.zip).")
     public ResponseEntity<ApiResponse<Map<String, String>>> getUploadUrl(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "application/zip") String contentType) {
@@ -93,7 +93,7 @@ public class AssetController {
 
     @PostMapping(value = "/{id}/upload", consumes = "multipart/form-data")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @Operation(summary = "Upload item ZIP qua proxy", description = "Upload file (ASSET) qua backend → StorageRouter. Source_code dùng submit-repo thay vì upload.")
+    @Operation(summary = "Upload item ZIP qua proxy", description = "Upload file (ASSET) qua backend → SeaweedFsService. Source_code dùng submit-repo thay vì upload.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadItemFile(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,
@@ -104,7 +104,7 @@ public class AssetController {
 
     @PostMapping(value = "/{id}/media", consumes = "multipart/form-data")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @Operation(summary = "Upload media cho item", description = "mediaType: thumbnail | screenshot | video | asset_image. Upload qua StorageRouter.")
+    @Operation(summary = "Upload media cho item", description = "mediaType: thumbnail | screenshot | video | asset_image. Upload qua SeaweedFsService.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadItemMedia(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,
@@ -129,7 +129,7 @@ public class AssetController {
 
     @PostMapping("/{id}/upload-complete")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @Operation(summary = "Confirm upload complete", description = "Signals that the file has been successfully uploaded to S3. Updates database URL.")
+    @Operation(summary = "Confirm upload complete", description = "Signals that the file has been successfully uploaded to storage. Updates database URL.")
     public ResponseEntity<ApiResponse<Map<String, String>>> confirmUploadComplete(
             @PathVariable UUID id,
             @RequestParam(required = false) String objectKey) {

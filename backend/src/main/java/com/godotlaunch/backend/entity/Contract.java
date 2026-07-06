@@ -75,6 +75,12 @@ public class Contract {
     @Column(name = "signed_at_seller")
     private Instant signedAtSeller;
 
+    @Column(name = "buyer_signature_base64", columnDefinition = "TEXT")
+    private String buyerSignatureBase64;
+
+    @Column(name = "signed_at_buyer")
+    private Instant signedAtBuyer;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 }

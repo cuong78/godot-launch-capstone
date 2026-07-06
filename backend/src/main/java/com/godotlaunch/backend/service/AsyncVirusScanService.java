@@ -1,12 +1,10 @@
 package com.godotlaunch.backend.service;
 
 import com.godotlaunch.backend.entity.Asset;
-import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
-import com.godotlaunch.backend.service.impl.StorageRouter;
 import com.godotlaunch.backend.util.SafeZipUnpacker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,15 +33,14 @@ public class AsyncVirusScanService {
     private final SeaweedFsService seaweedFsService;
     private final GameRepository gameRepository;
     private final AssetRepository assetRepository;
-    private final StorageRouter storageRouter;
     private final AuditLogService auditLogService;
 
     /**
-     * Thực hiện kiểm duyệt tệp tin ZIP tải lên từ S3 bất đồng bộ (Background thread).
+     * Thực hiện kiểm duyệt tệp tin ZIP tải lên từ storage bất đồng bộ (Background thread).
      * Bao gồm quét mã độc qua ClamAV, kiểm duyệt Zip Slip/Zip Bomb qua SafeZipUnpacker.
      *
      * @param gameId ID của Game
-     * @param objectKey Đường dẫn đối tượng trên S3
+     * @param objectKey Đường dẫn đối tượng trên storage
      */
     @Async
     @Transactional
@@ -58,7 +55,7 @@ public class AsyncVirusScanService {
 
         Path tempDir = null;
         try {
-            // Bước 1: Quét virus dạng Stream trực tiếp từ S3 qua ClamAV daemon
+            // Bước 1: Quét virus dạng Stream trực tiếp từ storage qua ClamAV daemon
             boolean isClean;
             try (InputStream inputStream = seaweedFsService.getObjectStream(objectKey)) {
                 isClean = clamAVService.scanStream(inputStream);
@@ -169,7 +166,7 @@ public class AsyncVirusScanService {
      * Thực hiện kiểm duyệt tệp tin ZIP tải lên cho Asset bất đồng bộ.
      *
      * @param itemId ID của Asset
-     * @param objectKey Đường dẫn đối tượng trên S3
+     * @param objectKey Đường dẫn đối tượng trên storage
      */
     @Async
     @Transactional
@@ -183,21 +180,18 @@ public class AsyncVirusScanService {
         }
 
         // Marketplace virus scan giờ CHỈ cho asset (source_code dùng repo, scan ở Python).
-        // FileType để StorageRouter resolve đúng provider (S3 / SeaweedFS) — khớp lúc upload.
-        FileType fileType = FileType.source_bundle;
-
         Path tempDir = null;
         try {
             // Bước 1: Quét virus dạng Stream trực tiếp từ storage qua ClamAV daemon
             boolean isClean;
-            try (InputStream inputStream = storageRouter.getInputStream(fileType, objectKey)) {
+            try (InputStream inputStream = seaweedFsService.getObjectStream(objectKey)) {
                 isClean = clamAVService.scanStream(inputStream);
             }
 
             if (!isClean) {
                 log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin tải lên của marketplace item: {}. Tiến hành xóa tệp và gỡ bỏ sản phẩm.", itemId);
                 updateAssetStatus(itemId, ItemStatus.removed);
-                storageRouter.delete(fileType, objectKey);
+                seaweedFsService.deleteObject(objectKey);
 
                 auditLogService.publish(
                         item.getSeller().getId(),
@@ -217,7 +211,7 @@ public class AsyncVirusScanService {
 
             // Bước 2: Giải nén an toàn để chống Zip Bomb / Zip Slip
             tempDir = Files.createTempDirectory("marketplace_scan_" + itemId.toString());
-            try (InputStream inputStream = storageRouter.getInputStream(fileType, objectKey)) {
+            try (InputStream inputStream = seaweedFsService.getObjectStream(objectKey)) {
                 SafeZipUnpacker.unzipSafely(inputStream, tempDir);
             }
 
@@ -239,7 +233,7 @@ public class AsyncVirusScanService {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với marketplace item: {}: {}", itemId, e.getMessage());
             updateAssetStatus(itemId, ItemStatus.removed);
             try {
-                storageRouter.delete(fileType, objectKey);
+                seaweedFsService.deleteObject(objectKey);
             } catch (Exception ex) {
                 log.warn("Không thể xóa file độc hại trên storage: {}", objectKey, ex);
             }

@@ -196,6 +196,22 @@ export interface AiReviewReport {
   createdAt?: string;
 }
 
+export type ExtStatus = 'pending' | 'submitted' | 'live' | 'rejected' | 'removed';
+
+export interface ExternalPublishResponse {
+  id: string;
+  gameId: string;
+  gameVersionId?: string | null;
+  versionNumber?: string | null;
+  status: ExtStatus;
+  externalAppId?: string | null;
+  storeUrl?: string | null;
+  submittedAt?: string | null;
+  liveAt?: string | null;
+  rejectedReason?: string | null;
+  createdAt?: string;
+}
+
 export interface PageResponse<T> {
   content: T[];
   last: boolean;

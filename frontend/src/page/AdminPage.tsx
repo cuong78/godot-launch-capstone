@@ -48,6 +48,7 @@ import {
 import { AdminPaymentVerificationPanel } from '../components/admin/AdminPaymentVerificationPanel';
 import { AdminWithdrawalPanel } from '../components/admin/AdminWithdrawalPanel';
 import AiReviewReportCard from '../components/AiReviewReportCard';
+import ExternalPublishStatusCard from '../components/ExternalPublishStatusCard';
 
 interface PendingAsset {
   id: string;
@@ -105,25 +106,17 @@ const mapAdminStatusToApiStatus = (status: AdminUserStatus) => {
   return status;
 };
 
-const getContractStatusLabel = (status: string, signedAtSeller?: string | null) => {
+const getContractStatusLabel = (status: string) => {
   switch (status) {
     case 'signed':
-      return { text: 'Hoàn tất', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
-    case 'negotiating':
-      return { text: 'Thương lượng', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
-    case 're_issued':
-      return signedAtSeller
-        ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
-        : { text: 'Cấp lại / Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+      return { text: 'Đã ký', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
     case 'cancelled':
-      return { text: 'Đã hủy', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+      return { text: 'Đã hủy / Chờ chào lại', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
     case 'expired':
       return { text: 'Hết hạn', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
     case 'pending':
     default:
-      return signedAtSeller
-        ? { text: 'Đã ký (Chờ đối ứng)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
-        : { text: 'Chờ ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+      return { text: 'Chờ Developer ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
   }
 };
 
@@ -249,7 +242,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   // Contract Offer states
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
-  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<GameResponse | null>(null);
 
   // Rejection modal states
@@ -261,7 +253,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [selectedContract, setSelectedContract] = useState<ContractResponse | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [viewerMode, setViewerMode] = useState<'view' | 'sign-admin'>('view');
+  const [viewerMode, setViewerMode] = useState<'view'>('view');
 
   // Form states for creating contract
   const [buyerRepresentative, setBuyerRepresentative] = useState('');
@@ -610,12 +602,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setLumpSumAmount('');
     setRevenueSplit(70);
     setAdditionalTerms('');
+    setAdminSignatureBase64(null);
     setIsContractModalOpen(true);
   };
 
   const handleCreateContractOffer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGame) return;
+    if (!adminSignatureBase64) {
+      alert('Vui lòng ký tên (Bên A) trước khi gửi hợp đồng.');
+      return;
+    }
 
     try {
       const res = await contractApi.createOffer({
@@ -629,7 +626,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         buyerPosition,
         sellerRepresentative,
         sellerAddress,
-        sellerTaxCode
+        sellerTaxCode,
+        buyerSignatureBase64: adminSignatureBase64
       });
 
       if (res.success) {
@@ -641,29 +639,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       }
     } catch (err: any) {
       alert(err.response?.data?.message || err.message || 'Lỗi gửi yêu cầu tạo hợp đồng');
-    }
-  };
-
-  const handleOpenSignModal = (contract: ContractResponse) => {
-    setSelectedContract(contract);
-    setAdminSignatureBase64(null);
-    setIsSignModalOpen(true);
-  };
-
-  const handleCountersign = async () => {
-    if (!selectedContract || !adminSignatureBase64) return;
-
-    try {
-      const res = await contractApi.signByAdmin(selectedContract.id, adminSignatureBase64);
-      if (res.success) {
-        alert('Đã ký đối ứng thành công! Hợp đồng hoàn tất và game đã được phê duyệt.');
-        setIsSignModalOpen(false);
-        fetchPendingGamesAndContracts();
-      } else {
-        alert(res.message || 'Lỗi ký đối ứng hợp đồng');
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Lỗi thực hiện ký đối ứng');
     }
   };
 
@@ -1018,7 +993,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">Chưa tạo</span>
                                       );
                                     }
-                                    const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
+                                    const statusInfo = getContractStatusLabel(contract.status);
                                     return (
                                       <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-mono border ${statusInfo.colorClass}`}>
                                         {statusInfo.text}
@@ -1027,32 +1002,39 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   })()}
                                 </td>
                                 <td className="p-3 text-center">
-                                  {game.status?.toLowerCase() === 'pending' ? (
-                                    <div className="flex items-center justify-center gap-1.5">
-                                      <button
-                                        onClick={() => handleApproveGame(game)}
-                                        className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                        title="Duyệt game"
-                                      >
-                                        <Check size={14} />
-                                      </button>
-                                      <button
-                                        onClick={() => handleRejectGame(game.id, game.title)}
-                                        className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                        title="Từ chối game"
-                                      >
-                                        <X size={14} />
-                                      </button>
-                                    </div>
-                                  ) : game.status?.toLowerCase() === 'rejected' ? (
-                                    <div className="flex flex-col items-center justify-center gap-1">
-                                      <span className="inline-block px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-[10px] font-bold font-display">
-                                        Rejected
-                                      </span>
-                                    </div>
-                                  ) : game.publishingType === 'marketplace_listing' ? (
-                                    <div className="flex flex-col items-center justify-center gap-1">
-                                      {game.status?.toLowerCase() === 'published' ? (
+                                  {(() => {
+                                    const approveRejectButtons = (
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        <button
+                                          onClick={() => handleApproveGame(game)}
+                                          className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
+                                          title="Duyệt game"
+                                        >
+                                          <Check size={14} />
+                                        </button>
+                                        <button
+                                          onClick={() => handleRejectGame(game.id, game.title)}
+                                          className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
+                                          title="Từ chối game"
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      </div>
+                                    );
+
+                                    if (game.status?.toLowerCase() === 'rejected') {
+                                      return (
+                                        <span className="inline-block px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-[10px] font-bold font-display">
+                                          Rejected
+                                        </span>
+                                      );
+                                    }
+
+                                    if (game.publishingType === 'marketplace_listing') {
+                                      if (game.status?.toLowerCase() === 'pending') {
+                                        return approveRejectButtons;
+                                      }
+                                      return game.status?.toLowerCase() === 'published' ? (
                                         <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
                                           Live
                                         </span>
@@ -1060,78 +1042,61 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         <span className="inline-block px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg text-[10px] font-bold font-display">
                                           Approved
                                         </span>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex flex-col items-center justify-center gap-1">
-                                      {(() => {
-                                        const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
-                                        if (!contract) {
-                                          return (
-                                            <button
-                                              onClick={() => handleOpenContractModal(game)}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                            >
-                                              <FileText size={12} />
-                                              Soạn Hợp đồng
-                                            </button>
-                                          );
-                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && !contract.signedAtSeller) {
-                                          return (
-                                            <button
-                                              onClick={() => {
-                                                setSelectedContract(contract);
-                                                setViewerMode('view');
-                                                setIsViewerOpen(true);
-                                              }}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-955 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                            >
-                                              <Eye size={12} />
-                                              Chờ Dev ký
-                                            </button>
-                                          );
-                                        } else if ((contract.status === 'pending' || contract.status === 're_issued') && contract.signedAtSeller) {
-                                          return (
-                                            <button
-                                              onClick={() => {
-                                                setSelectedContract(contract);
-                                                setViewerMode('sign-admin');
-                                                setIsViewerOpen(true);
-                                              }}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer animate-pulse"
-                                            >
-                                              <PenTool size={12} />
-                                              Ký đối ứng
-                                            </button>
-                                          );
-                                        } else if (contract.status === 'negotiating') {
-                                          return (
-                                            <button
-                                              onClick={() => handleOpenContractModal(game)}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                            >
-                                              <Sliders size={12} />
-                                              Điều chỉnh HĐ
-                                            </button>
-                                          );
-                                        } else {
-                                          return (
-                                            <button
-                                              onClick={() => {
-                                                setSelectedContract(contract);
-                                                setViewerMode('view');
-                                                setIsViewerOpen(true);
-                                              }}
-                                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
-                                            >
-                                              <FileText size={12} />
-                                              Đã hoàn tất
-                                            </button>
-                                          );
-                                        }
-                                      })()}
-                                    </div>
-                                  )}
+                                      );
+                                    }
+
+                                    // full_acquisition / co_publishing — luồng hợp đồng + push Google Play
+                                    const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
+
+                                    if (!contract) {
+                                      if (game.status?.toLowerCase() === 'pending') {
+                                        return approveRejectButtons;
+                                      }
+                                      return <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">—</span>;
+                                    }
+
+                                    if (contract.status === 'pending') {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            setSelectedContract(contract);
+                                            setViewerMode('view');
+                                            setIsViewerOpen(true);
+                                          }}
+                                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                        >
+                                          <Eye size={12} />
+                                          Chờ Dev ký
+                                        </button>
+                                      );
+                                    }
+
+                                    if (contract.status === 'signed') {
+                                      if (game.status?.toLowerCase() === 'published') {
+                                        return (
+                                          <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
+                                            Live trên Google Play
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <span className="inline-block px-2.5 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-500 rounded-lg text-[10px] font-bold font-display animate-pulse">
+                                          Chờ Upload Build
+                                        </span>
+                                      );
+                                    }
+
+                                    // cancelled — developer đã từ chối, admin chào lại điều khoản mới
+                                    return (
+                                      <button
+                                        onClick={() => handleOpenContractModal(game)}
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
+                                      >
+                                        <Sliders size={12} />
+                                        Chào lại HĐ
+                                      </button>
+                                    );
+                                  })()}
                                 </td>
                               </tr>
                               
@@ -1143,13 +1108,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                       {/* Left Column: Thumbnail, Description, ZIP */}
                                       <div className="space-y-4">
                                         {(() => {
-                                          const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === game.id && (c.status === 'negotiating' || c.status === 'cancelled') && c.rejectionReason);
+                                          const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === game.id && c.status === 'cancelled' && c.rejectionReason);
                                           if (activeRejectedContract) {
-                                            const isNegotiating = activeRejectedContract.status === 'negotiating';
                                             return (
                                               <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs space-y-1">
                                                 <span className="font-bold block">
-                                                  {isNegotiating ? "Developer từ chối hợp đồng với lý do:" : "Hợp đồng trước đó bị từ chối:"}
+                                                  Developer từ chối hợp đồng với lý do:
                                                 </span>
                                                 <p className="italic text-[11px] text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-rose-500/10 break-words">
                                                   "{activeRejectedContract.rejectionReason}"
@@ -1310,6 +1274,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         <div className="pt-2">
                                           <AiReviewReportCard gameId={game.id} />
                                         </div>
+
+                                        {/* PUSH GOOGLE PLAY (chỉ game full_acquisition/co_publishing đã ký hợp đồng) */}
+                                        {game.publishingType !== 'marketplace_listing' && (
+                                          <div className="pt-2">
+                                            <ExternalPublishStatusCard gameId={game.id} gameStatus={game.status} />
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   </td>
@@ -2079,13 +2050,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
             {/* Display previous rejection reason if exists */}
             {(() => {
-              const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === selectedGame.id && (c.status === 'negotiating' || c.status === 'cancelled') && c.rejectionReason);
+              const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === selectedGame.id && c.status === 'cancelled' && c.rejectionReason);
               if (activeRejectedContract) {
-                const isNegotiating = activeRejectedContract.status === 'negotiating';
                 return (
                   <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl space-y-2 text-xs text-rose-600 dark:text-rose-450">
                     <span className="font-bold flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
-                      <AlertTriangle size={15} /> {isNegotiating ? "Lý do Developer từ chối ký hợp đồng:" : "Hợp đồng trước đó bị Developer từ chối:"}
+                      <AlertTriangle size={15} /> Lý do Developer từ chối ký hợp đồng:
                     </span>
                     <p className="italic bg-white/70 dark:bg-slate-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-900/20 text-slate-800 dark:text-slate-200 leading-normal break-words shadow-sm">
                       "{activeRejectedContract.rejectionReason}"
@@ -2178,15 +2148,32 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 />
               </div>
 
+              {/* Chữ ký Bên A — bắt buộc ngay lúc soạn hợp đồng */}
+              <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                  <span className="w-1.5 h-3 rounded bg-emerald-500" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+                    CHỮ KÝ ĐẠI DIỆN BÊN A (BAN QUẢN TRỊ)
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Admin phải ký ngay khi gửi hợp đồng cho Developer.
+                </p>
+                <SignaturePad
+                  onChange={setAdminSignatureBase64}
+                  placeholder="Dùng chuột để vẽ chữ ký đại diện Bên A..."
+                />
+              </div>
+
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <button 
+                <button
                   type="button"
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-studio"
                   onClick={() => setIsContractModalOpen(false)}
                 >
                   Hủy bỏ
                 </button>
-                <Button variant="primary" size="md" type="submit" icon={<FileCheck size={16} />}>
+                <Button variant="primary" size="md" type="submit" icon={<FileCheck size={16} />} disabled={!adminSignatureBase64}>
                   Gửi đề nghị & Tạo Hợp đồng
                 </Button>
               </div>
@@ -2196,7 +2183,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         document.body
       )}
 
-      {/* Universal Contract Viewer & Countersigning Modal */}
+      {/* Universal Contract Viewer Modal (admin xem hợp đồng — ký ngay lúc tạo offer) */}
       {isViewerOpen && selectedContract && (
         <ContractViewerModal
           contract={selectedContract}
@@ -2206,14 +2193,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           onSignSuccess={() => {
             setIsViewerOpen(false);
             fetchPendingGamesAndContracts();
-          }}
-          onSignAdmin={async (sig) => {
-            try {
-              const res = await contractApi.signByAdmin(selectedContract.id, sig);
-              return { success: res.success, message: res.message };
-            } catch (err: any) {
-              return { success: false, message: err.response?.data?.message || err.message || 'Lỗi ký đối ứng' };
-            }
           }}
         />
       )}

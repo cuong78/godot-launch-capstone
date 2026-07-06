@@ -358,8 +358,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     }
   };
 
-  // Upload single file helper directly to S3
-  const uploadFileToS3 = async (
+  // Upload single file helper directly to storage
+  const uploadFileToStorage = async (
     file: File,
     fileType: "game" | "thumbnail" | "screenshot" | "video",
     key: string, // unique identifier for state e.g., 'game', 'thumbnail', getFileKey(file)
@@ -372,7 +372,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
     try {
       if (publishProgram === "marketplace" && fileType === "game") {
-        // Marketplace: upload proxy 1 bước qua backend → StorageRouter (S3 / SeaweedFS)
+        // Marketplace: upload proxy 1 bước qua backend → SeaweedFsService
         const res = await marketplaceApi.uploadItemFile(
           gameId,
           file,
@@ -384,7 +384,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           throw new Error(res.message || "Upload failed");
         }
       } else if (fileType === "game") {
-        // Game.zip: presigned S3 PUT trực tiếp (file lớn, không qua backend)
+        // Game.zip: PUT trực tiếp (file lớn, không qua backend)
         const urlRes = await gameApi.getPresignedUrl(
           gameId,
           fileType,
@@ -407,7 +407,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         const objectKey = extractObjectKey(uploadUrl);
         await gameApi.confirmUploadComplete(gameId, fileType, objectKey);
       } else {
-        // Game / Marketplace media (thumbnail/screenshot/video): proxy qua backend → StorageRouter (S3/SeaweedFS)
+        // Game / Marketplace media (thumbnail/screenshot/video): proxy qua backend → SeaweedFsService
         const res = publishProgram === "marketplace"
           ? await marketplaceApi.uploadMedia(
               gameId,
@@ -472,7 +472,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       // Automatically trigger upload of each newly selected screenshot image
       filesArr.forEach((file) => {
         const key = getFileKey(file);
-        uploadFileToS3(file, "screenshot", key);
+        uploadFileToStorage(file, "screenshot", key);
       });
     }
   };
@@ -1061,7 +1061,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   </span>
                 )}
 
-                {gameId && (
+                {gameId && publishingType === "marketplace_listing" && (
                   <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <Upload size={16} className="text-amber-500" /> Web Demo ZIP (Optional)
@@ -1134,7 +1134,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     onChange={(e) => {
                       const file = e.target.files ? e.target.files[0] : null;
                       setGameFile(file);
-                      if (file) uploadFileToS3(file, "game", "game");
+                      if (file) uploadFileToStorage(file, "game", "game");
                     }}
                     className="hidden"
                     id="game-zip-input"
@@ -1243,7 +1243,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     onChange={(e) => {
                       const file = e.target.files ? e.target.files[0] : null;
                       setThumbnailFile(file);
-                      if (file) uploadFileToS3(file, "thumbnail", "thumbnail");
+                      if (file) uploadFileToStorage(file, "thumbnail", "thumbnail");
                     }}
                     className="hidden"
                     id="thumb-input"
@@ -1356,7 +1356,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                               {uploadStatus[key] === "idle" && (
                                 <button
                                   onClick={() =>
-                                    uploadFileToS3(file, "screenshot", key)
+                                    uploadFileToStorage(file, "screenshot", key)
                                   }
                                   className="px-2 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 font-bold rounded text-[10px] transition-colors"
                                 >
@@ -1401,7 +1401,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     onChange={(e) => {
                       const file = e.target.files ? e.target.files[0] : null;
                       setVideoFile(file);
-                      if (file) uploadFileToS3(file, "video", "video");
+                      if (file) uploadFileToStorage(file, "video", "video");
                     }}
                     className="hidden"
                     id="video-input"

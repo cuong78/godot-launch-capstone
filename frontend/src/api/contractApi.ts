@@ -53,13 +53,6 @@ export const contractApi = {
     return response.data;
   },
 
-  signByAdmin: async (contractId: string, signatureBase64: string): Promise<ApiResponse<ContractResponse>> => {
-    const response = await api.post<ApiResponse<ContractResponse>>(`/api/contracts/${contractId}/sign/admin`, {
-      signatureBase64
-    });
-    return response.data;
-  },
-  
   rejectByDeveloper: async (contractId: string, rejectionReason?: string): Promise<ApiResponse<ContractResponse>> => {
     const response = await api.post<ApiResponse<ContractResponse>>(`/api/contracts/${contractId}/reject`, {
       rejectionReason

@@ -691,7 +691,7 @@ export default function App() {
     };
   }, [currentScreen]);
 
-  // Fetch published games from backend S3
+  // Fetch published games from backend storage
   useEffect(() => {
     const fetchPublishedGames = async () => {
       try {

@@ -20,13 +20,13 @@ public interface AssetService {
     void confirmUploadComplete(UUID itemId, String objectKey);
 
     /**
-     * Proxy upload zip qua backend → StorageRouter (tôn trọng routing config S3/SeaweedFS).
-     * Dùng thay cho presigned URL vì SeaweedFS không hỗ trợ presigned.
+     * Proxy upload zip qua backend → SeaweedFsService.
+     * Dùng thay cho presigned URL.
      */
     void uploadItemFile(UUID itemId, MultipartFile file, String uploaderEmail);
 
     /**
-     * Upload media cho asset qua StorageRouter.
+     * Upload media cho asset qua SeaweedFsService.
      * @param mediaType 'thumbnail' | 'screenshot' | 'video' | 'asset_image'
      * @return objectKey để frontend track / xóa lẻ
      */

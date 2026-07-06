@@ -8,7 +8,6 @@ import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.SourceSnapshot;
 import com.godotlaunch.backend.entity.enums.GameStatus;
-import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.entity.enums.ActorRole;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
@@ -64,19 +63,12 @@ public class GameServiceImpl implements GameService {
     private final ClamAVService clamAVService;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
-    private final StorageRouter storageRouter;
     private final AuditLogService auditLogService;
     private final GitHubRepoService gitHubRepoService;
     private final SourceProcessingClient sourceProcessingClient;
     private final SourceSnapshotRepository sourceSnapshotRepository;
     private final ObjectMapper objectMapper;
     private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
-
-    /** Map fileType string → FileType cho routing. Mọi media của game đều route qua game_media. */
-    private FileType resolveMediaFileType(String fileType) {
-        // thumbnail / screenshot / video / image — tất cả là media của game
-        return FileType.game_media;
-    }
 
     /** Build objectKey cố định/random theo loại media với đuôi mở rộng gốc. */
     private String buildMediaObjectKey(UUID gameId, String fileType, MultipartFile file) {
@@ -253,7 +245,7 @@ public class GameServiceImpl implements GameService {
             String objectKey = prefix + "/source-bundle.zip";
             var file = new com.godotlaunch.backend.util.ByteArrayMultipartFile(
                     zipBytes, "file", "source-bundle.zip", "application/zip");
-            return storageRouter.uploadWithKey(FileType.source_bundle, file, objectKey);
+            return seaweedFsService.uploadWithKey(file, objectKey);
         } catch (Exception e) {
             log.warn("Không upload được source bundle (prefix={}): {}", prefix, e.getMessage());
             return null;
@@ -372,7 +364,7 @@ public class GameServiceImpl implements GameService {
                 .ifPresent(m -> {
                     mediaRepository.delete(m);
                     try {
-                        storageRouter.delete(FileType.game_media, targetKey);
+                        seaweedFsService.deleteObject(targetKey);
                     } catch (Exception e) {
                         log.warn("Đã xóa record media nhưng không xóa được file storage: {}", targetKey, e);
                     }
@@ -380,22 +372,7 @@ public class GameServiceImpl implements GameService {
     }
 
     private String getPresignedGetUrl(String rawUrl) {
-        if (rawUrl == null) return null;
-
-        // File trên SeaweedFS (hoặc storage khác) đã là public URL → trả thẳng,
-        // chỉ S3 mới cần presigned GET URL.
-        if (!rawUrl.contains(".amazonaws.com/")) {
-            return rawUrl;
-        }
-
-        String objectKey = extractObjectKeyFromUrl(rawUrl);
-        if (objectKey == null) return rawUrl;
-        try {
-            return seaweedFsService.generatePresignedGetUrl(objectKey, java.time.Duration.ofHours(24));
-        } catch (Exception e) {
-            log.warn("Failed to generate presigned GET URL for objectKey: {}, returning raw URL. Error: {}", objectKey, e.getMessage());
-            return rawUrl;
-        }
+        return rawUrl;
     }
 
     private GameResponse mapToResponse(Game game) {
@@ -509,11 +486,10 @@ public class GameServiceImpl implements GameService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        FileType ft = resolveMediaFileType(fileType);
         String objectKey = buildMediaObjectKey(gameId, fileType, file);
 
-        // Upload qua StorageRouter — route đúng provider (S3 / SeaweedFS) theo routing config
-        String mediaUrl = storageRouter.uploadWithKey(ft, file, objectKey);
+        // Upload qua SeaweedFsService
+        String mediaUrl = seaweedFsService.uploadWithKey(file, objectKey);
 
         if ("thumbnail".equalsIgnoreCase(fileType)) {
             game.setThumbnailUrl(mediaUrl);
@@ -542,7 +518,7 @@ public class GameServiceImpl implements GameService {
                     String key = extractObjectKeyFromUrl(m.getMediaUrl());
                     if (key != null) {
                         try {
-                            storageRouter.delete(FileType.game_media, key);
+                            seaweedFsService.deleteObject(key);
                         } catch (Exception e) {
                             log.warn("Không xóa được file media trên storage: {}", key, e);
                         }
@@ -633,9 +609,9 @@ public class GameServiceImpl implements GameService {
                 }
             }
             mediaRepository.deleteByGame_Id(gameId);
-            log.info("Đã xóa tệp ZIP, Thumbnail và {} tệp screenshots/video trên S3 cho game bị từ chối: gameId = {}", mediaList.size(), gameId);
+            log.info("Đã xóa tệp ZIP, Thumbnail và {} tệp screenshots/video trên storage cho game bị từ chối: gameId = {}", mediaList.size(), gameId);
         } catch (Exception e) {
-            log.warn("Không thể xóa hoàn toàn tệp tin trên S3 của game bị từ chối: gameId = {}, lỗi = {}", gameId, e.getMessage());
+            log.warn("Không thể xóa hoàn toàn tệp tin trên storage của game bị từ chối: gameId = {}, lỗi = {}", gameId, e.getMessage());
         }
 
         gameRepository.save(game);
@@ -659,13 +635,6 @@ public class GameServiceImpl implements GameService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-        
-        // AWS S3
-        String awsMarker = ".amazonaws.com/";
-        int awsIndex = url.indexOf(awsMarker);
-        if (awsIndex != -1) {
-            return url.substring(awsIndex + awsMarker.length());
-        }
         
         // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
         String seaweedMarker = "/godotlaunch/";

@@ -12,7 +12,6 @@ public class StorageBucketResponse {
     private String accountName;
     private String provider;
     private String name;
-    private String region;
     private String publicUrl;
     private Instant createdAt;
 }

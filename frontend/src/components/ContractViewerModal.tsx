@@ -13,11 +13,10 @@ interface ContractViewerModalProps {
   currentUser: User | null;
   onClose: () => void;
   // If provided, the modal will allow signing
-  mode?: 'view' | 'sign-developer' | 'sign-admin';
+  mode?: 'view' | 'sign-developer';
   onSignSuccess?: () => void;
   // Callbacks for API integration inside the modal
   onSignDeveloper?: (signatureBase64: string, rep: string, addr: string, tax: string) => Promise<{ success: boolean; message?: string }>;
-  onSignAdmin?: (signatureBase64: string) => Promise<{ success: boolean; message?: string }>;
   onRejectDeveloper?: (rejectionReason: string) => Promise<{ success: boolean; message?: string }>;
 }
 
@@ -28,7 +27,6 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   mode = 'view',
   onSignSuccess,
   onSignDeveloper,
-  onSignAdmin,
   onRejectDeveloper
 }) => {
   // Developer signing states
@@ -36,9 +34,6 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   const [sellerAddress, setSellerAddress] = useState(contract.sellerAddress || '');
   const [sellerTaxCode, setSellerTaxCode] = useState(contract.sellerTaxCode || '');
   const [devSignature, setDevSignature] = useState<string | null>(null);
-
-  // Admin signing states
-  const [adminSignature, setAdminSignature] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -120,24 +115,6 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
     }
   };
 
-  const handleAdminSubmit = async () => {
-    if (!onSignAdmin || !adminSignature) return;
-    setIsSubmitting(true);
-    setErrorMsg(null);
-    try {
-      const res = await onSignAdmin(adminSignature);
-      if (res.success) {
-        if (onSignSuccess) onSignSuccess();
-      } else {
-        setErrorMsg(res.message || 'Lỗi ký đối ứng');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Lỗi kết nối máy chủ');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -168,28 +145,20 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                 E-CONTRACT SYSTEM
               </span>
               {(() => {
-                const getStatusInfo = (status: string, signedAtSeller?: string | null) => {
+                const getStatusInfo = (status: string) => {
                   switch (status) {
                     case 'signed':
-                      return { text: 'Đã hoàn tất / Completed', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
-                    case 'negotiating':
-                      return { text: 'Thương lượng / Negotiating', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
-                    case 're_issued':
-                      return signedAtSeller
-                        ? { text: 'Đã ký (Chờ đối ứng) / Signed (Pending Admin)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
-                        : { text: 'Cấp lại / Re-issued', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+                      return { text: 'Đã ký / Signed', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
                     case 'cancelled':
-                      return { text: 'Đã hủy / Cancelled', colorClass: 'bg-slate-500/10 text-slate-550 border-slate-500/20' };
+                      return { text: 'Đã hủy / Cancelled', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
                     case 'expired':
                       return { text: 'Hết hạn / Expired', colorClass: 'bg-slate-500/10 text-slate-550 border-slate-500/20' };
                     case 'pending':
                     default:
-                      return signedAtSeller
-                        ? { text: 'Đã ký (Chờ đối ứng) / Signed (Pending Admin)', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' }
-                        : { text: 'Chờ ký / Pending', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+                      return { text: 'Chờ Developer ký / Pending', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
                   }
                 };
-                const statusInfo = getStatusInfo(contract.status, contract.signedAtSeller);
+                const statusInfo = getStatusInfo(contract.status);
                 return (
                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider font-mono border ${statusInfo.colorClass}`}>
                     {statusInfo.text}
@@ -431,23 +400,14 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                   <span className="font-bold text-[10px] block">ĐẠI DIỆN BÊN A</span>
                   {contract.buyerSignatureBase64 ? (
                     <div className="my-2 flex flex-col items-center">
-                      <img 
-                        src={contract.buyerSignatureBase64} 
-                        alt="Admin Signature" 
+                      <img
+                        src={contract.buyerSignatureBase64}
+                        alt="Admin Signature"
                         className="max-h-16 w-auto object-contain"
                       />
                       <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5 mt-1">
-                        ✓ ĐÃ KÝ ĐỐI ỨNG
+                        ✓ ĐÃ KÝ ĐIỆN TỬ
                       </span>
-                    </div>
-                  ) : adminSignature ? (
-                    <div className="my-2 flex flex-col items-center opacity-60">
-                      <img 
-                        src={adminSignature} 
-                        alt="Pending Signature" 
-                        className="max-h-12 w-auto object-contain"
-                      />
-                      <span className="text-[9px] text-amber-500 font-bold italic">Chưa xác nhận gửi</span>
                     </div>
                   ) : (
                     <span className="text-[10px] text-slate-400 font-medium italic my-4">Chờ chữ ký của Bên A</span>
@@ -627,50 +587,6 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                   </div>
                 </form>
               )
-            )}
-
-            {/* MODE: SIGN ADMIN */}
-            {mode === 'sign-admin' && contract.signedAtSeller && !contract.signedAtBuyer && (
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 text-xs">
-                  <span className="text-xs font-bold text-sky-500 uppercase font-mono block">
-                    XÁC THỰC KÝ ĐỐI ỨNG BÊN A
-                  </span>
-                  <p className="text-slate-500 leading-normal">
-                    Developer đã ký xác nhận các điều khoản hợp đồng. Bạn thực hiện ký đối ứng với tư cách đại diện Ban quản trị GodotLaunch để hoàn tất xuất bản game.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-550 block">
-                    Vẽ chữ ký của Admin:
-                  </label>
-                  <SignaturePad
-                    onChange={setAdminSignature}
-                    placeholder="Dùng chuột để vẽ chữ ký đại diện Bên A..."
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-250 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs transition-colors cursor-pointer text-center"
-                  >
-                    Quay lại
-                  </button>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    className="flex-1 cursor-pointer"
-                    disabled={!adminSignature || isSubmitting}
-                    onClick={handleAdminSubmit}
-                    icon={<ShieldCheck size={14} />}
-                  >
-                    {isSubmitting ? 'Đang duyệt...' : 'Ký đối ứng & Xuất bản'}
-                  </Button>
-                </div>
-              </div>
             )}
 
             {/* MODE: VIEW ONLY */}

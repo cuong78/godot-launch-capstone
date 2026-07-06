@@ -102,7 +102,7 @@ public class GameController {
     }
 
     @GetMapping("/{id}/upload-url")
-    @Operation(summary = "Request S3 presigned upload URL", description = "Generates a secure S3 PUT upload link for file upload (thumbnail, screenshot, video, or game.zip).")
+    @Operation(summary = "Request SeaweedFS upload URL", description = "Generates a SeaweedFS upload link for file upload (thumbnail, screenshot, video, or game.zip).")
     public ResponseEntity<ApiResponse<Map<String, String>>> getUploadUrl(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "game") String fileType,
@@ -113,7 +113,7 @@ public class GameController {
     }
 
     @PostMapping("/{id}/upload-complete")
-    @Operation(summary = "Confirm upload complete", description = "Signals that the file has been successfully uploaded to S3. For game files, triggers asynchronous security verification.")
+    @Operation(summary = "Confirm upload complete", description = "Signals that the file has been successfully uploaded to storage. For game files, triggers asynchronous security verification.")
     public ResponseEntity<ApiResponse<Map<String, String>>> confirmUploadComplete(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "game") String fileType,
@@ -130,7 +130,7 @@ public class GameController {
     }
 
     @PostMapping(value = "/{id}/media/upload", consumes = "multipart/form-data")
-    @Operation(summary = "Upload media qua proxy", description = "Upload thumbnail/screenshot/video qua backend → StorageRouter (route đúng S3/SeaweedFS theo config). Thay cho presigned URL.")
+    @Operation(summary = "Upload media qua proxy", description = "Upload thumbnail/screenshot/video qua backend → SeaweedFsService. Thay cho upload trực tiếp.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadGameMedia(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,

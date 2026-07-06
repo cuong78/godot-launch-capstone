@@ -19,7 +19,7 @@ public class ClamAVService {
     }
 
     /**
-     * Quét file từ InputStream (nhận luồng dữ liệu stream trực tiếp từ AWS S3).
+     * Quét file từ InputStream (nhận luồng dữ liệu stream trực tiếp từ storage/SeaweedFS).
      *
      * @param inputStream Luồng dữ liệu của file cần quét
      * @return true nếu an toàn (Clean), false nếu phát hiện virus (Infected)

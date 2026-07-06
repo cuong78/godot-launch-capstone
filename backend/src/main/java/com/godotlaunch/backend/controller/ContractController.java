@@ -91,19 +91,6 @@ public class ContractController {
         return ResponseEntity.ok(ApiResponse.success(response, "Contract signed by developer successfully"));
     }
 
-    @PostMapping("/{contractId}/sign/admin")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Admin counter-signs the contract")
-    public ResponseEntity<ApiResponse<ContractResponse>> signByAdmin(
-            @PathVariable UUID contractId,
-            @RequestBody(required = false) Map<String, String> body,
-            Authentication authentication) {
-        User admin = userRepository.findByEmail(authentication.getName()).orElseThrow();
-        String signatureBase64 = body != null ? body.get("signatureBase64") : null;
-        ContractResponse response = contractService.signByAdmin(contractId, admin.getId(), signatureBase64);
-        return ResponseEntity.ok(ApiResponse.success(response, "Contract counter-signed by admin successfully"));
-    }
-
     @PostMapping("/{contractId}/reject")
     @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Developer rejects the contract")

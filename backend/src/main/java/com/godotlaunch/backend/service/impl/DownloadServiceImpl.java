@@ -4,12 +4,12 @@ import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Order;
 import com.godotlaunch.backend.entity.User;
-import com.godotlaunch.backend.entity.enums.FileType;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.OrderRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.DownloadService;
+import com.godotlaunch.backend.service.SeaweedFsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +30,7 @@ public class DownloadServiceImpl implements DownloadService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final SourceSnapshotRepository sourceSnapshotRepository;
-    private final StorageRouter storageRouter;
+    private final SeaweedFsService seaweedFsService;
 
     @Override
     @Transactional
@@ -56,7 +56,7 @@ public class DownloadServiceImpl implements DownloadService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        InputStream inputStream = storageRouter.getInputStream(FileType.source_bundle, objectKey);
+        InputStream inputStream = seaweedFsService.getObjectStream(objectKey);
 
         return new DownloadResource(inputStream, buildDownloadFileName(item.getTitle()));
     }

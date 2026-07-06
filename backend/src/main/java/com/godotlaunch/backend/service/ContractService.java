@@ -13,7 +13,6 @@ public interface ContractService {
     ContractResponse getContractById(UUID contractId);
     ContractResponse signByDeveloper(UUID contractId, UUID developerId, String signatureBase64,
                                      String sellerRepresentative, String sellerAddress, String sellerTaxCode);
-    ContractResponse signByAdmin(UUID contractId, UUID adminId, String signatureBase64);
     ContractResponse rejectByDeveloper(UUID contractId, UUID developerId, String rejectionReason);
 }
 

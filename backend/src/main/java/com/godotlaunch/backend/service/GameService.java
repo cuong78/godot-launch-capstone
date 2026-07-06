@@ -35,8 +35,8 @@ public interface GameService {
     void confirmUploadComplete(UUID gameId, String fileType, String objectKey);
 
     /**
-     * Proxy upload media (thumbnail/screenshot/video) qua StorageRouter — tôn trọng routing config.
-     * Thay cho presigned URL vì SeaweedFS không hỗ trợ presigned.
+     * Proxy upload media (thumbnail/screenshot/video) qua SeaweedFsService.
+     * Thay cho presigned URL.
      * @return objectKey của file vừa upload (để frontend track / xóa lẻ sau này)
      */
     String uploadGameMedia(UUID gameId, String fileType, MultipartFile file, String uploaderEmail);

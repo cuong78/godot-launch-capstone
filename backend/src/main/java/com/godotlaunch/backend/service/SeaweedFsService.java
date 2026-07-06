@@ -65,6 +65,10 @@ public class SeaweedFsService {
         return seaweedAdapter.upload(file, objectKey);
     }
 
+    public String uploadWithKey(MultipartFile file, String objectKey) {
+        return seaweedAdapter.upload(file, objectKey);
+    }
+
     /**
      * Upload an InputStream directly to SeaweedFS Filer.
      * Useful for extracting and uploading individual files from a ZIP archive.
