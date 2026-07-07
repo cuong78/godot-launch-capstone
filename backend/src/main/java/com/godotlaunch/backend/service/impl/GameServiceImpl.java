@@ -188,13 +188,15 @@ public class GameServiceImpl implements GameService {
 
         // 3. Phát hiện mã độc → reject
         if (!result.isClean()) {
-            game.setStatus(GameStatus.rejected);
-            gameRepository.save(game);
-            saveSnapshotForGame(game, result);
+            Game gameToSave = gameRepository.findById(gameId)
+                    .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+            gameToSave.setStatus(GameStatus.rejected);
+            gameRepository.save(gameToSave);
+            saveSnapshotForGame(gameToSave, result);
             auditLogService.publish(
                     creator.getId(), ActorRole.developer, AuditAction.security_alert,
                     AuditTarget.game, gameId, null, null,
-                    "Phát hiện mã độc trong repo của game: " + game.getTitle(), null);
+                    "Phát hiện mã độc trong repo của game: " + gameToSave.getTitle(), null);
             throw new AppException(ErrorCode.SOURCE_MALWARE_DETECTED);
         }
 
@@ -205,19 +207,21 @@ public class GameServiceImpl implements GameService {
             throw new AppException(ErrorCode.NOT_GODOT_PROJECT);
         }
 
-        // 4. Sạch → lưu repo + verified + snapshot → chuyển pending
-        game.setGithubRepoUrl(repoUrl);
-        game.setGithubBranch(branch);
-        game.setGithubVerifiedAt(java.time.Instant.now());
-        game.setStatus(GameStatus.pending);
-        gameRepository.save(game);
+        // 4. Sạch → reload game mới nhất từ DB và lưu repo + verified + snapshot → chuyển pending
+        Game gameToSave = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+        gameToSave.setGithubRepoUrl(repoUrl);
+        gameToSave.setGithubBranch(branch);
+        gameToSave.setGithubVerifiedAt(java.time.Instant.now());
+        gameToSave.setStatus(GameStatus.pending);
+        gameRepository.save(gameToSave);
 
-        saveSnapshotForGame(game, result);
+        saveSnapshotForGame(gameToSave, result);
 
         auditLogService.publish(
                 creator.getId(), ActorRole.developer, AuditAction.game_submitted,
                 AuditTarget.game, gameId, GameStatus.draft.name(), GameStatus.pending.name(),
-                "Game '" + game.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
+                "Game '" + gameToSave.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
 
         // AI review async (sau snapshot sạch, trước admin) để tạo report đề xuất. Fail-soft.
         if (TransactionSynchronizationManager.isActualTransactionActive()) {

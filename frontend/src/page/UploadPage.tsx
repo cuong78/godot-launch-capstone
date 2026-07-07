@@ -1016,115 +1016,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
 
-            {publishProgram === "game" ? (
-              <div className="space-y-2.5">
-                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <FileText size={16} className="text-amber-500" /> GitHub Repository *
-                </label>
-                <p className="text-xs text-slate-500">
-                  The system will verify the repository belongs to your GitHub account, clone it, scan for security vulnerabilities, and take a commit snapshot.
-                </p>
-                <input
-                  type="text"
-                  placeholder="https://github.com/username/my-godot-game"
-                  value={gameRepoUrl}
-                  onChange={(e) => setGameRepoUrl(e.target.value)}
-                  disabled={repoSubmitted}
-                  className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
-                />
-                <input
-                  type="text"
-                  placeholder="Branch (optional, default: main branch)"
-                  value={gameRepoBranch}
-                  onChange={(e) => setGameRepoBranch(e.target.value)}
-                  disabled={repoSubmitted}
-                  className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-350 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
-                />
-                {!repoSubmitted ? (
-                  <button
-                    type="button"
-                    onClick={handleSubmitRepo}
-                    disabled={repoSubmitting || !gameRepoUrl.trim()}
-                    className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-studio"
-                  >
-                    {repoSubmitting ? (
-                      <>
-                        <RefreshCw size={14} className="animate-spin" /> Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 size={14} /> Verify & Submit Repo
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> Repo verified, cloned & scanned clean
-                  </span>
-                )}
-
-                {gameId && publishingType === "marketplace_listing" && (
-                  <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <Upload size={16} className="text-amber-500" /> Web Demo ZIP (Optional)
-                    </label>
-                    <p className="text-xs text-slate-500">
-                      Upload an HTML5/WebAssembly build (.zip) so users can play the demo directly in their web browser.
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="file"
-                        accept=".zip"
-                        onChange={async (e) => {
-                          const file = e.target.files ? e.target.files[0] : null;
-                          if (file) {
-                            setDemoFile(file);
-                            await handleUploadDemo(file);
-                          }
-                        }}
-                        className="hidden"
-                        id="web-demo-zip-input"
-                      />
-                      <label
-                        htmlFor="web-demo-zip-input"
-                        className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-255 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer flex items-center gap-1.5 transition-studio"
-                      >
-                        <Upload size={14} /> Select Demo ZIP
-                      </label>
-                      <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
-                        {demoFile
-                          ? `${demoFile.name} (${(demoFile.size / (1024 * 1024)).toFixed(2)} MB)`
-                          : "No file chosen (Recommended < 50MB)"}
-                      </span>
-                    </div>
-                    {demoUploadStatus === "uploading" && (
-                      <div className="space-y-1.5 mt-1.5">
-                        <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                          <span>Uploading demo...</span>
-                          <span>{demoUploadProgress}%</span>
-                        </div>
-                        <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
-                          <div
-                            className="bg-sky-500 h-full rounded-full transition-all duration-350"
-                            style={{ width: `${demoUploadProgress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-                    {demoUploadStatus === "completed" && (
-                      <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                        <CheckCircle2 size={13} /> Web demo uploaded and verified!
-                      </span>
-                    )}
-                    {demoUploadStatus === "failed" && (
-                      <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                        <AlertTriangle size={13} /> Demo upload failed. Please verify ZIP structure.
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
+            {publishProgram === "marketplace" && (
               <div className="space-y-2.5">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <FileText size={16} className="text-amber-500" /> Marketplace Item ZIP (.zip) *
@@ -1446,6 +1338,128 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
                     <AlertTriangle size={13} /> Upload Failed
                   </span>
+                )}
+              </div>
+            )}
+
+            {/* 5. Web Demo ZIP (Optional) */}
+            {publishProgram === "game" && gameId && publishingType === "marketplace_listing" && (
+              <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Upload size={16} className="text-amber-500" /> Web Demo ZIP (Optional)
+                </label>
+                <p className="text-xs text-slate-500">
+                  Upload an HTML5/WebAssembly build (.zip) so users can play the demo directly in their web browser.
+                </p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept=".zip"
+                    onChange={async (e) => {
+                      const file = e.target.files ? e.target.files[0] : null;
+                      if (file) {
+                        setDemoFile(file);
+                        await handleUploadDemo(file);
+                      }
+                    }}
+                    className="hidden"
+                    id="web-demo-zip-input"
+                  />
+                  <label
+                    htmlFor="web-demo-zip-input"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-255 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer flex items-center gap-1.5 transition-studio"
+                  >
+                    <Upload size={14} /> Select Demo ZIP
+                  </label>
+                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
+                    {demoFile
+                      ? `${demoFile.name} (${(demoFile.size / (1024 * 1024)).toFixed(2)} MB)`
+                      : "No file chosen (Recommended < 50MB)"}
+                  </span>
+                </div>
+                {demoUploadStatus === "uploading" && (
+                  <div className="space-y-1.5 mt-1.5">
+                    <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
+                      <span>Uploading demo...</span>
+                      <span>{demoUploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-sky-500 h-full rounded-full transition-all duration-350"
+                        style={{ width: `${demoUploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+                {demoUploadStatus === "completed" && (
+                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                    <CheckCircle2 size={13} /> Web demo uploaded and verified!
+                  </span>
+                )}
+                {demoUploadStatus === "failed" && (
+                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
+                    <AlertTriangle size={13} /> Demo upload failed. Please verify ZIP structure.
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* 6. GitHub Repository */}
+            {publishProgram === "game" && (
+              <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <FileText size={16} className="text-amber-500" /> GitHub Repository *
+                </label>
+                <p className="text-xs text-slate-500">
+                  The system will verify the repository belongs to your GitHub account, clone it, scan for security vulnerabilities, and take a commit snapshot.
+                </p>
+                
+                {uploadStatus["thumbnail"] !== "completed" ? (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                    <AlertTriangle size={15} />
+                    Vui lòng upload Primary Cover Thumbnail trước khi cấu hình & xác thực GitHub Repository của game.
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="https://github.com/username/my-godot-game"
+                      value={gameRepoUrl}
+                      onChange={(e) => setGameRepoUrl(e.target.value)}
+                      disabled={repoSubmitted}
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Branch (optional, default: main branch)"
+                      value={gameRepoBranch}
+                      onChange={(e) => setGameRepoBranch(e.target.value)}
+                      disabled={repoSubmitted}
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-955 border border-slate-250 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-350 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                    />
+                    {!repoSubmitted ? (
+                      <button
+                        type="button"
+                        onClick={handleSubmitRepo}
+                        disabled={repoSubmitting || !gameRepoUrl.trim()}
+                        className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-studio"
+                      >
+                        {repoSubmitting ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" /> Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={14} /> Verify & Submit Repo
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                        <CheckCircle2 size={13} /> Repo verified, cloned & scanned clean
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             )}

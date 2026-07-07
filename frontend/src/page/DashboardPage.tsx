@@ -513,7 +513,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   {(() => {
                                     const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
                                     if (contract) {
-                                      const statusInfo = getContractStatusLabel(contract.status, contract.signedAtSeller);
+                                      const statusInfo = getContractStatusLabel(contract.status);
                                       return (
                                         <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusInfo.colorClass}`}>
                                           {statusInfo.text}
