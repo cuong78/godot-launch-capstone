@@ -566,6 +566,17 @@ export default function App() {
     [paymentOrders]
   );
 
+  // Danh sách id sản phẩm (asset/game) đã mua thành công — dùng để chặn mua lại
+  // ngay từ UI (ẩn/khóa nút Mua) thay vì để user đi hết vào trang checkout mới biết.
+  const ownedProductIds = useMemo(
+    () => new Set(
+      purchaseOrderPayments
+        .filter((payment) => payment.paymentStatus === 'PAID')
+        .map((payment) => payment.marketplaceItemId)
+    ),
+    [purchaseOrderPayments]
+  );
+
   useEffect(() => {
     sessionStorage.setItem(PAYMENT_SESSION_STORAGE_KEY, JSON.stringify(paymentOrders));
   }, [paymentOrders]);
@@ -805,6 +816,10 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    if (ownedProductIds.has(asset.id)) {
+      showToast("Bạn đã sở hữu sản phẩm này rồi, không thể mua lại.", "warning");
+      return;
+    }
     setCart(prev => {
       if (prev.some(item => item.id === asset.id)) {
         return prev;
@@ -830,6 +845,11 @@ export default function App() {
 
     if (!asset.itemType) {
       showToast("Chỉ marketplace item mới hỗ trợ luồng thanh toán mới ở thời điểm hiện tại.", "warning");
+      return;
+    }
+
+    if (ownedProductIds.has(asset.id)) {
+      showToast("Bạn đã sở hữu sản phẩm này rồi, không thể mua lại.", "warning");
       return;
     }
 
@@ -1149,6 +1169,7 @@ export default function App() {
             handleCategoryClick={handleCategoryClick}
             handleViewAssetDetails={handleViewAssetDetails}
             handleAddToCart={handleAddToCart}
+            ownedProductIds={ownedProductIds}
           />
         )}
 
@@ -1168,6 +1189,7 @@ export default function App() {
             handleViewAssetDetails={handleViewAssetDetails}
             handleAddToCart={handleAddToCart}
             setSelectedCategories={setSelectedCategories}
+            ownedProductIds={ownedProductIds}
           />
         )}
 
@@ -1254,6 +1276,7 @@ export default function App() {
             handleBuyNow={handleBuyNow}
             assets={assets}
             handleViewAssetDetails={handleViewAssetDetails}
+            ownedProductIds={ownedProductIds}
           />
         )}
 
