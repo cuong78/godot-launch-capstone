@@ -76,6 +76,13 @@ public class SeaweedFsService {
         return seaweedAdapter.getPublicUrl(objectKey);
     }
 
+    public String extractObjectKey(String publicUrl) {
+        if (publicUrl == null || publicUrl.isBlank()) {
+            return null;
+        }
+        return seaweedAdapter.extractObjectKey(publicUrl);
+    }
+
     public InputStream getObjectStream(String objectKey) {
         return seaweedAdapter.readFile(objectKey);
     }

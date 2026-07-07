@@ -68,7 +68,7 @@ public class DownloadServiceImpl implements DownloadService {
             throw new AppException(ErrorCode.FILE_NOT_FOUND);
         }
 
-        String objectKey = storageRouter.extractObjectKey(downloadUrl);
+        String objectKey = seaweedFsService.extractObjectKey(downloadUrl);
         if (!StringUtils.hasText(objectKey)) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
