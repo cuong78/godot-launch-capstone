@@ -609,12 +609,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       )}
 
                                       {/* Alert box for rejected games */}
-                                      {game.status?.toLowerCase() === 'rejected' && (
-                                        <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-1">
-                                          <span className="font-bold flex items-center gap-1.5 text-xs"><AlertTriangle size={14} /> Game rejected by administrators</span>
-                                          <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">Please check your registered email address for details on rejection reason and administrative feedback.</p>
-                                        </div>
-                                      )}
+                                      {game.status?.toLowerCase() === 'rejected' && (() => {
+                                         const latestContract = [...contracts].reverse().find(c => c.gameId === game.id);
+                                         const isDeveloperCancelled = latestContract && latestContract.rejectionReason?.startsWith('[HỦY HỢP ĐỒNG]');
+                                         return (
+                                           <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-1">
+                                             <span className="font-bold flex items-center gap-1.5 text-xs">
+                                               <AlertTriangle size={14} /> 
+                                               {isDeveloperCancelled ? 'Contract cancelled by developer' : 'Game rejected by administrators'}
+                                             </span>
+                                             <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">
+                                               {isDeveloperCancelled 
+                                                 ? 'You cancelled/withdrew this contract offer. If this was a mistake, please contact administration or submit a new proposal.'
+                                                 : 'Please check your registered email address for details on rejection reason and administrative feedback.'}
+                                             </p>
+                                           </div>
+                                         );
+                                       })()}
 
                                       {/* Contract Status Card for Co-publishing or Full Acquisition */}
                                       {(() => {

@@ -195,13 +195,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [marketplaceDetailLoadingId, setMarketplaceDetailLoadingId] = useState<string | null>(null);
   const [moderationSubTab, setModerationSubTab] = useState<'games' | 'marketplace'>('games');
 
-  // Status filter state: 'pending' | 'approved_published' | 'rejected'
-  const [moderationStatusFilter, setModerationStatusFilter] = useState<'pending' | 'approved_published' | 'rejected'>('pending');
+  // Status filter state: 'pending' | 'approved_published' | 'rejected' | 'all'
+  const [moderationStatusFilter, setModerationStatusFilter] = useState<'pending' | 'approved_published' | 'rejected' | 'all'>('pending');
 
   const pendingGames = useMemo(() => {
     return allGames
       .filter((game: GameResponse) => {
         const status = game.status?.toLowerCase();
+        if (moderationStatusFilter === 'all') {
+          return true;
+        }
         if (moderationStatusFilter === 'pending') {
           return status === 'pending';
         }
@@ -224,6 +227,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     return allMarketplaceItems
       .filter((item: MarketplaceItemResponse) => {
         const status = item.status?.toLowerCase();
+        if (moderationStatusFilter === 'all') {
+          return true;
+        }
         if (moderationStatusFilter === 'pending') {
           return status === 'pending';
         }
@@ -601,7 +607,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setSellerRepresentative(game.creatorFullName || game.creatorName || '');
     setSellerAddress('');
     setSellerTaxCode('');
-    setLumpSumAmount('');
+    
+    // Prefill proposed price if present
+    if (game.priceProposed !== undefined && game.priceProposed !== null) {
+      if (game.priceProposed === 0) {
+        setLumpSumAmount('0 VND');
+      } else {
+        setLumpSumAmount(game.priceProposed.toLocaleString('vi-VN') + ' VND');
+      }
+    } else {
+      setLumpSumAmount('');
+    }
+    
     setRevenueSplit(70);
     setAdditionalTerms('');
     setAdminSignatureBase64(null);
@@ -882,6 +899,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
             {/* Status Filter Pills */}
             <div className="flex flex-wrap gap-2 mb-4 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200/60 dark:border-slate-800/40 w-fit">
+              <button
+                onClick={() => setModerationStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
+                  moderationStatusFilter === 'all'
+                    ? 'bg-amber-400 text-slate-950 shadow-sm font-bold font-display'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                All Submissions
+              </button>
               <button
                 onClick={() => setModerationStatusFilter('pending')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
@@ -2100,19 +2127,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     BÊN A: BAN QUẢN TRỊ GODOTLAUNCH
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Người đại diện Bên A (Họ và Tên)"
-                    value={buyerRepresentative}
-                    onChange={(e) => setBuyerRepresentative(e.target.value)}
-                    required
-                  />
-                  <Input
-                    label="Chức vụ"
-                    value={buyerPosition}
-                    onChange={(e) => setBuyerPosition(e.target.value)}
-                    required
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-500 block mb-0.5">Người đại diện Bên A:</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{buyerRepresentative || 'Ban quản trị GodotLaunch'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block mb-0.5">Chức vụ:</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{buyerPosition || 'Ban quản trị hệ thống / Authorized Representative'}</strong>
+                  </div>
                 </div>
               </div>
 
@@ -2125,27 +2148,49 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   </span>
                 </div>
                 
-                {selectedGame.publishingType === 'co_publishing' ? (
-                  <Input
-                    label="Tỷ lệ chia sẻ doanh thu cho Developer (%)"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={revenueSplit}
-                    onChange={(e) => setRevenueSplit(parseInt(e.target.value) || 0)}
-                    helperText="Ví dụ: 70 có nghĩa là Developer nhận 70% và Platform nhận 30% doanh thu phát hành"
-                    required
-                  />
-                ) : (
-                  <Input
-                    label="Số tiền mua đứt trọn gói (VNĐ)"
-                    placeholder="Ví dụ: 100.000.000đ"
-                    value={lumpSumAmount}
-                    onChange={(e) => setLumpSumAmount(e.target.value)}
-                    helperText="Số tiền thanh toán một lần để mua toàn bộ quyền sở hữu trò chơi"
-                    required
-                  />
+                {selectedGame.priceProposed !== undefined && selectedGame.priceProposed !== null && (
+                  <div className="p-3 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl flex flex-col gap-0.5 text-xs">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Giá đề xuất từ Developer:</span>
+                    <strong className="text-slate-800 dark:text-slate-200 text-sm">
+                      {selectedGame.priceProposed === 0 ? 'Miễn phí / Free' : `${selectedGame.priceProposed.toLocaleString('vi-VN')} VND`}
+                    </strong>
+                  </div>
                 )}
+
+                {(() => {
+                  const activeRejectedContract = [...contracts].reverse().find(c => c.gameId === selectedGame.id && c.status === 'cancelled' && c.rejectionReason);
+                  const isNegotiating = activeRejectedContract ? activeRejectedContract.rejectionReason.startsWith('[THƯƠNG LƯỢNG]') : false;
+                  
+                  if (selectedGame.publishingType === 'co_publishing') {
+                    return (
+                      <Input
+                        label="Tỷ lệ chia sẻ doanh thu cho Developer (%)"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={revenueSplit}
+                        onChange={(e) => setRevenueSplit(parseInt(e.target.value) || 0)}
+                        helperText="Ví dụ: 70 có nghĩa là Developer nhận 70% và Platform nhận 30% doanh thu phát hành"
+                        required
+                      />
+                    );
+                  } else {
+                    const hasProposedPrice = selectedGame.priceProposed !== undefined && selectedGame.priceProposed !== null;
+                    if (!hasProposedPrice || isNegotiating) {
+                      return (
+                        <Input
+                          label="Số tiền mua đứt trọn gói (VNĐ)"
+                          placeholder="Ví dụ: 100.000.000"
+                          value={lumpSumAmount}
+                          onChange={(e) => setLumpSumAmount(e.target.value)}
+                          helperText={isNegotiating ? "Đang trong tiến trình thương lượng lại giá" : "Số tiền thanh toán một lần để mua toàn bộ quyền sở hữu trò chơi"}
+                          required
+                        />
+                      );
+                    }
+                    return null;
+                  }
+                })()}
               </div>
 
               {/* Điều khoản pháp lý bổ sung */}
@@ -2156,21 +2201,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     ĐIỀU KHOẢN PHÁP LÝ & BỔ SUNG
                   </span>
                 </div>
-                <TextArea
-                  label="Điều khoản giải quyết tranh chấp (Dispute Resolution)"
-                  value={disputeResolutionClause}
-                  onChange={(e) => setDisputeResolutionClause(e.target.value)}
-                  rows={8}
-                  required
-                />
-
-                <TextArea
-                  label="Điều khoản bổ sung (Tùy chọn)"
-                  placeholder="Nhập thêm các điều khoản cam kết đặc biệt nếu có..."
-                  value={additionalTerms}
-                  onChange={(e) => setAdditionalTerms(e.target.value)}
-                  rows={2}
-                />
+                <div className="text-xs space-y-3">
+                  <div>
+                    <span className="text-slate-500 block mb-1">Điều khoản giải quyết tranh chấp:</span>
+                    <p className="bg-slate-100 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-250 dark:border-slate-800/80 whitespace-pre-line text-slate-700 dark:text-slate-350 leading-relaxed">
+                      {disputeResolutionClause || "Mọi tranh chấp phát sinh từ hoặc liên quan đến hợp đồng này sẽ được giải quyết trước tiên thông qua thương lượng thân thiện. Nếu không giải quyết được, tranh chấp sẽ được đưa ra giải quyết tại Trọng tài theo quy định.\nAny dispute arising out of or in connection with this contract shall first be resolved through friendly negotiations. If unresolved, it shall be referred to arbitration."}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Chữ ký Bên A — bắt buộc ngay lúc soạn hợp đồng */}

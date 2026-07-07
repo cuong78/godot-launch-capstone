@@ -81,7 +81,28 @@ public class ContractServiceImpl implements ContractService {
             contract.setRevenueSplit(request.getRevenueSplit());
             contract.setLumpSumAmount(null);
         } else {
-            contract.setLumpSumAmount(request.getLumpSumAmount());
+            boolean isNegotiating = contract.getRejectionReason() != null && contract.getRejectionReason().startsWith("[THƯƠNG LƯỢNG]");
+            if (game.getPriceProposed() != null && !isNegotiating) {
+                if (game.getPriceProposed().compareTo(java.math.BigDecimal.ZERO) == 0) {
+                    contract.setLumpSumAmount("0 VND");
+                } else {
+                    contract.setLumpSumAmount(String.format("%,d VND", game.getPriceProposed().longValue()));
+                }
+            } else {
+                String rawAmount = request.getLumpSumAmount();
+                if (rawAmount != null && !rawAmount.toLowerCase().contains("vnd") && !rawAmount.toLowerCase().contains("vnđ")) {
+                    try {
+                        String clean = rawAmount.replaceAll("[^0-9]", "");
+                        if (!clean.isEmpty()) {
+                            long parsedVal = Long.parseLong(clean);
+                            rawAmount = String.format("%,d VND", parsedVal);
+                        }
+                    } catch (Exception e) {
+                        // fallback
+                    }
+                }
+                contract.setLumpSumAmount(rawAmount);
+            }
             contract.setRevenueSplit(null);
         }
         contract.setSellerRepresentative(request.getSellerRepresentative());
@@ -252,16 +273,22 @@ public class ContractServiceImpl implements ContractService {
         contract.setRejectionReason(rejectionReason);
 
         Game game = contract.getGame();
-        game.setStatus(GameStatus.pending);
+        boolean isCancellation = rejectionReason != null && rejectionReason.trim().startsWith("[HỦY HỢP ĐỒNG]");
+        if (isCancellation) {
+            game.setStatus(GameStatus.rejected);
+        } else {
+            game.setStatus(GameStatus.pending);
+        }
         gameRepository.save(game);
 
         contractRepository.save(contract);
 
         User developer = game.getCreator();
+        String actionStr = isCancellation ? "đã từ chối/hủy không ký hợp đồng" : "yêu cầu thương lượng lại hợp đồng";
         for (User adminUser : userRepository.findByRole_NameIgnoreCase("admin")) {
             notificationService.createAndSendNotification(
                     adminUser, developer, NotificationType.SELLER_RESPONSE,
-                    "Developer từ chối hợp đồng cho game '" + game.getTitle() + "': " + rejectionReason,
+                    "Developer " + actionStr + " cho game '" + game.getTitle() + "': " + rejectionReason,
                     contract.getId().toString()
             );
         }

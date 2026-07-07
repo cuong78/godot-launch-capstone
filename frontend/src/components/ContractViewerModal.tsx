@@ -39,6 +39,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+  const [rejectType, setRejectType] = useState<'cancel' | 'negotiate'>('negotiate');
 
   // KYC gate: check on mount when developer needs to sign
   const [showKycModal, setShowKycModal] = useState(false);
@@ -102,7 +103,10 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      const res = await onRejectDeveloper(rejectionReasonInput.trim());
+      const formattedReason = rejectType === 'cancel'
+        ? `[HỦY HỢP ĐỒNG] ${rejectionReasonInput.trim()}`
+        : `[THƯƠNG LƯỢNG] ${rejectionReasonInput.trim()}`;
+      const res = await onRejectDeveloper(formattedReason);
       if (res.success) {
         if (onSignSuccess) onSignSuccess();
       } else {
@@ -273,11 +277,11 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                         </tr>
                         <tr className="border-b border-slate-100 dark:border-slate-850">
                           <td className="py-1 font-semibold">Người đại diện:</td>
-                          <td className="py-1 font-bold">{contract.buyerRepresentative}</td>
+                          <td className="py-1 font-bold">{contract.buyerRepresentative || "Ban quản trị GodotLaunch"}</td>
                         </tr>
                         <tr className="border-b border-slate-100 dark:border-slate-850">
                           <td className="py-1 font-semibold">Chức vụ:</td>
-                          <td className="py-1">{contract.buyerPosition}</td>
+                          <td className="py-1">{contract.buyerPosition || "Đại diện được ủy quyền"}</td>
                         </tr>
                         <tr>
                           <td className="py-1 font-semibold">Email liên hệ:</td>
@@ -323,34 +327,83 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
               </div>
 
               {/* Section 3: Financial */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="font-bold border-b border-slate-300 dark:border-slate-800 pb-0.5 uppercase tracking-wide">
-                  3. ĐIỀU KHOẢN TÀI CHÍNH
+                  3. ĐIỀU KHOẢN TÀI CHÍNH &amp; KHAI THÁC
                 </div>
                 {contract.contractType === 'co_publishing' ? (
-                  <p className="text-justify">
-                    Hai bên thống nhất phân chia doanh thu thu được từ hoạt động thương mại hóa Trò chơi trên nền tảng GodotLaunch theo tỷ lệ: Bên B nhận <strong>{contract.revenueSplit}%</strong> và Bên A nhận <strong>{100 - (contract.revenueSplit || 0)}%</strong> trên tổng doanh thu ròng.
-                  </p>
+                  <div className="text-slate-850 dark:text-slate-300 text-justify text-xs space-y-2 leading-relaxed">
+                    <p>
+                      Hai bên thống nhất cùng vận hành và chia sẻ doanh thu thu được từ hoạt động thương mại hóa Trò chơi (sau khi đã trừ các khoản thuế phát sinh và phí cổng thanh toán của bên thứ ba) theo tỷ lệ như sau:
+                    </p>
+                    <ul className="list-disc pl-5 font-bold space-y-0.5">
+                      <li>Tỷ lệ của Bên B (Nhà phát triển): {contract.revenueSplit}%</li>
+                      <li>Tỷ lệ của Bên A (Nền tảng): {100 - (contract.revenueSplit || 0)}%</li>
+                    </ul>
+                    <p>
+                      Bên A có trách nhiệm tự động quyết toán phần doanh thu được chia của Bên B vào tài khoản ví điện tử Godot Launch của Bên B ngay khi mỗi giao dịch bán Trò chơi hoàn tất thành công.
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-justify">
-                    Bên A sẽ thanh toán một khoản tiền trọn gói duy nhất trị giá <strong>{contract.lumpSumAmount || 'thỏa thuận'}</strong> cho Bên B để sở hữu và nhận chuyển giao toàn bộ quyền tác giả và quyền thương mại đối với Trò chơi.
-                  </p>
+                  <div className="text-slate-850 dark:text-slate-300 text-justify text-xs space-y-2 leading-relaxed">
+                    <p>
+                      Bên B đồng ý chuyển nhượng vĩnh viễn và không hủy ngang toàn bộ bản quyền, quyền tác giả, mã nguồn, tài nguyên đồ họa/âm thanh và mọi quyền thương mại của Trò chơi sang Bên A kể từ Ngày Hiệu lực.
+                    </p>
+                    <p>
+                      Bên A sẽ thanh toán một khoản tiền trọn gói duy nhất trị giá <strong>{contract.lumpSumAmount || 'thỏa thuận'}</strong> cho Bên B. Sau khi nhận thanh toán, Bên B cam kết không có thêm bất kỳ yêu cầu đòi chia sẻ doanh thu hay bản quyền phát sinh nào đối với Trò chơi.
+                    </p>
+                  </div>
                 )}
               </div>
 
-              {/* Section 4: Dispute */}
-              <div className="space-y-1.5">
+              {/* Section 4: Intellectual Property & Confidentiality */}
+              <div className="space-y-2">
                 <div className="font-bold border-b border-slate-300 dark:border-slate-800 pb-0.5 uppercase tracking-wide">
-                  4. GIẢI QUYẾT TRANH CHẤP
+                  4. SỞ HỮU TRÍ TUỆ &amp; BẢO MẬT
                 </div>
-                <p className="whitespace-pre-line text-slate-800 dark:text-slate-300 text-justify text-xs leading-normal">{contract.disputeResolutionClause}</p>
+                <div className="text-slate-850 dark:text-slate-300 text-justify text-xs space-y-2 leading-relaxed">
+                  <p>
+                    <strong>4.1 Quyền sở hữu trí tuệ:</strong> Đối với mô hình Đồng phát hành, Bên B giữ nguyên quyền sở hữu trí tuệ đối với Trò chơi; Bên A được cấp quyền phát hành số trên nền tảng. Đối với mô hình Mua đứt, quyền sở hữu trí tuệ thuộc về Bên A hoàn toàn và vĩnh viễn kể từ thời điểm ký kết Hợp đồng.
+                  </p>
+                  <p>
+                    <strong>4.2 Bảo mật thông tin:</strong> Cả hai Bên cam kết bảo mật tuyệt đối mọi thông tin kỹ thuật, dữ liệu thương mại, mã nguồn (source code) của Trò chơi và nội dung Hợp đồng này. Không bên nào được phép sao chép, cung cấp hoặc tiết lộ cho bên thứ ba khi chưa được sự đồng ý bằng văn bản của bên kia.
+                  </p>
+                  <p>
+                    <strong>4.3 Cam kết không bán lại/phân phối mã nguồn:</strong>
+                    <br />- Đối với mô hình Đồng phát hành: Bên B cam kết không bán, phân phối hoặc cấp phép sử dụng mã nguồn hoặc tài nguyên gốc của Trò chơi cho bất kỳ nền tảng, bên thứ ba hay đối thủ cạnh tranh nào khác mà không có sự đồng ý trước bằng văn bản của Bên A.
+                    <br />- Đối với mô hình Mua đứt: Bản quyền và quyền sở hữu độc quyền mã nguồn thuộc về Bên A. Bên B tuyệt đối không được phép sử dụng, sao chép, phân phối, chuyển nhượng hoặc bán mã nguồn của Trò chơi cho bất kỳ cá nhân hay tổ chức nào khác dưới mọi hình thức.
+                  </p>
+                  <p>
+                    <strong>4.4 Không sao chép, ăn cắp chất xám:</strong> Bên B đảm bảo Trò chơi và mọi tài nguyên cấu thành (mã nguồn, hình ảnh, âm thanh, thiết kế) là tác phẩm sáng tạo gốc của Bên B, không sao chép, đạo nhái, ăn cắp ý tưởng hoặc xâm phạm quyền sở hữu trí tuệ của bất kỳ cá nhân hay tổ chức nào khác.
+                  </p>
+                  <p>
+                    <strong>4.5 Trách nhiệm vi phạm và tố cáo/tố giác:</strong> Nếu Bên B bị phát hiện hoặc bị bên thứ ba cáo buộc/tố giác vi phạm bản quyền sở hữu trí tuệ, sao chép trái phép, tự ý bán mã nguồn hoặc vi phạm nghĩa vụ bảo mật:
+                    <br />1. Bên B phải chịu hoàn toàn trách nhiệm trước pháp luật và bồi thường mọi tổn thất, thiệt hại thực tế phát sinh cho Bên A và các bên liên quan.
+                    <br />2. Bên A có quyền đơn phương chấm dứt Hợp đồng ngay lập tức, gỡ bỏ Trò chơi khỏi nền tảng Godot Launch, đình chỉ tài khoản ví của Bên B và giữ lại toàn bộ số dư ví hoặc doanh thu chưa thanh toán để xử lý tranh chấp hoặc khấu trừ bồi thường thiệt hại.
+                  </p>
+                </div>
               </div>
 
-              {/* Section 5: Additional */}
+              {/* Section 5: Validity, Termination & Dispute Resolution */}
+              <div className="space-y-2">
+                <div className="font-bold border-b border-slate-300 dark:border-slate-800 pb-0.5 uppercase tracking-wide">
+                  5. HIỆU LỰC, CHẤM DỨT &amp; GIẢI QUYẾT TRANH CHẤP
+                </div>
+                <div className="text-slate-850 dark:text-slate-300 text-justify text-xs space-y-2 leading-relaxed">
+                  <p>
+                    <strong>5.1 Hiệu lực &amp; Thời hạn:</strong> Hợp đồng này có hiệu lực kể từ ngày đại diện cả hai Bên hoàn tất việc ký điện tử trên hệ thống Godot Launch và kéo dài cho đến khi được chấm dứt hợp pháp hoặc hoàn tất các nghĩa vụ liên quan.
+                  </p>
+                  <p>
+                    <strong>5.2 Giải quyết tranh chấp:</strong> {contract.disputeResolutionClause || "Mọi tranh chấp phát sinh từ hoặc liên quan đến hợp đồng này sẽ được giải quyết trước tiên thông qua thương lượng thân thiện. Nếu không giải quyết được, tranh chấp sẽ được đưa ra giải quyết tại Trung tâm giải quyết tranh chấp kỹ thuật số thuộc hệ thống Godot Launch hoặc cơ quan Trọng tài có thẩm quyền theo quy định."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Section 6: Additional */}
               {contract.additionalTerms && (
                 <div className="space-y-1.5">
                   <div className="font-bold border-b border-slate-300 dark:border-slate-800 pb-0.5 uppercase tracking-wide">
-                    5. ĐIỀU KHOẢN BỔ SUNG
+                    6. ĐIỀU KHOẢN BỔ SUNG
                   </div>
                   <p className="italic text-slate-800 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded border border-slate-200 dark:border-slate-800 text-justify">{contract.additionalTerms}</p>
                 </div>
@@ -414,7 +467,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                   )}
                   <div>
                     <span className="block font-bold text-slate-800 dark:text-slate-200">
-                      {contract.buyerRepresentative}
+                      {contract.buyerRepresentative || "Ban quản trị GodotLaunch"}
                     </span>
                     <span className="block text-[9px] text-slate-400">
                       {contract.signedAtBuyer ? `Ký ngày: ${new Date(contract.signedAtBuyer).toLocaleString()}` : ''}
@@ -493,20 +546,52 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                 <div className="space-y-4 animate-fade-in bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
                   <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl space-y-2 text-xs">
                     <span className="text-xs font-bold text-rose-600 uppercase font-mono block flex items-center gap-1.5">
-                      <AlertTriangle size={14} /> Xác nhận từ chối ký hợp đồng
+                      <AlertTriangle size={14} /> Chọn phương thức phản hồi hợp đồng
                     </span>
                     <p className="text-slate-500 leading-normal">
-                      Vui lòng nhập lý do từ chối cụ thể. Ban quản trị hệ thống (Admin) sẽ xem xét phản hồi của bạn để chỉnh sửa các điều khoản hợp đồng cho phù hợp.
+                      Bạn có thể chọn Thương lượng lại điều khoản để sửa đổi hợp đồng hiện tại hoặc Hủy bỏ để ngưng toàn bộ quy trình phát hành.
                     </p>
+                  </div>
+
+                  <div className="flex gap-4 p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-250 dark:border-slate-850">
+                    <label className="flex-1 flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-55/50 dark:hover:bg-slate-900/50">
+                      <input 
+                        type="radio" 
+                        name="rejectType" 
+                        value="negotiate" 
+                        checked={rejectType === 'negotiate'} 
+                        onChange={() => setRejectType('negotiate')} 
+                        className="text-amber-500 focus:ring-amber-500"
+                      />
+                      <div>
+                        <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">Thương lượng lại</span>
+                        <span className="block text-[10px] text-slate-400">Đề xuất sửa đổi Hợp đồng này</span>
+                      </div>
+                    </label>
+
+                    <label className="flex-1 flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-55/50 dark:hover:bg-slate-900/50">
+                      <input 
+                        type="radio" 
+                        name="rejectType" 
+                        value="cancel" 
+                        checked={rejectType === 'cancel'} 
+                        onChange={() => setRejectType('cancel')} 
+                        className="text-rose-500 focus:ring-rose-500"
+                      />
+                      <div>
+                        <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">Hủy không ký</span>
+                        <span className="block text-[10px] text-slate-400">Rút yêu cầu phát hành & hủy hợp đồng</span>
+                      </div>
+                    </label>
                   </div>
                   
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-slate-550 block">
-                      Lý do từ chối:
+                      {rejectType === 'negotiate' ? 'Nội dung đề xuất thương lượng:' : 'Lý do hủy hợp đồng:'}
                     </label>
                     <textarea
                       className="w-full h-32 px-3 py-2 border rounded-xl text-xs bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                      placeholder="Nhập lý do từ chối chi tiết..."
+                      placeholder={rejectType === 'negotiate' ? "Ví dụ: Đề xuất tỷ lệ chia sẻ doanh thu cho Developer là 75%..." : "Nhập lý do rút/hủy bỏ yêu cầu phát hành..."}
                       value={rejectionReasonInput}
                       onChange={(e) => setRejectionReasonInput(e.target.value)}
                     />
@@ -524,9 +609,13 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                       type="button"
                       disabled={isSubmitting || !rejectionReasonInput.trim()}
                       onClick={handleDevReject}
-                      className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer text-center flex items-center justify-center gap-1 shadow-lg shadow-rose-600/20 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                      className={`flex-1 py-2.5 px-4 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer text-center flex items-center justify-center gap-1 shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none ${
+                        rejectType === 'negotiate' 
+                          ? 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20' 
+                          : 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20'
+                      }`}
                     >
-                      <XCircle size={14} /> {isSubmitting ? 'Đang gửi...' : 'Xác nhận Từ chối'}
+                      <XCircle size={14} /> {isSubmitting ? 'Đang gửi...' : rejectType === 'negotiate' ? 'Gửi yêu cầu Thương lượng' : 'Xác nhận Hủy bỏ'}
                     </button>
                   </div>
                 </div>
