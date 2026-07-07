@@ -708,7 +708,7 @@ public class PaymentServiceImpl implements PaymentService {
     private PaymentResponse mapToResponse(Payment payment) {
         UUID assetId = null;
         String assetTitle = null;
-        String assetType = "asset";
+        String assetType = null;
         UUID orderId = null;
         User buyer = resolveBuyerFromPayment(payment);
         UUID buyerId = buyer != null ? buyer.getId() : null;

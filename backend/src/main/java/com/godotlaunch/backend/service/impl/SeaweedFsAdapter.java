@@ -117,6 +117,31 @@ public class SeaweedFsAdapter implements StorageService {
         }
     }
 
+    /**
+     * Đảo ngược getFullUrl(): từ public URL đã lưu DB, tách lại objectKey gốc
+     * (bỏ scheme/host/port/basePath, decode lại từng segment đã encode khi upload).
+     * Dùng khi cần đọc lại file (download) từ URL đã lưu thay vì objectKey gốc.
+     */
+    public String extractObjectKey(String publicUrl) {
+        String path = URI.create(publicUrl).getPath();
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+
+        String normalizedBasePath = basePath.startsWith("/") ? basePath : "/" + basePath;
+        String relativePath = path.startsWith(normalizedBasePath + "/")
+                ? path.substring(normalizedBasePath.length() + 1)
+                : (path.startsWith("/") ? path.substring(1) : path);
+
+        String[] segments = relativePath.split("/");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < segments.length; i++) {
+            if (i > 0) sb.append("/");
+            sb.append(java.net.URLDecoder.decode(segments[i], StandardCharsets.UTF_8));
+        }
+        return sb.toString();
+    }
+
     private String getFullUrl(String objectKey) {
         String key = objectKey.startsWith("/") ? objectKey.substring(1) : objectKey;
         return String.format("http://%s:%d%s/%s", filerHost, filerHttpPort, basePath, encodePath(key));

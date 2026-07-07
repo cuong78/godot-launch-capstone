@@ -73,6 +73,17 @@ public class StorageRouter {
     }
 
     /**
+     * Tách objectKey gốc từ public URL đã lưu DB (bỏ basePath, decode segment).
+     * Dùng khi chỉ có fileUrl (không có objectKey) — ví dụ tải lại source bundle đã mua.
+     */
+    public String extractObjectKey(String publicUrl) {
+        if (seaweedAdapter instanceof SeaweedFsAdapter seaweed) {
+            return seaweed.extractObjectKey(publicUrl);
+        }
+        throw new RuntimeException("seaweedAdapter is not an instance of SeaweedFsAdapter");
+    }
+
+    /**
      * Đọc file về dạng InputStream theo objectKey — dispatch đúng provider.
      * Caller có trách nhiệm đóng stream.
      */

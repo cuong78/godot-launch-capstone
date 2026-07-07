@@ -110,6 +110,25 @@ export interface DeveloperWalletSummaryResponse {
   updatedAt?: string | null;
 }
 
+export interface ProductSalesResponse {
+  productId: string;
+  productType: 'GAME' | 'ASSET';
+  title: string;
+  thumbnailUrl?: string | null;
+  unitsSold: number;
+  revenue: number;
+}
+
+export interface DeveloperSalesStatsResponse {
+  developerId: string;
+  developerEmail?: string;
+  developerFullName?: string;
+  currency: string;
+  totalUnitsSold: number;
+  totalRevenue: number;
+  products: ProductSalesResponse[];
+}
+
 export interface TransactionResponse {
   id: string;
   type: string;

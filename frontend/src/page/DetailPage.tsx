@@ -17,6 +17,7 @@ interface DetailPageProps {
   isPreparingBuyNow?: boolean;
   assets: Asset[];
   handleViewAssetDetails: (asset: Asset) => void;
+  ownedProductIds: Set<string>;
 }
 
 export const DetailPage: React.FC<DetailPageProps> = ({
@@ -31,8 +32,10 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   handleBuyNow,
   isPreparingBuyNow = false,
   assets,
-  handleViewAssetDetails
+  handleViewAssetDetails,
+  ownedProductIds
 }) => {
+  const isOwned = ownedProductIds.has(focusedAsset.id);
 
 
   const mediaList = React.useMemo(() => {
@@ -240,21 +243,29 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             </div>
 
             <div className="space-y-3 pt-2">
-              <Button
-                variant="primary"
-                className="w-full"
-                size="md"
-                onClick={() => handleAddToCart(focusedAsset)}
-              >
-                Add To Creators Cart
-              </Button>
-              <button
-                onClick={() => handleBuyNow(focusedAsset)}
-                disabled={isPreparingBuyNow}
-                className="w-full py-2.5 px-4 bg-transparent border border-sky-400 dark:border-sky-800 hover:bg-sky-500/20 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-sky-600 dark:text-white font-display text-center transition-studio cursor-pointer"
-              >
-                {isPreparingBuyNow ? 'Preparing payment...' : 'Buy Now via Bank Transfer'}
-              </button>
+              {isOwned ? (
+                <div className="w-full py-2.5 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-500 font-display text-center">
+                  Bạn đã sở hữu sản phẩm này
+                </div>
+              ) : (
+                <>
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    size="md"
+                    onClick={() => handleAddToCart(focusedAsset)}
+                  >
+                    Add To Creators Cart
+                  </Button>
+                  <button
+                    onClick={() => handleBuyNow(focusedAsset)}
+                    disabled={isPreparingBuyNow}
+                    className="w-full py-2.5 px-4 bg-transparent border border-sky-400 dark:border-sky-800 hover:bg-sky-500/20 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-sky-600 dark:text-white font-display text-center transition-studio cursor-pointer"
+                  >
+                    {isPreparingBuyNow ? 'Preparing payment...' : 'Buy Now via Bank Transfer'}
+                  </button>
+                </>
+              )}
             </div>
 
             <hr className="border-slate-100 dark:border-slate-850/60" />

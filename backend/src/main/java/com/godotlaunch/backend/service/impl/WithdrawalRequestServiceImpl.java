@@ -5,9 +5,12 @@ import com.godotlaunch.backend.dto.request.ApproveWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.CreateWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.PayoutGatewayCreateRequest;
 import com.godotlaunch.backend.dto.request.RejectWithdrawalRequest;
+import com.godotlaunch.backend.dto.projection.ProductSalesRow;
+import com.godotlaunch.backend.dto.response.DeveloperSalesStatsResponse;
 import com.godotlaunch.backend.dto.response.DeveloperWalletSummaryResponse;
 import com.godotlaunch.backend.dto.response.PayoutGatewayBalanceResponse;
 import com.godotlaunch.backend.dto.response.PayoutGatewayCreateResponse;
+import com.godotlaunch.backend.dto.response.ProductSalesResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalDetailResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalResponse;
 import com.godotlaunch.backend.entity.User;
@@ -39,6 +42,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,6 +52,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -85,6 +90,47 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         Wallet wallet = getOrCreateWallet(developer);
         WalletMetrics metrics = buildWalletMetrics(developer, wallet);
         return mapWalletSummary(developer, wallet, metrics);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DeveloperSalesStatsResponse getDeveloperSalesStats(String email) {
+        User developer = getUserByEmail(email);
+        Wallet wallet = getOrCreateWallet(developer);
+
+        long totalUnitsSold = transactionRepository.countByWalletIdAndType(wallet.getId(), TxnType.revenue_share);
+        BigDecimal totalRevenue = safeAmount(
+                transactionRepository.sumAmountByWalletIdAndTypeIn(wallet.getId(), EnumSet.of(TxnType.revenue_share))
+        );
+
+        List<ProductSalesResponse> products = Stream.concat(
+                        transactionRepository.sumAssetSalesByWalletIdAndType(wallet.getId(), TxnType.revenue_share)
+                                .stream().map(row -> mapProductRow(row, "ASSET")),
+                        transactionRepository.sumGameSalesByWalletIdAndType(wallet.getId(), TxnType.revenue_share)
+                                .stream().map(row -> mapProductRow(row, "GAME")))
+                .sorted(Comparator.comparing(ProductSalesResponse::getRevenue).reversed())
+                .collect(Collectors.toList());
+
+        return DeveloperSalesStatsResponse.builder()
+                .developerId(developer.getId())
+                .developerEmail(developer.getEmail())
+                .developerFullName(developer.getFullName())
+                .currency(DEFAULT_CURRENCY)
+                .totalUnitsSold(totalUnitsSold)
+                .totalRevenue(totalRevenue)
+                .products(products)
+                .build();
+    }
+
+    private ProductSalesResponse mapProductRow(ProductSalesRow row, String productType) {
+        return ProductSalesResponse.builder()
+                .productId(row.productId())
+                .productType(productType)
+                .title(row.title())
+                .thumbnailUrl(row.thumbnailUrl())
+                .unitsSold(row.unitsSold() == null ? 0 : row.unitsSold())
+                .revenue(row.revenue() == null ? BigDecimal.ZERO : row.revenue())
+                .build();
     }
 
     @Override

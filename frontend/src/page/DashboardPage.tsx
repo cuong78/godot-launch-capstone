@@ -18,15 +18,17 @@ import {
   ShoppingBag,
   Gamepad2,
   Trash2,
-  WalletCards
+  WalletCards,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { DataTable } from '../components/DataTable';
 import { Input } from '../components/Input';
-import { Asset, Project, User, GameResponse, ContractResponse, MarketplaceItemResponse, PaymentResponse } from '../types';
+import { Project, User, GameResponse, ContractResponse, MarketplaceItemResponse, PaymentResponse, DeveloperSalesStatsResponse } from '../types';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
+import { walletApi } from '../api/walletApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import { PurchasedInventoryPanel } from '../components/PurchasedInventoryPanel';
@@ -34,12 +36,6 @@ import { PaymentDetailPage } from './PaymentDetailPage';
 
 interface DashboardPageProps {
   currentUser: User | null;
-  financeStats: {
-    totalRevenue: number;
-    activePlayers: number;
-    listedCount: number;
-  };
-  assets: Asset[];
   projectRepositories: Project[];
   purchasedPayments: PaymentResponse[];
   selectedPaymentOrderId: string | null;
@@ -74,8 +70,6 @@ const getContractStatusLabel = (status: string, signedAtSeller?: string | null) 
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentUser,
-  financeStats,
-  assets,
   projectRepositories,
   purchasedPayments,
   selectedPaymentOrderId,
@@ -85,8 +79,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onCancelPayment,
   setCurrentScreen
 }) => {
-  // Tab control: 'my-games' | 'marketplace-items' | 'git-repos' | 'payment-center'
-  const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'git-repos' | 'payment-center'>('my-games');
+  // Tab control: 'my-games' | 'marketplace-items' | 'sales' | 'git-repos' | 'payment-center'
+  const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'sales' | 'git-repos' | 'payment-center'>('my-games');
 
   // Game & Asset status filters
   const [gameStatusFilter, setGameStatusFilter] = useState<string>('all');
@@ -104,6 +98,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isLoadingMarketplace, setIsLoadingMarketplace] = useState<boolean>(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
+
+  // Real Sales Stats state (units sold + revenue as seller)
+  const [salesStats, setSalesStats] = useState<DeveloperSalesStatsResponse | null>(null);
+  const [isLoadingSales, setIsLoadingSales] = useState<boolean>(false);
+  const [salesError, setSalesError] = useState<string | null>(null);
 
   // Contract integration states
   const [contracts, setContracts] = useState<ContractResponse[]>([]);
@@ -193,6 +192,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
+  const fetchSalesStats = async () => {
+    if (!currentUser?.email) return;
+    setIsLoadingSales(true);
+    setSalesError(null);
+    try {
+      const response = await walletApi.getDeveloperSalesStats();
+      if (response.success && response.data) {
+        setSalesStats(response.data);
+      } else {
+        setSalesError(response.message || 'Failed to load sales statistics');
+      }
+    } catch (err: any) {
+      setSalesError(err.response?.data?.message || err.message || 'Failed to fetch sales statistics');
+    } finally {
+      setIsLoadingSales(false);
+    }
+  };
+
   const handleOpenSignModal = (contract: ContractResponse) => {
     setSelectedContract(contract);
     // Prefill details with developer's full name, not email
@@ -235,6 +252,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     fetchMyGames();
     fetchMyMarketplaceItems();
     fetchMyContracts();
+    fetchSalesStats();
   }, [currentUser]);
 
   const gameFilterOptions = [
@@ -331,44 +349,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Gross Sales Revenue</span>
+          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Tổng Doanh Thu (Thực Nhận)</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">{financeStats.totalRevenue.toLocaleString('vi-VN')} đ</span>
-            <span className="text-[10px] text-emerald-500 font-bold font-mono">+12%</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{(salesStats?.totalRevenue ?? 0).toLocaleString('vi-VN')} đ</span>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-950 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-sky-500 h-full rounded-full" style={{ width: '68%' }}></div>
-          </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Updates whenever you successfully checkout additional assets</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Doanh thu sau khi trừ hoa hồng nền tảng</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Active Players Sandbox</span>
-          <div className="flex items-center gap-1.5 pt-0.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-            <span className="text-2xl font-display font-bold dark:text-white">{financeStats.activePlayers} users</span>
+          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Sản Phẩm Đã Bán</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-display font-bold dark:text-white">{salesStats?.totalUnitsSold ?? 0}</span>
+            <span className="text-[10px] text-slate-400 font-bold">đơn hàng</span>
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Synchronized live with Godot Multiplayer sockets</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Tổng lượt game và tài nguyên khách hàng đã mua</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Cloud Storage Allocated</span>
+          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Game Đã Phát Hành</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">74.2%</span>
-            <span className="text-[10px] text-slate-400">of 10GB</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{myGames.length} game</span>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-950 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-amber-400 h-full rounded-full" style={{ width: '74.2%' }}></div>
-          </div>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Tổng số game đã đăng tải lên hệ thống</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Listed Asset Packages</span>
+          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Tài Nguyên Đang Bán</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">{assets.length} items</span>
-            <span className="text-[10px] text-slate-400 font-bold">active status</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{myMarketplaceItems.length} items</span>
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Includes native community bundles</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Sản phẩm hiện có trên Creator Marketplace</p>
         </div>
 
       </div>
@@ -394,6 +404,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <ShoppingBag size={14} /> Tài Nguyên Chợ ({myMarketplaceItems.length})
             </button>
             <button
+              onClick={() => setActiveTab('sales')}
+              className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'sales' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
+            >
+              <TrendingUp size={14} /> Đơn Hàng Đã Bán ({salesStats?.totalUnitsSold ?? 0})
+            </button>
+            <button
               onClick={() => setActiveTab('git-repos')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'git-repos' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
@@ -403,7 +419,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={() => setActiveTab('payment-center')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'payment-center' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <WalletCards size={14} /> Payment Center ({purchasedPayments.length})
+              <WalletCards size={14} /> Đơn Hàng Đã Mua ({purchasedPayments.length})
             </button>
           </div>
 
@@ -881,6 +897,65 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             {myMarketplaceItems.length === 0
                               ? 'Bạn chưa đăng bán sản phẩm nào trên Creator Marketplace. Nhấn "Deploy Asset" ở trên để bắt đầu!'
                               : 'Không tìm thấy tài nguyên nào có trạng thái đã chọn.'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab: Sales / Products Sold (seller-side) */}
+          {activeTab === 'sales' && (
+            <div className="space-y-4">
+              {isLoadingSales && (
+                <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
+                  <RefreshCw className="animate-spin" size={18} /> Đang tải dữ liệu doanh số...
+                </div>
+              )}
+              {!isLoadingSales && salesError && (
+                <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                  Lỗi tải dữ liệu doanh số: {salesError}
+                </div>
+              )}
+              {!isLoadingSales && !salesError && (
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                        <th className="p-3">Sản phẩm</th>
+                        <th className="p-3">Loại</th>
+                        <th className="p-3 text-right">Đã bán</th>
+                        <th className="p-3 text-right">Doanh thu</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                      {(salesStats?.products ?? []).length > 0 ? (
+                        (salesStats?.products ?? []).map(product => (
+                          <tr key={`${product.productType}-${product.productId}`} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors">
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                {product.thumbnailUrl && (
+                                  <img src={product.thumbnailUrl} alt={product.title} className="w-8 h-8 rounded object-cover shrink-0" />
+                                )}
+                                <span className="font-semibold text-slate-800 dark:text-slate-100">{product.title}</span>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${product.productType === 'GAME' ? 'bg-sky-500/10 text-sky-500' : 'bg-purple-500/10 text-purple-500'}`}>
+                                {product.productType === 'GAME' ? 'Game' : 'Tài nguyên'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right font-mono">{product.unitsSold}</td>
+                            <td className="p-3 text-right font-mono font-semibold dark:text-amber-400">{product.revenue.toLocaleString('vi-VN')} đ</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                            Bạn chưa bán được sản phẩm nào.
                           </td>
                         </tr>
                       )}
