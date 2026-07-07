@@ -1,6 +1,9 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import {
+  CheckCircle2,
   Play,
+  Rocket,
   Search,
   X,
   Sun,
@@ -76,6 +79,191 @@ const resolveCurrencyLocale = (language: string) => {
 const resolveCurrencyCode = (language: string) =>
   language === "vi" ? "VND" : "USD";
 
+interface CreatorJourneyDialogProps {
+  isOpen: boolean;
+  onBecomeDeveloper: () => void;
+  onMaybeLater: () => void;
+  onClose: () => void;
+}
+
+const FOCUSABLE_MODAL_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function CreatorJourneyDialog({
+  isOpen,
+  onBecomeDeveloper,
+  onMaybeLater,
+  onClose,
+}: CreatorJourneyDialogProps) {
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    window.setTimeout(() => {
+      const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
+        FOCUSABLE_MODAL_SELECTOR,
+      );
+      firstFocusable?.focus();
+    }, 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialogRef.current) {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          FOCUSABLE_MODAL_SELECTOR,
+        ),
+      ).filter((element) => !element.hasAttribute("disabled"));
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <style>
+        {`
+          @keyframes creatorJourneyDialogIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+        `}
+      </style>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="creator-journey-title"
+        aria-describedby="creator-journey-description"
+        className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_28px_80px_-28px_rgba(15,23,42,0.58)] outline-none dark:border-slate-800 dark:bg-slate-900"
+        style={{
+          animation:
+            "creatorJourneyDialogIn 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-sky-400 to-emerald-400" />
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white/85 p-2 text-slate-400 transition-studio hover:border-slate-300 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-400/20 dark:border-slate-800 dark:bg-slate-950/80 dark:hover:text-white"
+          aria-label="Close creator journey dialog"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="px-6 pb-6 pt-8 sm:px-8 sm:pb-8">
+          <div className="flex flex-col items-center text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/15 text-amber-500 shadow-inner shadow-amber-400/10 dark:text-amber-300">
+              <Rocket size={30} />
+            </div>
+            <h2
+              id="creator-journey-title"
+              className="mt-5 font-display text-2xl font-bold text-slate-950 dark:text-white"
+            >
+              Start Your Creator Journey
+            </h2>
+            <p
+              id="creator-journey-description"
+              className="mt-3 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300"
+            >
+              Join our Developer community and turn your creativity into income.
+            </p>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/85 p-4 dark:border-slate-800 dark:bg-slate-950/45">
+            <p className="text-sm font-semibold text-slate-850 dark:text-slate-100">
+              As a Developer, you'll be able to:
+            </p>
+            <ul className="mt-3 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+              {[
+                "Publish Godot projects",
+                "Sell source code and assets",
+                "Manage your creator workspace",
+                "Receive earnings from every successful sale",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <CheckCircle2
+                    size={16}
+                    className="mt-0.5 shrink-0 text-emerald-500"
+                  />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="w-full"
+              onClick={onBecomeDeveloper}
+            >
+              Become a Developer
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              className="w-full"
+              onClick={onMaybeLater}
+            >
+              Make it later
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function Header({
   currentScreen,
   setCurrentScreen,
@@ -98,6 +286,8 @@ export function Header({
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [openDesktopMenu, setOpenDesktopMenu] =
     React.useState<DesktopMenuKey | null>(null);
+  const [isCreatorJourneyDialogOpen, setIsCreatorJourneyDialogOpen] =
+    React.useState(false);
   const desktopMenuCloseTimeoutRef = React.useRef<number | null>(null);
   const { t, i18n } = useTranslation(["common", "payment"]);
   const activeLanguage = i18n.resolvedLanguage || i18n.language || "vi";
@@ -181,6 +371,30 @@ export function Header({
   const handleNavigate = (screen: ScreenType) => {
     setOpenDesktopMenu(null);
     setCurrentScreen(screen);
+  };
+  const handleOpenCreatorCenter = () => {
+    setOpenDesktopMenu(null);
+    setIsCartOpen(false);
+    setIsProfileOpen(false);
+
+    if (currentUser?.role === "customer") {
+      setIsCreatorJourneyDialogOpen(true);
+      return;
+    }
+
+    setCurrentScreen("upload");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const handleBecomeDeveloper = () => {
+    setIsCreatorJourneyDialogOpen(false);
+    setCurrentScreen("developer-onboarding");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const handleMaybeLater = () => {
+    setIsCreatorJourneyDialogOpen(false);
+    setCurrentScreen("explore");
+    setSearchText("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const handleOpenPath = () => {
     if (currentUser?.role === "customer") {
@@ -473,10 +687,7 @@ export function Header({
                 false,
               )}
               onClick={() => {
-                // Đi thẳng vào trang Upload, không mở dropdown
-                setOpenDesktopMenu(null);
-                setCurrentScreen("upload");
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                handleOpenCreatorCenter();
               }}
             >
               {t("creator_hub")}
@@ -838,8 +1049,7 @@ export function Header({
         {currentUser && (
           <button
             onClick={() => {
-              setCurrentScreen("upload");
-              window.scrollTo({ top: 0, behavior: "smooth" });
+              handleOpenCreatorCenter();
             }}
             className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "upload" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
           >
@@ -863,6 +1073,13 @@ export function Header({
           </button>
         )}
       </div>
+
+      <CreatorJourneyDialog
+        isOpen={isCreatorJourneyDialogOpen}
+        onBecomeDeveloper={handleBecomeDeveloper}
+        onMaybeLater={handleMaybeLater}
+        onClose={() => setIsCreatorJourneyDialogOpen(false)}
+      />
     </header>
   );
 }
