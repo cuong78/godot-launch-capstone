@@ -5,6 +5,7 @@ import {
   PageResponse,
   TransactionResponse,
   DeveloperWalletSummaryResponse,
+  DeveloperSalesStatsResponse,
   WithdrawalResponse,
   WithdrawalDetailResponse,
   CreateWithdrawalRequest,
@@ -29,6 +30,11 @@ export const walletApi = {
 
   getDeveloperWalletSummary: async (): Promise<ApiResponse<DeveloperWalletSummaryResponse>> => {
     const response = await api.get<ApiResponse<DeveloperWalletSummaryResponse>>('/api/v1/wallets/summary');
+    return response.data;
+  },
+
+  getDeveloperSalesStats: async (): Promise<ApiResponse<DeveloperSalesStatsResponse>> => {
+    const response = await api.get<ApiResponse<DeveloperSalesStatsResponse>>('/api/v1/wallets/sales-stats');
     return response.data;
   },
 

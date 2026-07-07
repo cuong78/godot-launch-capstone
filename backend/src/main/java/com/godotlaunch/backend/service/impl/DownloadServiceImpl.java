@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.io.InputStream;
-import java.net.URI;
 import java.text.Normalizer;
 import java.util.Locale;
 import java.util.UUID;
@@ -28,8 +27,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class DownloadServiceImpl implements DownloadService {
-
-    private static final String SOURCE_BUNDLE_MARKER = "marketplace/items/";
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
@@ -69,7 +66,11 @@ public class DownloadServiceImpl implements DownloadService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        String objectKey = extractObjectKey(downloadUrl);
+        if (!StringUtils.hasText(downloadUrl) || "pending".equalsIgnoreCase(downloadUrl)) {
+            throw new AppException(ErrorCode.FILE_NOT_FOUND);
+        }
+
+        String objectKey = storageRouter.extractObjectKey(downloadUrl);
         if (!StringUtils.hasText(objectKey)) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
@@ -77,35 +78,6 @@ public class DownloadServiceImpl implements DownloadService {
         InputStream inputStream = storageRouter.getInputStream(FileType.source_bundle, objectKey);
 
         return new DownloadResource(inputStream, buildDownloadFileName(title));
-    }
-
-    private String extractObjectKey(String rawUrl) {
-        if (!StringUtils.hasText(rawUrl) || "pending".equalsIgnoreCase(rawUrl)) {
-            return null;
-        }
-
-        String awsMarker = ".amazonaws.com/";
-        int awsIndex = rawUrl.indexOf(awsMarker);
-        if (awsIndex >= 0) {
-            return rawUrl.substring(awsIndex + awsMarker.length());
-        }
-
-        if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
-            try {
-                String path = URI.create(rawUrl).getPath();
-                if (!StringUtils.hasText(path)) {
-                    return null;
-                }
-
-                String normalizedPath = path.startsWith("/") ? path.substring(1) : path;
-                int markerIndex = normalizedPath.indexOf(SOURCE_BUNDLE_MARKER);
-                return markerIndex >= 0 ? normalizedPath.substring(markerIndex) : normalizedPath;
-            } catch (Exception ignored) {
-                return null;
-            }
-        }
-
-        return rawUrl;
     }
 
     private String buildDownloadFileName(String title) {

@@ -12,6 +12,7 @@ import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.OrderType;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.exception.InsufficientBalanceException;
 import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.OrderRepository;
@@ -26,11 +27,15 @@ import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -102,21 +107,34 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // Fetch platform wallet (represented by the first admin user found)
+        // Fetch platform wallet (represented by the earliest-created admin user)
         User platformAdmin = userRepository.findByEmail("admin@godotlaunch.com")
-                .orElseGet(() -> userRepository.findAll().stream()
-                        .filter(u -> "admin".equalsIgnoreCase(u.getRole().getName()))
+                .orElseGet(() -> userRepository.findAdminsOrderByCreatedAtAsc(PageRequest.of(0, 1)).stream()
                         .findFirst()
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
 
-        // 4. Fetch wallets with Pessimistic Write Lock to prevent double-spending & race conditions
-        Wallet buyerWallet = getOrCreateWalletWithLock(buyer);
-        Wallet sellerWallet = getOrCreateWalletWithLock(seller);
-        Wallet platformWallet = getOrCreateWalletWithLock(platformAdmin);
+        // 4. Fetch wallets with Pessimistic Write Lock to prevent double-spending & race conditions.
+        // Lock theo thứ tự cố định (sort theo user id) thay vì thứ tự buyer→seller→platform cố định
+        // — nếu không, 2 giao dịch mua chéo của nhau cùng lúc (A mua của B, B mua của A) sẽ lock
+        // ngược chiều nhau và deadlock.
+        Map<UUID, User> usersById = new LinkedHashMap<>();
+        usersById.put(buyer.getId(), buyer);
+        usersById.put(seller.getId(), seller);
+        usersById.put(platformAdmin.getId(), platformAdmin);
+
+        List<UUID> lockOrder = usersById.keySet().stream().sorted().toList();
+        Map<UUID, Wallet> walletsById = new LinkedHashMap<>();
+        for (UUID userId : lockOrder) {
+            walletsById.put(userId, getOrCreateWalletWithLock(usersById.get(userId)));
+        }
+
+        Wallet buyerWallet = walletsById.get(buyer.getId());
+        Wallet sellerWallet = walletsById.get(seller.getId());
+        Wallet platformWallet = walletsById.get(platformAdmin.getId());
 
         // 5. Check balance
         if (buyerWallet.getBalance().compareTo(price) < 0) {
-            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+            throw new InsufficientBalanceException(price.subtract(buyerWallet.getBalance()));
         }
 
         // 6. Deduct buyer wallet

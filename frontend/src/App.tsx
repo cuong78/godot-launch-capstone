@@ -557,11 +557,14 @@ export default function App() {
   const [selectedPaymentOrderId, setSelectedPaymentOrderId] = useState<string | null>(() => readStoredSelectedPaymentOrder());
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
   const [isRefreshingPayments, setIsRefreshingPayments] = useState<boolean>(false);
-  const [financeStats, setFinanceStats] = useState({
-    totalRevenue: 12500000,
-    activePlayers: 485,
-    listedCount: 8
-  });
+
+  // Nạp ví (top-up) và mua game/asset đều tạo Payment, nhưng chỉ payment gắn với
+  // 1 sản phẩm (marketplaceItemId) mới thực sự là "đơn hàng" — loại nạp ví ra khỏi
+  // các màn hình quản lý đơn hàng để không đếm nhầm số đơn đã mua.
+  const purchaseOrderPayments = useMemo(
+    () => paymentOrders.filter((payment) => Boolean(payment.marketplaceItemId)),
+    [paymentOrders]
+  );
 
   useEffect(() => {
     sessionStorage.setItem(PAYMENT_SESSION_STORAGE_KEY, JSON.stringify(paymentOrders));
@@ -956,7 +959,16 @@ export default function App() {
       setCurrentScreen('payment');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      showToast(err.response?.data?.message || err.message || 'Không thể thực hiện mua bằng ví.', 'error');
+      const errorCode = err.response?.data?.code;
+      const shortfall = err.response?.data?.data?.shortfall;
+
+      if (errorCode === 'INSUFFICIENT_BALANCE' && typeof shortfall === 'number') {
+        showToast(`Ví không đủ tiền — bạn cần nạp thêm ${shortfall.toLocaleString('vi-VN')}đ để mua sản phẩm này.`, 'warning');
+      } else if (errorCode === 'DATA_CONFLICT') {
+        showToast('Sản phẩm này có thể vừa được mua hoặc có yêu cầu trùng lặp. Vui lòng tải lại trang và kiểm tra lại.', 'warning');
+      } else {
+        showToast(err.response?.data?.message || err.message || 'Không thể thực hiện mua bằng ví.', 'error');
+      }
     } finally {
       setIsPlacingOrder(false);
     }
@@ -1181,7 +1193,7 @@ export default function App() {
         {currentScreen === 'payment' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <PaymentDetailPage
-              payments={paymentOrders}
+              payments={purchaseOrderPayments}
               selectedOrderId={selectedPaymentOrderId}
               setSelectedOrderId={setSelectedPaymentOrderId}
               isRefreshing={isRefreshingPayments}
@@ -1261,10 +1273,8 @@ export default function App() {
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <DashboardPage
               currentUser={currentUser}
-              financeStats={financeStats}
-              assets={assets}
               projectRepositories={projectRepositories}
-              purchasedPayments={paymentOrders}
+              purchasedPayments={purchaseOrderPayments}
               selectedPaymentOrderId={selectedPaymentOrderId}
               setSelectedPaymentOrderId={(orderId) => setSelectedPaymentOrderId(orderId)}
               isRefreshingPayments={isRefreshingPayments}

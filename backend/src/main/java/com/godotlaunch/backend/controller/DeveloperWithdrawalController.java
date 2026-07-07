@@ -2,6 +2,7 @@ package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.request.CreateWithdrawalRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
+import com.godotlaunch.backend.dto.response.DeveloperSalesStatsResponse;
 import com.godotlaunch.backend.dto.response.DeveloperWalletSummaryResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalDetailResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalResponse;
@@ -40,6 +41,15 @@ public class DeveloperWithdrawalController {
     public ResponseEntity<ApiResponse<DeveloperWalletSummaryResponse>> getWalletSummary(Principal principal) {
         DeveloperWalletSummaryResponse response = withdrawalRequestService.getDeveloperWalletSummary(principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "Developer wallet summary retrieved successfully."));
+    }
+
+    @GetMapping("/sales-stats")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Get developer sales statistics (units sold and revenue per product)")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<DeveloperSalesStatsResponse>> getSalesStats(Principal principal) {
+        DeveloperSalesStatsResponse response = withdrawalRequestService.getDeveloperSalesStats(principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response, "Developer sales statistics retrieved successfully."));
     }
 
     @GetMapping("/withdrawals")

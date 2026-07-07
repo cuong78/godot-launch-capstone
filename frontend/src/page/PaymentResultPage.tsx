@@ -373,8 +373,6 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
                 {isPaidSourcePurchase && resolvedDownloadUrl && (
                   <a
                     href={resolvedDownloadUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
                   >
                     <Download size={15} /> {t('payment:center.download.downloadNow')}

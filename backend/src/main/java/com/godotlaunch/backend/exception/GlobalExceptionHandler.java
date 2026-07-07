@@ -3,6 +3,7 @@ package com.godotlaunch.backend.exception;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -25,6 +26,35 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException ex) {
         ErrorCode errorCode = ex.getErrorCode();
         log.warn("Application business exception occurred: [{} - {}]", errorCode.name(), ex.getMessage());
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(false)
+                .status(errorCode.getHttpStatus().value())
+                .code(errorCode.name())
+                .message(errorCode.getMessage())
+                .build();
+        return new ResponseEntity<>(response, errorCode.getHttpStatus());
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleInsufficientBalance(InsufficientBalanceException ex) {
+        ErrorCode errorCode = ex.getErrorCode();
+        log.warn("Insufficient wallet balance: shortfall={}", ex.getShortfall());
+
+        ApiResponse<Map<String, Object>> response = ApiResponse.<Map<String, Object>>builder()
+                .success(false)
+                .status(errorCode.getHttpStatus().value())
+                .code(errorCode.name())
+                .message(errorCode.getMessage())
+                .data(Map.of("shortfall", ex.getShortfall()))
+                .build();
+        return new ResponseEntity<>(response, errorCode.getHttpStatus());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation (likely a duplicate/concurrent request): {}", ex.getMessage());
+        ErrorCode errorCode = ErrorCode.DATA_CONFLICT;
 
         ApiResponse<Void> response = ApiResponse.<Void>builder()
                 .success(false)
