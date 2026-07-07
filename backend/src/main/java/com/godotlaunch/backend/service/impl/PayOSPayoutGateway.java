@@ -219,8 +219,6 @@ public class PayOSPayoutGateway implements PayoutGateway {
 
     private PayoutGatewayBalanceResponse mapBalanceResponse(PayoutAccountInfo response) {
         if (response == null
-                || !StringUtils.hasText(response.getAccountNumber())
-                || !StringUtils.hasText(response.getAccountName())
                 || !StringUtils.hasText(response.getCurrency())
                 || !StringUtils.hasText(response.getBalance())) {
             throw new AppException(ErrorCode.PAYOUT_BALANCE_INVALID_RESPONSE);
@@ -229,8 +227,8 @@ public class PayOSPayoutGateway implements PayoutGateway {
         try {
             BigDecimal balance = new BigDecimal(response.getBalance().trim());
             return PayoutGatewayBalanceResponse.builder()
-                    .accountNumber(response.getAccountNumber().trim())
-                    .accountName(response.getAccountName().trim())
+                    .accountNumber(StringUtils.hasText(response.getAccountNumber()) ? response.getAccountNumber().trim() : null)
+                    .accountName(StringUtils.hasText(response.getAccountName()) ? response.getAccountName().trim() : null)
                     .currency(response.getCurrency().trim())
                     .balance(balance)
                     .status("active")

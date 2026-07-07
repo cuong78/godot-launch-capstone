@@ -87,6 +87,14 @@ export interface WalletResponse {
   updatedAt?: string | null;
 }
 
+export interface PayoutBalanceResponse {
+  accountNumber?: string | null;
+  accountName?: string | null;
+  currency: string;
+  balance: number;
+  status: string;
+}
+
 export type WithdrawalStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'failed' | 'rejected' | 'cancelled';
 
 export interface DeveloperWalletSummaryResponse {

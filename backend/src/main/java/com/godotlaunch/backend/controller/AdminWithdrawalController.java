@@ -60,6 +60,16 @@ public class AdminWithdrawalController {
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal payout order created successfully."));
     }
 
+    @PostMapping("/{id}/sync")
+    @Operation(summary = "Synchronize payout status for a withdrawal request")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> syncWithdrawal(
+            @PathVariable UUID id,
+            Principal principal) {
+        WithdrawalDetailResponse response = withdrawalRequestService.syncWithdrawalStatus(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal payout status synchronized successfully."));
+    }
+
     @PostMapping("/{id}/processing")
     @Operation(summary = "Mark withdrawal as processing")
     @SecurityRequirement(name = "bearerAuth")

@@ -17,6 +17,8 @@
   "form.availableToWithdraw": "Số dư khả dụng để rút: {{amount}}",
   "form.bankNameLabel": "Tên ngân hàng",
   "form.bankNamePlaceholder": "Ví dụ: Vietcombank, Techcombank...",
+  "form.bankDropdownButton": "Mở danh sách ngân hàng",
+  "form.bankDropdownEmpty": "Không tìm thấy ngân hàng phù hợp.",
   "form.currentLimits": "Giới hạn & Điều kiện rút tiền",
   "form.minimumWithdrawal": "• Số tiền rút tối thiểu: 10.000 VND mỗi lần.",
   "form.noteLabel": "Ghi chú thêm",

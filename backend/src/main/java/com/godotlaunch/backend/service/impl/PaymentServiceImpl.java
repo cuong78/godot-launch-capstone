@@ -340,7 +340,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional(readOnly = true)
     public List<PaymentResponse> getAdminPayments() {
         return paymentRepository.findTop50ByOrderByCreatedAtDesc().stream()
-                .map(this::mapToResponse)
+                .map(this::safeMapToResponse)
                 .collect(Collectors.toList());
     }
 
@@ -710,9 +710,10 @@ public class PaymentServiceImpl implements PaymentService {
         String assetTitle = null;
         String assetType = "asset";
         UUID orderId = null;
-        UUID buyerId = payment.getWallet().getUser().getId();
-        String buyerEmail = payment.getWallet().getUser().getEmail();
-        String buyerFullName = payment.getWallet().getUser().getFullName();
+        User buyer = resolveBuyerFromPayment(payment);
+        UUID buyerId = buyer != null ? buyer.getId() : null;
+        String buyerEmail = buyer != null ? buyer.getEmail() : null;
+        String buyerFullName = buyer != null ? buyer.getFullName() : null;
         UUID sellerId = null;
         String sellerEmail = null;
         String sellerFullName = null;
@@ -775,14 +776,14 @@ public class PaymentServiceImpl implements PaymentService {
                 .id(payment.getId())
                 .orderId(orderId)
                 .assetId(assetId)
-                .assetTitle(assetTitle)
+                .assetTitle(firstNonBlank(assetTitle, "Unknown item"))
                 .assetType(assetType)
                 .marketplaceItemId(assetId)
-                .marketplaceItemTitle(assetTitle)
+                .marketplaceItemTitle(firstNonBlank(assetTitle, "Unknown item"))
                 .marketplaceItemType(assetType)
                 .buyerId(buyerId)
-                .buyerEmail(buyerEmail)
-                .buyerFullName(buyerFullName)
+                .buyerEmail(firstNonBlank(buyerEmail, "Unknown buyer"))
+                .buyerFullName(firstNonBlank(buyerFullName, buyerEmail, "Unknown buyer"))
                 .sellerId(sellerId)
                 .sellerEmail(sellerEmail)
                 .sellerFullName(sellerFullName)
@@ -796,6 +797,60 @@ public class PaymentServiceImpl implements PaymentService {
                 .paymentReference(payment.getPaymentReference())
                 .paidAt(payment.getPaidAt())
                 .downloadUrl(orderId != null && assetId != null ? "/api/v1/downloads/" + orderId : null)
+                .createdAt(payment.getCreatedAt())
+                .updatedAt(payment.getUpdatedAt())
+                .build();
+    }
+
+    private PaymentResponse safeMapToResponse(Payment payment) {
+        try {
+            return mapToResponse(payment);
+        } catch (Exception ex) {
+            log.warn("Failed to map payment {} for admin monitoring: {}", payment.getId(), ex.getMessage());
+            return buildFallbackPaymentResponse(payment);
+        }
+    }
+
+    private User resolveBuyerFromPayment(Payment payment) {
+        Wallet wallet;
+        try {
+            wallet = payment.getWallet();
+        } catch (Exception ex) {
+            log.warn("Unable to load wallet for payment {}: {}", payment.getId(), ex.getMessage());
+            return null;
+        }
+
+        if (wallet == null) {
+            log.warn("Payment {} has no linked wallet record", payment.getId());
+            return null;
+        }
+
+        try {
+            return wallet.getUser();
+        } catch (Exception ex) {
+            log.warn("Unable to load buyer for payment {}: {}", payment.getId(), ex.getMessage());
+            return null;
+        }
+    }
+
+    private PaymentResponse buildFallbackPaymentResponse(Payment payment) {
+        return PaymentResponse.builder()
+                .id(payment.getId())
+                .assetTitle("Unknown item")
+                .assetType("asset")
+                .marketplaceItemTitle("Unknown item")
+                .marketplaceItemType("asset")
+                .buyerEmail("Unknown buyer")
+                .buyerFullName("Unknown buyer")
+                .paymentStatus(payment.getPaymentStatus())
+                .amount(payment.getAmount())
+                .currency(payment.getCurrency())
+                .payosOrderCode(payment.getPayosOrderCode())
+                .payosPaymentLinkId(payment.getPayosPaymentLinkId())
+                .payosTransactionId(payment.getPayosTransactionId())
+                .checkoutUrl(payment.getCheckoutUrl())
+                .paymentReference(payment.getPaymentReference())
+                .paidAt(payment.getPaidAt())
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();

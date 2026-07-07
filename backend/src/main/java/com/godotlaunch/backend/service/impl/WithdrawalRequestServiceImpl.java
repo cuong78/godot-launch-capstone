@@ -26,6 +26,7 @@ import com.godotlaunch.backend.repository.PayoutGateway;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
+import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -75,6 +76,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final AuditLogService auditLogService;
     private final PayoutGateway payoutGateway;
     private final EncryptionUtils encryptionUtils;
+    private final WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
 
     @Override
     @Transactional(readOnly = true)
@@ -244,6 +246,15 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
         return mapToDetailResponse(updated, wallet, metrics);
+    }
+
+    @Override
+    @Transactional
+    public WithdrawalDetailResponse syncWithdrawalStatus(UUID requestId, String adminEmail) {
+        WithdrawalRequest synchronizedWithdrawal = withdrawalStatusSynchronizer.synchronize(requestId, adminEmail);
+        Wallet wallet = getOrCreateWallet(synchronizedWithdrawal.getUser());
+        WalletMetrics metrics = buildWalletMetrics(synchronizedWithdrawal.getUser(), wallet);
+        return mapToDetailResponse(synchronizedWithdrawal, wallet, metrics);
     }
 
     @Override

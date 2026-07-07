@@ -17,6 +17,8 @@
   "form.availableToWithdraw": "出金可能な残高: {{amount}}",
   "form.bankNameLabel": "金融機関名",
   "form.bankNamePlaceholder": "例: Vietcombank, Techcombank",
+  "form.bankDropdownButton": "銀行リストを開く",
+  "form.bankDropdownEmpty": "該当する銀行が見つかりません。",
   "form.currentLimits": "出金ポリシーと制限",
   "form.minimumWithdrawal": "• 最低出金額: 1回あたり 10,000 VND 以上。",
   "form.noteLabel": "備考 / 連絡事項",

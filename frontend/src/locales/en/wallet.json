@@ -17,6 +17,8 @@
   "form.availableToWithdraw": "Available balance to withdraw: {{amount}}",
   "form.bankNameLabel": "Bank Name",
   "form.bankNamePlaceholder": "e.g., Vietcombank, Techcombank",
+  "form.bankDropdownButton": "Open bank list",
+  "form.bankDropdownEmpty": "No matching bank found.",
   "form.currentLimits": "Withdrawal Policies & Holds",
   "form.minimumWithdrawal": "• Minimum amount: 10,000 VND per transaction.",
   "form.noteLabel": "Memo / Additional Notes",
