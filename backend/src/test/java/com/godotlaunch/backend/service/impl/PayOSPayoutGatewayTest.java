@@ -78,6 +78,25 @@ class PayOSPayoutGatewayTest {
     }
 
     @Test
+    void getBalance_ShouldAllowMissingAccountMetadata_WhenBalanceIsPresent() {
+        when(payOS.payoutsAccount()).thenReturn(payoutsAccountService);
+        when(payoutsAccountService.balance()).thenReturn(
+                PayoutAccountInfo.builder()
+                        .accountNumber("")
+                        .accountName("")
+                        .currency("VND")
+                        .balance("0")
+                        .build()
+        );
+
+        PayoutGatewayBalanceResponse response = gateway.getBalance();
+
+        assertEquals(new BigDecimal("0"), response.getBalance());
+        assertEquals("VND", response.getCurrency());
+        assertEquals("active", response.getStatus());
+    }
+
+    @Test
     void getStatus_ShouldMapLatestPayoutTransaction() {
         when(payOS.payouts()).thenReturn(payoutsService);
         when(payoutsService.get("po_123")).thenReturn(

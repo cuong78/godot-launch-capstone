@@ -19,6 +19,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findByFullNameContainingIgnoreCaseAndStatus(String fullName, String status);
     List<User> findByRole_NameIgnoreCase(String roleName);
 
+    // Ví nền tảng (platform wallet) = admin được tạo sớm nhất. Dùng LIMIT 1 ở DB
+    // thay vì findAll() + filter trong memory (tránh full table scan mỗi lần mua hàng),
+    // và ORDER BY createdAt để kết quả ổn định thay vì phụ thuộc thứ tự trả về ngẫu nhiên.
+    @Query("SELECT u FROM User u WHERE LOWER(u.role.name) = 'admin' ORDER BY u.createdAt ASC")
+    List<User> findAdminsOrderByCreatedAtAsc(Pageable pageable);
+
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"role"})
     Optional<User> findWithRoleById(UUID id);
 

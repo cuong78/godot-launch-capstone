@@ -60,6 +60,16 @@ public class AdminWithdrawalController {
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal payout order created successfully."));
     }
 
+    @PostMapping("/{id}/sync")
+    @Operation(summary = "Synchronize payout status for a withdrawal request")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> syncWithdrawal(
+            @PathVariable UUID id,
+            Principal principal) {
+        WithdrawalDetailResponse response = withdrawalRequestService.syncWithdrawalStatus(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal payout status synchronized successfully."));
+    }
+
     @PostMapping("/{id}/processing")
     @Operation(summary = "Mark withdrawal as processing")
     @SecurityRequirement(name = "bearerAuth")
@@ -68,27 +78,6 @@ public class AdminWithdrawalController {
             Principal principal) {
         WithdrawalDetailResponse response = withdrawalRequestService.markWithdrawalProcessing(id, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal marked as processing."));
-    }
-
-    @PostMapping("/{id}/complete")
-    @Operation(summary = "Synchronize PayOS payout status and complete withdrawal only when payout succeeds")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> completeWithdrawal(
-            @PathVariable UUID id,
-            @RequestBody(required = false) ApproveWithdrawalRequest request,
-            Principal principal) {
-        WithdrawalDetailResponse response = withdrawalRequestService.completeWithdrawal(id, request, principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal payout status synchronized successfully."));
-    }
-
-    @PostMapping("/{id}/sync-status")
-    @Operation(summary = "Synchronize PayOS payout status")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> synchronizeWithdrawalStatus(
-            @PathVariable UUID id,
-            Principal principal) {
-        WithdrawalDetailResponse response = withdrawalRequestService.synchronizeWithdrawalStatus(id, principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal payout status synchronized successfully."));
     }
 
     @PostMapping("/{id}/reject")

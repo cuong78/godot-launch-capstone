@@ -3,7 +3,6 @@ package com.godotlaunch.backend.service.impl;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.response.PayoutGatewayStatusResponse;
 import com.godotlaunch.backend.entity.Transaction;
-import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.WithdrawalRequest;
 import com.godotlaunch.backend.entity.enums.AuditAction;
@@ -30,6 +29,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -59,8 +59,11 @@ public class WithdrawalStatusSynchronizerImpl implements WithdrawalStatusSynchro
     @Override
     @Transactional
     public WithdrawalRequest synchronize(UUID requestId, String adminEmail) {
-        User admin = userRepository.findByEmail(adminEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        // adminEmail is null when triggered by the scheduled payout sync job (no admin is acting).
+        if (StringUtils.hasText(adminEmail)) {
+            userRepository.findByEmail(adminEmail)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        }
         WithdrawalRequest withdrawal = withdrawalRequestRepository.findByIdWithLock(requestId)
                 .orElseThrow(() -> new AppException(ErrorCode.WITHDRAWAL_REQUEST_NOT_FOUND));
 
@@ -223,11 +226,11 @@ public class WithdrawalStatusSynchronizerImpl implements WithdrawalStatusSynchro
     private Map<String, Object> buildAuditPayload(WithdrawalRequest withdrawal, PayoutGatewayStatusResponse payoutStatus) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("status", withdrawal.getStatus().name());
-        payload.put("payosPayoutId", firstNonBlank(withdrawal.getPayosPayoutId(), ""));
-        payload.put("payosReferenceId", firstNonBlank(withdrawal.getPayosReferenceId(), ""));
-        payload.put("payosStatus", firstNonBlank(withdrawal.getPayosStatus(), ""));
-        payload.put("providerReference", firstNonBlank(payoutStatus.getProviderReference(), ""));
-        payload.put("failureReason", firstNonBlank(payoutStatus.getFailureReason(), ""));
+        payload.put("payosPayoutId", Objects.requireNonNullElse(withdrawal.getPayosPayoutId(), ""));
+        payload.put("payosReferenceId", Objects.requireNonNullElse(withdrawal.getPayosReferenceId(), ""));
+        payload.put("payosStatus", Objects.requireNonNullElse(withdrawal.getPayosStatus(), ""));
+        payload.put("providerReference", Objects.requireNonNullElse(payoutStatus.getProviderReference(), ""));
+        payload.put("failureReason", Objects.requireNonNullElse(payoutStatus.getFailureReason(), ""));
         return payload;
     }
 

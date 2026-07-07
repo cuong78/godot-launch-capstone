@@ -386,7 +386,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
 
                 return (
                   <button
-                    key={payment.orderId}
+                    key={payment.id}
                     type="button"
                     onClick={() => setSelectedOrderId(payment.orderId)}
                     className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-studio ${
@@ -402,7 +402,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                           {payment.marketplaceItemTitle}
                         </p>
                         <p className="mt-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                          {t('payment:center.sessions.orderPrefix')} {payment.orderId.slice(0, 8).toUpperCase()}
+                          {t('payment:center.sessions.orderPrefix')} {(payment.orderId || payment.id).slice(0, 8).toUpperCase()}
                         </p>
                       </div>
                       <span
@@ -478,8 +478,6 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                   {isPaidSourcePurchase && activeDownloadUrl && (
                     <a
                       href={activeDownloadUrl}
-                      target="_blank"
-                      rel="noreferrer"
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
                     >
                       <Download size={15} /> {t('payment:center.detail.downloadPackage')}
@@ -637,8 +635,6 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                 <div className="flex flex-wrap gap-3">
                   <a
                     href={activeDownloadUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
                   >
                     <Download size={15} /> {t('payment:center.download.downloadNow')}

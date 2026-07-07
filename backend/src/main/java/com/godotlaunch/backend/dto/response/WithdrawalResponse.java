@@ -33,8 +33,6 @@ public class WithdrawalResponse {
     private String payosStatus;
     private String payosCreatedAt;
     private WithdrawalStatus status;
-    private UUID processedById;
-    private String processedByFullName;
     private Instant processedAt;
     private String remark;
     private Instant createdAt;

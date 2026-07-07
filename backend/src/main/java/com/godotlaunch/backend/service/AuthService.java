@@ -6,6 +6,7 @@ import com.godotlaunch.backend.dto.request.SignInRequest;
 import com.godotlaunch.backend.dto.request.SignUpRequest;
 import com.godotlaunch.backend.dto.response.JwtAuthenticationResponse;
 import com.godotlaunch.backend.dto.response.UserResponse;
+import com.godotlaunch.backend.entity.User;
 
 import com.godotlaunch.backend.dto.request.ForgotPasswordRequest;
 import com.godotlaunch.backend.dto.request.ResetPasswordRequest;
@@ -22,4 +23,8 @@ public interface AuthService {
     void requestSignupOtp(SignupOtpRequest request);
     void verifySignupOtp(VerifyOtpRequest request);
     void logout(String email);
+
+    // Tạo session/JWT mới phản ánh đúng role hiện tại — dùng khi role user thay đổi
+    // giữa phiên (VD: vừa đủ điều kiện lên developer ở KycController.confirmKyc()).
+    String refreshSession(User user);
 }

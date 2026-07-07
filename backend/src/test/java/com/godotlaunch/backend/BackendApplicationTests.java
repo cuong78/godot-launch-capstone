@@ -12,6 +12,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 class BackendApplicationTests {
 
     @Autowired
+    private com.godotlaunch.backend.service.PaymentService paymentService;
+
+    @Autowired
     private ContractRepository contractRepository;
 
     @Autowired
@@ -41,6 +44,35 @@ class BackendApplicationTests {
                 e.printStackTrace();
             }
         });
+    }
+
+    @Test
+    void testGetCurrentUserPayments() {
+        System.out.println("=== STARTING USER PAYMENTS TEST ===");
+        try {
+            paymentService.getCurrentUserPayments("hoangdmse184533@fpt.edu.vn");
+            System.out.println("=== USER PAYMENTS TEST COMPLETED SUCCESSFULLY ===");
+        } catch (Exception e) {
+            System.err.println("=== TEST FAILED ===");
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    void testConfirmPayment() {
+        System.out.println("=== STARTING CONFIRM PAYMENT TEST ===");
+        try {
+            paymentService.getCurrentUserPayments("dmhoang0000@gmail.com").forEach(p -> {
+                if (p.getPaymentStatus() == com.godotlaunch.backend.entity.enums.PaymentStatus.PENDING) {
+                    System.out.println("Confirming payment: " + p.getId());
+                    paymentService.confirmPayment(p.getId(), "dmhoang0000@gmail.com");
+                }
+            });
+            System.out.println("=== CONFIRM PAYMENT TEST COMPLETED SUCCESSFULLY ===");
+        } catch (Exception e) {
+            System.err.println("=== CONFIRM PAYMENT TEST FAILED ===");
+            e.printStackTrace();
+        }
     }
 
 }

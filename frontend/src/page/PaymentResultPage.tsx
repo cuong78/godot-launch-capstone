@@ -88,6 +88,7 @@ const getVariantMeta = (variant: PaymentResultPageProps['variant'], t: any) => {
 const getStatusMeta = (
   status: PaymentResponse['paymentStatus'] | undefined,
   itemType: PaymentResponse['marketplaceItemType'] | undefined,
+  isTopUp: boolean,
   t: any
 ) => {
   switch (status) {
@@ -95,9 +96,11 @@ const getStatusMeta = (
       return {
         label: t('payment:status.paid.label'),
         badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-        helper: itemType === 'game_source'
-          ? t('payment:status.paid.helperSource')
-          : t('payment:status.paid.helperAsset'),
+        helper: isTopUp
+          ? t('payment:status.paid.helperTopUp')
+          : itemType === 'game_source'
+            ? t('payment:status.paid.helperSource')
+            : t('payment:status.paid.helperAsset'),
       };
     case 'PROCESSING':
       return {
@@ -201,7 +204,8 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
     onPaymentResolved(payment, variant);
   }, [onPaymentResolved, payment, variant]);
 
-  const statusMeta = getStatusMeta(payment?.paymentStatus, payment?.marketplaceItemType, t);
+  const isTopUp = Boolean(payment && !payment.orderId);
+  const statusMeta = getStatusMeta(payment?.paymentStatus, payment?.marketplaceItemType, isTopUp, t);
   const canContinuePayment =
     Boolean(payment?.checkoutUrl) &&
     (payment?.paymentStatus === 'PENDING' || payment?.paymentStatus === 'PROCESSING');
@@ -270,7 +274,7 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-3">
                     <h2 className="font-display text-xl font-bold text-slate-850 dark:text-white">
-                      {payment.marketplaceItemTitle}
+                      {isTopUp ? t('payment:result.topUpTitle') : payment.marketplaceItemTitle}
                     </h2>
                     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${statusMeta.badgeClass}`}>
                       {statusMeta.label}
@@ -288,12 +292,14 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.orderNumber')}</p>
-                  <p className="mt-2 font-display text-lg font-bold text-slate-850 dark:text-white">
-                    {payment.orderId.slice(0, 8).toUpperCase()}
-                  </p>
-                </div>
+                {!isTopUp && payment.orderId && (
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.orderNumber')}</p>
+                    <p className="mt-2 font-display text-lg font-bold text-slate-850 dark:text-white">
+                      {payment.orderId.slice(0, 8).toUpperCase()}
+                    </p>
+                  </div>
+                )}
                 <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.amount')}</p>
                   <p className="mt-2 font-display text-lg font-bold text-amber-500">{formatMoney(payment.amount, locale, t('payment:common.free'))}</p>
@@ -367,8 +373,6 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
                 {isPaidSourcePurchase && resolvedDownloadUrl && (
                   <a
                     href={resolvedDownloadUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
                   >
                     <Download size={15} /> {t('payment:center.download.downloadNow')}

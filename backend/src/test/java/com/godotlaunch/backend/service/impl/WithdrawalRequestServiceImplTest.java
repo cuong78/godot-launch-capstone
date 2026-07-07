@@ -16,8 +16,8 @@ import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.repository.PayoutGateway;
+import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
-import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,7 +64,7 @@ class WithdrawalRequestServiceImplTest {
     private PayoutGateway payoutGateway;
 
     @Mock
-    private WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
+    private EncryptionUtils encryptionUtils;
 
     @InjectMocks
     private WithdrawalRequestServiceImpl withdrawalRequestService;
@@ -116,6 +117,9 @@ class WithdrawalRequestServiceImplTest {
         withdrawal.setAccountHolder("Dev User");
         withdrawal.setTransferReference("GLWD-ORIGINAL");
         withdrawal.setStatus(WithdrawalStatus.pending);
+
+        lenient().when(encryptionUtils.encrypt(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(encryptionUtils.decrypt(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -206,22 +210,77 @@ class WithdrawalRequestServiceImplTest {
     }
 
     @Test
-    void completeWithdrawal_ShouldDelegateToSynchronizer() {
-        withdrawal.setStatus(WithdrawalStatus.completed);
-        when(withdrawalStatusSynchronizer.synchronize(withdrawal.getId(), adminUser.getEmail())).thenReturn(withdrawal);
+    void approveWithdrawal_ShouldReconcileWithPayOS_WhenCreatePayoutFailsButPayoutAlreadyExists() {
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
         when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
                 .thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet()))
-                .thenReturn(BigDecimal.ZERO);
+                .thenReturn(new BigDecimal("100000"));
+        when(payoutGateway.getBalance()).thenReturn(
+                PayoutGatewayBalanceResponse.builder()
+                        .accountNumber("9999999999")
+                        .accountName("GodotLaunch")
+                        .currency("VND")
+                        .balance(new BigDecimal("999999999"))
+                        .status("active")
+                        .build()
+        );
+        when(payoutGateway.createPayout(any()))
+                .thenThrow(new AppException(ErrorCode.PAYOUT_CREATE_FAILED));
+        when(payoutGateway.findPayoutByReferenceId(withdrawal.getId().toString())).thenReturn(
+                Optional.of(PayoutGatewayCreateResponse.builder()
+                        .payoutId("po_reconciled")
+                        .referenceId(withdrawal.getId().toString())
+                        .status("SUCCEEDED")
+                        .providerReference("provider_ref_reconciled")
+                        .createdAt("2026-06-28T22:00:00Z")
+                        .build())
+        );
+        when(withdrawalRequestRepository.save(any(WithdrawalRequest.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        WithdrawalDetailResponse response = withdrawalRequestService.completeWithdrawal(
+        WithdrawalDetailResponse response = withdrawalRequestService.approveWithdrawal(
                 withdrawal.getId(),
-                null,
+                new ApproveWithdrawalRequest("GLWD-APPROVED", null),
                 adminUser.getEmail()
         );
 
-        assertEquals(WithdrawalStatus.completed, response.getStatus());
-        verify(withdrawalStatusSynchronizer).synchronize(withdrawal.getId(), adminUser.getEmail());
+        assertEquals(WithdrawalStatus.processing, response.getStatus());
+        assertEquals("po_reconciled", response.getPayosPayoutId());
+        verify(payoutGateway).findPayoutByReferenceId(withdrawal.getId().toString());
+    }
+
+    @Test
+    void approveWithdrawal_ShouldRethrowOriginalError_WhenCreatePayoutFailsAndNoPayoutFound() {
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+        when(payoutGateway.getBalance()).thenReturn(
+                PayoutGatewayBalanceResponse.builder()
+                        .accountNumber("9999999999")
+                        .accountName("GodotLaunch")
+                        .currency("VND")
+                        .balance(new BigDecimal("999999999"))
+                        .status("active")
+                        .build()
+        );
+        when(payoutGateway.createPayout(any()))
+                .thenThrow(new AppException(ErrorCode.PAYOUT_CREATE_FAILED));
+        when(payoutGateway.findPayoutByReferenceId(withdrawal.getId().toString()))
+                .thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> withdrawalRequestService.approveWithdrawal(
+                        withdrawal.getId(),
+                        new ApproveWithdrawalRequest("GLWD-FAIL", null),
+                        adminUser.getEmail()
+                )
+        );
+
+        assertEquals(ErrorCode.PAYOUT_CREATE_FAILED, exception.getErrorCode());
+        assertEquals(WithdrawalStatus.pending, withdrawal.getStatus());
+        verify(withdrawalRequestRepository, never()).save(any(WithdrawalRequest.class));
     }
 }

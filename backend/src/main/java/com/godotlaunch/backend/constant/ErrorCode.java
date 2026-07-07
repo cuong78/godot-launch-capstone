@@ -96,12 +96,14 @@ public enum ErrorCode {
     GITHUB_LINK_NOT_PREPARED(HttpStatus.BAD_REQUEST, "GL-4072", "GitHub link session not found. Please start the linking process again."),
     
     // Wallet and Withdrawal
-    INSUFFICIENT_BALANCE(HttpStatus.BAD_REQUEST, "GL-4080", "Insufficient wallet balance."),
+    INSUFFICIENT_BALANCE(HttpStatus.PAYMENT_REQUIRED, "GL-4080", "Insufficient wallet balance."),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy ví của người dùng."),
     WITHDRAWAL_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu rút tiền."),
     INVALID_WITHDRAWAL_STATUS(HttpStatus.BAD_REQUEST, "Trạng thái yêu cầu rút tiền không hợp lệ để xử lý."),
     REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do từ chối là bắt buộc khi từ chối yêu cầu rút tiền."),
 
+    // 409 Conflict
+    DATA_CONFLICT(HttpStatus.CONFLICT, "GL-4090", "Yêu cầu bị trùng lặp hoặc xung đột dữ liệu (có thể bạn đã thực hiện thao tác này rồi). Vui lòng tải lại trang và thử lại."),
     // Security and File verification
     SECURITY_CHECK_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Phát hiện mã độc trong tệp tin tải lên."),
     INVALID_FILE_STRUCTURE(HttpStatus.BAD_REQUEST, "Cấu trúc tệp tin tải lên không hợp lệ hoặc thiếu tệp index.html."),

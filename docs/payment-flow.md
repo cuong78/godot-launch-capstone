@@ -22,6 +22,8 @@ Luồng payment hiện tại áp dụng cho marketplace item có 2 loại:
 - `source_code`
 - `asset`
 
+Ngoài ra, `PaymentController`/`PaymentServiceImpl` còn xử lý một luồng payment thứ hai **không gắn với marketplace item**: nạp tiền trực tiếp vào ví (top-up). Xem chi tiết ở mục 6.7.
+
 Buyer có thể là:
 
 - `customer`
@@ -105,6 +107,20 @@ Response thành công sẽ trả về `PaymentResponse`, trong đó quan trọng
 - `currency`
 - `marketplaceItemType`
 
+#### `POST /api/v1/payments/topup`
+
+Tạo payment session PayOS để nạp tiền trực tiếp vào ví — **không** gắn với marketplace item nào. Role được phép: `customer`, `developer`.
+
+Request:
+
+```json
+{
+  "amount": 50000
+}
+```
+
+Response giống `PaymentResponse` bình thường, nhưng `orderId`, `marketplaceItemId`, `marketplaceItemTitle` đều `null` vì không có `Order`/`Asset` liên quan. Xem chi tiết luồng ở mục 6.7.
+
 #### `POST /api/v1/payments/{paymentId}/confirm`
 
 Đồng bộ lại trạng thái payment từ PayOS.
@@ -183,6 +199,7 @@ Lưu ý:
 
 - `checkoutUrl` dùng để redirect sang PayOS.
 - `downloadUrl` chỉ có ý nghĩa khi payment đã hoàn tất và item là `source_code`.
+- Với payment loại **top-up** (mục 6.7): `orderId`, `marketplaceItemId`, `marketplaceItemTitle`, `marketplaceItemType`, `sellerId`, `sellerEmail` đều `null`. Frontend phải tự nhận diện topup qua `!payment.orderId` (xem `PaymentResultPage.tsx`) — không được giả định `orderId` luôn có giá trị.
 
 ---
 
@@ -299,34 +316,66 @@ Sau khi quay về:
 
 ---
 
-## 6.6. Webhook là bước chốt trạng thái chuẩn nhất
+## 6.6. Có 2 cách backend biết payment đã `PAID` — Push (webhook) và Pull (poll)
 
-PayOS sẽ gọi:
+PayOS cho phép xác nhận trạng thái thanh toán theo 2 hướng hoàn toàn độc lập:
+
+- **Push (webhook)**: PayOS tự chủ động gọi vào `POST /api/v1/payments/webhook` khi thanh toán xong. Cách này **cần backend có địa chỉ public** (production domain, hoặc `ngrok`/tunnel khi chạy local — xem mục 14) để PayOS gọi tới được.
+- **Pull (poll)**: Backend tự chủ động hỏi PayOS "đơn hàng `orderCode` này giờ trạng thái gì?" qua `paymentGateway.getPaymentStatus(orderCode)`. Cách này **không cần** backend có địa chỉ public, vì backend là bên gọi ra ngoài, không cần ai gọi vào.
+
+Trước đây implementation chỉ hoàn tất payment (`completePaidPayment()` — cộng ví, tạo `Transaction`, set `PAID`) ở nhánh webhook. Nhánh poll (`syncPaymentFromGateway()`, được gọi từ `confirmPayment()`, `getPaymentById()`, `getPaymentByOrder()`) trước đây khi thấy PayOS báo `PAID` thì chỉ set tạm `PROCESSING` rồi dừng — nghĩa là nếu webhook không bao giờ tới (ví dụ chạy local không có ngrok), payment sẽ **kẹt vĩnh viễn ở `PROCESSING`**, ví không bao giờ được cộng tiền.
+
+Implementation hiện tại đã sửa để nhánh poll cũng gọi `completePaidPayment()` ngay khi PayOS xác nhận `PAID`, giống hệt nhánh webhook — không viết logic riêng, dùng lại chung một hàm finalize.
+
+### 6.6.1. Vì sao an toàn khi có 2 đường cùng có thể finalize
+
+- `syncPaymentFromGateway()` **không tin** vào query param mà PayOS gắn khi redirect về frontend (`status=PAID` trên URL). Nó luôn tự gọi lại `paymentGateway.getPaymentStatus(orderCode)` bằng `orderCode` lưu trong DB (server-side, không nhận từ client) để lấy trạng thái thật — không thể bị giả mạo qua URL.
+- Trước khi finalize, nhánh poll fetch lại payment bằng `paymentRepository.findByIdForUpdate(id)` (pessimistic write lock) và kiểm tra lại `paymentStatus != PAID` — nếu webhook đã finalize trước đó (hoặc một request poll khác đang chạy song song), nó dừng ngay, không cộng ví lần 2.
+- Nhánh webhook (`handleWebhook()`) cũng có guard tương tự (`isCompletedPayment(payment)` check trước khi gọi `completePaidPayment()`), dùng `findByPayosOrderCodeForUpdate()`.
+- `completePaidPayment()` tự nó cũng idempotent ở tầng dữ liệu: dùng `transactionRepository.existsByOrderId(...)` (mua hàng) hoặc `transactionRepository.findByPaymentId(...)` (top-up) để chỉ tạo `Transaction` một lần duy nhất, dù hàm bị gọi lại nhiều lần.
+
+### 6.6.2. Hệ quả thực tế
+
+- **Local/dev**: không còn bắt buộc phải chạy `ngrok` để ví được cộng tiền. Chỉ cần user được redirect về `/payment/success` (hoặc mở lại trang chi tiết payment, bấm refresh status) — bất kỳ hành động nào trigger `confirm`/`getPaymentById`/`getPaymentByOrder` đều đủ để tự finalize.
+- **Giới hạn của poll**: nếu user thanh toán xong trên PayOS rồi **đóng tab/mất mạng trước khi được redirect về**, không có request nào gọi `confirm` cả — payment sẽ kẹt ở `PENDING`/`PROCESSING` cho tới khi có ai chủ động xem lại. Đây là trường hợp duy nhất còn cần webhook thật.
+- Vì vậy: **production nên vẫn cấu hình webhook** như một lớp bảo hiểm, poll chỉ là fallback tăng độ tin cậy khi webhook không tới (chậm, mất mạng, hoặc chưa cấu hình ở môi trường dev).
+
+---
+
+## 6.7. Luồng nạp tiền vào ví (Top-up)
+
+Đây là luồng payment thứ hai dùng chung toàn bộ hạ tầng PayOS hiện có (`PayOSPaymentGateway`, webhook, poll-confirm ở mục 6.6), nhưng **không gắn với marketplace item / Order nào**.
+
+### 6.7.1. Tạo payment top-up
 
 ```text
-POST /api/v1/payments/webhook
+POST /api/v1/payments/topup
 ```
 
-Backend không update mù theo payload.
+`createTopUpPayment()` trong `PaymentServiceImpl`:
 
-Thay vào đó:
+1. Lấy hoặc tạo `Wallet` cho buyer (`getOrCreateWallet` tương đương).
+2. Tạo `Payment` mới với `amount` từ request, **không** có `Order`.
+3. Gán `paymentReference = "TOPUP:" + paymentId` (khác hẳn `BUY_ASSET:<assetId>` của luồng mua hàng).
+4. Gọi `PayOSPaymentGateway.createPayment()` — y hệt luồng mua hàng (cùng `orderCode`, `returnUrl`, `cancelUrl`, `expiredAt`), chỉ khác `itemName = "Wallet top-up"`.
 
-1. Verify webhook bằng PayOS SDK.
-2. Nhận diện request validation đặc biệt từ PayOS Merchant Dashboard.
-3. Nếu chỉ là validation request, trả `200 OK` và không xử lý payment.
-4. Nếu là webhook thật:
-   - đọc `orderCode`
-   - đối chiếu payment nội bộ
-   - kiểm tra amount
-   - gọi lại gateway để lấy trạng thái thật
-   - chỉ complete payment khi trạng thái cuối cùng là `PAID`
+### 6.7.2. Hoàn tất top-up
 
-Đây là điểm rất quan trọng để tránh:
+Khi payment được `completePaidPayment()` finalize (qua webhook hoặc poll, xem 6.6), hàm kiểm tra `paymentReference`:
 
-- fake callback,
-- payload sai amount,
-- trạng thái chưa final mà đã ghi nhận paid,
-- duplicate webhook xử lý 2 lần.
+- Bắt đầu bằng `BUY_ASSET:` → chạy nhánh mua hàng (revenue split, tạo `Order`, `Transaction` loại `asset_purchase`/`source_code_purchase`).
+- **Không** bắt đầu bằng `BUY_ASSET:` (trường hợp top-up, `paymentReference` là `TOPUP:...`) → chạy nhánh khác:
+  1. `buyerWallet.balance += payment.amount` (đã cộng chung ở đầu hàm cho cả 2 nhánh).
+  2. Tạo `Transaction` với `type = wallet_topup`, gắn `wallet = buyerWallet`.
+  3. Gửi email xác nhận qua `EmailService.sendNotificationEmail()` — chỉ gửi một lần duy nhất, cùng điều kiện guard với việc tạo `Transaction` (`!transactionRepository.findByPaymentId(...).isPresent()`), lỗi gửi email được `catch` riêng để không làm rollback giao dịch tài chính.
+
+### 6.7.3. Vì sao trang PaymentResultPage phải xử lý riêng cho topup
+
+Do không có `Order`, `PaymentResponse.orderId` trả về `null` cho payment top-up. `PaymentResultPage.tsx` dùng `!payment.orderId` để nhận diện đây là top-up và:
+
+- hiển thị tiêu đề "Nạp tiền vào ví" thay vì `marketplaceItemTitle` (vốn cũng `null`),
+- ẩn card "Đơn hàng số" (vì không có `orderId` để hiển thị),
+- hiển thị helper text riêng cho trạng thái `PAID` (`status.paid.helperTopUp`) thay vì text theo `marketplaceItemType`.
 
 ---
 
@@ -499,6 +548,7 @@ Implementation hiện tại đã có các rule đáng chú ý:
 - Duplicate webhook không được finalize 2 lần.
 - Amount trong webhook được đối chiếu với amount nội bộ.
 - Download endpoint yêu cầu authenticated user và kiểm tra ownership.
+- Poll-confirm (`syncPaymentFromGateway`) và webhook (`handleWebhook`) đều có thể gọi `completePaidPayment()`, nhưng dùng `paymentRepository.findByIdForUpdate()` / `findByPayosOrderCodeForUpdate()` (pessimistic lock) + kiểm tra `paymentStatus != PAID` trước khi finalize — tránh cộng ví 2 lần nếu cả 2 đường cùng chạy gần nhau (xem mục 6.6.1).
 
 ---
 
@@ -537,7 +587,100 @@ Tối thiểu backend cần:
 Ngoài ra:
 
 - PayOS merchant phải được cấu hình webhook URL đúng.
-- Nếu dùng local, thường cần `ngrok` hoặc tunnel tương tự cho webhook.
+- Nhờ cơ chế poll-confirm (mục 6.6), **webhook không còn bắt buộc để ví được cộng tiền khi test/dev local** — chỉ cần user quay lại xem payment. Nhưng vẫn nên cấu hình `ngrok`/tunnel để test đúng luồng webhook thật (trường hợp user đóng tab trước khi được redirect về) trước khi lên production.
+
+## 14.1. Hướng dẫn cài ngrok từ đầu (Windows)
+
+### Bước 1 — Cài ngrok
+
+Có 2 cách:
+
+- **Tải trực tiếp từ ngrok.com**: vào `https://ngrok.com/download`, chọn Windows. Lưu ý: một số máy bị Windows Defender/SmartScreen chặn nhầm file zip này (`Couldn't download - Virus detected`) — đây là false positive thường gặp với các tool tunneling, không phải do file thật sự có virus.
+- **Cài qua winget** (khuyến nghị, tránh bị chặn vì tải qua nguồn được Windows Package Manager verify hash sẵn):
+
+```powershell
+winget install --id Ngrok.Ngrok -e --source winget --accept-package-agreements --accept-source-agreements
+```
+
+Lưu ý ID chính xác là `Ngrok.Ngrok` (chữ N hoa) — `ngrok.ngrok` (thường) sẽ không tìm thấy package.
+
+Binary sau khi cài qua winget nằm ở:
+
+```text
+%LOCALAPPDATA%\Microsoft\WinGet\Packages\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\ngrok.exe
+```
+
+Winget tự thêm thư mục này vào PATH — cần **mở terminal mới** (đóng hẳn terminal cũ) để nhận PATH vừa cập nhật, nếu không `ngrok` sẽ báo "not recognized".
+
+### Bước 2 — Đăng ký tài khoản ngrok (free)
+
+Vào `https://dashboard.ngrok.com/signup`.
+
+### Bước 3 — Lấy authtoken và gắn vào ngrok
+
+Vào `https://dashboard.ngrok.com/get-started/your-authtoken`, copy token, rồi chạy:
+
+```powershell
+ngrok config add-authtoken <token>
+```
+
+Lệnh này ghi vào file config tại `%LOCALAPPDATA%\ngrok\ngrok.yml`.
+
+**Lỗi hay gặp — file config cũ không tương thích**: nếu máy đã từng cài ngrok trước đó (qua cách khác, ví dụ MSI/agent bản mới), file `ngrok.yml` có thể ở schema `version: "3"` (dùng khối `agent: authtoken:` lồng nhau) — bản CLI cũ hơn chỉ đọc được `version: "1"` hoặc `"2"` (schema phẳng, không lồng `agent:`), gây lỗi:
+
+```text
+ERROR: Error reading configuration file '...\ngrok.yml': unknown version '3'. valid versions are: [1 2]
+```
+
+Sửa bằng cách mở file, đổi `version: "3"` thành `version: "2"`, và đưa `authtoken` ra ngoài (bỏ khối `agent:` lồng nhau):
+
+```yaml
+version: "2"
+authtoken: <token-của-bạn>
+```
+
+Kiểm tra config hợp lệ bằng:
+
+```powershell
+ngrok config check
+```
+
+### Bước 4 — Chạy tunnel
+
+```powershell
+ngrok http 8080
+```
+
+**Lỗi hay gặp — agent quá cũ**: nếu tài khoản ngrok yêu cầu agent version mới hơn bản đang cài, sẽ gặp:
+
+```text
+ERROR: authentication failed: Your ngrok-agent version "3.3.1" is too old. The minimum supported agent version for your account is "3.20.0".
+ERR_NGROK_121
+```
+
+Chạy lệnh tự update rồi thử lại `ngrok http 8080`:
+
+```powershell
+ngrok update
+```
+
+### Bước 5 — Copy URL và dán vào PayOS
+
+Terminal sẽ hiện dòng dạng:
+
+```text
+Forwarding    https://xxxx.ngrok-free.app -> http://localhost:8080
+```
+
+Vào PayOS Merchant Dashboard → mục Webhook URL → dán:
+
+```text
+https://xxxx.ngrok-free.app/api/v1/payments/webhook
+```
+
+PayOS gửi một request validate tới URL này ngay khi lưu — backend đã xử lý sẵn (trả `200 OK`, không coi là giao dịch thật, xem mục 7).
+
+**Lưu ý quan trọng**: bản free của ngrok đổi URL public mỗi lần bạn tắt/chạy lại `ngrok http 8080`. Mỗi lần restart phải vào lại PayOS dashboard cập nhật URL webhook mới (trừ khi dùng domain cố định của plan trả phí).
 
 ---
 
@@ -676,6 +819,8 @@ Luồng payment hiện tại của GodotLaunch đã bao gồm đủ các phần 
 - tạo payment session,
 - resume session cũ,
 - webhook verification,
+- **poll-confirm có thể tự finalize payment ngay khi PayOS xác nhận `PAID`, không cần chờ webhook** (mục 6.6) — tăng độ tin cậy đáng kể khi chạy local/dev không có tunnel public,
+- nạp tiền trực tiếp vào ví (top-up) dùng lại toàn bộ hạ tầng PayOS hiện có, không cần entity/gateway riêng (mục 6.7),
 - free item bypass,
 - revenue split theo commission do admin cấu hình,
 - cập nhật seller wallet,

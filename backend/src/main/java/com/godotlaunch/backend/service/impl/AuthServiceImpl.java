@@ -210,6 +210,12 @@ public class AuthServiceImpl implements AuthService {
         return buildSessionResponse(user, false);
     }
 
+    @Override
+    @Transactional
+    public String refreshSession(User user) {
+        return buildSessionResponse(user, false).getToken();
+    }
+
     private JwtAuthenticationResponse buildSessionResponse(User user, boolean rememberMe) {
         String sessionSecret = UUID.randomUUID().toString();
         user.setSessionHash(JwtProvider.hashSessionSecret(sessionSecret));
@@ -405,20 +411,15 @@ public class AuthServiceImpl implements AuthService {
             final String finalEmail = email;
 
             // 4. Find or Link User
+            // Lưu ý: KHÔNG còn tự nâng role lên developer ở bước link GitHub nữa.
+            // Role chỉ được nâng khi đủ cả 3 điều kiện (GitHub + Face Verify + KYC),
+            // xem KycController.confirmKyc(). User cũ đã là developer/admin từ trước
+            // giữ nguyên role (không có bước hạ cấp).
             User user = userRepository.findByGithubId(githubId)
-                    .map(u -> {
-                        if (!"admin".equalsIgnoreCase(u.getRole().getName()) 
-                                && !"developer".equalsIgnoreCase(u.getRole().getName())) {
-                            Role developerRole = roleRepository.findByName("developer")
-                                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-                            u.setRole(developerRole);
-                        }
-                        return u;
-                    })
                     .orElseGet(() -> {
                         User userByEmail = userRepository.findByEmail(finalEmail)
                                 .orElseGet(() -> {
-                                    Role developerRole = roleRepository.findByName("developer")
+                                    Role customerRole = roleRepository.findByName("customer")
                                             .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
                                     User newUser = new User();
@@ -427,20 +428,13 @@ public class AuthServiceImpl implements AuthService {
                                     newUser.setFullName(fullName != null ? fullName : githubUsername);
                                     newUser.setAvatarUrl(avatarUrl);
                                     newUser.setStatus("active");
-                                    newUser.setRole(developerRole);
+                                    newUser.setRole(customerRole);
                                     return newUser;
                                 });
 
                         userByEmail.setGithubId(githubId);
                         userByEmail.setGithubUsername(githubUsername);
-                        
-                        if (!"admin".equalsIgnoreCase(userByEmail.getRole().getName()) 
-                                && !"developer".equalsIgnoreCase(userByEmail.getRole().getName())) {
-                            Role developerRole = roleRepository.findByName("developer")
-                                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-                            userByEmail.setRole(developerRole);
-                        }
-                        
+
                         return userByEmail;
                     });
 

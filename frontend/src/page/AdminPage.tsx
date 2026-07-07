@@ -28,13 +28,14 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
-import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType, PlatformSettingsResponse } from '../types';
+import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType, PlatformSettingsResponse, PayoutBalanceResponse } from '../types';
 import api from '../api/axios';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
 import { platformSettingsApi } from '../api/platformSettingsApi';
+import { walletApi } from '../api/walletApi';
 import { SignaturePad } from '../components/SignaturePad';
 import { ContractViewerModal } from '../components/ContractViewerModal';
 import AdminDisputePanel from '../components/AdminDisputePanel';
@@ -170,11 +171,26 @@ const getActionBadgeClass = (action: string) => {
   return 'bg-slate-500/10 text-slate-500 border border-slate-500/20';
 };
 
+const formatCurrency = (value?: number | null, currency = 'VND') => {
+  if (value == null || Number.isNaN(value)) {
+    return 'N/A';
+  }
+
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
 export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser
 }) => {
   const [activeTab, setActiveTab] = useState<'moderation' | 'users' | 'payments' | 'withdrawal' | 'logs' | 'settings' | 'storage' | 'disputes'>('moderation');
+  const [payoutBalance, setPayoutBalance] = useState<PayoutBalanceResponse | null>(null);
+  const [isLoadingPayoutBalance, setIsLoadingPayoutBalance] = useState(false);
+  const [payoutBalanceError, setPayoutBalanceError] = useState<string | null>(null);
   
   // Real Game Moderation state
   const [allGames, setAllGames] = useState<GameResponse[]>([]);
@@ -443,9 +459,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  const fetchPayoutBalance = async () => {
+    setIsLoadingPayoutBalance(true);
+    setPayoutBalanceError(null);
+    try {
+      const response = await walletApi.getAdminPayoutBalance();
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to load payout wallet balance');
+      }
+
+      setPayoutBalance(response.data);
+    } catch (err: any) {
+      setPayoutBalanceError(err.response?.data?.message || err.message || 'Failed to load payout wallet balance');
+    } finally {
+      setIsLoadingPayoutBalance(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchPlatformSettings();
+    fetchPayoutBalance();
   }, []);
 
   useEffect(() => {
@@ -460,6 +494,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       fetchPlatformSettings();
     }
   }, [activeTab, currentPage, pageSize, filterAction, filterTargetType]);
+
+  const payoutBalanceDisplay = isLoadingPayoutBalance
+    ? 'Loading...'
+    : payoutBalance
+      ? formatCurrency(Number(payoutBalance.balance), payoutBalance.currency || 'VND')
+      : 'N/A';
+
+  const payoutBalanceCaption = payoutBalanceError
+    ? payoutBalanceError
+    : payoutBalance
+      ? 'Synced from the PayOS payout account.'
+      : 'Loading payout wallet balance...';
 
   const handleApplyTextFilters = (e: React.FormEvent) => {
     e.preventDefault();
@@ -748,13 +794,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
           <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1">
-            <DollarSign size={12} className="text-sky-500" /> Gross volume sales
+            <DollarSign size={12} className="text-sky-500" /> Payout wallet balance
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">$14,842.20</span>
-            <span className="text-[10px] text-emerald-500 font-bold font-mono">+8.4%</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{payoutBalanceDisplay}</span>
+            {!isLoadingPayoutBalance && !payoutBalanceError && payoutBalance?.currency && (
+              <span className="text-[10px] text-emerald-500 font-bold font-mono">{payoutBalance.currency}</span>
+            )}
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Net fee earnings: ${(14842.2 * (commission/100)).toFixed(2)} ({commission}%)</p>
+          <p className={`text-[9px] leading-tight ${payoutBalanceError ? 'text-rose-500' : 'text-slate-500 dark:text-slate-400'}`}>{payoutBalanceCaption}</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">

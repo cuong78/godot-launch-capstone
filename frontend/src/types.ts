@@ -77,7 +77,8 @@ export type ScreenType =
   | "payment-success"
   | "payment-failed"
   | "payment-cancelled"
-  | "wallet";
+  | "wallet"
+  | "developer-onboarding";
 
 export interface WalletResponse {
   id: string;
@@ -85,6 +86,14 @@ export interface WalletResponse {
   balance: number;
   currency: string;
   updatedAt?: string | null;
+}
+
+export interface PayoutBalanceResponse {
+  accountNumber?: string | null;
+  accountName?: string | null;
+  currency: string;
+  balance: number;
+  status: string;
 }
 
 export type WithdrawalStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'failed' | 'rejected' | 'cancelled';
@@ -100,6 +109,25 @@ export interface DeveloperWalletSummaryResponse {
   pendingBalance: number;
   totalRevenue: number;
   updatedAt?: string | null;
+}
+
+export interface ProductSalesResponse {
+  productId: string;
+  productType: 'GAME' | 'ASSET';
+  title: string;
+  thumbnailUrl?: string | null;
+  unitsSold: number;
+  revenue: number;
+}
+
+export interface DeveloperSalesStatsResponse {
+  developerId: string;
+  developerEmail?: string;
+  developerFullName?: string;
+  currency: string;
+  totalUnitsSold: number;
+  totalRevenue: number;
+  products: ProductSalesResponse[];
 }
 
 export interface TransactionResponse {
@@ -127,8 +155,6 @@ export interface WithdrawalResponse {
   payosStatus?: string;
   payosCreatedAt?: string;
   status: WithdrawalStatus;
-  processedById?: string;
-  processedByFullName?: string;
   processedAt?: string;
   remark?: string;
   createdAt?: string;
@@ -145,8 +171,6 @@ export interface WithdrawalDetailResponse extends WithdrawalResponse {
   preferredQrImageUrl?: string;
 }
 
-export type WithdrawalRequestResponse = WithdrawalResponse;
-
 export interface CreateWithdrawalRequest {
   amount: number;
   bankName: string;
@@ -162,11 +186,6 @@ export interface ApproveWithdrawalRequest {
 
 export interface RejectWithdrawalRequest {
   remark: string;
-}
-
-export interface ReviewWithdrawalRequest {
-  approve: boolean;
-  rejectReason?: string;
 }
 
 export type AiRecommendation = 'approve' | 'review' | 'reject';
@@ -529,6 +548,10 @@ export type PaymentStatus =
 
 export interface CreatePaymentRequest {
   marketplaceItemId: string;
+}
+
+export interface CreateTopUpRequest {
+  amount: number;
 }
 
 export interface PaymentResponse {

@@ -29,6 +29,7 @@ interface MarketplacePageProps {
   handleViewAssetDetails: (asset: Asset) => void;
   handleAddToCart: (asset: Asset) => void;
   setSelectedCategories: (categories: string[]) => void;
+  ownedProductIds: Set<string>;
 }
 
 const formatCompactPrice = (price: number) =>
@@ -49,6 +50,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   handleViewAssetDetails,
   handleAddToCart,
   setSelectedCategories,
+  ownedProductIds,
 }) => {
   // Marketplace giờ chỉ còn asset thuần (source_code chuyển sang Game market)
   const assetListings = filteredAssets;
@@ -353,16 +355,22 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                                   <span className="text-[10px] text-slate-400 font-bold uppercase">Resource</span>
                                 )}
                               </div>
-                              <Button
-                                variant="secondary-flat"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddToCart(asset);
-                                }}
-                              >
-                                Add to Cart
-                              </Button>
+                              {ownedProductIds.has(asset.id) ? (
+                                <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-500">
+                                  Đã sở hữu
+                                </span>
+                              ) : (
+                                <Button
+                                  variant="secondary-flat"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddToCart(asset);
+                                  }}
+                                >
+                                  Add to Cart
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </article>

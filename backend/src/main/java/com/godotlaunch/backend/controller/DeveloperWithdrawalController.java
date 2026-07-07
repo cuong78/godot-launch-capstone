@@ -2,6 +2,7 @@ package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.request.CreateWithdrawalRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
+import com.godotlaunch.backend.dto.response.DeveloperSalesStatsResponse;
 import com.godotlaunch.backend.dto.response.DeveloperWalletSummaryResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalDetailResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalResponse;
@@ -26,15 +27,15 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/developer")
+@RequestMapping("/api/v1/wallets")
 @RequiredArgsConstructor
-@Tag(name = "Developer Withdrawal API", description = "Developer wallet summary and withdrawal workflow")
+@Tag(name = "Wallet Withdrawal API", description = "Wallet summary and withdrawal workflow for customers and developers")
 public class DeveloperWithdrawalController {
 
     private final WithdrawalRequestService withdrawalRequestService;
 
-    @GetMapping("/wallet")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
     @Operation(summary = "Get developer wallet summary")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<DeveloperWalletSummaryResponse>> getWalletSummary(Principal principal) {
@@ -42,8 +43,17 @@ public class DeveloperWithdrawalController {
         return ResponseEntity.ok(ApiResponse.success(response, "Developer wallet summary retrieved successfully."));
     }
 
-    @GetMapping("/withdrawals")
+    @GetMapping("/sales-stats")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Get developer sales statistics (units sold and revenue per product)")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<DeveloperSalesStatsResponse>> getSalesStats(Principal principal) {
+        DeveloperSalesStatsResponse response = withdrawalRequestService.getDeveloperSalesStats(principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response, "Developer sales statistics retrieved successfully."));
+    }
+
+    @GetMapping("/withdrawals")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
     @Operation(summary = "Get developer withdrawal history")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<List<WithdrawalResponse>>> getDeveloperWithdrawals(Principal principal) {
@@ -52,7 +62,7 @@ public class DeveloperWithdrawalController {
     }
 
     @PostMapping("/withdrawals")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
     @Operation(summary = "Create a withdrawal request")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> createDeveloperWithdrawal(
@@ -64,7 +74,7 @@ public class DeveloperWithdrawalController {
     }
 
     @GetMapping("/withdrawals/{id}")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
     @Operation(summary = "Get withdrawal detail for the current developer")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> getDeveloperWithdrawalDetail(

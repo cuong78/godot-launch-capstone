@@ -38,23 +38,10 @@ public class AuditLogServiceImpl implements AuditLogService {
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
-    private void writeDebugLog(String message) {
-        try {
-            java.nio.file.Path path = java.nio.file.Paths.get("audit-debug.log");
-            String logLine = java.time.LocalDateTime.now() + " : " + message + "\n";
-            java.nio.file.Files.writeString(path, logLine, 
-                    java.nio.file.StandardOpenOption.CREATE, 
-                    java.nio.file.StandardOpenOption.APPEND);
-        } catch (Exception e) {
-            // ignore
-        }
-    }
-
     @Override
-    public void publish(UUID actorId, ActorRole actorRole, AuditAction action, AuditTarget targetType, 
+    public void publish(UUID actorId, ActorRole actorRole, AuditAction action, AuditTarget targetType,
                         UUID targetId, Object oldValue, Object newValue, String note, String ipAddress) {
-        
-        writeDebugLog("publish called: action=" + action + ", target=" + targetType + ", targetId=" + targetId);
+
         String oldValStr = serializeToJson(oldValue);
         String newValStr = serializeToJson(newValue);
 
@@ -84,7 +71,6 @@ public class AuditLogServiceImpl implements AuditLogService {
             currentEmail = (String) authentication.getPrincipal();
         }
 
-        writeDebugLog("publishAuto called: action=" + action + ", target=" + targetType + ", targetId=" + targetId + ", actorEmail=" + currentEmail);
         String ipAddress = getClientIp();
         String oldValStr = serializeToJson(oldValue);
         String newValStr = serializeToJson(newValue);
@@ -110,7 +96,6 @@ public class AuditLogServiceImpl implements AuditLogService {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleAuditLogEvent(AuditLogEvent event) {
-        writeDebugLog("handleAuditLogEvent started for action=" + event.getAction());
         try {
             AuditLog logEntity = new AuditLog();
             logEntity.setId(UUID.randomUUID());
@@ -163,12 +148,8 @@ public class AuditLogServiceImpl implements AuditLogService {
             logEntity.setCreatedAt(event.getCreatedAt() != null ? event.getCreatedAt() : Instant.now());
             
             auditLogRepository.save(logEntity);
-            writeDebugLog("handleAuditLogEvent success: saved audit log id=" + logEntity.getId());
             log.debug("Successfully saved audit log asynchronously for action {}", event.getAction());
         } catch (Exception e) {
-            java.io.StringWriter sw = new java.io.StringWriter();
-            e.printStackTrace(new java.io.PrintWriter(sw));
-            writeDebugLog("handleAuditLogEvent ERROR: " + e.getMessage() + "\n" + sw.toString());
             log.error("Failed to save audit log asynchronously for action {}", event.getAction(), e);
         }
     }

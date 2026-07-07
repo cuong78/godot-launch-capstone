@@ -63,7 +63,7 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
         if (linkPending) {
           localStorage.removeItem("github_link_pending");
           localStorage.setItem("github_link_success", "true");
-          setCurrentScreen('profile');
+          setCurrentScreen('developer-onboarding');
         } else {
           setCurrentScreen('dashboard');
         }

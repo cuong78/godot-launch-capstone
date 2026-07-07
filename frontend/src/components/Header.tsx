@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   ShieldCheck,
   MessageCircle,
+  ReceiptText,
 } from "lucide-react";
 import { Button } from "./Button";
 import { Asset, User, ScreenType } from "../types";
@@ -256,6 +257,16 @@ export function Header({
       isActive: currentScreen === "wallet",
       glowClassName: "from-emerald-500/20 via-emerald-500/8 to-transparent",
       onClick: () => handleNavigate("wallet"),
+    },
+    {
+      id: "payment",
+      title: t("payment:center.title", "Quản lý đơn hàng"),
+      description: t("payment:center.subtitle", "Lịch sử mua hàng & tải tài nguyên"),
+      icon: <ReceiptText size={18} />,
+      iconClassName: "border-amber-500/20 bg-amber-500/12 text-amber-500",
+      isActive: currentScreen === "payment",
+      glowClassName: "from-amber-500/20 via-amber-500/8 to-transparent",
+      onClick: () => handleNavigate("payment"),
     },
     ...(currentUser?.role !== "customer"
       ? [
@@ -685,6 +696,31 @@ export function Header({
                         >
                           {t("my_profile")}
                         </button>
+                        <button
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            setCurrentScreen("payment");
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-slate-700 transition-colors hover:text-amber-500 dark:text-slate-200 dark:hover:text-amber-400"
+                        >
+                          {t("payment:center.title", "Quản lý đơn hàng")}
+                        </button>
+                        {currentUser.role === 'customer' && (
+                          <>
+                            <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+                            <button
+                              onClick={() => {
+                                setIsProfileOpen(false);
+                                setCurrentScreen("developer-onboarding");
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-amber-500 transition-colors hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+                            >
+                              ✨ {t("become_developer")}
+                            </button>
+                          </>
+                        )}
                         <div className="border-t border-slate-100 dark:border-slate-805 my-1" />
                         <button
                           onClick={() => {

@@ -23,6 +23,12 @@ public class PaymentResponse {
     private String assetTitle;
     // 'asset' | 'game_source' — phân loại sản phẩm trong đơn (Phase 2 wire game-source)
     private String assetType;
+
+    // Frontend compatibility fields
+    private UUID marketplaceItemId;
+    private String marketplaceItemTitle;
+    private String marketplaceItemType;
+
     private UUID buyerId;
     private String buyerEmail;
     private String buyerFullName;

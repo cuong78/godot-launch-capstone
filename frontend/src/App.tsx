@@ -37,6 +37,7 @@ import { ChatScreen } from './page/ChatScreen';
 import { CheckoutPage } from './page/CheckoutPage';
 import { PaymentDetailPage } from './page/PaymentDetailPage';
 import { PaymentResultPage } from './page/PaymentResultPage';
+import { DeveloperOnboardingPage } from './page/DeveloperOnboardingPage';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
@@ -45,6 +46,7 @@ import { gameApi } from './api/gameApi';
 import { communityApi } from './api/communityApi';
 import { marketplaceApi } from './api/marketplaceApi';
 import { paymentApi } from './api/paymentApi';
+import { orderApi } from './api/orderApi';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
@@ -443,6 +445,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
     return { screen: 'profile' };
   }
   if (primary === 'admin') return { screen: 'admin' };
+  if (primary === 'developer-onboarding') return { screen: 'developer-onboarding' };
   if (primary === 'auth' && (segments[1] === 'callback' || (segments[1] === 'github' && segments[2] === 'callback'))) {
     return { screen: 'auth-callback' };
   }
@@ -554,11 +557,25 @@ export default function App() {
   const [selectedPaymentOrderId, setSelectedPaymentOrderId] = useState<string | null>(() => readStoredSelectedPaymentOrder());
   const [isPlacingOrder, setIsPlacingOrder] = useState<boolean>(false);
   const [isRefreshingPayments, setIsRefreshingPayments] = useState<boolean>(false);
-  const [financeStats, setFinanceStats] = useState({
-    totalRevenue: 12500000,
-    activePlayers: 485,
-    listedCount: 8
-  });
+
+  // Nạp ví (top-up) và mua game/asset đều tạo Payment, nhưng chỉ payment gắn với
+  // 1 sản phẩm (marketplaceItemId) mới thực sự là "đơn hàng" — loại nạp ví ra khỏi
+  // các màn hình quản lý đơn hàng để không đếm nhầm số đơn đã mua.
+  const purchaseOrderPayments = useMemo(
+    () => paymentOrders.filter((payment) => Boolean(payment.marketplaceItemId)),
+    [paymentOrders]
+  );
+
+  // Danh sách id sản phẩm (asset/game) đã mua thành công — dùng để chặn mua lại
+  // ngay từ UI (ẩn/khóa nút Mua) thay vì để user đi hết vào trang checkout mới biết.
+  const ownedProductIds = useMemo(
+    () => new Set(
+      purchaseOrderPayments
+        .filter((payment) => payment.paymentStatus === 'PAID')
+        .map((payment) => payment.marketplaceItemId)
+    ),
+    [purchaseOrderPayments]
+  );
 
   useEffect(() => {
     sessionStorage.setItem(PAYMENT_SESSION_STORAGE_KEY, JSON.stringify(paymentOrders));
@@ -800,6 +817,10 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    if (ownedProductIds.has(asset.id)) {
+      showToast("Bạn đã sở hữu sản phẩm này rồi, không thể mua lại.", "warning");
+      return;
+    }
     setCart(prev => {
       if (prev.some(item => item.id === asset.id)) {
         return prev;
@@ -825,6 +846,11 @@ export default function App() {
 
     if (!asset.itemType) {
       showToast("Chỉ marketplace item mới hỗ trợ luồng thanh toán mới ở thời điểm hiện tại.", "warning");
+      return;
+    }
+
+    if (ownedProductIds.has(asset.id)) {
+      showToast("Bạn đã sở hữu sản phẩm này rồi, không thể mua lại.", "warning");
       return;
     }
 
@@ -930,26 +956,40 @@ export default function App() {
     setIsPlacingOrder(true);
     try {
       const checkoutItem = cart[0];
-      const response = await paymentApi.createPayment({ marketplaceItemId: checkoutItem.id });
+      const orderType = checkoutItem.itemType === 'source_code' ? 'source_code_purchase' : 'asset_purchase';
+
+      const response = await orderApi.createOrder({
+        targetId: checkoutItem.id,
+        orderType: orderType
+      });
+
       if (!response.success || !response.data) {
-        throw new Error(response.message || `Không thể tạo đơn thanh toán cho ${checkoutItem.title}.`);
+        throw new Error(response.message || `Không thể tạo đơn hàng thanh toán cho ${checkoutItem.title}.`);
       }
 
-      const createdPayment = response.data;
-      syncTrackedPayment(createdPayment);
+      showToast("Mua thành công!", "success");
       setCart([]);
       setIsCartOpen(false);
 
-      if (createdPayment.paymentStatus === 'PAID' || !createdPayment.checkoutUrl) {
-        setCurrentScreen('payment');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        showToast("Đơn hàng đã sẵn sàng. Bạn có thể theo dõi trạng thái và tải file trong Payment Center.", "success");
-        return;
+      // Tải lại lịch sử mua hàng để cập nhật trạng thái
+      const historyResponse = await paymentApi.getMyPayments();
+      if (historyResponse.success && historyResponse.data) {
+        replaceTrackedPayments(historyResponse.data);
       }
 
-      window.location.href = createdPayment.checkoutUrl;
+      setCurrentScreen('payment');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      showToast(err.response?.data?.message || err.message || 'Không thể tạo PayOS checkout session.', 'error');
+      const errorCode = err.response?.data?.code;
+      const shortfall = err.response?.data?.data?.shortfall;
+
+      if (errorCode === 'INSUFFICIENT_BALANCE' && typeof shortfall === 'number') {
+        showToast(`Ví không đủ tiền — bạn cần nạp thêm ${shortfall.toLocaleString('vi-VN')}đ để mua sản phẩm này.`, 'warning');
+      } else if (errorCode === 'DATA_CONFLICT') {
+        showToast('Sản phẩm này có thể vừa được mua hoặc có yêu cầu trùng lặp. Vui lòng tải lại trang và kiểm tra lại.', 'warning');
+      } else {
+        showToast(err.response?.data?.message || err.message || 'Không thể thực hiện mua bằng ví.', 'error');
+      }
     } finally {
       setIsPlacingOrder(false);
     }
@@ -1130,6 +1170,7 @@ export default function App() {
             handleCategoryClick={handleCategoryClick}
             handleViewAssetDetails={handleViewAssetDetails}
             handleAddToCart={handleAddToCart}
+            ownedProductIds={ownedProductIds}
           />
         )}
 
@@ -1149,6 +1190,7 @@ export default function App() {
             handleViewAssetDetails={handleViewAssetDetails}
             handleAddToCart={handleAddToCart}
             setSelectedCategories={setSelectedCategories}
+            ownedProductIds={ownedProductIds}
           />
         )}
 
@@ -1163,6 +1205,10 @@ export default function App() {
               }}
               onPlaceOrder={handlePlaceOrder}
               onRemoveItem={(id) => handleRemoveFromCart(id)}
+              onGoToWallet={() => {
+                setCurrentScreen('wallet');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
           </ProtectedRoute>
         )}
@@ -1170,7 +1216,7 @@ export default function App() {
         {currentScreen === 'payment' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <PaymentDetailPage
-              payments={paymentOrders}
+              payments={purchaseOrderPayments}
               selectedOrderId={selectedPaymentOrderId}
               setSelectedOrderId={setSelectedPaymentOrderId}
               isRefreshing={isRefreshingPayments}
@@ -1233,6 +1279,7 @@ export default function App() {
             handleViewAssetDetails={handleViewAssetDetails}
             currentUser={currentUser}
             showToast={showToast}
+            ownedProductIds={ownedProductIds}
           />
         )}
 
@@ -1252,10 +1299,8 @@ export default function App() {
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <DashboardPage
               currentUser={currentUser}
-              financeStats={financeStats}
-              assets={assets}
               projectRepositories={projectRepositories}
-              purchasedPayments={paymentOrders}
+              purchasedPayments={purchaseOrderPayments}
               selectedPaymentOrderId={selectedPaymentOrderId}
               setSelectedPaymentOrderId={(orderId) => setSelectedPaymentOrderId(orderId)}
               isRefreshingPayments={isRefreshingPayments}
@@ -1373,7 +1418,13 @@ export default function App() {
 
         {currentScreen === 'profile' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
-            <ProfilePage />
+            <ProfilePage setCurrentScreen={setCurrentScreen} />
+          </ProtectedRoute>
+        )}
+
+        {currentScreen === 'developer-onboarding' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <DeveloperOnboardingPage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
 

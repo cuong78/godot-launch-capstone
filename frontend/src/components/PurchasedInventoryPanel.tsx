@@ -42,7 +42,7 @@ export const PurchasedInventoryPanel: React.FC<PurchasedInventoryPanelProps> = (
   const paidPayments = React.useMemo(
     () =>
       payments
-        .filter((payment) => payment.paymentStatus === 'PAID')
+        .filter((payment) => payment.paymentStatus === 'PAID' && payment.orderId)
         .sort((left, right) => {
           const leftTime = new Date(left.paidAt || left.updatedAt || left.createdAt || 0).getTime();
           const rightTime = new Date(right.paidAt || right.updatedAt || right.createdAt || 0).getTime();
@@ -162,8 +162,6 @@ export const PurchasedInventoryPanel: React.FC<PurchasedInventoryPanelProps> = (
                       {isSourceCode && downloadUrl && (
                         <a
                           href={downloadUrl}
-                          target="_blank"
-                          rel="noreferrer"
                           className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
                         >
                           <Download size={13} /> Download

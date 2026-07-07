@@ -6,9 +6,12 @@ import com.godotlaunch.backend.dto.request.KycOcrRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.KycOcrResponse;
 import com.godotlaunch.backend.dto.response.KycStatusResponse;
+import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.repository.RoleRepository;
 import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -42,22 +45,25 @@ import com.godotlaunch.backend.util.ByteArrayMultipartFile;
 public class KycController {
 
     private final UserRepository userRepository;
-    private final SeaweedFsService seaweedFsService;
+    private final RoleRepository roleRepository;
+    private final AuthService authService;
+    private final StorageRouter storageRouter;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${app.face-service.url:http://localhost:8001}")
     private String faceServiceUrl;
 
     @GetMapping("/status")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Lấy trạng thái KYC của developer hiện tại")
     public ResponseEntity<ApiResponse<KycStatusResponse>> getKycStatus(Principal principal) {
         User user = findUser(principal);
+        requireGithubLinkedOrDeveloper(user);
         return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "KYC status retrieved"));
     }
 
     @PostMapping("/ocr")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "OCR giấy tờ tùy thân",
         description = "Gửi ảnh CCCD/Passport sang Python service để trích xuất thông tin. Chưa lưu DB — cần gọi /confirm sau."
@@ -66,7 +72,7 @@ public class KycController {
             @Valid @RequestBody KycOcrRequest request,
             Principal principal) {
 
-        findUser(principal); // xác nhận user tồn tại
+        requireGithubLinkedOrDeveloper(findUser(principal));
 
         try {
             String url = faceServiceUrl + "/ocr/document";
@@ -106,7 +112,7 @@ public class KycController {
     }
 
     @PostMapping("/confirm")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Xác nhận và lưu thông tin KYC",
         description = "Developer xem lại thông tin OCR, có thể chỉnh sửa, rồi bấm xác nhận. Lưu vào DB và set kyc_verified = true. Chỉ thực hiện được 1 lần."
@@ -116,6 +122,7 @@ public class KycController {
             Principal principal) {
 
         User user = findUser(principal);
+        requireGithubLinkedOrDeveloper(user);
 
         if (user.isKycVerified()) {
             return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "KYC đã được xác thực trước đó."));
@@ -154,9 +161,22 @@ public class KycController {
 
         user.setKycVerified(true);
         user.setKycVerifiedAt(Instant.now());
+
+        // Đủ cả 3 điều kiện (GitHub linked + Face verified + KYC verified) -> nâng role.
+        boolean justUpgraded = false;
+        if (user.getGithubId() != null && user.isFaceVerified()
+                && !"developer".equalsIgnoreCase(user.getRole().getName())
+                && !"admin".equalsIgnoreCase(user.getRole().getName())) {
+            Role developerRole = roleRepository.findByName("developer")
+                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+            user.setRole(developerRole);
+            justUpgraded = true;
+        }
+
         userRepository.save(user);
 
-        return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "Xác thực KYC thành công."));
+        String newToken = justUpgraded ? authService.refreshSession(user) : null;
+        return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user, newToken), "Xác thực KYC thành công."));
     }
 
     private String cleanBase64(String base64) {
@@ -167,11 +187,17 @@ public class KycController {
     }
 
     private User findUser(Principal principal) {
-        return userRepository.findByEmail(principal.getName())
+        // Fetch kèm role trong cùng query — tránh LazyInitializationException khi đọc
+        // user.getRole() sau đó (open-in-view=false nên session đóng ngay sau khi trả về).
+        return userRepository.findWithRoleByEmail(principal.getName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
     private KycStatusResponse toStatusResponse(User user) {
+        return toStatusResponse(user, null);
+    }
+
+    private KycStatusResponse toStatusResponse(User user, String token) {
         return KycStatusResponse.builder()
                 .kycVerified(user.isKycVerified())
                 .documentType(user.getKycDocumentType())
@@ -182,6 +208,7 @@ public class KycController {
                 .kycVerifiedAt(user.getKycVerifiedAt())
                 .kycFrontImageUrl(user.getKycFrontImageUrl())
                 .kycBackImageUrl(user.getKycBackImageUrl())
+                .token(token)
                 .build();
     }
 
@@ -204,5 +231,16 @@ public class KycController {
             }
         } catch (Exception ignored) {}
         return "Không thể đọc thông tin từ ảnh. Vui lòng chụp rõ hơn và thử lại.";
+    }
+
+    // Điều kiện gọi API: đã link GitHub (đang trong luồng become-developer),
+    // hoặc đã là developer/admin từ trước (không đòi hỏi role=developer sẵn có nữa).
+    private void requireGithubLinkedOrDeveloper(User user) {
+        boolean eligible = user.getGithubId() != null
+                || "developer".equalsIgnoreCase(user.getRole().getName())
+                || "admin".equalsIgnoreCase(user.getRole().getName());
+        if (!eligible) {
+            throw new AppException(ErrorCode.GITHUB_NOT_LINKED);
+        }
     }
 }

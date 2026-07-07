@@ -11,6 +11,7 @@ interface HomePageProps {
   handleCategoryClick: (category: string) => void;
   handleViewAssetDetails: (asset: Asset) => void;
   handleAddToCart: (asset: Asset) => void;
+  ownedProductIds: Set<string>;
 }
 
 const resolveLocale = (language: string) => {
@@ -30,7 +31,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   setCurrentScreen,
   handleCategoryClick,
   handleViewAssetDetails,
-  handleAddToCart
+  handleAddToCart,
+  ownedProductIds
 }) => {
   const { t, i18n } = useTranslation(['home']);
   const locale = resolveLocale(i18n.resolvedLanguage || i18n.language || 'vi');
@@ -229,16 +231,22 @@ export const HomePage: React.FC<HomePageProps> = ({
                     <span className="font-bold text-slate-700 dark:text-slate-300">{asset.rating.toFixed(1)}</span>
                     <span className="text-[10px] text-slate-400">({asset.reviewedCount})</span>
                   </div>
-                  <Button
-                    variant="secondary-flat"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(asset);
-                    }}
-                  >
-                    {t('home:common.quickBuy')}
-                  </Button>
+                  {ownedProductIds.has(asset.id) ? (
+                    <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-500">
+                      Đã sở hữu
+                    </span>
+                  ) : (
+                    <Button
+                      variant="secondary-flat"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(asset);
+                      }}
+                    >
+                      {t('home:common.quickBuy')}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@ package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.CreatePaymentRequest;
+import com.godotlaunch.backend.dto.request.CreateTopUpRequest;
 import com.godotlaunch.backend.dto.response.PaymentResponse;
 import com.godotlaunch.backend.dto.response.PaymentStatusSummaryResponse;
 import com.godotlaunch.backend.entity.Asset;
@@ -27,8 +28,11 @@ import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.PaymentGateway;
+import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.PaymentService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
+import com.godotlaunch.backend.entity.Game;
+import com.godotlaunch.backend.repository.GameRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,6 +69,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final SourceSnapshotRepository sourceSnapshotRepository;
     private final PaymentGateway paymentGateway;
     private final PlatformSettingsService platformSettingsService;
+    private final EmailService emailService;
+    private final GameRepository gameRepository;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
@@ -149,6 +155,45 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPayosTransactionId(null);
         payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
         payment.setPaidAt(null);
+
+        return mapToResponse(paymentRepository.save(payment));
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponse createTopUpPayment(CreateTopUpRequest request, String buyerEmail) {
+        User buyer = getUserByEmail(buyerEmail);
+        validatePurchaserRole(buyer);
+
+        Wallet buyerWallet = walletRepository.findByUserId(buyer.getId())
+                .orElseGet(() -> createWallet(buyer));
+
+        Payment payment = new Payment();
+        payment.setWallet(buyerWallet);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
+        payment.setAmount(request.getAmount());
+        payment.setCurrency(DEFAULT_CURRENCY);
+        payment = paymentRepository.save(payment);
+        payment.setPaymentReference(buildTopUpReference(payment.getId()));
+
+        PaymentGatewayCreateResponse gatewayResponse = paymentGateway.createPayment(
+                PaymentGatewayCreateRequest.builder()
+                        .orderCode(generatePayOSOrderCode())
+                        .amount(toPayOSAmount(payment.getAmount()))
+                        .buyerName(resolveBuyerName(buyer))
+                        .buyerEmail(buyer.getEmail())
+                        .itemName("Wallet top-up")
+                        .description(buildPaymentReference(payment.getId()))
+                        .returnUrl(buildFrontendUrl("/payment/success?paymentId=" + payment.getId()))
+                        .cancelUrl(buildFrontendUrl("/payment/cancelled?paymentId=" + payment.getId()))
+                        .expiredAt(Instant.now().plusSeconds(PAYMENT_LINK_EXPIRY_MINUTES * 60L).getEpochSecond())
+                        .build()
+        );
+
+        payment.setPaymentStatus(resolveCreatedPaymentStatus(gatewayResponse.getStatus()));
+        payment.setPayosOrderCode(gatewayResponse.getOrderCode());
+        payment.setPayosPaymentLinkId(gatewayResponse.getPaymentLinkId());
+        payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
 
         return mapToResponse(paymentRepository.save(payment));
     }
@@ -295,7 +340,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional(readOnly = true)
     public List<PaymentResponse> getAdminPayments() {
         return paymentRepository.findTop50ByOrderByCreatedAtDesc().stream()
-                .map(this::mapToResponse)
+                .map(this::safeMapToResponse)
                 .collect(Collectors.toList());
     }
 
@@ -414,14 +459,31 @@ public class PaymentServiceImpl implements PaymentService {
 
         PaymentGatewayStatusResponse gatewayStatus = paymentGateway.getPaymentStatus(payment.getPayosOrderCode());
 
-        if (gatewayStatus.getStatus() == PaymentStatus.PAID) {
-            payment.setPaymentStatus(PaymentStatus.PROCESSING);
-        } else {
+        if (gatewayStatus.getStatus() != PaymentStatus.PAID) {
             applyGatewayStatus(payment, gatewayStatus);
+            payment.setPayosPaymentLinkId(firstNonBlank(gatewayStatus.getPaymentLinkId(), payment.getPayosPaymentLinkId()));
+            return paymentRepository.save(payment);
         }
 
-        payment.setPayosPaymentLinkId(firstNonBlank(gatewayStatus.getPaymentLinkId(), payment.getPayosPaymentLinkId()));
-        return paymentRepository.save(payment);
+        // PayOS confirms PAID here — finalize immediately instead of waiting for the webhook,
+        // since the webhook may never arrive in local/dev setups without a public tunnel.
+        Payment lockedPayment = paymentRepository.findByIdForUpdate(payment.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
+        if (lockedPayment.getPaymentStatus() == PaymentStatus.PAID) {
+            return lockedPayment;
+        }
+
+        lockedPayment.setPayosPaymentLinkId(firstNonBlank(gatewayStatus.getPaymentLinkId(), lockedPayment.getPayosPaymentLinkId()));
+        lockedPayment.setPaymentReference(firstNonBlank(lockedPayment.getPaymentReference(), buildPaymentReference(lockedPayment.getId())));
+
+        Payment completedPayment = completePaidPayment(
+                lockedPayment,
+                resolvePaidAt(gatewayStatus.getPaidAt()),
+                gatewayStatus.getTransactionReference()
+        );
+
+        log.info("Payment {} finalized via confirm/sync fallback (webhook not required)", completedPayment.getId());
+        return completedPayment;
     }
 
     private void applyGatewayStatus(Payment payment, PaymentGatewayStatusResponse gatewayStatus) {
@@ -480,7 +542,6 @@ public class PaymentServiceImpl implements PaymentService {
                 transaction.setType(resolveTransactionType(item));
                 transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
                 transaction.setOrder(order);
-                transaction.setPayment(payment);
                 transactionRepository.save(transaction);
 
                 sellerWallet.setBalance(sellerWallet.getBalance().add(sellerRevenue));
@@ -509,6 +570,8 @@ public class PaymentServiceImpl implements PaymentService {
                 transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference()));
                 transaction.setPayment(payment);
                 transactionRepository.save(transaction);
+
+                sendTopUpConfirmationEmail(buyerWallet.getUser(), payment);
             }
         }
 
@@ -556,6 +619,24 @@ public class PaymentServiceImpl implements PaymentService {
 
     private String buildFreePaymentReference(UUID paymentId) {
         return "FREE-" + paymentId.toString().substring(0, 8).toUpperCase(Locale.ROOT);
+    }
+
+    private String buildTopUpReference(UUID paymentId) {
+        return "TOPUP:" + paymentId;
+    }
+
+    private void sendTopUpConfirmationEmail(User buyer, Payment payment) {
+        try {
+            String amountText = payment.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString();
+            emailService.sendNotificationEmail(
+                    buyer.getEmail(),
+                    "Wallet top-up successful",
+                    "Your wallet has been topped up with " + amountText + " " + DEFAULT_CURRENCY
+                            + ". Transaction reference: " + firstNonBlank(payment.getPaymentReference(), payment.getId().toString()) + "."
+            );
+        } catch (Exception ex) {
+            log.warn("Failed to send top-up confirmation email to {}: {}", buyer.getEmail(), ex.getMessage());
+        }
     }
 
     private String buildFrontendUrl(String path) {
@@ -627,10 +708,12 @@ public class PaymentServiceImpl implements PaymentService {
     private PaymentResponse mapToResponse(Payment payment) {
         UUID assetId = null;
         String assetTitle = null;
+        String assetType = null;
         UUID orderId = null;
-        UUID buyerId = payment.getWallet().getUser().getId();
-        String buyerEmail = payment.getWallet().getUser().getEmail();
-        String buyerFullName = payment.getWallet().getUser().getFullName();
+        User buyer = resolveBuyerFromPayment(payment);
+        UUID buyerId = buyer != null ? buyer.getId() : null;
+        String buyerEmail = buyer != null ? buyer.getEmail() : null;
+        String buyerFullName = buyer != null ? buyer.getFullName() : null;
         UUID sellerId = null;
         String sellerEmail = null;
         String sellerFullName = null;
@@ -645,6 +728,22 @@ public class PaymentServiceImpl implements PaymentService {
                     sellerId = asset.getSeller().getId();
                     sellerEmail = asset.getSeller().getEmail();
                     sellerFullName = asset.getSeller().getFullName();
+                    assetType = "asset";
+                }
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        } else if (ref != null && ref.startsWith("BUY_GAME:")) {
+            try {
+                UUID gameId = UUID.fromString(ref.substring("BUY_GAME:".length()));
+                Game game = gameRepository.findById(gameId).orElse(null);
+                if (game != null) {
+                    assetId = game.getId();
+                    assetTitle = game.getTitle();
+                    sellerId = game.getCreator().getId();
+                    sellerEmail = game.getCreator().getEmail();
+                    sellerFullName = game.getCreator().getFullName();
+                    assetType = "game_source";
                 }
             } catch (Exception e) {
                 // Ignore parsing errors
@@ -661,6 +760,14 @@ public class PaymentServiceImpl implements PaymentService {
                     sellerId = txn.getAsset().getSeller().getId();
                     sellerEmail = txn.getAsset().getSeller().getEmail();
                     sellerFullName = txn.getAsset().getSeller().getFullName();
+                    assetType = "asset";
+                } else if (txn.getGame() != null) {
+                    assetId = txn.getGame().getId();
+                    assetTitle = txn.getGame().getTitle();
+                    sellerId = txn.getGame().getCreator().getId();
+                    sellerEmail = txn.getGame().getCreator().getEmail();
+                    sellerFullName = txn.getGame().getCreator().getFullName();
+                    assetType = "game_source";
                 }
             }
         }
@@ -669,11 +776,14 @@ public class PaymentServiceImpl implements PaymentService {
                 .id(payment.getId())
                 .orderId(orderId)
                 .assetId(assetId)
-                .assetTitle(assetTitle)
-                .assetType("asset")
+                .assetTitle(firstNonBlank(assetTitle, "Unknown item"))
+                .assetType(assetType)
+                .marketplaceItemId(assetId)
+                .marketplaceItemTitle(firstNonBlank(assetTitle, "Unknown item"))
+                .marketplaceItemType(assetType)
                 .buyerId(buyerId)
-                .buyerEmail(buyerEmail)
-                .buyerFullName(buyerFullName)
+                .buyerEmail(firstNonBlank(buyerEmail, "Unknown buyer"))
+                .buyerFullName(firstNonBlank(buyerFullName, buyerEmail, "Unknown buyer"))
                 .sellerId(sellerId)
                 .sellerEmail(sellerEmail)
                 .sellerFullName(sellerFullName)
@@ -687,6 +797,60 @@ public class PaymentServiceImpl implements PaymentService {
                 .paymentReference(payment.getPaymentReference())
                 .paidAt(payment.getPaidAt())
                 .downloadUrl(orderId != null && assetId != null ? "/api/v1/downloads/" + orderId : null)
+                .createdAt(payment.getCreatedAt())
+                .updatedAt(payment.getUpdatedAt())
+                .build();
+    }
+
+    private PaymentResponse safeMapToResponse(Payment payment) {
+        try {
+            return mapToResponse(payment);
+        } catch (Exception ex) {
+            log.warn("Failed to map payment {} for admin monitoring: {}", payment.getId(), ex.getMessage());
+            return buildFallbackPaymentResponse(payment);
+        }
+    }
+
+    private User resolveBuyerFromPayment(Payment payment) {
+        Wallet wallet;
+        try {
+            wallet = payment.getWallet();
+        } catch (Exception ex) {
+            log.warn("Unable to load wallet for payment {}: {}", payment.getId(), ex.getMessage());
+            return null;
+        }
+
+        if (wallet == null) {
+            log.warn("Payment {} has no linked wallet record", payment.getId());
+            return null;
+        }
+
+        try {
+            return wallet.getUser();
+        } catch (Exception ex) {
+            log.warn("Unable to load buyer for payment {}: {}", payment.getId(), ex.getMessage());
+            return null;
+        }
+    }
+
+    private PaymentResponse buildFallbackPaymentResponse(Payment payment) {
+        return PaymentResponse.builder()
+                .id(payment.getId())
+                .assetTitle("Unknown item")
+                .assetType("asset")
+                .marketplaceItemTitle("Unknown item")
+                .marketplaceItemType("asset")
+                .buyerEmail("Unknown buyer")
+                .buyerFullName("Unknown buyer")
+                .paymentStatus(payment.getPaymentStatus())
+                .amount(payment.getAmount())
+                .currency(payment.getCurrency())
+                .payosOrderCode(payment.getPayosOrderCode())
+                .payosPaymentLinkId(payment.getPayosPaymentLinkId())
+                .payosTransactionId(payment.getPayosTransactionId())
+                .checkoutUrl(payment.getCheckoutUrl())
+                .paymentReference(payment.getPaymentReference())
+                .paidAt(payment.getPaidAt())
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();

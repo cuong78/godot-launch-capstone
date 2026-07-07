@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "../Button";
-import { WithdrawalDetailResponse, WithdrawalStatus } from "../../types";
+import { PayoutBalanceResponse, WithdrawalDetailResponse, WithdrawalStatus } from "../../types";
 
 export interface WithdrawalStatusNotice {
   title: string;
@@ -19,8 +19,17 @@ export interface WithdrawalStatusNotice {
   tone: "info" | "warning" | "success";
 }
 
+export interface WithdrawalPayoutProgress {
+  phase: "processing" | "success" | "failed" | "timeout";
+  remainingMs: number;
+  totalMs: number;
+  message?: string;
+}
+
 interface AdminWithdrawalDetailModalProps {
   withdrawal: WithdrawalDetailResponse | null;
+  adminPayoutBalance?: PayoutBalanceResponse | null;
+  isLoadingAdminPayoutBalance?: boolean;
   isBusy: boolean;
   isOpen: boolean;
   error?: string | null;
@@ -30,9 +39,9 @@ interface AdminWithdrawalDetailModalProps {
   onRejectRemarkChange: (value: string) => void;
   onClose: () => void;
   onApprove: () => void;
-  onSyncStatus: () => void;
   onReject: () => void;
   statusNotice?: WithdrawalStatusNotice | null;
+  payoutProgress?: WithdrawalPayoutProgress | null;
   onDismissStatusNotice: () => void;
 }
 
@@ -135,10 +144,69 @@ const getNoticeMeta = (tone: WithdrawalStatusNotice["tone"]) => {
   }
 };
 
+const formatCountdown = (valueMs: number) => {
+  const safeMs = Math.max(0, valueMs);
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+};
+
+const getPayoutProgressMeta = (progress: WithdrawalPayoutProgress) => {
+  switch (progress.phase) {
+    case "success":
+      return {
+        icon: <BadgeCheck size={28} />,
+        iconClassName: "bg-emerald-500/15 text-emerald-300",
+        badgeClassName: "border border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+        barClassName: "bg-emerald-400",
+        title: "Chuyển tiền thành công",
+        message:
+          progress.message
+          || "Tiền đã về tài khoản người dùng. Hệ thống sẽ tự động đóng Withdrawal Detail.",
+      };
+    case "failed":
+      return {
+        icon: <ShieldAlert size={28} />,
+        iconClassName: "bg-rose-500/15 text-rose-300",
+        badgeClassName: "border border-rose-500/30 bg-rose-500/10 text-rose-200",
+        barClassName: "bg-rose-400",
+        title: "Chuyển tiền thất bại",
+        message:
+          progress.message
+          || "PayOS đã phản hồi payout chưa thành công. Vui lòng kiểm tra lại giao dịch trước khi thao tác tiếp.",
+      };
+    case "timeout":
+      return {
+        icon: <AlertTriangle size={28} />,
+        iconClassName: "bg-amber-500/15 text-amber-300",
+        badgeClassName: "border border-amber-500/30 bg-amber-500/10 text-amber-100",
+        barClassName: "bg-amber-400",
+        title: "Chuyển tiền thất bại",
+        message:
+          progress.message
+          || "Đã chờ 30 giây nhưng chưa thấy PayOS xác nhận hoàn tất. Hệ thống sẽ thoát khỏi trang chi tiết để bạn kiểm tra lại queue.",
+      };
+    default:
+      return {
+        icon: <LoaderCircle size={28} className="animate-spin" />,
+        iconClassName: "bg-sky-500/15 text-sky-300",
+        badgeClassName: "border border-sky-500/30 bg-sky-500/10 text-sky-100",
+        barClassName: "bg-sky-400",
+        title: "Tiền đang được chuyển tới tài khoản của bạn",
+        message:
+          progress.message
+          || "Hệ thống đang chờ PayOS xác nhận giao dịch. Khi tiền về tài khoản người dùng, màn hình này sẽ tự động đóng.",
+      };
+  }
+};
+
 export const AdminWithdrawalDetailModal: React.FC<
   AdminWithdrawalDetailModalProps
 > = ({
   withdrawal,
+  adminPayoutBalance,
+  isLoadingAdminPayoutBalance,
   isBusy,
   isOpen,
   error,
@@ -148,9 +216,9 @@ export const AdminWithdrawalDetailModal: React.FC<
   onRejectRemarkChange,
   onClose,
   onApprove,
-  onSyncStatus,
   onReject,
   statusNotice,
+  payoutProgress,
   onDismissStatusNotice,
 }) => {
   if (!isOpen || !withdrawal) {
@@ -161,15 +229,28 @@ export const AdminWithdrawalDetailModal: React.FC<
   const canCreatePayout =
     withdrawal.status === "pending" ||
     (withdrawal.status === "approved" && !withdrawal.payosPayoutId);
-  const canSyncStatus =
-    withdrawal.status === "processing" ||
-    (withdrawal.status === "approved" && !!withdrawal.payosPayoutId);
   const canReject =
     withdrawal.status === "pending" ||
     withdrawal.status === "approved" ||
     withdrawal.status === "processing";
   const currency = withdrawal.currency || "VND";
   const noticeMeta = statusNotice ? getNoticeMeta(statusNotice.tone) : null;
+  const progressMeta = payoutProgress ? getPayoutProgressMeta(payoutProgress) : null;
+  const adminPayoutCurrency = adminPayoutBalance?.currency || "VND";
+  const adminPayoutDisplay = isLoadingAdminPayoutBalance
+    ? "Loading..."
+    : adminPayoutBalance
+      ? formatMoney(Number(adminPayoutBalance.balance), adminPayoutCurrency)
+      : "N/A";
+  const payoutProgressPercent = payoutProgress
+    ? Math.max(
+      0,
+      Math.min(
+        100,
+        ((payoutProgress.totalMs - payoutProgress.remainingMs) / payoutProgress.totalMs) * 100
+      )
+    )
+    : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
@@ -190,6 +271,12 @@ export const AdminWithdrawalDetailModal: React.FC<
               </span>
               <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                 {withdrawal.transferReference}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+                <Wallet2 size={14} className="text-amber-500" />
+                Số dư ví admin: {adminPayoutDisplay}
               </span>
             </div>
           </div>
@@ -364,17 +451,6 @@ export const AdminWithdrawalDetailModal: React.FC<
                     {formatMoney(withdrawal.amount, currency)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Processed By
-                  </p>
-                  <p className="mt-2 font-semibold text-slate-900 dark:text-white">
-                    {withdrawal.processedByFullName || "Chưa có"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {formatTimestamp(withdrawal.processedAt)}
-                  </p>
-                </div>
               </div>
             </section>
           </div>
@@ -547,16 +623,6 @@ export const AdminWithdrawalDetailModal: React.FC<
                     Create Payout Order
                   </Button>
                 )}
-                {canSyncStatus && (
-                  <Button
-                    variant="secondary-flat"
-                    size="sm"
-                    onClick={onSyncStatus}
-                    disabled={isBusy}
-                  >
-                    Sync PayOS Status
-                  </Button>
-                )}
                 {canReject && (
                   <Button
                     variant="ghost"
@@ -567,7 +633,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                     Reject Request
                   </Button>
                 )}
-                {!canCreatePayout && !canSyncStatus && !canReject && (
+                {!canCreatePayout && !canReject && (
                   <span className="text-sm text-slate-500 dark:text-slate-400">
                     Withdrawal này đã ở trạng thái cuối và không thể chỉnh sửa
                     thêm.
@@ -602,6 +668,57 @@ export const AdminWithdrawalDetailModal: React.FC<
                 >
                   Đã hiểu
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {payoutProgress && progressMeta && (
+          <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+            <div className="w-full max-w-lg rounded-[30px] border border-slate-800 bg-slate-950/95 p-6 text-white shadow-[0_30px_100px_rgba(2,6,23,0.78)]">
+              <div className="flex items-start gap-4">
+                <div
+                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${progressMeta.iconClassName}`}
+                >
+                  {progressMeta.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                    Payout transfer status
+                  </p>
+                  <h4 className="mt-2 font-display text-2xl font-bold text-white">
+                    {progressMeta.title}
+                  </h4>
+                  <p className="mt-3 text-sm leading-7 text-slate-300">
+                    {progressMeta.message}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${progressMeta.badgeClassName}`}
+                  >
+                    {payoutProgress.phase === "processing" ? "Đang xử lý" : "Đã cập nhật"}
+                  </span>
+                  <span className="font-mono text-xl font-semibold text-white">
+                    {formatCountdown(payoutProgress.remainingMs)}
+                  </span>
+                </div>
+
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className={`h-full rounded-full transition-[width] duration-700 ease-out ${progressMeta.barClassName}`}
+                    style={{ width: `${payoutProgressPercent}%` }}
+                  />
+                </div>
+
+                <p className="mt-4 text-xs leading-6 text-slate-400">
+                  {payoutProgress.phase === "processing"
+                    ? "Hệ thống đang kiểm tra lại trạng thái payout định kỳ và sẽ tự thoát khi giao dịch hoàn tất."
+                    : "Trạng thái payout đã được cập nhật. Modal này sẽ tự động đóng trong giây lát."}
+                </p>
               </div>
             </div>
           </div>
