@@ -714,7 +714,12 @@ export default function App() {
       try {
         const res = await gameApi.getAllGames('published');
         if (res.success && res.data) {
-          const mapped = res.data.map(mapGameToAsset);
+          // Game đã push lên Google Play (full_acquisition/co_publishing) không còn bán source
+          // code trên Marketplace nữa — chỉ giữ game publishingType = marketplace_listing (hoặc chưa set).
+          const marketplaceEligible = res.data.filter(
+            (g) => !g.publishingType || g.publishingType === 'marketplace_listing'
+          );
+          const mapped = marketplaceEligible.map(mapGameToAsset);
           setAssets(prev => {
             const filteredPrev = prev.filter(item => !mapped.some(m => m.id === item.id));
             return [...mapped, ...filteredPrev];
@@ -724,7 +729,7 @@ export default function App() {
         console.error("Failed to load published games from backend:", err);
       }
     };
-    if (currentScreen === 'marketplace' || currentScreen === 'explore') {
+    if (currentScreen === 'marketplace' || currentScreen === 'explore' || currentScreen === 'detail') {
       fetchPublishedGames();
     }
   }, [currentScreen]);

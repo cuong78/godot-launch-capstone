@@ -28,12 +28,13 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Input';
-import { User, GameResponse, ContractResponse, MarketplaceItemResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType, PlatformSettingsResponse, PayoutBalanceResponse } from '../types';
+import { User, GameResponse, ContractResponse, MarketplaceItemResponse, ExternalPublishResponse, AuditLogResponse, AuditLogFilterParams, AuditActionType, AuditTargetType, PlatformSettingsResponse, PayoutBalanceResponse } from '../types';
 import api from '../api/axios';
 import { userApi } from '../api/userApi';
 import { gameApi } from '../api/gameApi';
 import { contractApi } from '../api/contractApi';
 import { marketplaceApi } from '../api/marketplaceApi';
+import { storePublishApi } from '../api/storePublishApi';
 import { platformSettingsApi } from '../api/platformSettingsApi';
 import { walletApi } from '../api/walletApi';
 import { SignaturePad } from '../components/SignaturePad';
@@ -119,6 +120,56 @@ const getContractStatusLabel = (status: string) => {
     case 'pending':
     default:
       return { text: 'Chờ Developer ký', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+  }
+};
+
+// Game group: "marketplace" = bán source code trực tiếp (marketplace_listing), "store" = hợp đồng +
+// build + push Google Play (full_acquisition/co_publishing). Dùng để tách riêng 2 luồng hiển thị.
+const getGameGroup = (game: GameResponse): 'marketplace' | 'store' =>
+  (game.publishingType === 'full_acquisition' || game.publishingType === 'co_publishing') ? 'store' : 'marketplace';
+
+// Hiển thị đầy đủ mọi GameStatus (draft/pending/approved/rejected/published/awaiting_store_build),
+// thay vì chỉ gộp chung "Chờ duyệt"/"Đã duyệt" như trước — awaiting_store_build từng bị mất hẳn khỏi UI.
+const getGameStatusBadge = (game: GameResponse) => {
+  const status = game.status?.toLowerCase();
+  const isStoreGame = getGameGroup(game) === 'store';
+  switch (status) {
+    case 'draft':
+      return { text: 'Draft', colorClass: 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800' };
+    case 'pending':
+      return { text: 'Chờ duyệt', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+    case 'approved':
+      return { text: 'Đã duyệt — chờ hợp đồng', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20' };
+    case 'rejected':
+      return { text: 'Từ chối', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
+    case 'awaiting_store_build':
+      return { text: 'Chờ Upload Build', colorClass: 'bg-violet-500/10 text-violet-500 border-violet-500/20 animate-pulse' };
+    case 'published':
+      return {
+        text: isStoreGame ? 'Live trên Google Play' : 'Live trên Marketplace',
+        colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+      };
+    default:
+      return { text: game.status || 'Unknown', colorClass: 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800' };
+  }
+};
+
+// Trạng thái submit Google Play (ExternalPublish) — riêng cho nhóm "store", hiển thị bổ sung cạnh
+// GameStatus vì 1 game "published" có thể vẫn đang ở giai đoạn submitted/rejected trên Google Play.
+const getExternalPublishBadge = (status?: string) => {
+  switch (status) {
+    case 'pending':
+      return { text: 'Chờ submit Google Play', colorClass: 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800' };
+    case 'submitted':
+      return { text: 'Đang chờ Google duyệt', colorClass: 'bg-sky-500/10 text-sky-500 border-sky-500/20 animate-pulse' };
+    case 'live':
+      return { text: 'Live trên Google Play', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
+    case 'rejected':
+      return { text: 'Google Play từ chối', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
+    case 'removed':
+      return { text: 'Đã gỡ khỏi Google Play', colorClass: 'bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800' };
+    default:
+      return null;
   }
 };
 
@@ -225,7 +276,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           return status === 'pending';
         }
         if (moderationStatusFilter === 'approved_published') {
-          return status === 'approved' || status === 'published';
+          // awaiting_store_build từng bị loại khỏi mọi filter (trừ "all") — game vẫn cần admin
+          // upload build nhưng biến mất khỏi danh sách mặc định. Gộp chung nhóm này vào đây.
+          return status === 'approved' || status === 'published' || status === 'awaiting_store_build';
         }
         if (moderationStatusFilter === 'rejected') {
           return status === 'rejected';
@@ -233,11 +286,55 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         return false;
       })
       .sort((a, b) => {
+        // Sắp marketplace_listing trước, store-push (full_acquisition/co_publishing) sau — để phần
+        // render nhóm 2 bảng riêng (xem divider row trong bảng) không bị xen kẽ lộn xộn.
+        const groupA = getGameGroup(a);
+        const groupB = getGameGroup(b);
+        if (groupA !== groupB) {
+          return groupA === 'marketplace' ? -1 : 1;
+        }
         const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return bTime - aTime;
       });
   }, [allGames, moderationStatusFilter]);
+
+  // Tách riêng 2 nhóm hiển thị: bán source code trên Marketplace vs hợp đồng + push Google Play
+  const marketplaceListingGames = useMemo(
+    () => pendingGames.filter((game) => getGameGroup(game) === 'marketplace'),
+    [pendingGames]
+  );
+  const storePushGames = useMemo(
+    () => pendingGames.filter((game) => getGameGroup(game) === 'store'),
+    [pendingGames]
+  );
+
+  // Trạng thái submit Google Play cho từng game "store" — fetch riêng vì GameStatus không đủ chi tiết
+  // (1 game "published" có thể vẫn đang submitted/rejected trên Google Play, xem getExternalPublishBadge).
+  const [storePublishStatuses, setStorePublishStatuses] = useState<Record<string, ExternalPublishResponse | null>>({});
+
+  useEffect(() => {
+    if (storePushGames.length === 0) return;
+    let isCancelled = false;
+    Promise.all(
+      storePushGames.map(async (game) => {
+        try {
+          const res = await storePublishApi.getStatus(game.id);
+          return [game.id, res.success ? (res.data || null) : null] as const;
+        } catch {
+          return [game.id, null] as const;
+        }
+      })
+    ).then((entries) => {
+      if (isCancelled) return;
+      setStorePublishStatuses((prev) => {
+        const next = { ...prev };
+        entries.forEach(([id, data]) => { next[id] = data; });
+        return next;
+      });
+    });
+    return () => { isCancelled = true; };
+  }, [storePushGames]);
 
   const pendingMarketplaceItems = useMemo(() => {
     return allMarketplaceItems
@@ -1015,8 +1112,30 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
                         {pendingGames.length > 0 ? (
-                          pendingGames.map(game => (
+                          pendingGames.map((game, index) => (
                             <React.Fragment key={game.id}>
+                              {(index === 0 || getGameGroup(pendingGames[index - 1]) !== getGameGroup(game)) && (
+                                <tr>
+                                  <td
+                                    colSpan={7}
+                                    className={`p-2.5 border-y ${
+                                      getGameGroup(game) === 'marketplace'
+                                        ? 'bg-sky-500/5 border-sky-500/10'
+                                        : 'bg-violet-500/5 border-violet-500/10'
+                                    }`}
+                                  >
+                                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${
+                                      getGameGroup(game) === 'marketplace' ? 'text-sky-500' : 'text-violet-500'
+                                    }`}>
+                                      {getGameGroup(game) === 'marketplace' ? (
+                                        <><ShoppingBag size={12} /> Marketplace Listing — Bán Source Code ({marketplaceListingGames.length})</>
+                                      ) : (
+                                        <><Play size={12} /> Push to Store — Google Play ({storePushGames.length})</>
+                                      )}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )}
                               <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? 'bg-slate-50/50 dark:bg-slate-950/20' : ''}`}>
                                 <td className="p-3 w-10 text-center">
                                   <button
@@ -1033,13 +1152,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     <span className="text-[9px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-400 font-semibold border border-slate-200 dark:border-slate-800">
                                       v{game.version || "1.0.0"}
                                     </span>
-                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
-                                      game.status?.toLowerCase() === 'pending'
-                                        ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 animate-pulse'
-                                        : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                    }`}>
-                                      {game.status?.toLowerCase() === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border ${getGameStatusBadge(game).colorClass}`}>
+                                      {getGameStatusBadge(game).text}
                                     </span>
+                                    {getGameGroup(game) === 'store' && getExternalPublishBadge(storePublishStatuses[game.id]?.status) && (
+                                      <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border ${getExternalPublishBadge(storePublishStatuses[game.id]?.status)!.colorClass}`}>
+                                        {getExternalPublishBadge(storePublishStatuses[game.id]?.status)!.text}
+                                      </span>
+                                    )}
                                     <button
                                       onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                       className="text-slate-400 hover:text-amber-500 transition-colors"

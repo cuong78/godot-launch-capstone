@@ -19,7 +19,10 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
   const [publish, setPublish] = useState<ExternalPublishResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [versionNumber, setVersionNumber] = useState('');
+  // Version number không cho admin tự gõ — lấy đúng version game đã có (mặc định 1.0.0 lúc
+  // developer submit game lần đầu, xem UploadPage.tsx). Khi nào có tính năng cho developer tự
+  // cập nhật version, chỗ này sẽ đổi sang lấy version mới nhất developer đã cập nhật.
+  const versionNumber = publish?.versionNumber || '1.0.0';
   const [changelog, setChangelog] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -50,21 +53,20 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
   }, [gameId]);
 
   const handleUpload = async () => {
-    if (!file || !versionNumber.trim() || !shortDescription.trim() || !featureGraphic) {
-      alert('Vui lòng chọn file build, nhập version number, short description và chọn feature graphic.');
+    if (!file || !shortDescription.trim() || !featureGraphic) {
+      alert('Vui lòng chọn file build, nhập short description và chọn feature graphic.');
       return;
     }
     setUploading(true);
     setError(null);
     try {
       const res = await storePublishApi.uploadBuild(
-        gameId, file, versionNumber.trim(), shortDescription.trim(), featureGraphic, changelog.trim() || undefined
+        gameId, file, versionNumber, shortDescription.trim(), featureGraphic, changelog.trim() || undefined
       );
       if (res.success) {
         setPublish(res.data || null);
         setFile(null);
         setFeatureGraphic(null);
-        setVersionNumber('');
         setChangelog('');
         setShortDescription('');
       } else {
@@ -139,13 +141,17 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
             Icon (từ thumbnail) và screenshots được tự động lấy từ trang game — cần game đã có thumbnail
             và tối thiểu 2 screenshot trước khi upload.
           </p>
-          <input
-            type="text"
-            placeholder="Version number (vd: 1.0.0)"
-            value={versionNumber}
-            onChange={(e) => setVersionNumber(e.target.value)}
-            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg text-xs"
-          />
+          <div>
+            <input
+              type="text"
+              value={versionNumber}
+              disabled
+              className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-xs text-slate-500 cursor-not-allowed"
+            />
+            <span className="text-[10px] text-slate-400">
+              Version lấy tự động từ game (chưa hỗ trợ developer tự cập nhật version)
+            </span>
+          </div>
           <div>
             <input
               type="text"
@@ -204,7 +210,7 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
           </div>
           <button
             onClick={handleUpload}
-            disabled={uploading || !file || !versionNumber.trim() || !shortDescription.trim() || !featureGraphic}
+            disabled={uploading || !file || !shortDescription.trim() || !featureGraphic}
             className="w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition-studio cursor-pointer flex items-center justify-center gap-1.5"
           >
             {uploading ? <RefreshCw size={13} className="animate-spin" /> : <Upload size={13} />}

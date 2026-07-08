@@ -52,8 +52,17 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   setSelectedCategories,
   ownedProductIds,
 }) => {
-  // Marketplace giờ chỉ còn asset thuần (source_code chuyển sang Game market)
-  const assetListings = filteredAssets;
+  // Tách riêng 2 luồng đúng như lúc upload (publishProgram: "marketplace" = Asset, "game" = Game source code)
+  const [activeTab, setActiveTab] = React.useState<"asset" | "game">("asset");
+  const assetOnlyListings = React.useMemo(
+    () => filteredAssets.filter((item) => item.itemType === "asset"),
+    [filteredAssets],
+  );
+  const gameOnlyListings = React.useMemo(
+    () => filteredAssets.filter((item) => item.itemType === "source_code"),
+    [filteredAssets],
+  );
+  const assetListings = activeTab === "asset" ? assetOnlyListings : gameOnlyListings;
 
   const assetCategoryChips = React.useMemo(() => {
     return ["Scripts & Plugins", "Shaders & VFX", "2D Assets", "3D Models", "Audio & SFX"].filter(
@@ -245,21 +254,62 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
             </div>
           ) : (
             <div className="space-y-8">
+              {/* Tab switch: Asset vs Game — khớp với 2 luồng "marketplace"/"game" lúc upload */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("asset")}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-studio ${
+                    activeTab === "asset"
+                      ? "bg-sky-500 text-white shadow-[0_2px_0_0_#025272]"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-350"
+                  }`}
+                >
+                  <Boxes size={16} /> Assets
+                  <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs dark:bg-white/10">
+                    {assetOnlyListings.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("game")}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-studio ${
+                    activeTab === "game"
+                      ? "bg-sky-500 text-white shadow-[0_2px_0_0_#025272]"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-350"
+                  }`}
+                >
+                  <Code2 size={16} /> Games (Source Code)
+                  <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs dark:bg-white/10">
+                    {gameOnlyListings.length}
+                  </span>
+                </button>
+              </div>
+
               <section className="relative overflow-hidden rounded-2xl border border-slate-250 bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 p-5 shadow-sm backdrop-blur-md dark:border-slate-800">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.10),transparent_26%)]" />
                 <div className="relative z-10">
                   <div className="mb-6 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
                     <div>
                       <h2 className="font-display text-2xl font-bold text-slate-850 dark:text-white flex items-center gap-2">
-                        <Boxes size={22} className="text-sky-500" /> Asset Marketplace
+                        {activeTab === "asset" ? (
+                          <>
+                            <Boxes size={22} className="text-sky-500" /> Asset Marketplace
+                          </>
+                        ) : (
+                          <>
+                            <Code2 size={22} className="text-sky-500" /> Game Marketplace
+                          </>
+                        )}
                       </h2>
                       <p className="mt-1 text-sm text-slate-550 dark:text-slate-400">
-                        Find polished art packs, shaders, audio collections, and
-                        production-ready resources.
+                        {activeTab === "asset"
+                          ? "Find polished art packs, shaders, audio collections, and production-ready resources."
+                          : "Browse full Godot game projects listed for source code sale by their developers."}
                       </p>
                     </div>
                     <span className="inline-flex self-start rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-mono font-bold text-sky-500 backdrop-blur-sm">
-                      {assetListings.length} asset listings
+                      {assetListings.length} {activeTab === "asset" ? "asset" : "game"} listings
                     </span>
                   </div>
 
@@ -273,7 +323,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                         : "border border-slate-200 bg-slate-50 text-slate-600 hover:border-sky-500 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-350 dark:hover:border-sky-500 dark:hover:text-white"
                     }`}
                   >
-                    All Assets
+                    {activeTab === "asset" ? "All Assets" : "All Games"}
                   </button>
                   {assetCategoryChips.map((category) => (
                     <button
@@ -293,8 +343,10 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
                   {assetListings.length === 0 ? (
                     renderEmptyState(
-                      "No asset listing matches the active filters.",
-                      "Keep the current search logic, then widen category or price filters to bring asset packs back into view.",
+                      activeTab === "asset"
+                        ? "No asset listing matches the active filters."
+                        : "No game source code listing matches the active filters.",
+                      "Keep the current search logic, then widen category or price filters to bring listings back into view.",
                     )
                   ) : (
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
