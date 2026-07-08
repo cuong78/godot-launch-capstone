@@ -10,11 +10,15 @@ export const storePublishApi = {
     gameId: string,
     file: File,
     versionNumber: string,
+    shortDescription: string,
+    featureGraphic: File,
     changelog?: string
   ): Promise<ApiResponse<ExternalPublishResponse>> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('versionNumber', versionNumber);
+    formData.append('shortDescription', shortDescription);
+    formData.append('featureGraphic', featureGraphic);
     if (changelog) formData.append('changelog', changelog);
 
     const res = await api.post<ApiResponse<ExternalPublishResponse>>(

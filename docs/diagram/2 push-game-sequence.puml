@@ -145,20 +145,31 @@ else 2.2 — To Store (full_acquisition / co_publishing)
       Admin vẫn phải tự build APK/AAB (Godot export, thủ công,
       ngoài hệ thống) rồi UPLOAD file lên thì mới kích hoạt được
       luồng API tự động (UPLOAD + LISTING + SUBMIT lên Google Play
-      qua androidpublisher) — không có bước nào admin tự tay lên
-      Play Console thao tác thủ công.
+      qua androidpublisher).
+
+      **App phải được TẠO THỦ CÔNG 1 LẦN trong Play Console trước**
+      (chọn package name, category, content rating questionnaire,
+      data safety form, privacy policy URL) — androidpublisher API
+      KHÔNG có endpoint tạo app mới, các bước này Google không cho
+      tự động hoá qua API công khai. Từ sau bước tạo app thủ công
+      đó trở đi, mọi lần release version mới đều tự động.
     end note
 
     ContractSvc -> GameSvc: ExternalPublish.status = pending\n(chờ admin build + upload)
     GameSvc --> Admin: Thông báo — hợp đồng đã ký,\ntính năng "Upload build" đã sẵn sàng
 
     Admin -> Admin: Export APK/AAB từ Godot Editor\n(thủ công, ngoài hệ thống)
-    Admin -> FE: Vào tính năng "Upload build"\nchọn file APK/AAB + title/description/screenshots
-    FE -> GPSvc: publishGameToStore(gameId, buildFile)
+    Admin -> FE: Vào tính năng "Upload build"\nchọn file APK/AAB + version number + changelog\n+ shortDescription (≤80 ký tự) + feature graphic (1024x500)
+    note right of FE
+      title/fullDescription/icon/screenshots lấy tự động từ
+      Game entity + Media có sẵn (không cần nhập lại) — nhưng
+      shortDescription và feature graphic là asset RIÊNG cho Play
+      Store, Game entity không có sẵn nên bắt buộc nhập ở đây.
+      Validate trước khi gọi Google Play: game phải có thumbnail
+      (dùng làm icon) và tối thiểu 2 screenshot.
+    end note
+    FE -> GPSvc: publishGameToStore(gameId, buildFile,\nshortDescription, featureGraphic)
     note right of GPSvc: Từ đây trở đi, MỌI bước là tự động\nqua Google Play Developer API
-
-    GPSvc -> GPAPI: POST /androidpublisher/v3/applications\n{packageName} — tạo app entry (nếu chưa có)
-    GPAPI --> GPSvc: applicationId
 
     GPSvc -> GPAPI: POST /edits — tạo edit session
     GPAPI --> GPSvc: editId
@@ -166,7 +177,22 @@ else 2.2 — To Store (full_acquisition / co_publishing)
     GPSvc -> GPAPI: PUT /edits/{editId}/bundles\n(upload file AAB)
     GPAPI --> GPSvc: versionCode
 
-    GPSvc -> GPAPI: PUT /edits/{editId}/listings\n(title, description, screenshots từ Game entity)
+    GPSvc -> GPAPI: PUT /edits/{editId}/listings/{lang}\n(title, shortDescription, fullDescription)
+    GPAPI --> GPSvc: OK
+
+    GPSvc -> GPAPI: POST /edits/{editId}/listings/{lang}/images/icon\nPOST .../images/featureGraphic\nPOST .../images/phoneScreenshots (mỗi screenshot 1 lần)
+    GPAPI --> GPSvc: OK
+
+    GPSvc -> GPAPI: PUT /edits/{editId}/details\n(contactEmail của developer, defaultLanguage)
+    GPAPI --> GPSvc: OK
+
+    GPSvc -> GPAPI: PUT /edits/{editId}/tracks/{track}\n{releases: [{versionCodes: [versionCode], status: "completed"}]}
+    note right of GPAPI #FFDDDD
+      **BẮT BUỘC** — gán versionCode vừa upload vào 1 release
+      track (production/internal/...). Thiếu bước này thì
+      commit vẫn "thành công" nhưng KHÔNG release version nào
+      cả, Google Play không đẩy bản build mới cho user.
+    end note
     GPAPI --> GPSvc: OK
 
     GPSvc -> GPAPI: POST /edits/{editId}:commit

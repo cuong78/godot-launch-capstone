@@ -21,8 +21,11 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
   const [error, setError] = useState<string | null>(null);
   const [versionNumber, setVersionNumber] = useState('');
   const [changelog, setChangelog] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [featureGraphic, setFeatureGraphic] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const SHORT_DESCRIPTION_MAX_LEN = 80;
 
   const load = async () => {
     setLoading(true);
@@ -47,19 +50,23 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
   }, [gameId]);
 
   const handleUpload = async () => {
-    if (!file || !versionNumber.trim()) {
-      alert('Vui lòng chọn file build và nhập version number.');
+    if (!file || !versionNumber.trim() || !shortDescription.trim() || !featureGraphic) {
+      alert('Vui lòng chọn file build, nhập version number, short description và chọn feature graphic.');
       return;
     }
     setUploading(true);
     setError(null);
     try {
-      const res = await storePublishApi.uploadBuild(gameId, file, versionNumber.trim(), changelog.trim() || undefined);
+      const res = await storePublishApi.uploadBuild(
+        gameId, file, versionNumber.trim(), shortDescription.trim(), featureGraphic, changelog.trim() || undefined
+      );
       if (res.success) {
         setPublish(res.data || null);
         setFile(null);
+        setFeatureGraphic(null);
         setVersionNumber('');
         setChangelog('');
+        setShortDescription('');
       } else {
         setError(res.message || 'Upload build thất bại');
       }
@@ -129,6 +136,8 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
         <div className="space-y-2 pt-1">
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
             Export APK/AAB từ Godot Editor rồi upload tại đây để tự động submit lên Google Play.
+            Icon (từ thumbnail) và screenshots được tự động lấy từ trang game — cần game đã có thumbnail
+            và tối thiểu 2 screenshot trước khi upload.
           </p>
           <input
             type="text"
@@ -137,6 +146,19 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
             onChange={(e) => setVersionNumber(e.target.value)}
             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg text-xs"
           />
+          <div>
+            <input
+              type="text"
+              placeholder="Short description cho Google Play (tối đa 80 ký tự)"
+              value={shortDescription}
+              maxLength={SHORT_DESCRIPTION_MAX_LEN}
+              onChange={(e) => setShortDescription(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg text-xs"
+            />
+            <span className="text-[10px] text-slate-400 font-mono">
+              {shortDescription.length}/{SHORT_DESCRIPTION_MAX_LEN}
+            </span>
+          </div>
           <textarea
             placeholder="Changelog (tùy chọn)"
             value={changelog}
@@ -162,9 +184,27 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
               {file ? file.name : 'Chưa chọn file'}
             </span>
           </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFeatureGraphic(e.target.files ? e.target.files[0] : null)}
+              className="hidden"
+              id={`store-feature-graphic-input-${gameId}`}
+            />
+            <label
+              htmlFor={`store-feature-graphic-input-${gameId}`}
+              className="px-3 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 border border-slate-300 dark:border-slate-800 rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1.5"
+            >
+              <Upload size={13} /> Chọn Feature graphic (1024x500)
+            </label>
+            <span className="text-xs text-slate-500 font-mono truncate max-w-[160px]">
+              {featureGraphic ? featureGraphic.name : 'Chưa chọn ảnh'}
+            </span>
+          </div>
           <button
             onClick={handleUpload}
-            disabled={uploading || !file || !versionNumber.trim()}
+            disabled={uploading || !file || !versionNumber.trim() || !shortDescription.trim() || !featureGraphic}
             className="w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition-studio cursor-pointer flex items-center justify-center gap-1.5"
           >
             {uploading ? <RefreshCw size={13} className="animate-spin" /> : <Upload size={13} />}

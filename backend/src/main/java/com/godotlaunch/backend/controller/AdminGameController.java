@@ -51,9 +51,12 @@ public class AdminGameController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("versionNumber") String versionNumber,
             @RequestParam(value = "changelog", required = false) String changelog,
+            @RequestParam("shortDescription") String shortDescription,
+            @RequestParam("featureGraphic") MultipartFile featureGraphic,
             Authentication authentication) {
         UUID adminId = userRepository.findByEmail(authentication.getName()).orElseThrow().getId();
-        ExternalPublishResponse response = storePublishService.uploadBuildAndPublish(id, file, versionNumber, changelog, adminId);
+        ExternalPublishResponse response = storePublishService.uploadBuildAndPublish(
+                id, file, versionNumber, changelog, shortDescription, featureGraphic, adminId);
         return ResponseEntity.ok(ApiResponse.success(response, "Build đã được upload và submit lên Google Play"));
     }
 

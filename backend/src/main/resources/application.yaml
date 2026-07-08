@@ -90,6 +90,7 @@ app:
     mock-review-delay-seconds: ${GOOGLE_PLAY_MOCK_REVIEW_DELAY_SECONDS:30}
     service-account-path: ${GOOGLE_PLAY_SERVICE_ACCOUNT_PATH:}
     package-name: ${GOOGLE_PLAY_PACKAGE_NAME:}
+    track: ${GOOGLE_PLAY_TRACK:production}
 
   payos:
     payment:

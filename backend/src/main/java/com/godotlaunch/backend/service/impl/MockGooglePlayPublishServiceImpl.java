@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Giả lập Google Play Developer API — dùng khi chưa có service account thật (dev/test).
@@ -33,7 +34,8 @@ public class MockGooglePlayPublishServiceImpl implements GooglePlayPublishServic
 
     @Override
     @Transactional
-    public ExternalPublish publishGameToStore(GameVersion version) {
+    public ExternalPublish publishGameToStore(GameVersion version, String shortDescription,
+                                               String featureGraphicUrl, List<String> screenshotUrls) {
         ExternalPublish publish = new ExternalPublish();
         publish.setGame(version.getGame());
         publish.setGameVersion(version);
@@ -42,8 +44,10 @@ public class MockGooglePlayPublishServiceImpl implements GooglePlayPublishServic
         publish.setSubmittedAt(Instant.now());
         externalPublishRepository.save(publish);
 
-        log.info("[MOCK] Submitted game {} version {} to Google Play (giả lập, không gọi API thật)",
-                version.getGame().getId(), version.getVersionNumber());
+        log.info("[MOCK] Submitted game {} version {} to Google Play (giả lập, không gọi API thật) — " +
+                        "shortDescription='{}', featureGraphic={}, {} screenshots",
+                version.getGame().getId(), version.getVersionNumber(), shortDescription,
+                featureGraphicUrl, screenshotUrls.size());
         return publish;
     }
 

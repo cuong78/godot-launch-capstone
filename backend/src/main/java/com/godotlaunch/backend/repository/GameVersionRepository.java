@@ -12,4 +12,5 @@ import java.util.UUID;
 public interface GameVersionRepository extends JpaRepository<GameVersion, UUID> {
     Optional<GameVersion> findByGame_IdAndIsCurrentTrue(UUID gameId);
     List<GameVersion> findByGame_IdOrderByReleasedAtDesc(UUID gameId);
+    Optional<GameVersion> findByGame_IdAndVersionNumber(UUID gameId, String versionNumber);
 }

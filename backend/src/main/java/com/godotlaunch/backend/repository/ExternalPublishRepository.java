@@ -12,5 +12,6 @@ import java.util.UUID;
 @Repository
 public interface ExternalPublishRepository extends JpaRepository<ExternalPublish, UUID> {
     Optional<ExternalPublish> findFirstByGame_IdOrderByCreatedAtDesc(UUID gameId);
+    Optional<ExternalPublish> findFirstByGameVersion_IdOrderByCreatedAtDesc(UUID gameVersionId);
     List<ExternalPublish> findByStatus(ExtStatus status);
 }

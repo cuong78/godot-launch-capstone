@@ -3,6 +3,8 @@ package com.godotlaunch.backend.service;
 import com.godotlaunch.backend.entity.ExternalPublish;
 import com.godotlaunch.backend.entity.GameVersion;
 
+import java.util.List;
+
 /**
  * Đẩy 1 GameVersion (build APK/AAB admin đã upload) lên Google Play Developer API.
  * Có 2 impl: mock (dev, không gọi API thật) và real (androidpublisher thật).
@@ -12,8 +14,13 @@ public interface GooglePlayPublishService {
     /**
      * Tạo/cập nhật {@link ExternalPublish} cho version này và bắt đầu submit lên Google Play.
      * Fail-soft ở tầng gọi tương tự AiReviewClient — lỗi không nên chặn luồng admin.
+     *
+     * @param shortDescription mô tả ngắn (≤80 ký tự) — bắt buộc cho store listing
+     * @param featureGraphicUrl URL ảnh feature graphic (1024x500) đã upload lên storage
+     * @param screenshotUrls URL các screenshot (image) hiện có của game — icon lấy từ game.thumbnailUrl
      */
-    ExternalPublish publishGameToStore(GameVersion version);
+    ExternalPublish publishGameToStore(GameVersion version, String shortDescription,
+                                        String featureGraphicUrl, List<String> screenshotUrls);
 
     /**
      * Google Play KHÔNG có webhook cho kết quả review — gọi định kỳ (cron) để kiểm tra
