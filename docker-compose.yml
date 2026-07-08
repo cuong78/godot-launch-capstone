@@ -7,14 +7,14 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "12345"
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - seaweedfs-net
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U user_godot_launch -d godot_launch" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d godot_launch" ]
       interval: 10s
       timeout: 5s
       retries: 5

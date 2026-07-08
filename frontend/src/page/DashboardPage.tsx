@@ -297,6 +297,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       return true;
     })
     .sort((a, b) => {
+      const groupA = (a.publishingType === 'full_acquisition' || a.publishingType === 'co_publishing') ? 'store' : 'marketplace';
+      const groupB = (b.publishingType === 'full_acquisition' || b.publishingType === 'co_publishing') ? 'store' : 'marketplace';
+      if (groupA !== groupB) {
+        return groupA === 'marketplace' ? -1 : 1;
+      }
       const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return bTime - aTime;
@@ -465,9 +470,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
                       {filteredGames.length > 0 ? (
-                        filteredGames.map(game => (
-                          <React.Fragment key={game.id}>
-                            <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? 'bg-slate-50/50 dark:bg-slate-950/20' : ''}`}>
+                        filteredGames.map((game, index) => {
+                          const currentGroup = (game.publishingType === 'full_acquisition' || game.publishingType === 'co_publishing') ? 'store' : 'marketplace';
+                          const prevGroup = index > 0 ? (((filteredGames[index - 1].publishingType === 'full_acquisition' || filteredGames[index - 1].publishingType === 'co_publishing') ? 'store' : 'marketplace')) : null;
+                          const showDivider = index === 0 || currentGroup !== prevGroup;
+                          
+                          const marketplaceCount = filteredGames.filter(g => !((g.publishingType === 'full_acquisition' || g.publishingType === 'co_publishing'))).length;
+                          const storeCount = filteredGames.filter(g => (g.publishingType === 'full_acquisition' || g.publishingType === 'co_publishing')).length;
+
+                          return (
+                            <React.Fragment key={game.id}>
+                              {showDivider && (
+                                <tr>
+                                  <td
+                                    colSpan={6}
+                                    className={`p-2.5 border-y ${
+                                      currentGroup === 'marketplace'
+                                        ? 'bg-sky-500/5 border-sky-500/10'
+                                        : 'bg-violet-500/5 border-violet-500/10'
+                                    }`}
+                                  >
+                                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider ${
+                                      currentGroup === 'marketplace' ? 'text-sky-500' : 'text-violet-500'
+                                    }`}>
+                                      {currentGroup === 'marketplace' ? (
+                                        <><ShoppingBag size={12} /> Marketplace Listing — Bán Source Code ({marketplaceCount})</>
+                                      ) : (
+                                        <><Play size={12} /> Push to Store — Google Play ({storeCount})</>
+                                      )}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )}
+                              <tr className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? 'bg-slate-50/50 dark:bg-slate-950/20' : ''}`}>
                               <td className="p-3 w-10 text-center">
                                 <button
                                   onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
@@ -763,8 +798,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               </tr>
                             )}
                           </React.Fragment>
-                        ))
-                      ) : (
+                        )
+                      })) : (
                         <tr>                          <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20">
                             {myGames.length === 0
                               ? 'You have not uploaded any games or assets yet. Click "Deploy Asset" above to get started!'

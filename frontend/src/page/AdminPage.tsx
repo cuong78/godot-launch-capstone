@@ -265,25 +265,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Status filter state: 'pending' | 'approved_published' | 'rejected' | 'all'
   const [moderationStatusFilter, setModerationStatusFilter] = useState<'pending' | 'approved_published' | 'rejected' | 'all'>('pending');
 
+  // Publishing target filter: lọc riêng game nào đi Store (Google Play) vs game nào là Marketplace listing
+  const [gameGroupFilter, setGameGroupFilter] = useState<'all' | 'store' | 'marketplace'>('all');
+
   const pendingGames = useMemo(() => {
     return allGames
       .filter((game: GameResponse) => {
         const status = game.status?.toLowerCase();
-        if (moderationStatusFilter === 'all') {
-          return true;
-        }
-        if (moderationStatusFilter === 'pending') {
-          return status === 'pending';
-        }
+        if (moderationStatusFilter === 'pending' && status !== 'pending') return false;
         if (moderationStatusFilter === 'approved_published') {
           // awaiting_store_build từng bị loại khỏi mọi filter (trừ "all") — game vẫn cần admin
           // upload build nhưng biến mất khỏi danh sách mặc định. Gộp chung nhóm này vào đây.
-          return status === 'approved' || status === 'published' || status === 'awaiting_store_build';
+          if (status !== 'approved' && status !== 'published' && status !== 'awaiting_store_build') return false;
         }
-        if (moderationStatusFilter === 'rejected') {
-          return status === 'rejected';
-        }
-        return false;
+        if (moderationStatusFilter === 'rejected' && status !== 'rejected') return false;
+
+        if (gameGroupFilter !== 'all' && getGameGroup(game) !== gameGroupFilter) return false;
+
+        return true;
       })
       .sort((a, b) => {
         // Sắp marketplace_listing trước, store-push (full_acquisition/co_publishing) sau — để phần
@@ -297,7 +296,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return bTime - aTime;
       });
-  }, [allGames, moderationStatusFilter]);
+  }, [allGames, moderationStatusFilter, gameGroupFilter]);
 
   // Tách riêng 2 nhóm hiển thị: bán source code trên Marketplace vs hợp đồng + push Google Play
   const marketplaceListingGames = useMemo(
@@ -1042,48 +1041,77 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               </button>
             </div>
 
-            {/* Status Filter Pills */}
-            <div className="flex flex-wrap gap-2 mb-4 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200/60 dark:border-slate-800/40 w-fit">
-              <button
-                onClick={() => setModerationStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
-                  moderationStatusFilter === 'all'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm font-bold font-display'
-                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                }`}
-              >
-                All Submissions
-              </button>
-              <button
-                onClick={() => setModerationStatusFilter('pending')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
-                  moderationStatusFilter === 'pending'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm font-bold font-display'
-                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                }`}
-              >
-                Pending
-              </button>
-              <button
-                onClick={() => setModerationStatusFilter('approved_published')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
-                  moderationStatusFilter === 'approved_published'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm font-bold font-display'
-                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                }`}
-              >
-                Approved / Published
-              </button>
-              <button
-                onClick={() => setModerationStatusFilter('rejected')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-studio ${
-                  moderationStatusFilter === 'rejected'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm font-bold font-display'
-                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                }`}
-              >
-                Rejected
-              </button>
+            {/* Filter Console Panel */}
+            <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {/* Left: Status Filter (Segmented control style with active indicator dots) */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase font-bold">Status:</span>
+                <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-slate-950/60 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800/40">
+                  {[
+                    { value: 'all', label: 'All', dot: 'bg-slate-400' },
+                    { value: 'pending', label: 'Pending', dot: 'bg-amber-500 animate-pulse' },
+                    { value: 'approved_published', label: 'Approved', dot: 'bg-emerald-500' },
+                    { value: 'rejected', label: 'Rejected', dot: 'bg-rose-500' }
+                  ].map(opt => {
+                    const active = moderationStatusFilter === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setModerationStatusFilter(opt.value as any)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all duration-200 ${
+                          active
+                            ? 'bg-amber-400 text-slate-950 shadow-[0_2px_8px_rgba(245,158,11,0.2)] font-bold'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-850/50'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${opt.dot}`} />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right: Publishing Target Filter (Only for Games tab) */}
+              {moderationSubTab === 'games' && (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase font-bold">Publishing Target:</span>
+                  <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-slate-950/60 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800/40">
+                    <button
+                      onClick={() => setGameGroupFilter('all')}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all duration-200 ${
+                        gameGroupFilter === 'all'
+                          ? 'bg-amber-400 text-slate-950 shadow-[0_2px_8px_rgba(245,158,11,0.2)] font-bold'
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-850/50'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setGameGroupFilter('marketplace')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all duration-200 ${
+                        gameGroupFilter === 'marketplace'
+                          ? 'bg-sky-500 text-white shadow-[0_2px_8px_rgba(14,165,233,0.3)] font-bold'
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-850/50'
+                      }`}
+                    >
+                      <ShoppingBag size={12} />
+                      Marketplace ({allGames.filter(g => getGameGroup(g) === 'marketplace').length})
+                    </button>
+                    <button
+                      onClick={() => setGameGroupFilter('store')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all duration-200 ${
+                        gameGroupFilter === 'store'
+                          ? 'bg-violet-500 text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)] font-bold'
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-850/50'
+                      }`}
+                    >
+                      <Play size={12} />
+                      Store / Play ({allGames.filter(g => getGameGroup(g) === 'store').length})
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {moderationSubTab === 'games' ? (

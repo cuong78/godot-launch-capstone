@@ -994,7 +994,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     <button
                       type="button"
                       onClick={() => setIsPublishDropdownOpen(!isPublishDropdownOpen)}
-                      className="w-full px-3.5 py-2.5 bg-slate-955/70 border border-amber-500/35 hover:border-amber-500/60 rounded-lg text-sm text-white font-semibold outline-none transition-studio focus:ring-4 focus:ring-amber-500/10 flex items-center justify-between cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.05)]"
+                      className="w-full px-3.5 py-2.5 bg-slate-950/70 border border-amber-500/35 hover:border-amber-500/60 rounded-lg text-sm text-white font-semibold outline-none transition-studio focus:ring-4 focus:ring-amber-500/10 flex items-center justify-between cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.05)]"
                     >
                       <span className="truncate text-left pr-2">
                         {publishingType === "marketplace_listing"
