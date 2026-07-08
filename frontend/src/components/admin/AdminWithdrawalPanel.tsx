@@ -1,50 +1,83 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Button } from '../Button';
-import { Eye, RefreshCw } from 'lucide-react';
-import { walletApi } from '../../api/walletApi';
-import { PayoutBalanceResponse, WithdrawalDetailResponse, WithdrawalResponse, WithdrawalStatus } from '../../types';
-import { AdminWithdrawalDetailModal, WithdrawalPayoutProgress, WithdrawalStatusNotice } from './AdminWithdrawalDetailModal';
+import React, { useCallback, useEffect, useState } from "react";
+import { Button } from "../Button";
+import { Eye, RefreshCw } from "lucide-react";
+import { walletApi } from "../../api/walletApi";
+import {
+  PayoutBalanceResponse,
+  WithdrawalDetailResponse,
+  WithdrawalResponse,
+  WithdrawalStatus,
+} from "../../types";
+import {
+  AdminWithdrawalDetailModal,
+  WithdrawalPayoutProgress,
+  WithdrawalStatusNotice,
+} from "./AdminWithdrawalDetailModal";
 
-const formatMoney = (value?: number, currency = 'VND') => {
-  if (value == null) return 'N/A';
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
+const formatMoney = (value?: number, currency = "VND") => {
+  if (value == null) return "N/A";
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
     currency,
     maximumFractionDigits: 0,
   }).format(value);
 };
 
 const formatTimestamp = (value?: string | null) => {
-  if (!value) return 'N/A';
+  if (!value) return "N/A";
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'N/A';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  if (Number.isNaN(parsed.getTime())) return "N/A";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(parsed);
 };
 
 const getStatusMeta = (status: WithdrawalStatus) => {
   switch (status) {
-    case 'pending':
-      return { label: 'Pending', className: 'bg-amber-100 text-amber-700 border border-amber-200' };
-    case 'approved':
-      return { label: 'Approved / Waiting Payout', className: 'bg-violet-100 text-violet-700 border border-violet-200' };
-    case 'processing':
-      return { label: 'Payout Processing', className: 'bg-sky-100 text-sky-700 border border-sky-200' };
-    case 'completed':
-      return { label: 'Completed', className: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
-    case 'failed':
-      return { label: 'Payout Failed', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
-    case 'rejected':
-      return { label: 'Rejected', className: 'bg-rose-100 text-rose-700 border border-rose-200' };
-    case 'cancelled':
-      return { label: 'Cancelled', className: 'bg-slate-100 text-slate-700 border border-slate-200' };
+    case "pending":
+      return {
+        label: "Pending",
+        className: "bg-amber-100 text-amber-700 border border-amber-200",
+      };
+    case "approved":
+      return {
+        label: "Approved / Waiting Payout",
+        className: "bg-violet-100 text-violet-700 border border-violet-200",
+      };
+    case "processing":
+      return {
+        label: "Payout Processing",
+        className: "bg-sky-100 text-sky-700 border border-sky-200",
+      };
+    case "completed":
+      return {
+        label: "Completed",
+        className: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+      };
+    case "failed":
+      return {
+        label: "Payout Failed",
+        className: "bg-rose-100 text-rose-700 border border-rose-200",
+      };
+    case "rejected":
+      return {
+        label: "Rejected",
+        className: "bg-rose-100 text-rose-700 border border-rose-200",
+      };
+    case "cancelled":
+      return {
+        label: "Cancelled",
+        className: "bg-slate-100 text-slate-700 border border-slate-200",
+      };
     default:
-      return { label: status, className: 'bg-slate-100 text-slate-700 border border-slate-200' };
+      return {
+        label: status,
+        className: "bg-slate-100 text-slate-700 border border-slate-200",
+      };
   }
 };
 
@@ -53,7 +86,7 @@ const PAYOUT_PROGRESS_SYNC_INTERVAL_MS = 1000;
 const PAYOUT_PROGRESS_FAILURE_CLOSE_DELAY_MS = 1200;
 
 interface PanelStatusFlash {
-  tone: 'success' | 'warning';
+  tone: "success" | "warning";
   message: string;
 }
 
@@ -63,22 +96,30 @@ interface PayoutMonitorState extends WithdrawalPayoutProgress {
 
 export const AdminWithdrawalPanel: React.FC = () => {
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
-  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalDetailResponse | null>(null);
-  const [adminPayoutBalance, setAdminPayoutBalance] = useState<PayoutBalanceResponse | null>(null);
-  const [isLoadingAdminPayoutBalance, setIsLoadingAdminPayoutBalance] = useState(false);
+  const [selectedWithdrawal, setSelectedWithdrawal] =
+    useState<WithdrawalDetailResponse | null>(null);
+  const [adminPayoutBalance, setAdminPayoutBalance] =
+    useState<PayoutBalanceResponse | null>(null);
+  const [isLoadingAdminPayoutBalance, setIsLoadingAdminPayoutBalance] =
+    useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [panelStatusFlash, setPanelStatusFlash] = useState<PanelStatusFlash | null>(null);
-  const [statusNotice, setStatusNotice] = useState<WithdrawalStatusNotice | null>(null);
-  const [payoutProgress, setPayoutProgress] = useState<PayoutMonitorState | null>(null);
-  const [completionRemark, setCompletionRemark] = useState('');
-  const [rejectRemark, setRejectRemark] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | WithdrawalStatus>('all');
+  const [panelStatusFlash, setPanelStatusFlash] =
+    useState<PanelStatusFlash | null>(null);
+  const [statusNotice, setStatusNotice] =
+    useState<WithdrawalStatusNotice | null>(null);
+  const [payoutProgress, setPayoutProgress] =
+    useState<PayoutMonitorState | null>(null);
+  const [completionRemark, setCompletionRemark] = useState("");
+  const [rejectRemark, setRejectRemark] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | WithdrawalStatus>(
+    "all",
+  );
 
   const loadAdminPayoutBalance = useCallback(async () => {
     setIsLoadingAdminPayoutBalance(true);
@@ -89,7 +130,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
         return response.data;
       }
     } catch (err) {
-      console.error('Failed to load admin payout balance', err);
+      console.error("Failed to load admin payout balance", err);
     } finally {
       setIsLoadingAdminPayoutBalance(false);
     }
@@ -105,10 +146,14 @@ export const AdminWithdrawalPanel: React.FC = () => {
       if (response.success && response.data) {
         setWithdrawals(response.data);
       } else {
-        setError(response.message || 'Không thể tải danh sách rút tiền.');
+        setError(response.message || "Không thể tải danh sách rút tiền.");
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Không thể tải danh sách rút tiền.');
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Không thể tải danh sách rút tiền.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -121,13 +166,15 @@ export const AdminWithdrawalPanel: React.FC = () => {
 
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
-    const matchesSearch = !normalizedSearch
-      || withdrawal.developerFullName?.toLowerCase().includes(normalizedSearch)
-      || withdrawal.developerEmail?.toLowerCase().includes(normalizedSearch)
-      || withdrawal.transferReference?.toLowerCase().includes(normalizedSearch)
-      || withdrawal.bankName?.toLowerCase().includes(normalizedSearch);
+    const matchesSearch =
+      !normalizedSearch ||
+      withdrawal.developerFullName?.toLowerCase().includes(normalizedSearch) ||
+      withdrawal.developerEmail?.toLowerCase().includes(normalizedSearch) ||
+      withdrawal.transferReference?.toLowerCase().includes(normalizedSearch) ||
+      withdrawal.bankName?.toLowerCase().includes(normalizedSearch);
 
-    const matchesStatus = statusFilter === 'all' || withdrawal.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || withdrawal.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -137,8 +184,8 @@ export const AdminWithdrawalPanel: React.FC = () => {
     setStatusNotice(null);
     setPanelStatusFlash(null);
     setPayoutProgress(null);
-    setCompletionRemark('');
-    setRejectRemark('');
+    setCompletionRemark("");
+    setRejectRemark("");
     try {
       const [response] = await Promise.all([
         walletApi.getAdminWithdrawalDetail(requestId),
@@ -146,22 +193,30 @@ export const AdminWithdrawalPanel: React.FC = () => {
       ]);
       if (response.success && response.data) {
         setSelectedWithdrawal(response.data);
-        setCompletionRemark('');
+        setCompletionRemark("");
         setIsModalOpen(true);
       } else {
-        setDetailError(response.message || 'Không thể tải chi tiết yêu cầu rút tiền.');
+        setDetailError(
+          response.message || "Không thể tải chi tiết yêu cầu rút tiền.",
+        );
       }
     } catch (err: any) {
-      setDetailError(err.response?.data?.message || err.message || 'Không thể tải chi tiết yêu cầu rút tiền.');
+      setDetailError(
+        err.response?.data?.message ||
+          err.message ||
+          "Không thể tải chi tiết yêu cầu rút tiền.",
+      );
     } finally {
       setIsBusy(false);
     }
   };
 
-  const buildInsufficientPayoutMessage = (balance?: PayoutBalanceResponse | null) => {
+  const buildInsufficientPayoutMessage = (
+    balance?: PayoutBalanceResponse | null,
+  ) => {
     const currentBalance = formatMoney(
       Number(balance?.balance ?? 0),
-      balance?.currency || selectedWithdrawal?.currency || 'VND'
+      balance?.currency || selectedWithdrawal?.currency || "VND",
     );
 
     return `Số dư hiện tại là ${currentBalance}. Bạn cần nộp tiền vào ví để thực hiện giao dịch.`;
@@ -173,29 +228,45 @@ export const AdminWithdrawalPanel: React.FC = () => {
     setDetailError(null);
     setStatusNotice(null);
     setPayoutProgress(null);
-    setCompletionRemark('');
-    setRejectRemark('');
+    setCompletionRemark("");
+    setRejectRemark("");
   }, []);
 
-  const updateWithdrawalInList = useCallback((detail: WithdrawalDetailResponse) => {
-    setSelectedWithdrawal(detail);
-    setWithdrawals((current) =>
-      current.map((item) => (item.id === detail.id ? { ...item, ...detail } : item))
-    );
-  }, []);
+  const updateWithdrawalInList = useCallback(
+    (detail: WithdrawalDetailResponse) => {
+      setSelectedWithdrawal(detail);
+      setWithdrawals((current) =>
+        current.map((item) =>
+          item.id === detail.id ? { ...item, ...detail } : item,
+        ),
+      );
+    },
+    [],
+  );
 
-  const finalizeSuccessfulPayout = useCallback((detail: WithdrawalDetailResponse) => {
-    updateWithdrawalInList(detail);
-    setPanelStatusFlash({
-      tone: 'success',
-      message: 'Tiền đã về tài khoản người dùng. Withdrawal đã chuyển sang completed và popup đã tự đóng ngay.',
-    });
-    closeModal();
-    void loadWithdrawals();
-    void loadAdminPayoutBalance();
-  }, [closeModal, loadAdminPayoutBalance, loadWithdrawals, updateWithdrawalInList]);
+  const finalizeSuccessfulPayout = useCallback(
+    (detail: WithdrawalDetailResponse) => {
+      updateWithdrawalInList(detail);
+      setPanelStatusFlash({
+        tone: "success",
+        message: "Tiền đã về tài khoản người dùng",
+      });
+      closeModal();
+      void loadWithdrawals();
+      void loadAdminPayoutBalance();
+    },
+    [
+      closeModal,
+      loadAdminPayoutBalance,
+      loadWithdrawals,
+      updateWithdrawalInList,
+    ],
+  );
 
-  const syncAfterAction = async (detail?: WithdrawalDetailResponse | null, successText?: string) => {
+  const syncAfterAction = async (
+    detail?: WithdrawalDetailResponse | null,
+    successText?: string,
+  ) => {
     if (detail) {
       setSelectedWithdrawal(detail);
     }
@@ -204,7 +275,9 @@ export const AdminWithdrawalPanel: React.FC = () => {
     }
     if (detail) {
       setWithdrawals((current) =>
-        current.map((item) => (item.id === detail.id ? { ...item, ...detail } : item))
+        current.map((item) =>
+          item.id === detail.id ? { ...item, ...detail } : item,
+        ),
       );
     }
     await loadWithdrawals();
@@ -215,40 +288,40 @@ export const AdminWithdrawalPanel: React.FC = () => {
 
     setStatusNotice(null);
 
-    if (detail.status === 'completed') {
+    if (detail.status === "completed") {
       finalizeSuccessfulPayout(detail);
       return;
     }
 
-    if (detail.status === 'failed' || detail.status === 'rejected') {
+    if (detail.status === "failed" || detail.status === "rejected") {
       setPayoutProgress({
         withdrawalId: detail.id,
-        phase: 'failed',
+        phase: "failed",
         remainingMs: 0,
         totalMs: PAYOUT_PROGRESS_TOTAL_MS,
         message:
-          detail.remark
-          || 'PayOS đã phản hồi payout thất bại hoặc bị từ chối. Tiền chưa về tài khoản ngân hàng của developer.',
+          detail.remark ||
+          "PayOS đã phản hồi payout thất bại hoặc bị từ chối. Tiền chưa về tài khoản ngân hàng của developer.",
       });
       return;
     }
 
     setPayoutProgress({
       withdrawalId: detail.id,
-      phase: 'processing',
+      phase: "processing",
       remainingMs: PAYOUT_PROGRESS_TOTAL_MS,
       totalMs: PAYOUT_PROGRESS_TOTAL_MS,
     });
   };
 
   useEffect(() => {
-    if (!payoutProgress || payoutProgress.phase !== 'processing') {
+    if (!payoutProgress || payoutProgress.phase !== "processing") {
       return;
     }
 
     const timerId = window.setInterval(() => {
       setPayoutProgress((current) => {
-        if (!current || current.phase !== 'processing') {
+        if (!current || current.phase !== "processing") {
           return current;
         }
 
@@ -256,10 +329,10 @@ export const AdminWithdrawalPanel: React.FC = () => {
         if (nextRemainingMs === 0) {
           return {
             ...current,
-            phase: 'timeout',
+            phase: "timeout",
             remainingMs: 0,
             message:
-              'Đã chờ đủ 30 giây nhưng PayOS vẫn chưa xác nhận chuyển tiền thành công. Vui lòng kiểm tra lại giao dịch hoặc số dư payout wallet.',
+              "Đã chờ đủ 30 giây nhưng PayOS vẫn chưa xác nhận chuyển tiền thành công. Vui lòng kiểm tra lại giao dịch hoặc số dư payout wallet.",
           };
         }
 
@@ -274,7 +347,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
   }, [payoutProgress?.phase]);
 
   useEffect(() => {
-    if (!payoutProgress || payoutProgress.phase !== 'processing') {
+    if (!payoutProgress || payoutProgress.phase !== "processing") {
       return;
     }
 
@@ -288,7 +361,9 @@ export const AdminWithdrawalPanel: React.FC = () => {
 
       isSyncing = true;
       try {
-        const response = await walletApi.syncAdminWithdrawal(payoutProgress.withdrawalId);
+        const response = await walletApi.syncAdminWithdrawal(
+          payoutProgress.withdrawalId,
+        );
         if (!response.success || !response.data || isDisposed) {
           return;
         }
@@ -296,27 +371,30 @@ export const AdminWithdrawalPanel: React.FC = () => {
         const nextDetail = response.data;
         updateWithdrawalInList(nextDetail);
 
-        if (nextDetail.status === 'completed') {
+        if (nextDetail.status === "completed") {
           finalizeSuccessfulPayout(nextDetail);
           return;
         }
 
-        if (nextDetail.status === 'failed' || nextDetail.status === 'rejected') {
+        if (
+          nextDetail.status === "failed" ||
+          nextDetail.status === "rejected"
+        ) {
           setPayoutProgress((current) =>
             current && current.withdrawalId === nextDetail.id
               ? {
-                ...current,
-                phase: 'failed',
-                remainingMs: 0,
-                message:
-                  nextDetail.remark
-                  || 'PayOS đã phản hồi payout thất bại hoặc bị từ chối. Tiền chưa về tài khoản ngân hàng của developer.',
-              }
-              : current
+                  ...current,
+                  phase: "failed",
+                  remainingMs: 0,
+                  message:
+                    nextDetail.remark ||
+                    "PayOS đã phản hồi payout thất bại hoặc bị từ chối. Tiền chưa về tài khoản ngân hàng của developer.",
+                }
+              : current,
           );
         }
       } catch (syncError) {
-        console.error('Failed to synchronize payout status', syncError);
+        console.error("Failed to synchronize payout status", syncError);
       } finally {
         isSyncing = false;
       }
@@ -331,30 +409,39 @@ export const AdminWithdrawalPanel: React.FC = () => {
       isDisposed = true;
       window.clearInterval(intervalId);
     };
-  }, [finalizeSuccessfulPayout, payoutProgress?.phase, payoutProgress?.withdrawalId, updateWithdrawalInList]);
+  }, [
+    finalizeSuccessfulPayout,
+    payoutProgress?.phase,
+    payoutProgress?.withdrawalId,
+    updateWithdrawalInList,
+  ]);
 
   useEffect(() => {
-    if (!payoutProgress || payoutProgress.phase === 'processing' || payoutProgress.phase === 'success') {
+    if (
+      !payoutProgress ||
+      payoutProgress.phase === "processing" ||
+      payoutProgress.phase === "success"
+    ) {
       return;
     }
 
     const timerId = window.setTimeout(() => {
       const finalizeProgress = async () => {
-        if (payoutProgress.phase === 'failed') {
+        if (payoutProgress.phase === "failed") {
           setPanelStatusFlash({
-            tone: 'warning',
+            tone: "warning",
             message:
-              payoutProgress.message
-              || 'PayOS đã phản hồi payout thất bại. Vui lòng kiểm tra lại yêu cầu rút tiền.',
+              payoutProgress.message ||
+              "PayOS đã phản hồi payout thất bại. Vui lòng kiểm tra lại yêu cầu rút tiền.",
           });
         }
 
-        if (payoutProgress.phase === 'timeout') {
+        if (payoutProgress.phase === "timeout") {
           setPanelStatusFlash({
-            tone: 'warning',
+            tone: "warning",
             message:
-              payoutProgress.message
-              || 'Đã chờ 30 giây nhưng chưa có xác nhận thành công từ PayOS. Vui lòng kiểm tra lại payout queue.',
+              payoutProgress.message ||
+              "Đã chờ 30 giây nhưng chưa có xác nhận thành công từ PayOS. Vui lòng kiểm tra lại payout queue.",
           });
         }
 
@@ -366,7 +453,13 @@ export const AdminWithdrawalPanel: React.FC = () => {
     }, PAYOUT_PROGRESS_FAILURE_CLOSE_DELAY_MS);
 
     return () => window.clearTimeout(timerId);
-  }, [closeModal, loadAdminPayoutBalance, loadWithdrawals, payoutProgress?.message, payoutProgress?.phase]);
+  }, [
+    closeModal,
+    loadAdminPayoutBalance,
+    loadWithdrawals,
+    payoutProgress?.message,
+    payoutProgress?.phase,
+  ]);
 
   const handleApprove = async () => {
     if (!selectedWithdrawal) return;
@@ -375,27 +468,33 @@ export const AdminWithdrawalPanel: React.FC = () => {
     setPanelStatusFlash(null);
     try {
       const latestPayoutBalance = await loadAdminPayoutBalance();
-      if (latestPayoutBalance && Number(latestPayoutBalance.balance) < Number(selectedWithdrawal.amount)) {
+      if (
+        latestPayoutBalance &&
+        Number(latestPayoutBalance.balance) < Number(selectedWithdrawal.amount)
+      ) {
         setStatusNotice({
-          title: 'Số dư ví admin không đủ',
+          title: "Số dư ví admin không đủ",
           message: buildInsufficientPayoutMessage(latestPayoutBalance),
-          tone: 'warning',
+          tone: "warning",
         });
         return;
       }
 
-      const response = await walletApi.approveWithdrawal(selectedWithdrawal.id, {
-        remark: completionRemark.trim() || undefined,
-      });
+      const response = await walletApi.approveWithdrawal(
+        selectedWithdrawal.id,
+        {
+          remark: completionRemark.trim() || undefined,
+        },
+      );
       if (response.success) {
         const nextDetail = response.data;
 
         const successText =
-          nextDetail?.status === 'completed'
-            ? 'PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất.'
-            : nextDetail?.status === 'processing'
-            ? 'Payout order đã được tạo. Hệ thống đang tự động theo dõi việc chuyển tiền.'
-              : 'Withdrawal đã được approve thành công.';
+          nextDetail?.status === "completed"
+            ? "PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất."
+            : nextDetail?.status === "processing"
+              ? "Payout order đã được tạo. Hệ thống đang tự động theo dõi việc chuyển tiền."
+              : "Withdrawal đã được approve thành công.";
 
         if (nextDetail) {
           updateWithdrawalInList(nextDetail);
@@ -407,18 +506,23 @@ export const AdminWithdrawalPanel: React.FC = () => {
         void loadWithdrawals();
         void loadAdminPayoutBalance();
       } else {
-        setDetailError(response.message || 'Không thể approve withdrawal.');
+        setDetailError(response.message || "Không thể approve withdrawal.");
       }
     } catch (err: any) {
-      if (err.response?.data?.code === 'INSUFFICIENT_PAYOUT_BALANCE') {
-        const latestPayoutBalance = adminPayoutBalance ?? await loadAdminPayoutBalance();
+      if (err.response?.data?.code === "INSUFFICIENT_PAYOUT_BALANCE") {
+        const latestPayoutBalance =
+          adminPayoutBalance ?? (await loadAdminPayoutBalance());
         setStatusNotice({
-          title: 'Số dư ví admin không đủ',
+          title: "Số dư ví admin không đủ",
           message: buildInsufficientPayoutMessage(latestPayoutBalance),
-          tone: 'warning',
+          tone: "warning",
         });
       } else {
-        setDetailError(err.response?.data?.message || err.message || 'Không thể approve withdrawal.');
+        setDetailError(
+          err.response?.data?.message ||
+            err.message ||
+            "Không thể approve withdrawal.",
+        );
       }
     } finally {
       setIsBusy(false);
@@ -428,7 +532,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
   const handleReject = async () => {
     if (!selectedWithdrawal) return;
     if (!rejectRemark.trim()) {
-      setDetailError('Vui lòng nhập lý do từ chối trước khi reject.');
+      setDetailError("Vui lòng nhập lý do từ chối trước khi reject.");
       return;
     }
 
@@ -439,12 +543,16 @@ export const AdminWithdrawalPanel: React.FC = () => {
         remark: rejectRemark.trim(),
       });
       if (response.success) {
-        await syncAfterAction(response.data, 'Withdrawal đã được reject.');
+        await syncAfterAction(response.data, "Withdrawal đã được reject.");
       } else {
-        setDetailError(response.message || 'Không thể reject withdrawal.');
+        setDetailError(response.message || "Không thể reject withdrawal.");
       }
     } catch (err: any) {
-      setDetailError(err.response?.data?.message || err.message || 'Không thể reject withdrawal.');
+      setDetailError(
+        err.response?.data?.message ||
+          err.message ||
+          "Không thể reject withdrawal.",
+      );
     } finally {
       setIsBusy(false);
     }
@@ -455,16 +563,24 @@ export const AdminWithdrawalPanel: React.FC = () => {
       <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">Withdrawal Queue</h3>
+            <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
+              Withdrawal Queue
+            </h3>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Tạo payout order, theo dõi PayOS status, rồi chỉ hoàn tất withdrawal khi PayOS xác nhận chuyển tiền thành công.
+              Tạo payout order, theo dõi PayOS status, rồi chỉ hoàn tất
+              withdrawal khi PayOS xác nhận chuyển tiền thành công.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               {filteredWithdrawals.length} requests
             </span>
-            <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={loadWithdrawals}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<RefreshCw size={14} />}
+              onClick={loadWithdrawals}
+            >
               Refresh
             </Button>
           </div>
@@ -480,7 +596,9 @@ export const AdminWithdrawalPanel: React.FC = () => {
           />
           <select
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as 'all' | WithdrawalStatus)}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as "all" | WithdrawalStatus)
+            }
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
           >
             <option value="all">All statuses</option>
@@ -507,9 +625,9 @@ export const AdminWithdrawalPanel: React.FC = () => {
         {panelStatusFlash && (
           <div
             className={`mt-4 rounded-2xl border p-3 text-sm ${
-              panelStatusFlash.tone === 'success'
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                : 'border-amber-300 bg-amber-50 text-amber-700'
+              panelStatusFlash.tone === "success"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                : "border-amber-300 bg-amber-50 text-amber-700"
             }`}
           >
             {panelStatusFlash.message}
@@ -530,28 +648,54 @@ export const AdminWithdrawalPanel: React.FC = () => {
             <tbody className="divide-y divide-slate-100 text-sm text-slate-700 dark:divide-slate-800 dark:text-slate-300">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-500 dark:text-slate-400">Đang tải withdrawal queue...</td>
+                  <td
+                    colSpan={5}
+                    className="p-6 text-center text-slate-500 dark:text-slate-400"
+                  >
+                    Đang tải withdrawal queue...
+                  </td>
                 </tr>
               ) : filteredWithdrawals.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-500">Không có yêu cầu rút tiền nào khớp bộ lọc hiện tại.</td>
+                  <td
+                    colSpan={5}
+                    className="p-6 text-center text-slate-400 dark:text-slate-500"
+                  >
+                    Không có yêu cầu rút tiền nào khớp bộ lọc hiện tại.
+                  </td>
                 </tr>
               ) : (
                 filteredWithdrawals.map((withdrawal) => {
                   const statusMeta = getStatusMeta(withdrawal.status);
                   return (
-                    <tr key={withdrawal.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/30">
+                    <tr
+                      key={withdrawal.id}
+                      className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/30"
+                    >
                       <td className="p-4">
-                        <div className="font-semibold text-slate-900 dark:text-white">{withdrawal.developerFullName || 'Developer'}</div>
-                        <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{withdrawal.developerEmail}</div>
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                          {withdrawal.developerFullName || "Developer"}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          {withdrawal.developerEmail}
+                        </div>
                       </td>
-                      <td className="p-4 font-semibold text-amber-600">{formatMoney(Number(withdrawal.amount), withdrawal.currency || 'VND')}</td>
+                      <td className="p-4 font-semibold text-amber-600">
+                        {formatMoney(
+                          Number(withdrawal.amount),
+                          withdrawal.currency || "VND",
+                        )}
+                      </td>
                       <td className="p-4">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusMeta.className}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusMeta.className}`}
+                        >
                           {statusMeta.label}
                         </span>
                       </td>
-                      <td className="p-4 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(withdrawal.createdAt?.toString())}</td>
+                      <td className="p-4 text-xs text-slate-500 dark:text-slate-400">
+                        {formatTimestamp(withdrawal.createdAt?.toString())}
+                      </td>
                       <td className="p-4">
                         <Button
                           variant="ghost"

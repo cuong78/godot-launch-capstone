@@ -1161,7 +1161,13 @@ export default function App() {
       )}
 
       {/* PRIMARY VIEWS SWITCHER WITH STUNNING ACCENTUATIONS */}
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10 flex-grow">
+      <main
+        className={`relative z-10 flex-grow ${
+          currentScreen === 'explore'
+            ? 'w-full max-w-none px-0 py-0'
+            : 'mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8'
+        }`}
+      >
         
         {currentScreen === 'explore' && (
           <HomePage
