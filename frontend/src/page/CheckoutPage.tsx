@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Landmark, ReceiptText, ShieldCheck, ShoppingBag, Wallet2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Landmark, ReceiptText, ShieldCheck, ShoppingBag, Wallet2, AlertCircle, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Asset } from '../types';
 import { walletApi } from '../api/walletApi';
@@ -8,7 +8,7 @@ import { walletApi } from '../api/walletApi';
 interface CheckoutPageProps {
   cart: Asset[];
   isPlacingOrder: boolean;
-  onBackToMarketplace: () => void;
+  onClose: () => void;
   onPlaceOrder: () => void;
   onRemoveItem: (id: string) => void;
   onGoToWallet: () => void;
@@ -41,7 +41,7 @@ const formatMoney = (
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   cart,
   isPlacingOrder,
-  onBackToMarketplace,
+  onClose,
   onPlaceOrder,
   onRemoveItem,
   onGoToWallet,
@@ -76,15 +76,33 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   }, []);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="bg-gradient-to-r from-emerald-600/10 via-teal-400/5 to-slate-900 border border-slate-250 dark:border-slate-800 p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+    <div
+      className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/78 p-4 backdrop-blur-md sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-6xl overflow-hidden rounded-[28px] border border-slate-200/10 bg-slate-950/96 shadow-[0_36px_120px_rgba(2,6,23,0.78)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('payment:quick.close')}
+          className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/85 text-slate-300 transition-all duration-300 hover:border-slate-500 hover:text-white"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="max-h-[92vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-7">
+          <div className="space-y-6 animate-fade-in">
+            <div className="bg-gradient-to-r from-emerald-600/10 via-teal-400/5 to-slate-900 border border-slate-250 dark:border-slate-800 p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <button
             type="button"
-            onClick={onBackToMarketplace}
+            onClick={onClose}
             className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-all duration-300"
           >
-            <ArrowLeft size={14} /> {t('payment:center.backToMarketplace')}
+            <ArrowLeft size={14} /> {t('payment:quick.close')}
           </button>
           <h1 className="mt-3 font-display font-bold text-2xl text-slate-850 dark:text-white flex items-center gap-2">
             <ShoppingBag size={20} className="text-emerald-500" /> {t('payment:checkout.title')}
@@ -101,7 +119,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-6">
         <section className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 pb-4 dark:border-slate-800/70">
             <div>
@@ -296,7 +314,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
             </div>
           </section>
-        </aside>
+            </aside>
+          </div>
+        </div>
+    </div>
       </div>
     </div>
   );

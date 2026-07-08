@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Plus, 
   Calendar, 
@@ -46,19 +47,56 @@ interface DashboardPageProps {
   setCurrentScreen: (screen: any) => void;
 }
 
-const getContractStatusLabel = (status: string) => {
+const getContractStatusLabel = (status: string, t: (key: string) => string) => {
   switch (status?.toLowerCase()) {
     case 'signed':
-      return { text: 'Signed', colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
+      return { text: t('dashboard:contracts.status.signed'), colorClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' };
     case 'pending':
-      return { text: 'Awaiting Your Sign', colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
+      return { text: t('dashboard:contracts.status.awaitingYourSign'), colorClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' };
     case 'cancelled':
-      return { text: 'Cancelled / Awaiting Re-offer', colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
+      return { text: t('dashboard:contracts.status.cancelled'), colorClass: 'bg-rose-500/10 text-rose-500 border-rose-500/20' };
     case 'expired':
-      return { text: 'Expired', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+      return { text: t('dashboard:contracts.status.expired'), colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
     default:
-      return { text: status || 'Unknown', colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+      return { text: status || t('dashboard:contracts.status.unknown'), colorClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
   }
+};
+
+const getGameStatusLabel = (status: string | undefined, t: (key: string) => string) => {
+  switch (status?.toLowerCase()) {
+    case 'published':
+      return t('dashboard:status.game.published');
+    case 'pending':
+      return t('dashboard:status.game.pending');
+    case 'rejected':
+      return t('dashboard:status.game.rejected');
+    case 'draft':
+      return t('dashboard:status.game.draft');
+    default:
+      return status || t('dashboard:status.game.unknown');
+  }
+};
+
+const getMarketplaceStatusLabel = (status: string | undefined, t: (key: string) => string) => {
+  switch (status) {
+    case 'active':
+      return t('dashboard:status.asset.active');
+    case 'pending':
+      return t('dashboard:status.asset.pending');
+    case 'rejected':
+      return t('dashboard:status.asset.rejected');
+    case 'removed':
+      return t('dashboard:status.asset.removed');
+    default:
+      return status || t('dashboard:status.asset.unknown');
+  }
+};
+
+const formatCurrencyValue = (value: number | undefined, locale: string, t: (key: string) => string) => {
+  if (value === 0 || value === undefined) {
+    return t('dashboard:table.free');
+  }
+  return `${value.toLocaleString(locale)} ${t('dashboard:table.currencyVnd')}`;
 };
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -72,6 +110,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onCancelPayment,
   setCurrentScreen
 }) => {
+  const { t, i18n } = useTranslation(['dashboard']);
+  const locale = React.useMemo(() => {
+    const language = i18n.resolvedLanguage || i18n.language || 'vi';
+    return language === 'vi' ? 'vi-VN' : language === 'ja' ? 'ja-JP' : 'en-US';
+  }, [i18n.language, i18n.resolvedLanguage]);
+
   // Tab control: 'my-games' | 'marketplace-items' | 'sales' | 'git-repos' | 'payment-center'
   const [activeTab, setActiveTab] = useState<'my-games' | 'marketplace-items' | 'sales' | 'git-repos' | 'payment-center'>('my-games');
 
@@ -126,10 +170,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         );
         setMyGames(filtered);
       } else {
-        setGamesError(response.message || 'Failed to load your games');
+        setGamesError(response.message || t('dashboard:table.errorGames', { message: 'Failed to load your games' }));
       }
     } catch (err: any) {
-      setGamesError(err.response?.data?.message || err.message || 'Failed to fetch your games');
+      setGamesError(err.response?.data?.message || err.message || t('dashboard:table.errorGames', { message: 'Failed to fetch your games' }));
     } finally {
       setIsLoadingGames(false);
     }
@@ -144,29 +188,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       if (response.success && response.data) {
         setMyMarketplaceItems(response.data);
       } else {
-        setMarketplaceError(response.message || 'Failed to load your marketplace items');
+        setMarketplaceError(response.message || t('dashboard:table.errorAssets', { message: 'Failed to load your marketplace items' }));
       }
     } catch (err: any) {
-      setMarketplaceError(err.response?.data?.message || err.message || 'Failed to fetch your marketplace items');
+      setMarketplaceError(err.response?.data?.message || err.message || t('dashboard:table.errorAssets', { message: 'Failed to fetch your marketplace items' }));
     } finally {
       setIsLoadingMarketplace(false);
     }
   };
 
   const handleDeleteMarketplaceItem = async (id: string) => {
-    if (!window.confirm("Are you sure you want to remove this product from the Creator Marketplace?")) {
+    if (!window.confirm(t('dashboard:contracts.deleteConfirm'))) {
       return;
     }
     try {
       const res = await marketplaceApi.deleteMarketplaceItem(id);
       if (res.success) {
-        alert("Product successfully removed!");
+        alert(t('dashboard:contracts.deleteSuccess'));
         fetchMyMarketplaceItems();
       } else {
-        alert(res.message || "Failed to remove product");
+        alert(res.message || t('dashboard:contracts.deleteFail'));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || "Error removing product");
+      alert(err.response?.data?.message || err.message || t('dashboard:contracts.deleteError'));
     }
   };
 
@@ -227,15 +271,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         sellerTaxCode
       );
       if (response.success) {
-        alert('Contract signed successfully! The contract is complete and the game is now approved for publishing.');
+        alert(t('dashboard:contracts.signSuccess'));
         setIsSignModalOpen(false);
         fetchMyGames();
         fetchMyContracts();
       } else {
-        alert(response.message || 'Error signing contract');
+        alert(response.message || t('dashboard:contracts.signErrorMessage'));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Error performing contract signing');
+      alert(err.response?.data?.message || err.message || t('dashboard:contracts.signError'));
     } finally {
       setIsSubmittingSignature(false);
     }
@@ -249,20 +293,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [currentUser]);
 
   const gameFilterOptions = [
-    { label: 'All', value: 'all' },
-    { label: 'Published / Completed', value: 'published_signed' },
-    { label: 'Awaiting Sign / Pending', value: 'pending_signing' },
-    { label: 'Cancelled / Awaiting Re-offer', value: 'negotiating' },
-    { label: 'Rejected', value: 'rejected' },
-    { label: 'Draft', value: 'draft' }
+    { label: t('dashboard:filters.all'), value: 'all' },
+    { label: t('dashboard:filters.publishedSigned'), value: 'published_signed' },
+    { label: t('dashboard:filters.pendingSigning'), value: 'pending_signing' },
+    { label: t('dashboard:filters.negotiating'), value: 'negotiating' },
+    { label: t('dashboard:filters.rejected'), value: 'rejected' },
+    { label: t('dashboard:filters.draft'), value: 'draft' }
   ];
 
   const assetFilterOptions = [
-    { label: 'All', value: 'all' },
-    { label: 'Active', value: 'active' },
-    { label: 'Pending', value: 'pending' },
-    { label: 'Rejected', value: 'rejected' },
-    { label: 'Removed', value: 'removed' }
+    { label: t('dashboard:filters.all'), value: 'all' },
+    { label: t('dashboard:filters.active'), value: 'active' },
+    { label: t('dashboard:filters.pending'), value: 'pending' },
+    { label: t('dashboard:filters.rejected'), value: 'rejected' },
+    { label: t('dashboard:filters.removed'), value: 'removed' }
   ];
 
   const filteredGames = myGames
@@ -321,19 +365,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 gap-4 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl"></div>
         <div>
-          <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase">OFFICIAL DEVROOM CONTROL PANEL</span>
-          <h1 className="font-display font-bold text-2xl text-white pt-0.5">Welcome Back, Indie Creator</h1>
-          <p className="text-xs text-slate-400 mt-1">Check recent downloads, live dashboard trends, and community logs</p>
+          <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase">{t('dashboard:overview.badge')}</span>
+          <h1 className="font-display font-bold text-2xl text-white pt-0.5">{t('dashboard:overview.title')}</h1>
+          <p className="text-xs text-slate-400 mt-1">{t('dashboard:overview.subtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setCurrentScreen('upload')}>
-            Deploy Asset
+            {t('dashboard:overview.deployAsset')}
           </Button>
           <button
-            onClick={() => alert('Dev profile synchronizer complete!')}
+            onClick={() => alert(t('dashboard:overview.syncRepositoryAlert'))}
             className="p-2 bg-slate-800 border border-slate-750 text-slate-350 hover:text-white transition-studio rounded-lg text-xs font-semibold cursor-pointer"
           >
-            Sync Repository
+            {t('dashboard:overview.syncRepository')}
           </button>
         </div>
       </div>
@@ -342,37 +386,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Tổng Doanh Thu (Thực Nhận)</span>
+          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">{t('dashboard:stats.revenue')}</span>
           <div className="flex items-baseline gap-1">
             <span className="text-[10px] text-emerald-500 font-bold font-mono">+12%</span>
-            <span className="text-2xl font-display font-bold dark:text-white">{(salesStats?.totalRevenue ?? 0).toLocaleString('vi-VN')} đ</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{formatCurrencyValue(salesStats?.totalRevenue, locale, t)}</span>
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Doanh thu sau khi trừ hoa hồng nền tảng</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">{t('dashboard:stats.revenueHint')}</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Sản Phẩm Đã Bán</span>
+          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">{t('dashboard:stats.unitsSold')}</span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-display font-bold dark:text-white">{salesStats?.totalUnitsSold ?? 0}</span>
-            <span className="text-[10px] text-slate-400 font-bold">đơn hàng</span>
+            <span className="text-[10px] text-slate-400 font-bold">{t('dashboard:stats.unitsLabel')}</span>
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Tổng lượt game và tài nguyên khách hàng đã mua</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">{t('dashboard:stats.unitsSoldHint')}</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Game Đã Phát Hành</span>
+          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">{t('dashboard:stats.publishedGames')}</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">{myGames.length} game</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{t('dashboard:stats.gamesCount', { count: myGames.length })}</span>
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Tổng số game đã đăng tải lên hệ thống</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">{t('dashboard:stats.publishedGamesHint')}</p>
         </div>
 
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Tài Nguyên Đang Bán</span>
+          <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">{t('dashboard:stats.marketplaceItems')}</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-display font-bold dark:text-white">{myMarketplaceItems.length} items</span>
+            <span className="text-2xl font-display font-bold dark:text-white">{t('dashboard:stats.itemsCount', { count: myMarketplaceItems.length })}</span>
           </div>
-          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">Sản phẩm hiện có trên Creator Marketplace</p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">{t('dashboard:stats.marketplaceItemsHint')}</p>
         </div>
 
       </div>
@@ -389,31 +433,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={() => setActiveTab('my-games')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'my-games' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <Gamepad2 size={14} /> Published Games ({myGames.length})
+              <Gamepad2 size={14} /> {t('dashboard:tabs.publishedGames', { count: myGames.length })}
             </button>
             <button
               onClick={() => setActiveTab('marketplace-items')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'marketplace-items' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <ShoppingBag size={14} /> Marketplace Assets ({myMarketplaceItems.length})
+              <ShoppingBag size={14} /> {t('dashboard:tabs.marketplaceAssets', { count: myMarketplaceItems.length })}
             </button>
             <button
               onClick={() => setActiveTab('sales')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'sales' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <TrendingUp size={14} /> Đơn Hàng Đã Bán ({salesStats?.totalUnitsSold ?? 0})
+              <TrendingUp size={14} /> {t('dashboard:tabs.soldOrders', { count: salesStats?.totalUnitsSold ?? 0 })}
             </button>
             <button
               onClick={() => setActiveTab('git-repos')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'git-repos' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <Calendar size={14} /> Git Projects (Mock) ({projectRepositories.length})
+              <Calendar size={14} /> {t('dashboard:tabs.gitProjects', { count: projectRepositories.length })}
             </button>
             <button
               onClick={() => setActiveTab('payment-center')}
               className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === 'payment-center' ? 'border-sky-500 text-sky-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'}`}
             >
-              <WalletCards size={14} /> Đơn Hàng Đã Mua ({purchasedPayments.length})
+              <WalletCards size={14} /> {t('dashboard:tabs.purchasedOrders', { count: purchasedPayments.length })}
             </button>
           </div>
 
@@ -423,7 +467,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {/* Game Status Filter Chips */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Game Status:
+                  {t('dashboard:filters.gameStatus')}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {gameFilterOptions.map(option => (
@@ -444,11 +488,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
               {isLoadingGames ? (
                 <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
-                  <RefreshCw className="animate-spin" size={18} /> Loading games...
+                  <RefreshCw className="animate-spin" size={18} /> {t('dashboard:table.loadingGames')}
                 </div>
               ) : gamesError ? (
                 <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                  Error loading games: {gamesError}
+                  {t('dashboard:table.errorGames', { message: gamesError })}
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
@@ -456,11 +500,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
                         <th className="p-3 w-10"></th>
-                        <th className="p-3">Details</th>
-                        <th className="p-3">Category</th>
-                        <th className="p-3">Publishing Type</th>
-                        <th className="p-3">Proposed Price</th>
-                        <th className="p-3 text-center">Status</th>
+                        <th className="p-3">{t('dashboard:table.headers.details')}</th>
+                        <th className="p-3">{t('dashboard:table.headers.category')}</th>
+                        <th className="p-3">{t('dashboard:table.headers.publishingType')}</th>
+                        <th className="p-3">{t('dashboard:table.headers.proposedPrice')}</th>
+                        <th className="p-3 text-center">{t('dashboard:table.headers.status')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
@@ -472,7 +516,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 <button
                                   onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                   className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
-                                  title={expandedGameId === game.id ? "Hide Details" : "View Details"}
+                                  title={expandedGameId === game.id ? t('dashboard:table.actions.hideDetails') : t('dashboard:table.actions.viewDetails')}
                                 >
                                   {expandedGameId === game.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                 </button>
@@ -486,14 +530,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   <button
                                     onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                                     className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer"
-                                    title="Quick Preview"
+                                    title={t('dashboard:table.actions.quickPreview')}
                                   >
                                     <Eye size={12} />
                                   </button>
                                 </div>
                                 <div className="text-[10px] text-slate-400 font-mono">ID: {game.id}</div>
                               </td>
-                              <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || 'Unassigned'}</td>
+                              <td className="p-3 text-slate-600 dark:text-slate-350">{game.categoryName || t('dashboard:table.unassigned')}</td>
                               <td className="p-3">
                                 <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
                                   game.publishingType === 'full_acquisition'
@@ -502,18 +546,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     ? 'bg-sky-450/10 text-sky-500 border-sky-500/20'
                                     : 'bg-slate-100 dark:bg-slate-955 text-slate-500 border-slate-205 dark:border-slate-800'
                                 }`}>
-                                  {game.publishingType ? game.publishingType.toUpperCase() : 'MARKETPLACE_LISTING'}
+                                  {game.publishingType ? game.publishingType.toUpperCase() : t('dashboard:table.marketplaceListing')}
                                 </span>
                               </td>
                               <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                                {game.priceProposed === 0 ? 'Free' : `${game.priceProposed.toLocaleString('vi-VN')} VND`}
+                                {formatCurrencyValue(game.priceProposed, locale, t)}
                               </td>
                               <td className="p-3 text-center">
                                 <div className="flex flex-col items-center gap-1.5 justify-center">
                                   {(() => {
                                     const contract = [...contracts].reverse().find(c => c.gameId === game.id && c.status !== 'cancelled');
                                     if (contract) {
-                                      const statusInfo = getContractStatusLabel(contract.status);
+                                      const statusInfo = getContractStatusLabel(contract.status, t);
                                       return (
                                         <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusInfo.colorClass}`}>
                                           {statusInfo.text}
@@ -530,7 +574,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
                                           : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
                                       }`}>
-                                        {game.status}
+                                        {getGameStatusLabel(game.status, t)}
                                       </span>
                                     );
                                   })()}
@@ -549,7 +593,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               className="flex items-center gap-1 px-2.5 py-1 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded text-[10px] transition-studio cursor-pointer animate-pulse whitespace-nowrap shadow-sm"
                                             >
                                               <PenTool size={10} />
-                                              Sign Contract
+                                              {t('dashboard:table.actions.signContract')}
                                             </button>
                                           );
                                         } else if (contract.status === 'signed') {
@@ -564,7 +608,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded text-[10px] transition-studio cursor-pointer whitespace-nowrap shadow-sm"
                                             >
                                               <FileText size={10} />
-                                              Chi tiết
+                                              {t('dashboard:table.actions.viewContract')}
                                             </button>
                                           );
                                         } else if (contract.status === 'negotiating') {
@@ -586,7 +630,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <div className="space-y-4">
                                       <div>
                                         <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
-                                          <Image size={12} /> Cover Thumbnail
+                                          <Image size={12} /> {t('dashboard:table.coverThumbnail')}
                                         </h4>
                                         <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
                                           {game.thumbnailUrl ? (
@@ -598,16 +642,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           ) : (
                                             <div className="flex flex-col items-center justify-center text-slate-500">
                                               <Image size={32} className="mb-2 text-slate-650" />
-                                              <span className="text-[10px] font-mono">NO THUMBNAIL</span>
+                                              <span className="text-[10px] font-mono">{t('dashboard:table.noThumbnail')}</span>
                                             </div>
                                           )}
                                         </div>
                                       </div>
                                       
                                       <div className="space-y-1.5">
-                                        <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Detailed Description</h4>
+                                        <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">{t('dashboard:table.detailedDescription')}</h4>
                                         <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-955/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                          {game.description || "No detailed description provided."}
+                                          {game.description || t('dashboard:table.noDescription')}
                                         </p>
                                       </div>
                                       
@@ -619,11 +663,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           rel="noopener noreferrer"
                                           className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
                                         >
-                                          <Download size={14} /> Download Game ZIP
+                                          <Download size={14} /> {t('dashboard:table.downloadGameZip')}
                                         </a>
                                       ) : (
                                         <div className="text-center py-2.5 px-4 bg-slate-550/10 border border-slate-500/20 text-slate-550 rounded-xl text-xs font-semibold">
-                                          No Game ZIP package uploaded yet
+                                          {t('dashboard:table.noZip')}
                                         </div>
                                       )}
 
@@ -635,12 +679,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                            <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-1">
                                              <span className="font-bold flex items-center gap-1.5 text-xs">
                                                <AlertTriangle size={14} />
-                                               {isDeveloperCancelled ? 'Contract cancelled by developer' : 'Game rejected by administrators'}
+                                               {isDeveloperCancelled ? t('dashboard:table.contractCancelled') : t('dashboard:table.gameRejected')}
                                              </span>
                                              <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">
                                                {isDeveloperCancelled
-                                                 ? 'You cancelled/withdrew this contract offer. If this was a mistake, please contact administration or submit a new proposal.'
-                                                 : 'Please check your registered email address for details on rejection reason and administrative feedback.'}
+                                                 ? t('dashboard:table.contractCancelledHint')
+                                                 : t('dashboard:table.gameRejectedHint')}
                                              </p>
                                            </div>
                                          );
@@ -653,12 +697,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           return (
                                             <div className="p-4 bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
                                               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                <FileCheck size={12} className="text-sky-500" /> Publishing Contract
+                                                <FileCheck size={12} className="text-sky-500" /> {t('dashboard:table.publishingContract')}
                                               </span>
                                               <div className="flex justify-between items-center text-xs">
-                                                <span className="text-slate-500">Status:</span>
+                                                <span className="text-slate-500">{t('dashboard:table.statusLabel')}</span>
                                                 {(() => {
-                                                  const statusInfo = getContractStatusLabel(contract.status);
+                                                  const statusInfo = getContractStatusLabel(contract.status, t);
                                                   return (
                                                     <span className={`font-bold uppercase tracking-wider ${
                                                       contract.status === 'signed' ? 'text-emerald-500' :
@@ -679,7 +723,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   }}
                                                   className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded-lg text-xs transition-studio cursor-pointer"
                                                 >
-                                                  <PenTool size={14} /> Sign Electronic Contract
+                                                  <PenTool size={14} /> {t('dashboard:table.signElectronicContract')}
                                                 </button>
                                               )}
                                               {contract.status === 'signed' && (
@@ -691,7 +735,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                   }}
                                                   className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer"
                                                 >
-                                                  <FileText size={14} /> View & Download Contract
+                                                  <FileText size={14} /> {t('dashboard:table.viewDownloadContract')}
                                                 </button>
                                               )}
                                             </div>
@@ -705,7 +749,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
                                       <div className="space-y-2">
                                         <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                          <Image size={12} className="text-sky-500" /> Screenshots
+                                          <Image size={12} className="text-sky-500" /> {t('dashboard:table.screenshots')}
                                         </h4>
                                         {game.screenshots && game.screenshots.length > 0 ? (
                                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -732,7 +776,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                         ) : (
                                           <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
                                             <Image size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
-                                            <span className="text-[10px]">No screenshots uploaded yet</span>
+                                            <span className="text-[10px]">{t('dashboard:table.noScreenshots')}</span>
                                           </div>
                                         )}
                                       </div>
@@ -740,7 +784,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       {/* Video Gameplay */}
                                       <div className="space-y-2">
                                         <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                          <Video size={12} className="text-sky-500" /> Video Gameplay Demo
+                                          <Video size={12} className="text-sky-500" /> {t('dashboard:table.videoDemo')}
                                         </h4>
                                         {game.videoUrl ? (
                                           <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 max-h-56">
@@ -753,7 +797,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                         ) : (
                                           <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
                                             <Video size={24} className="mb-1 text-slate-350 dark:text-slate-650" />
-                                            <span className="text-[10px]">No gameplay video uploaded yet</span>
+                                            <span className="text-[10px]">{t('dashboard:table.noVideo')}</span>
                                           </div>
                                         )}
                                       </div>
@@ -767,8 +811,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       ) : (
                         <tr>                          <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20">
                             {myGames.length === 0
-                              ? 'You have not uploaded any games or assets yet. Click "Deploy Asset" above to get started!'
-                              : 'No games found with the selected status.'}
+                              ? t('dashboard:table.emptyGames')
+                              : t('dashboard:table.emptyGamesFiltered')}
                           </td>
                         </tr>
                       )}
@@ -785,7 +829,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {/* Asset Status Filter Chips */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Asset Status:
+                  {t('dashboard:filters.assetStatus')}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {assetFilterOptions.map(option => (
@@ -806,23 +850,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
               {isLoadingMarketplace ? (
                 <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 rounded-xl">
-                  <RefreshCw className="animate-spin" size={18} /> Loading marketplace assets...
+                  <RefreshCw className="animate-spin" size={18} /> {t('dashboard:table.loadingAssets')}
                 </div>
               ) : marketplaceError ? (
                 <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                  Error loading assets: {marketplaceError}
+                  {t('dashboard:table.errorAssets', { message: marketplaceError })}
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
-                        <th className="p-3">Details</th>
-                        <th className="p-3">Product Type</th>
-                        <th className="p-3">Category</th>
-                        <th className="p-3">Price</th>
-                        <th className="p-3 text-center">Status</th>
-                        <th className="p-3 text-center">Actions</th>
+                        <th className="p-3">{t('dashboard:table.headers.details')}</th>
+                        <th className="p-3">{t('dashboard:table.headers.productType')}</th>
+                        <th className="p-3">{t('dashboard:table.headers.category')}</th>
+                        <th className="p-3">{t('dashboard:table.headers.price')}</th>
+                        <th className="p-3 text-center">{t('dashboard:table.headers.status')}</th>
+                        <th className="p-3 text-center">{t('dashboard:table.headers.actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
@@ -837,12 +881,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             </td>
                             <td className="p-3">
                               <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border bg-amber-450/10 text-amber-500 border-amber-500/20">
-                                RESOURCE ASSET
+                                {t('dashboard:table.resourceAsset')}
                               </span>
                             </td>
-                            <td className="p-3 text-slate-600 dark:text-slate-350">{item.categoryName || 'Unassigned'}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-350">{item.categoryName || t('dashboard:table.unassigned')}</td>
                             <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                              {item.price === 0 ? 'Free' : `${item.price.toLocaleString('vi-VN')} VND`}
+                              {formatCurrencyValue(item.price, locale, t)}
                             </td>
                             <td className="p-3 text-center">
                               <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
@@ -854,16 +898,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   ? 'bg-rose-500/10 text-rose-505 border-rose-500/20'
                                   : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
                               }`}>
-                                {item.status === 'active' ? 'Active' :
-                                 item.status === 'pending' ? 'Pending' :
-                                 item.status === 'rejected' ? 'Rejected' : 'Removed'}
+                                {getMarketplaceStatusLabel(item.status, t)}
                               </span>
                             </td>
                             <td className="p-3 text-center">
                               <button
                                 onClick={() => handleDeleteMarketplaceItem(item.id)}
                                 className="p-1.5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded transition-colors cursor-pointer"
-                                title="Remove Product"
+                                title={t('dashboard:table.actions.removeProduct')}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -874,8 +916,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         <tr>
                           <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-955/20">
                             {myMarketplaceItems.length === 0
-                              ? 'You have not listed any assets on the Creator Marketplace yet. Click "Deploy Asset" above to get started!'
-                              : 'No assets found with the selected status.'}
+                              ? t('dashboard:table.emptyAssets')
+                              : t('dashboard:table.emptyAssetsFiltered')}
                           </td>
                         </tr>
                       )}
@@ -891,12 +933,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="space-y-4">
               {isLoadingSales && (
                 <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
-                  <RefreshCw className="animate-spin" size={18} /> Đang tải dữ liệu doanh số...
+                  <RefreshCw className="animate-spin" size={18} /> {t('dashboard:table.loadingSales')}
                 </div>
               )}
               {!isLoadingSales && salesError && (
                 <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                  Lỗi tải dữ liệu doanh số: {salesError}
+                  {t('dashboard:table.errorSales', { message: salesError })}
                 </div>
               )}
               {!isLoadingSales && !salesError && (
@@ -904,10 +946,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
-                        <th className="p-3">Sản phẩm</th>
-                        <th className="p-3">Loại</th>
-                        <th className="p-3 text-right">Đã bán</th>
-                        <th className="p-3 text-right">Doanh thu</th>
+                        <th className="p-3">{t('dashboard:table.headers.product')}</th>
+                        <th className="p-3">{t('dashboard:table.headers.type')}</th>
+                        <th className="p-3 text-right">{t('dashboard:table.headers.sold')}</th>
+                        <th className="p-3 text-right">{t('dashboard:table.headers.revenue')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
@@ -924,17 +966,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             </td>
                             <td className="p-3">
                               <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${product.productType === 'GAME' ? 'bg-sky-500/10 text-sky-500' : 'bg-purple-500/10 text-purple-500'}`}>
-                                {product.productType === 'GAME' ? 'Game' : 'Tài nguyên'}
+                                {product.productType === 'GAME' ? t('dashboard:table.game') : t('dashboard:table.resource')}
                               </span>
                             </td>
                             <td className="p-3 text-right font-mono">{product.unitsSold}</td>
-                            <td className="p-3 text-right font-mono font-semibold dark:text-amber-400">{product.revenue.toLocaleString('vi-VN')} đ</td>
+                            <td className="p-3 text-right font-mono font-semibold dark:text-amber-400">{formatCurrencyValue(product.revenue, locale, t)}</td>
                           </tr>
                         ))
                       ) : (
                         <tr>
                           <td colSpan={4} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
-                            Bạn chưa bán được sản phẩm nào.
+                            {t('dashboard:table.emptySales')}
                           </td>
                         </tr>
                       )}
@@ -949,7 +991,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {activeTab === 'git-repos' && (
             <DataTable 
               data={projectRepositories} 
-              onSelectRow={(row) => alert(`Opening advanced configuration options for project: ${row.projectName}. Running on engine ${row.engine}.`)} 
+              onSelectRow={(row) => alert(t('dashboard:table.projectDetails', { projectName: row.projectName, engine: row.engine }))} 
             />
           )}
 
@@ -986,15 +1028,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {/* Release Schedule logging checklist */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl space-y-4 shadow-xs">
             <h3 className="font-display font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5 pb-1">
-              <Calendar size={15} className="text-amber-500" /> Release Schedule Tracker
+              <Calendar size={15} className="text-amber-500" /> {t('dashboard:releaseSchedule.title')}
             </h3>
 
             <div className="space-y-2.5">
               {[
-                { text: 'Deploy Void Knight rigging updates', done: true },
-                { text: 'Configure multi-sampling on Ocean Shader', done: false },
-                { text: 'Compress retro WAV anthology tracks', done: false },
-                { text: 'Test custom tile coordinates mapping grids', done: false }
+                { text: t('dashboard:releaseSchedule.tasks.task1'), done: true },
+                { text: t('dashboard:releaseSchedule.tasks.task2'), done: false },
+                { text: t('dashboard:releaseSchedule.tasks.task3'), done: false },
+                { text: t('dashboard:releaseSchedule.tasks.task4'), done: false }
               ].map((task, idx) => (
                 <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-350 font-medium">
                   <div className={`w-4.5 h-4.5 rounded border flex items-center justify-center flex-none ${task.done ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500 font-bold' : 'border-slate-300 dark:border-slate-800'}`}>
@@ -1008,15 +1050,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           {/* Simulated Discord CTA server link */}
           <div className="bg-sky-500/5 dark:bg-sky-950/10 border border-sky-450 dark:border-sky-800 p-5 rounded-2xl space-y-3.5">
-            <h4 className="font-display font-bold text-sm text-sky-600 dark:text-sky-400">Join Discord Creator Sockets</h4>
+            <h4 className="font-display font-bold text-sm text-sky-600 dark:text-sky-400">{t('dashboard:discord.title')}</h4>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Chat direct dev issues with 14,000+ top Godot enthusiasts. Exchange tiles sets coordinates, lighting math formulas, and shader loops with ease.
+              {t('dashboard:discord.description')}
             </p>
             <button
-              onClick={() => alert('Simulated Discord redirect! In production, this launches server invitation flow.')}
+              onClick={() => alert(t('dashboard:discord.alert'))}
               className="w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 hover:shadow-md text-white font-display text-xs font-bold rounded-lg transition-studio text-center cursor-pointer"
             >
-              Join Creator Group Chat
+              {t('dashboard:discord.button')}
             </button>
           </div>
 
@@ -1028,7 +1070,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     {/* Screenshot Lightbox Modal */}
       {isOpenLightbox && activeScreenshotUrl && (
         <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4 animate-fade-in"
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4 animate-fade-in"
           onClick={() => setIsOpenLightbox(false)}
         >
           <button 
@@ -1043,7 +1085,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           >
             <img 
               src={activeScreenshotUrl} 
-              alt="Enlarged screenshot" 
+              alt={t('dashboard:lightbox.alt')} 
               className="w-full h-auto max-h-[85vh] object-contain"
             />
           </div>

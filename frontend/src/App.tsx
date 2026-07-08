@@ -471,6 +471,9 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
 export default function App() {
   const initialRoute = pathToScreen(window.location.pathname);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
+  const [checkoutOriginScreen, setCheckoutOriginScreen] = useState<ScreenType>(
+    initialRoute.screen === 'checkout' ? 'marketplace' : initialRoute.screen,
+  );
   const { currentUser, logout } = useAuth();
   const { setActiveRecipientId, setActiveRecipientDetails } = useWebSocket();
   const setCurrentUser = (user: User | null) => {
@@ -480,6 +483,8 @@ export default function App() {
   };
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+  const displayScreen = currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen;
+  const isCheckoutModalOpen = currentScreen === 'checkout';
 
   const showToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
     setToast({ message, type });
@@ -493,6 +498,19 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (!isCheckoutModalOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isCheckoutModalOpen]);
 
   // Listen for public WebSocket-driven community post updates
   useEffect(() => {
@@ -861,6 +879,7 @@ export default function App() {
       return [...prev, asset];
     });
     setIsCartOpen(false);
+    setCheckoutOriginScreen(currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen);
     setCurrentScreen('checkout');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -880,8 +899,13 @@ export default function App() {
     }
 
     setIsCartOpen(false);
+    setCheckoutOriginScreen(currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen);
     setCurrentScreen('checkout');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCloseCheckoutModal = () => {
+    setCurrentScreen(checkoutOriginScreen);
   };
 
   const refreshTrackedPayments = async () => {
@@ -1130,7 +1154,7 @@ export default function App() {
       <div className="fixed inset-0 pointer-events-none pixel-grid-overlay z-[2]"></div>
 
       {/* HEADER SECTION */}
-      {currentScreen === 'admin' ? (
+      {displayScreen === 'admin' ? (
         <AdminHeader
           setCurrentScreen={setCurrentScreen}
           currentUser={currentUser}
@@ -1140,7 +1164,7 @@ export default function App() {
         />
       ) : (
         <Header
-          currentScreen={currentScreen}
+          currentScreen={displayScreen}
           setCurrentScreen={setCurrentScreen}
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
@@ -1163,13 +1187,15 @@ export default function App() {
       {/* PRIMARY VIEWS SWITCHER WITH STUNNING ACCENTUATIONS */}
       <main
         className={`relative z-10 flex-grow ${
-          currentScreen === 'explore'
+          displayScreen === 'explore'
             ? 'w-full max-w-none px-0 py-0'
+            : displayScreen === 'marketplace' || displayScreen === 'detail'
+            ? 'w-full max-w-none px-4 py-6 sm:px-6 lg:px-8'
             : 'mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8'
         }`}
       >
         
-        {currentScreen === 'explore' && (
+        {displayScreen === 'explore' && (
           <HomePage
             assets={assets}
             setCurrentScreen={setCurrentScreen}
@@ -1180,7 +1206,7 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'marketplace' && (
+        {displayScreen === 'marketplace' && (
           <MarketplacePage
             filteredAssets={filteredAssets}
             searchText={searchText}
@@ -1198,25 +1224,6 @@ export default function App() {
             setSelectedCategories={setSelectedCategories}
             ownedProductIds={ownedProductIds}
           />
-        )}
-
-        {currentScreen === 'checkout' && (
-          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
-            <CheckoutPage
-              cart={cart}
-              isPlacingOrder={isPlacingOrder}
-              onBackToMarketplace={() => {
-                setCurrentScreen('marketplace');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onPlaceOrder={handlePlaceOrder}
-              onRemoveItem={(id) => handleRemoveFromCart(id)}
-              onGoToWallet={() => {
-                setCurrentScreen('wallet');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            />
-          </ProtectedRoute>
         )}
 
         {currentScreen === 'payment' && (
@@ -1270,7 +1277,7 @@ export default function App() {
           </ProtectedRoute>
         )}
 
-        {currentScreen === 'detail' && focusedAsset && (
+        {displayScreen === 'detail' && focusedAsset && (
           <DetailPage
             focusedAsset={focusedAsset}
             setCurrentScreen={setCurrentScreen}
@@ -1289,19 +1296,19 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'upload' && (
+        {displayScreen === 'upload' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <UploadPage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
 
-        {currentScreen === 'path' && (
+        {displayScreen === 'path' && (
           <PathPage
             setCurrentScreen={setCurrentScreen}
           />
         )}
 
-        {currentScreen === 'dashboard' && (
+        {displayScreen === 'dashboard' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <DashboardPage
               currentUser={currentUser}
@@ -1317,13 +1324,13 @@ export default function App() {
           </ProtectedRoute>
         )}
 
-        {currentScreen === 'wallet' && (
+        {displayScreen === 'wallet' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <WalletPage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
 
-        {currentScreen === 'community' && (
+        {displayScreen === 'community' && (
           <CommunityPage
             darkMode={darkMode}
             setCurrentScreen={setCurrentScreen}
@@ -1342,7 +1349,7 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'community-detail' && (
+        {displayScreen === 'community-detail' && (
           <CommunityDetailScreen
             post={selectedPost || undefined}
             postId={selectedAssetId}
@@ -1362,7 +1369,7 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'author-profile' && (
+        {displayScreen === 'author-profile' && (
           <ProfileScreen
             author={selectedAuthor || undefined}
             authorId={selectedAssetId}
@@ -1386,34 +1393,34 @@ export default function App() {
           />
         )}
 
-        {currentScreen === 'chat' && (
+        {displayScreen === 'chat' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <ChatScreen />
           </ProtectedRoute>
         )}
 
-        {currentScreen === 'signin' && (
+        {displayScreen === 'signin' && (
           <SignInPage
             setCurrentScreen={setCurrentScreen}
             setCurrentUser={setCurrentUser}
           />
         )}
 
-        {currentScreen === 'signup' && (
+        {displayScreen === 'signup' && (
           <SignUpPage
             setCurrentScreen={setCurrentScreen}
             setCurrentUser={setCurrentUser}
           />
         )}
 
-        {currentScreen === 'auth-callback' && (
+        {displayScreen === 'auth-callback' && (
           <GitHubCallbackPage
             setCurrentScreen={setCurrentScreen}
             setCurrentUser={setCurrentUser}
           />
         )}
 
-        {currentScreen === 'admin' && (
+        {displayScreen === 'admin' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen} requiredRole="admin">
             <AdminPage
               setCurrentScreen={setCurrentScreen}
@@ -1422,19 +1429,35 @@ export default function App() {
           </ProtectedRoute>
         )}
 
-        {currentScreen === 'profile' && (
+        {displayScreen === 'profile' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <ProfilePage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
 
-        {currentScreen === 'developer-onboarding' && (
+        {displayScreen === 'developer-onboarding' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <DeveloperOnboardingPage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
 
       </main>
+
+      {isCheckoutModalOpen && (
+        <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+          <CheckoutPage
+            cart={cart}
+            isPlacingOrder={isPlacingOrder}
+            onClose={handleCloseCheckoutModal}
+            onPlaceOrder={handlePlaceOrder}
+            onRemoveItem={(id) => handleRemoveFromCart(id)}
+            onGoToWallet={() => {
+              setCurrentScreen('wallet');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        </ProtectedRoute>
+      )}
 
       {/* FOOTER ACCENTS SECTION */}
       <Footer setCurrentScreen={setCurrentScreen} />
