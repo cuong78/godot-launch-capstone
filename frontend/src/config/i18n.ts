@@ -11,6 +11,7 @@ import viAdmin from "../locales/vi/admin.json";
 import viPayment from "../locales/vi/payment.json";
 import viWallet from "../locales/vi/wallet.json";
 import viHome from "../locales/vi/home.json";
+import viDashboard from "../locales/vi/dashboard.json";
 
 import enCommon from "../locales/en/common.json";
 import enGame from "../locales/en/game.json";
@@ -20,6 +21,7 @@ import enAdmin from "../locales/en/admin.json";
 import enPayment from "../locales/en/payment.json";
 import enWallet from "../locales/en/wallet.json";
 import enHome from "../locales/en/home.json";
+import enDashboard from "../locales/en/dashboard.json";
 
 import jaCommon from "../locales/ja/common.json";
 import jaGame from "../locales/ja/game.json";
@@ -29,6 +31,7 @@ import jaAdmin from "../locales/ja/admin.json";
 import jaPayment from "../locales/ja/payment.json";
 import jaWallet from "../locales/ja/wallet.json";
 import jaHome from "../locales/ja/home.json";
+import jaDashboard from "../locales/ja/dashboard.json";
 
 export const LANGUAGE_OPTIONS = [
   { code: "vi", name: "Tiếng Việt", flag: "🇻🇳" },
@@ -59,6 +62,7 @@ const resources = {
     payment: viPayment,
     wallet: viWallet,
     home: viHome,
+    dashboard: viDashboard,
   },
   en: {
     common: enCommon,
@@ -69,6 +73,7 @@ const resources = {
     payment: enPayment,
     wallet: enWallet,
     home: enHome,
+    dashboard: enDashboard,
   },
   ja: {
     common: jaCommon,
@@ -79,6 +84,7 @@ const resources = {
     payment: jaPayment,
     wallet: jaWallet,
     home: jaHome,
+    dashboard: jaDashboard,
   },
 };
 
@@ -101,6 +107,7 @@ i18next
       "payment",
       "wallet",
       "home",
+      "dashboard",
     ],
     interpolation: {
       escapeValue: false, // React already escapes values

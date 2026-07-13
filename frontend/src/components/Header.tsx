@@ -96,6 +96,13 @@ function CreatorJourneyDialog({
   onClose,
 }: CreatorJourneyDialogProps) {
   const dialogRef = React.useRef<HTMLDivElement>(null);
+  const { t } = useTranslation("common");
+  const creatorBenefitKeys = [
+    "creator_journey_publish_projects",
+    "creator_journey_sell_source_assets",
+    "creator_journey_manage_workspace",
+    "creator_journey_receive_earnings",
+  ];
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -191,7 +198,7 @@ function CreatorJourneyDialog({
           type="button"
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white/85 p-2 text-slate-400 transition-studio hover:border-slate-300 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-400/20 dark:border-slate-800 dark:bg-slate-950/80 dark:hover:text-white"
-          aria-label="Close creator journey dialog"
+          aria-label={t("creator_journey_close")}
         >
           <X size={18} />
         </button>
@@ -205,33 +212,28 @@ function CreatorJourneyDialog({
               id="creator-journey-title"
               className="mt-5 font-display text-2xl font-bold text-slate-950 dark:text-white"
             >
-              Start Your Creator Journey
+              {t("creator_journey_title")}
             </h2>
             <p
               id="creator-journey-description"
               className="mt-3 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300"
             >
-              Join our Developer community and turn your creativity into income.
+              {t("creator_journey_subtitle")}
             </p>
           </div>
 
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/85 p-4 dark:border-slate-800 dark:bg-slate-950/45">
             <p className="text-sm font-semibold text-slate-850 dark:text-slate-100">
-              As a Developer, you'll be able to:
+              {t("creator_journey_abilities_intro")}
             </p>
             <ul className="mt-3 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-              {[
-                "Publish Godot projects",
-                "Sell source code and assets",
-                "Manage your creator workspace",
-                "Receive earnings from every successful sale",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-3">
+              {creatorBenefitKeys.map((itemKey) => (
+                <li key={itemKey} className="flex items-start gap-3">
                   <CheckCircle2
                     size={16}
                     className="mt-0.5 shrink-0 text-emerald-500"
                   />
-                  <span>{item}</span>
+                  <span>{t(itemKey)}</span>
                 </li>
               ))}
             </ul>
@@ -245,7 +247,7 @@ function CreatorJourneyDialog({
               className="w-full"
               onClick={onBecomeDeveloper}
             >
-              Become a Developer
+              {t("become_developer")}
             </Button>
             <Button
               type="button"
@@ -254,7 +256,7 @@ function CreatorJourneyDialog({
               className="w-full"
               onClick={onMaybeLater}
             >
-              Make it later
+              {t("creator_journey_maybe_later")}
             </Button>
           </div>
         </div>
@@ -475,7 +477,10 @@ export function Header({
     {
       id: "payment",
       title: t("payment:center.title", "Quản lý đơn hàng"),
-      description: t("payment:center.subtitle", "Lịch sử mua hàng & tải tài nguyên"),
+      description: t(
+        "payment:center.subtitle",
+        "Lịch sử mua hàng & tải tài nguyên",
+      ),
       icon: <ReceiptText size={18} />,
       iconClassName: "border-amber-500/20 bg-amber-500/12 text-amber-500",
       isActive: currentScreen === "payment",
@@ -682,10 +687,7 @@ export function Header({
           <div className="relative shrink-0">
             <button
               type="button"
-              className={navGroupButtonClassName(
-                isCreatorActive,
-                false,
-              )}
+              className={navGroupButtonClassName(isCreatorActive, false)}
               onClick={() => {
                 handleOpenCreatorCenter();
               }}
@@ -708,9 +710,10 @@ export function Header({
                 )}
                 onClick={() => {
                   clearDesktopMenuCloseTimeout();
-                  setOpenDesktopMenu((current) =>
-                    current === "workspace" ? null : "workspace",
-                  );
+                  setOpenDesktopMenu(null);
+                  setSearchText("");
+                  setCurrentScreen("dashboard");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 aria-expanded={openDesktopMenu === "workspace"}
                 aria-haspopup="true"
@@ -752,7 +755,8 @@ export function Header({
                 setIsProfileOpen(false);
               }}
               className="relative shrink-0 rounded-lg border border-transparent bg-slate-100/80 p-1.5 text-slate-500 transition-studio hover:text-slate-850 dark:border-slate-850 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-amber-400"
-              title="View cart items"
+              title={t("cart_view_items")}
+              aria-label={t("cart_view_items")}
             >
               <ShoppingCart size={18} />
               {cart.length > 0 && (
@@ -777,6 +781,7 @@ export function Header({
                     <button
                       onClick={() => setIsCartOpen(false)}
                       className="text-slate-450 hover:text-slate-600 dark:hover:text-white"
+                      aria-label={t("cart_close")}
                     >
                       <X size={15} />
                     </button>
@@ -817,6 +822,9 @@ export function Header({
                             <button
                               onClick={(e) => handleRemoveFromCart(item.id, e)}
                               className="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                              aria-label={t("cart_remove_item", {
+                                title: item.title,
+                              })}
                             >
                               <Trash2 size={13} />
                             </button>
@@ -824,7 +832,7 @@ export function Header({
                         </div>
                       ))}
                       <div className="flex items-center justify-between font-display font-semibold text-sm text-slate-800 dark:text-slate-200 pt-1">
-                        <span>Total Checkout Value:</span>
+                        <span>{t("cart_total_checkout_value")}</span>
                         <span className="text-base font-mono font-bold text-sky-600 dark:text-amber-400">
                           {formatCartMoney(
                             cart.reduce((sum, item) => sum + item.price, 0),
@@ -840,7 +848,7 @@ export function Header({
                     </div>
                   ) : (
                     <div className="py-8 text-center text-slate-400 dark:text-slate-650">
-                      <p className="text-sm">Your cart is empty.</p>
+                      <p className="text-sm">{t("cart_empty")}</p>
                       <button
                         onClick={() => {
                           setCurrentScreen("marketplace");
@@ -917,7 +925,7 @@ export function Header({
                         >
                           {t("payment:center.title", "Quản lý đơn hàng")}
                         </button>
-                        {currentUser.role === 'customer' && (
+                        {currentUser.role === "customer" && (
                           <>
                             <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
                             <button

@@ -1,0 +1,152 @@
+{
+  "overview": {
+    "badge": "OFFICIAL DEVROOM CONTROL PANEL",
+    "title": "Chào lại, Indie Creator",
+    "subtitle": "Theo dõi lượt tải xuống gần đây, xu hướng dashboard thời gian thực và nhật ký cộng đồng",
+    "deployAsset": "Đăng tải tài nguyên",
+    "syncRepository": "Đồng bộ kho",
+    "syncRepositoryAlert": "Đồng bộ hồ sơ dev hoàn tất!"
+  },
+  "stats": {
+    "revenue": "Tổng Doanh Thu (Thực Nhận)",
+    "revenueHint": "Doanh thu sau khi trừ hoa hồng nền tảng",
+    "unitsSold": "Sản Phẩm Đã Bán",
+    "unitsSoldHint": "Tổng lượt game và tài nguyên khách hàng đã mua",
+    "unitsLabel": "đơn hàng",
+    "publishedGames": "Game Đã Phát Hành",
+    "publishedGamesHint": "Tổng số game đã đăng tải lên hệ thống",
+    "marketplaceItems": "Tài Nguyên Đang Bán",
+    "marketplaceItemsHint": "Sản phẩm hiện có trên Creator Marketplace",
+    "gamesCount": "{{count}} game",
+    "itemsCount": "{{count}} items"
+  },
+  "tabs": {
+    "publishedGames": "Published Games ({{count}})",
+    "marketplaceAssets": "Marketplace Assets ({{count}})",
+    "soldOrders": "Đơn Hàng Đã Bán ({{count}})",
+    "gitProjects": "Git Projects (Mock) ({{count}})",
+    "purchasedOrders": "Đơn Hàng Đã Mua ({{count}})"
+  },
+  "filters": {
+    "gameStatus": "Trạng thái game:",
+    "assetStatus": "Trạng thái tài nguyên:",
+    "all": "Tất cả",
+    "publishedSigned": "Đã xuất bản / Hoàn tất",
+    "pendingSigning": "Đang chờ ký / Chờ xử lý",
+    "negotiating": "Đã hủy / Chờ đề nghị lại",
+    "rejected": "Từ chối",
+    "draft": "Bản nháp",
+    "active": "Đang hoạt động",
+    "pending": "Đang chờ",
+    "removed": "Đã xóa"
+  },
+  "table": {
+    "headers": {
+      "details": "Chi tiết",
+      "category": "Danh mục",
+      "publishingType": "Loại phát hành",
+      "proposedPrice": "Giá đề xuất",
+      "status": "Trạng thái",
+      "productType": "Loại sản phẩm",
+      "price": "Giá",
+      "actions": "Hành động",
+      "product": "Sản phẩm",
+      "type": "Loại",
+      "sold": "Đã bán",
+      "revenue": "Doanh thu"
+    },
+    "actions": {
+      "viewDetails": "Xem chi tiết",
+      "signContract": "Ký hợp đồng",
+      "viewContract": "Xem hợp đồng",
+      "removeProduct": "Xóa sản phẩm",
+      "quickPreview": "Xem nhanh"
+    },
+    "unassigned": "Chưa phân loại",
+    "marketplaceListing": "DANH SÁCH THỊ TRƯỜNG",
+    "resourceAsset": "TÀI NGUYÊN",
+    "game": "Game",
+    "resource": "Tài nguyên",
+    "currencyVnd": "VND",
+    "projectDetails": "Đang mở tùy chọn cấu hình nâng cao cho dự án: {{projectName}}. Chạy trên engine {{engine}}.",
+    "loadingGames": "Đang tải game...",
+    "loadingAssets": "Đang tải tài nguyên marketplace...",
+    "loadingSales": "Đang tải dữ liệu doanh số...",
+    "errorGames": "Lỗi tải game: {{message}}",
+    "errorAssets": "Lỗi tải tài nguyên: {{message}}",
+    "errorSales": "Lỗi tải dữ liệu doanh số: {{message}}",
+    "emptyGames": "Bạn chưa đăng tải game hoặc tài nguyên nào. Nhấn \"Đăng tải tài nguyên\" ở trên để bắt đầu!",
+    "emptyGamesFiltered": "Không tìm thấy game phù hợp với trạng thái đã chọn.",
+    "emptyAssets": "Bạn chưa niêm yết tài nguyên nào trên Creator Marketplace. Nhấn \"Đăng tải tài nguyên\" ở trên để bắt đầu!",
+    "emptyAssetsFiltered": "Không tìm thấy tài nguyên phù hợp với trạng thái đã chọn.",
+    "emptySales": "Bạn chưa bán được sản phẩm nào.",
+    "coverThumbnail": "Ảnh bìa",
+    "detailedDescription": "Mô tả chi tiết",
+    "downloadGameZip": "Tải xuống file game ZIP",
+    "noThumbnail": "Chưa có ảnh bìa",
+    "noDescription": "Chưa có mô tả chi tiết.",
+    "noZip": "Chưa có gói ZIP game được tải lên.",
+    "screenshots": "Ảnh chụp màn hình",
+    "videoDemo": "Video demo gameplay",
+    "noScreenshots": "Chưa có ảnh chụp màn hình",
+    "noVideo": "Chưa có video gameplay",
+    "gameRejected": "Game bị từ chối bởi quản trị viên",
+    "contractCancelled": "Hợp đồng bị hủy bởi developer",
+    "gameRejectedHint": "Vui lòng kiểm tra email đăng ký để xem lý do từ chối và phản hồi từ quản trị viên.",
+    "contractCancelledHint": "Bạn đã hủy / rút lại đề nghị hợp đồng này. Nếu đây là nhầm lẫn, hãy liên hệ quản trị hoặc gửi đề xuất mới.",
+    "publishingContract": "Hợp đồng xuất bản",
+    "statusLabel": "Trạng thái:",
+    "signElectronicContract": "Ký hợp đồng điện tử",
+    "viewDownloadContract": "Xem & tải hợp đồng"
+  },
+  "status": {
+    "game": {
+      "published": "Đã xuất bản",
+      "pending": "Đang chờ",
+      "rejected": "Bị từ chối",
+      "draft": "Bản nháp",
+      "unknown": "Không xác định"
+    },
+    "asset": {
+      "active": "Đang hoạt động",
+      "pending": "Đang chờ",
+      "rejected": "Bị từ chối",
+      "removed": "Đã xóa",
+      "unknown": "Không xác định"
+    }
+  },
+  "contracts": {
+    "status": {
+      "signed": "Đã ký",
+      "awaitingYourSign": "Đang chờ bạn ký",
+      "cancelled": "Đã hủy / chờ đề nghị lại",
+      "expired": "Đã hết hạn",
+      "unknown": "Không xác định"
+    },
+    "signSuccess": "Đã ký hợp đồng thành công! Hợp đồng đã hoàn tất và game hiện đã được phê duyệt để xuất bản.",
+    "signError": "Lỗi khi thực hiện ký hợp đồng",
+    "signErrorMessage": "Lỗi ký hợp đồng",
+    "deleteConfirm": "Bạn có chắc muốn xóa sản phẩm này khỏi Creator Marketplace không?",
+    "deleteSuccess": "Đã gỡ sản phẩm thành công!",
+    "deleteFail": "Không thể xóa sản phẩm",
+    "deleteError": "Lỗi khi xóa sản phẩm"
+  },
+  "releaseSchedule": {
+    "title": "Release Schedule Tracker",
+    "tasks": {
+      "task1": "Deploy Void Knight rigging updates",
+      "task2": "Configure multi-sampling on Ocean Shader",
+      "task3": "Compress retro WAV anthology tracks",
+      "task4": "Test custom tile coordinates mapping grids"
+    }
+  },
+  "discord": {
+    "title": "Join Discord Creator Sockets",
+    "description": "Chat direct dev issues with 14,000+ top Godot enthusiasts. Exchange tiles sets coordinates, lighting math formulas, and shader loops with ease.",
+    "button": "Join Creator Group Chat",
+    "alert": "Simulated Discord redirect! In production, this launches server invitation flow."
+  },
+  "lightbox": {
+    "alt": "Ảnh chụp màn hình phóng to"
+  }
+}

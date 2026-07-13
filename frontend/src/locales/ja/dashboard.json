@@ -1,0 +1,152 @@
+{
+  "overview": {
+    "badge": "OFFICIAL DEVROOM CONTROL PANEL",
+    "title": "おかえりなさい、 Indie Creator",
+    "subtitle": "最近のダウンロード、ライブダッシュボードの傾向、コミュニティログを確認します",
+    "deployAsset": "アセットを公開",
+    "syncRepository": "リポジトリ同期",
+    "syncRepositoryAlert": "開発者プロフィールの同期が完了しました。"
+  },
+  "stats": {
+    "revenue": "純収益",
+    "revenueHint": "プラットフォーム手数料控除後の収益",
+    "unitsSold": "販売済み商品",
+    "unitsSoldHint": "顧客によるゲームとリソースの購入総数",
+    "unitsLabel": "件",
+    "publishedGames": "公開済みゲーム",
+    "publishedGamesHint": "プラットフォームに公開済みのゲーム総数",
+    "marketplaceItems": "マーケットプレイスアセット",
+    "marketplaceItemsHint": "Creator Marketplaceに出品中の商品",
+    "gamesCount": "{{count}}本のゲーム",
+    "itemsCount": "{{count}}件"
+  },
+  "tabs": {
+    "publishedGames": "公開済みゲーム（{{count}}）",
+    "marketplaceAssets": "マーケットプレイスアセット（{{count}}）",
+    "soldOrders": "販売済み注文（{{count}}）",
+    "gitProjects": "Gitプロジェクト（モック）（{{count}}）",
+    "purchasedOrders": "購入済み注文（{{count}}）"
+  },
+  "filters": {
+    "gameStatus": "ゲームの状態:",
+    "assetStatus": "アセットの状態:",
+    "all": "すべて",
+    "publishedSigned": "公開済み / 完了",
+    "pendingSigning": "署名待ち / 保留中",
+    "negotiating": "キャンセル済み / 再提案待ち",
+    "rejected": "却下",
+    "draft": "下書き",
+    "active": "有効",
+    "pending": "保留中",
+    "removed": "削除済み"
+  },
+  "table": {
+    "headers": {
+      "details": "詳細",
+      "category": "カテゴリ",
+      "publishingType": "公開種別",
+      "proposedPrice": "提案価格",
+      "status": "状態",
+      "productType": "商品種別",
+      "price": "価格",
+      "actions": "操作",
+      "product": "商品",
+      "type": "種類",
+      "sold": "販売数",
+      "revenue": "売上"
+    },
+    "actions": {
+      "viewDetails": "詳細を見る",
+      "signContract": "契約に署名",
+      "viewContract": "契約を表示",
+      "removeProduct": "商品を削除",
+      "quickPreview": "クイックプレビュー"
+    },
+    "unassigned": "未分類",
+    "marketplaceListing": "マーケットプレイス掲載",
+    "resourceAsset": "リソースアセット",
+    "game": "ゲーム",
+    "resource": "リソース",
+    "currencyVnd": "VND",
+    "projectDetails": "プロジェクト {{projectName}} の高度な設定オプションを開いています。エンジン {{engine}} で実行中です。",
+    "loadingGames": "ゲームを読み込み中...",
+    "loadingAssets": "マーケットプレイスアセットを読み込み中...",
+    "loadingSales": "売上データを読み込み中...",
+    "errorGames": "ゲーム読み込みエラー: {{message}}",
+    "errorAssets": "アセット読み込みエラー: {{message}}",
+    "errorSales": "売上データ読み込みエラー: {{message}}",
+    "emptyGames": "まだゲームやアセットをアップロードしていません。上の \"アセットを公開\" をクリックして始めましょう。",
+    "emptyGamesFiltered": "選択した状態に一致するゲームはありません。",
+    "emptyAssets": "まだCreator Marketplaceにアセットを出品していません。上の \"アセットを公開\" をクリックして始めましょう。",
+    "emptyAssetsFiltered": "選択した状態に一致するアセットはありません。",
+    "emptySales": "まだ商品を販売していません。",
+    "coverThumbnail": "カバーサムネイル",
+    "detailedDescription": "詳細説明",
+    "downloadGameZip": "ゲームZIPをダウンロード",
+    "noThumbnail": "サムネイルなし",
+    "noDescription": "詳細説明はありません。",
+    "noZip": "ゲームZIPパッケージはまだアップロードされていません",
+    "screenshots": "スクリーンショット",
+    "videoDemo": "ゲームプレイ動画",
+    "noScreenshots": "スクリーンショットはまだありません",
+    "noVideo": "ゲームプレイ動画はまだありません",
+    "gameRejected": "管理者によりゲームが却下されました",
+    "contractCancelled": "開発者により契約がキャンセルされました",
+    "gameRejectedHint": "登録メールアドレスで、却下理由と管理者からのフィードバックをご確認ください。",
+    "contractCancelledHint": "この契約提案をキャンセルまたは取り下げました。もし誤りでしたら、管理部に連絡するか、新しい提案を送信してください。",
+    "publishingContract": "出版契約",
+    "statusLabel": "状態:",
+    "signElectronicContract": "電子契約に署名",
+    "viewDownloadContract": "契約を表示してダウンロード"
+  },
+  "status": {
+    "game": {
+      "published": "公開済み",
+      "pending": "保留中",
+      "rejected": "却下",
+      "draft": "下書き",
+      "unknown": "不明"
+    },
+    "asset": {
+      "active": "有効",
+      "pending": "保留中",
+      "rejected": "却下",
+      "removed": "削除済み",
+      "unknown": "不明"
+    }
+  },
+  "contracts": {
+    "status": {
+      "signed": "署名済み",
+      "awaitingYourSign": "署名待ち",
+      "cancelled": "キャンセル済み / 再提案待ち",
+      "expired": "期限切れ",
+      "unknown": "不明"
+    },
+    "signSuccess": "契約に署名しました。契約は完了し、ゲームは公開承認済みです。",
+    "signError": "契約署名の実行中にエラーが発生しました",
+    "signErrorMessage": "契約署名に失敗しました",
+    "deleteConfirm": "この商品をCreator Marketplaceから削除してもよろしいですか？",
+    "deleteSuccess": "商品を正常に削除しました。",
+    "deleteFail": "商品を削除できませんでした",
+    "deleteError": "商品削除中にエラーが発生しました"
+  },
+  "releaseSchedule": {
+    "title": "リリーススケジュール追跡",
+    "tasks": {
+      "task1": "Void Knight rigging updates をデプロイ",
+      "task2": "Ocean Shader のマルチサンプリングを設定",
+      "task3": "retro WAV anthology tracks を圧縮",
+      "task4": "custom tile coordinates mapping grids をテスト"
+    }
+  },
+  "discord": {
+    "title": "Discord Creator Sockets に参加",
+    "description": "14,000人以上のGodot開発者と直接相談できます。タイル座標、ライティング計算式、シェーダーループを簡単に共有できます。",
+    "button": "Creator Group Chat に参加",
+    "alert": "擬似的なDiscordリダイレクトです。実運用では招待フローが起動します。"
+  },
+  "lightbox": {
+    "alt": "拡大表示されたスクリーンショット"
+  }
+}

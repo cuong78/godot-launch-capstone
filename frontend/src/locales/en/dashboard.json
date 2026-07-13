@@ -1,0 +1,152 @@
+{
+  "overview": {
+    "badge": "OFFICIAL DEVROOM CONTROL PANEL",
+    "title": "Welcome Back, Indie Creator",
+    "subtitle": "Check recent downloads, live dashboard trends, and community logs",
+    "deployAsset": "Deploy Asset",
+    "syncRepository": "Sync Repository",
+    "syncRepositoryAlert": "Dev profile synchronizer complete!"
+  },
+  "stats": {
+    "revenue": "Net Revenue",
+    "revenueHint": "Revenue after platform commission",
+    "unitsSold": "Products Sold",
+    "unitsSoldHint": "Total game and resource purchases by customers",
+    "unitsLabel": "orders",
+    "publishedGames": "Published Games",
+    "publishedGamesHint": "Total games published to the platform",
+    "marketplaceItems": "Marketplace Assets",
+    "marketplaceItemsHint": "Products currently listed on the Creator Marketplace",
+    "gamesCount": "{{count}} game",
+    "itemsCount": "{{count}} items"
+  },
+  "tabs": {
+    "publishedGames": "Published Games ({{count}})",
+    "marketplaceAssets": "Marketplace Assets ({{count}})",
+    "soldOrders": "Sold Orders ({{count}})",
+    "gitProjects": "Git Projects (Mock) ({{count}})",
+    "purchasedOrders": "Purchased Orders ({{count}})"
+  },
+  "filters": {
+    "gameStatus": "Game Status:",
+    "assetStatus": "Asset Status:",
+    "all": "All",
+    "publishedSigned": "Published / Completed",
+    "pendingSigning": "Awaiting Sign / Pending",
+    "negotiating": "Cancelled / Awaiting Re-offer",
+    "rejected": "Rejected",
+    "draft": "Draft",
+    "active": "Active",
+    "pending": "Pending",
+    "removed": "Removed"
+  },
+  "table": {
+    "headers": {
+      "details": "Details",
+      "category": "Category",
+      "publishingType": "Publishing Type",
+      "proposedPrice": "Proposed Price",
+      "status": "Status",
+      "productType": "Product Type",
+      "price": "Price",
+      "actions": "Actions",
+      "product": "Product",
+      "type": "Type",
+      "sold": "Sold",
+      "revenue": "Revenue"
+    },
+    "actions": {
+      "viewDetails": "View details",
+      "signContract": "Sign contract",
+      "viewContract": "View contract",
+      "removeProduct": "Remove product",
+      "quickPreview": "Quick preview"
+    },
+    "unassigned": "Unassigned",
+    "marketplaceListing": "MARKETPLACE_LISTING",
+    "resourceAsset": "RESOURCE ASSET",
+    "game": "Game",
+    "resource": "Resource",
+    "currencyVnd": "VND",
+    "projectDetails": "Opening advanced configuration options for project: {{projectName}}. Running on engine {{engine}}.",
+    "loadingGames": "Loading games...",
+    "loadingAssets": "Loading marketplace assets...",
+    "loadingSales": "Loading sales data...",
+    "errorGames": "Error loading games: {{message}}",
+    "errorAssets": "Error loading assets: {{message}}",
+    "errorSales": "Error loading sales data: {{message}}",
+    "emptyGames": "You have not uploaded any games or assets yet. Click \"Deploy Asset\" above to get started!",
+    "emptyGamesFiltered": "No games found with the selected status.",
+    "emptyAssets": "You have not listed any assets on the Creator Marketplace yet. Click \"Deploy Asset\" above to get started!",
+    "emptyAssetsFiltered": "No assets found with the selected status.",
+    "emptySales": "You have not sold any products yet.",
+    "coverThumbnail": "Cover Thumbnail",
+    "detailedDescription": "Detailed Description",
+    "downloadGameZip": "Download Game ZIP",
+    "noThumbnail": "No thumbnail",
+    "noDescription": "No detailed description provided.",
+    "noZip": "No Game ZIP package uploaded yet",
+    "screenshots": "Screenshots",
+    "videoDemo": "Video Gameplay Demo",
+    "noScreenshots": "No screenshots uploaded yet",
+    "noVideo": "No gameplay video uploaded yet",
+    "gameRejected": "Game rejected by administrators",
+    "contractCancelled": "Contract cancelled by developer",
+    "gameRejectedHint": "Please check your registered email address for details on rejection reason and administrative feedback.",
+    "contractCancelledHint": "You cancelled or withdrew this contract offer. If this was a mistake, please contact administration or submit a new proposal.",
+    "publishingContract": "Publishing Contract",
+    "statusLabel": "Status:",
+    "signElectronicContract": "Sign Electronic Contract",
+    "viewDownloadContract": "View & Download Contract"
+  },
+  "status": {
+    "game": {
+      "published": "Published",
+      "pending": "Pending",
+      "rejected": "Rejected",
+      "draft": "Draft",
+      "unknown": "Unknown"
+    },
+    "asset": {
+      "active": "Active",
+      "pending": "Pending",
+      "rejected": "Rejected",
+      "removed": "Removed",
+      "unknown": "Unknown"
+    }
+  },
+  "contracts": {
+    "status": {
+      "signed": "Signed",
+      "awaitingYourSign": "Awaiting Your Sign",
+      "cancelled": "Cancelled / Awaiting Re-offer",
+      "expired": "Expired",
+      "unknown": "Unknown"
+    },
+    "signSuccess": "Contract signed successfully! The contract is complete and the game is now approved for publishing.",
+    "signError": "Error performing contract signing",
+    "signErrorMessage": "Error signing contract",
+    "deleteConfirm": "Are you sure you want to remove this product from the Creator Marketplace?",
+    "deleteSuccess": "Product successfully removed!",
+    "deleteFail": "Failed to remove product",
+    "deleteError": "Error removing product"
+  },
+  "releaseSchedule": {
+    "title": "Release Schedule Tracker",
+    "tasks": {
+      "task1": "Deploy Void Knight rigging updates",
+      "task2": "Configure multi-sampling on Ocean Shader",
+      "task3": "Compress retro WAV anthology tracks",
+      "task4": "Test custom tile coordinates mapping grids"
+    }
+  },
+  "discord": {
+    "title": "Join Discord Creator Sockets",
+    "description": "Chat direct dev issues with 14,000+ top Godot enthusiasts. Exchange tiles sets coordinates, lighting math formulas, and shader loops with ease.",
+    "button": "Join Creator Group Chat",
+    "alert": "Simulated Discord redirect! In production, this launches server invitation flow."
+  },
+  "lightbox": {
+    "alt": "Enlarged screenshot"
+  }
+}
