@@ -35,6 +35,7 @@ import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.repository.GameRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +58,7 @@ import java.util.stream.Collectors;
 public class PaymentServiceImpl implements PaymentService {
 
     private static final String DEFAULT_CURRENCY = "VND";
+    private static final String PLATFORM_ADMIN_EMAIL = "admin@godotlaunch.com";
     private static final int PAYMENT_LINK_EXPIRY_MINUTES = 30;
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 
@@ -361,6 +363,23 @@ public class PaymentServiceImpl implements PaymentService {
         return walletRepository.save(wallet);
     }
 
+    private Wallet getPlatformWallet() {
+        User platformAdmin = userRepository.findByEmail(PLATFORM_ADMIN_EMAIL)
+                .orElseGet(() -> userRepository.findAdminsOrderByCreatedAtAsc(PageRequest.of(0, 1)).stream()
+                        .findFirst()
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
+
+        Wallet platformWallet = walletRepository.findByUserId(platformAdmin.getId())
+                .orElseGet(() -> createWallet(platformAdmin));
+
+        if (!DEFAULT_CURRENCY.equalsIgnoreCase(platformWallet.getCurrency())) {
+            platformWallet.setCurrency(DEFAULT_CURRENCY);
+            platformWallet = walletRepository.save(platformWallet);
+        }
+
+        return platformWallet;
+    }
+
     private Payment getPaymentEntity(UUID paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
@@ -528,6 +547,7 @@ public class PaymentServiceImpl implements PaymentService {
 
                 Wallet sellerWallet = walletRepository.findByUserId(item.getSeller().getId())
                         .orElseGet(() -> createWallet(item.getSeller()));
+                Wallet platformWallet = getPlatformWallet();
 
                 if (!DEFAULT_CURRENCY.equalsIgnoreCase(sellerWallet.getCurrency())) {
                     sellerWallet.setCurrency(DEFAULT_CURRENCY);
@@ -547,6 +567,9 @@ public class PaymentServiceImpl implements PaymentService {
                 sellerWallet.setBalance(sellerWallet.getBalance().add(sellerRevenue));
                 walletRepository.save(sellerWallet);
 
+                platformWallet.setBalance(platformWallet.getBalance().add(platformCommission));
+                walletRepository.save(platformWallet);
+
                 buyerWallet.setBalance(buyerWallet.getBalance().subtract(payment.getAmount()));
                 walletRepository.save(buyerWallet);
 
@@ -560,6 +583,17 @@ public class PaymentServiceImpl implements PaymentService {
                 buyerTxn.setOrder(order);
                 buyerTxn.setPayment(payment);
                 transactionRepository.save(buyerTxn);
+
+                Transaction platformTxn = new Transaction();
+                platformTxn.setWallet(platformWallet);
+                platformTxn.setRelatedUser(buyer);
+                platformTxn.setAsset(item);
+                platformTxn.setAmount(platformCommission);
+                platformTxn.setType(TxnType.commission);
+                platformTxn.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+                platformTxn.setOrder(order);
+                platformTxn.setDescription("Credit platform wallet with commission fee");
+                transactionRepository.save(platformTxn);
             }
         } else {
             if (!transactionRepository.findByPaymentId(payment.getId()).isPresent()) {

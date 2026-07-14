@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ChevronDown, Globe } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -32,6 +32,14 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
     }
   };
 
+  const renderFlag = (flagSrc: string, languageName: string, className: string) => (
+    <img
+      src={flagSrc}
+      alt={languageName}
+      className={`w-6 rounded-[3px] object-cover ring-1 ring-black/10 ${className}`}
+    />
+  );
+
   if (variant === 'horizontal') {
     return (
       <div className={`flex items-center gap-1 ${className}`}>
@@ -51,7 +59,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
               } ${loadingLanguage ? 'cursor-not-allowed opacity-60' : ''}`}
               title={language.name}
             >
-              <span>{language.flag}</span>
+              {renderFlag(language.flag, language.name, 'h-4')}
               <span className="hidden sm:inline">{language.code.toUpperCase()}</span>
             </button>
           );
@@ -69,9 +77,8 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
         className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-slate-200/80 bg-slate-100/80 px-3 py-2 text-sm font-medium text-slate-700 transition-studio hover:border-amber-400/40 hover:text-slate-950 dark:border-slate-800/80 dark:bg-slate-950/45 dark:text-slate-200 dark:hover:text-white"
         aria-label={t('language')}
       >
-        <Globe size={16} className="text-sky-500" />
+        {renderFlag(currentSelection.flag, currentSelection.name, 'h-4')}
         <span className="hidden 2xl:inline">{currentSelection.name}</span>
-        <span className="2xl:hidden">{currentSelection.flag}</span>
         <ChevronDown size={13} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -99,7 +106,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
                         : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800/80'
                     } ${isLoading ? 'opacity-60' : ''}`}
                   >
-                    <span className="text-base">{language.flag}</span>
+                    {renderFlag(language.flag, language.name, 'h-4')}
                     <span className="flex-1 font-medium">{language.name}</span>
                     {isActive && <Check size={16} className="text-amber-500" />}
                   </button>

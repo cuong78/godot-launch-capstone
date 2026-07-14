@@ -201,12 +201,7 @@ export const AdminFileManagementPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Title block */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Quản lý Tập tin Hệ thống</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Quản lý trực quan và dọn dẹp các tệp tin lưu trữ trên SeaweedFS</p>
-        </div>
+      <div className="flex justify-end">
         <button
           onClick={fetchFiles}
           disabled={isLoading}

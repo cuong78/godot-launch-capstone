@@ -33,8 +33,8 @@ public interface GameService {
     List<GameResponse> getAllGames();
     List<GameResponse> getGamesByStatus(GameStatus status);
     GameResponse updateGame(UUID gameId, UpdateGameRequest request, String updaterEmail);
-    String getPresignedUploadUrl(UUID gameId, String fileType, String contentType);
-    void confirmUploadComplete(UUID gameId, String fileType, String objectKey);
+    String getPresignedUploadUrl(UUID gameId, String fileType, String contentType, String requesterEmail);
+    void confirmUploadComplete(UUID gameId, String fileType, String objectKey, String requesterEmail);
 
     /**
      * Proxy upload media (thumbnail/screenshot/video) qua SeaweedFsService.

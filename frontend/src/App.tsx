@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 
 import { Header } from './components/Header';
-import { AdminHeader } from './components/AdminHeader';
+import { AdminHeader } from './components/admin/AdminHeader';
 import { Footer } from './components/Footer';
 import {
   Asset,
@@ -47,6 +47,7 @@ import { communityApi } from './api/communityApi';
 import { marketplaceApi } from './api/marketplaceApi';
 import { paymentApi } from './api/paymentApi';
 import { orderApi } from './api/orderApi';
+import { dispatchAdminNavigation } from './utils/adminNavigation';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
@@ -485,6 +486,72 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
   const displayScreen = currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen;
   const isCheckoutModalOpen = currentScreen === 'checkout';
+  const isAdminManagedScreen =
+    currentUser?.role === 'admin' &&
+    (displayScreen === 'admin' ||
+      displayScreen === 'profile' ||
+      displayScreen === 'chat');
+
+  const redirectAdminToSection = useCallback((
+    section: 'overview' | 'finance',
+    tab?: 'wallet' | 'payments',
+  ) => {
+    setCurrentScreen('admin');
+    dispatchAdminNavigation(
+      tab ? { section, tab } : { section },
+    );
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') {
+      return;
+    }
+
+    const storefrontScreens: ScreenType[] = [
+      'explore',
+      'marketplace',
+      'detail',
+      'community',
+      'community-detail',
+      'author-profile',
+    ];
+    const creatorScreens: ScreenType[] = [
+      'upload',
+      'path',
+      'dashboard',
+      'developer-onboarding',
+    ];
+    const sharedFinanceScreens: ScreenType[] = [
+      'payment',
+      'payment-success',
+      'payment-failed',
+      'payment-cancelled',
+      'checkout',
+    ];
+
+    if (currentScreen === 'wallet') {
+      redirectAdminToSection('finance', 'wallet');
+      return;
+    }
+
+    if (sharedFinanceScreens.includes(currentScreen)) {
+      redirectAdminToSection('finance', 'payments');
+      return;
+    }
+
+    if (
+      storefrontScreens.includes(displayScreen) ||
+      creatorScreens.includes(displayScreen)
+    ) {
+      redirectAdminToSection('overview');
+    }
+  }, [
+    currentUser?.role,
+    currentScreen,
+    displayScreen,
+    redirectAdminToSection,
+  ]);
 
   const showToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
     setToast({ message, type });
@@ -1154,7 +1221,7 @@ export default function App() {
       <div className="fixed inset-0 pointer-events-none pixel-grid-overlay z-[2]"></div>
 
       {/* HEADER SECTION */}
-      {displayScreen === 'admin' ? (
+      {isAdminManagedScreen ? (
         <AdminHeader
           setCurrentScreen={setCurrentScreen}
           currentUser={currentUser}
@@ -1188,6 +1255,8 @@ export default function App() {
       <main
         className={`relative z-10 flex-grow ${
           displayScreen === 'explore'
+            ? 'w-full max-w-none px-0 py-0'
+            : displayScreen === 'admin'
             ? 'w-full max-w-none px-0 py-0'
             : displayScreen === 'marketplace' || displayScreen === 'detail'
             ? 'w-full max-w-none px-4 py-6 sm:px-6 lg:px-8'
@@ -1297,7 +1366,7 @@ export default function App() {
         )}
 
         {displayScreen === 'upload' && (
-          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+          <ProtectedRoute setCurrentScreen={setCurrentScreen} requiredRole="developer">
             <UploadPage setCurrentScreen={setCurrentScreen} />
           </ProtectedRoute>
         )}
@@ -1460,7 +1529,7 @@ export default function App() {
       )}
 
       {/* FOOTER ACCENTS SECTION */}
-      <Footer setCurrentScreen={setCurrentScreen} />
+      {!isAdminManagedScreen && <Footer setCurrentScreen={setCurrentScreen} />}
 
       {/* Toast Notifications */}
       {toast && (

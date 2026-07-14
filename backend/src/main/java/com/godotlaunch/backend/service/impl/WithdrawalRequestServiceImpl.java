@@ -87,6 +87,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Transactional(readOnly = true)
     public DeveloperWalletSummaryResponse getDeveloperWalletSummary(String email) {
         User developer = getUserByEmail(email);
+        assertWalletSelfServiceUser(developer);
         Wallet wallet = getOrCreateWallet(developer);
         WalletMetrics metrics = buildWalletMetrics(developer, wallet);
         return mapWalletSummary(developer, wallet, metrics);
@@ -96,6 +97,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Transactional(readOnly = true)
     public DeveloperSalesStatsResponse getDeveloperSalesStats(String email) {
         User developer = getUserByEmail(email);
+        assertDeveloper(developer);
         Wallet wallet = getOrCreateWallet(developer);
 
         long totalUnitsSold = transactionRepository.countByWalletIdAndType(wallet.getId(), TxnType.revenue_share);
@@ -137,6 +139,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Transactional
     public WithdrawalDetailResponse createDeveloperWithdrawal(CreateWithdrawalRequest request, String email) {
         User developer = getUserByEmail(email);
+        assertWalletSelfServiceUser(developer);
         Wallet wallet = getOrCreateLockedWallet(developer);
 
         WalletMetrics beforeMetrics = buildWalletMetrics(developer, wallet);
@@ -181,6 +184,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Transactional(readOnly = true)
     public List<WithdrawalResponse> getDeveloperWithdrawals(String email) {
         User developer = getUserByEmail(email);
+        assertWalletSelfServiceUser(developer);
         return withdrawalRequestRepository.findByUserIdOrderByCreatedAtDesc(developer.getId()).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -190,9 +194,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Transactional(readOnly = true)
     public WithdrawalDetailResponse getDeveloperWithdrawalDetail(UUID id, String email) {
         User requester = getUserByEmail(email);
+        assertWalletSelfServiceUser(requester);
         WithdrawalRequest withdrawal = getWithdrawal(id);
 
-        if (!isAdmin(requester) && !withdrawal.getUser().getId().equals(requester.getId())) {
+        if (!withdrawal.getUser().getId().equals(requester.getId())) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
@@ -369,6 +374,20 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private void assertWalletSelfServiceUser(User user) {
+        String roleName = user.getRole() != null ? user.getRole().getName() : null;
+        if (!"developer".equalsIgnoreCase(roleName) && !"customer".equalsIgnoreCase(roleName)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void assertDeveloper(User user) {
+        String roleName = user.getRole() != null ? user.getRole().getName() : null;
+        if (!"developer".equalsIgnoreCase(roleName)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
     }
 
     private WithdrawalRequest getWithdrawal(UUID id) {

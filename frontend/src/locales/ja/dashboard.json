@@ -4,8 +4,7 @@
     "title": "おかえりなさい、 Indie Creator",
     "subtitle": "最近のダウンロード、ライブダッシュボードの傾向、コミュニティログを確認します",
     "deployAsset": "アセットを公開",
-    "syncRepository": "リポジトリ同期",
-    "syncRepositoryAlert": "開発者プロフィールの同期が完了しました。"
+    "syncRepository": "リポジトリ同期"
   },
   "stats": {
     "revenue": "純収益",

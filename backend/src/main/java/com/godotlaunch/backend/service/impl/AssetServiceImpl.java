@@ -64,12 +64,30 @@ public class AssetServiceImpl implements AssetService {
         return "marketplace/items/" + itemId + "/project.zip";
     }
 
+    private User getRequesterWithRole(String requesterEmail) {
+        return userRepository.findWithRoleByEmail(requesterEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private void assertDeveloper(User user) {
+        String roleName = user.getRole() != null ? user.getRole().getName() : null;
+        if (!"developer".equalsIgnoreCase(roleName)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void assertAssetOwner(Asset item, User requester) {
+        if (!item.getSeller().getId().equals(requester.getId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
 
     @Override
     @Transactional
     public UUID createAsset(CreateAssetRequest request, String sellerEmail) {
-        User seller = userRepository.findByEmail(sellerEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User seller = getRequesterWithRole(sellerEmail);
+        assertDeveloper(seller);
 
         if (!seller.isFaceVerified()) {
             throw new AppException(ErrorCode.FACE_VERIFY_REQUIRED);
@@ -145,12 +163,11 @@ public class AssetServiceImpl implements AssetService {
     @Override
     @Transactional
     public AssetResponse updateAsset(UUID id, UpdateAssetRequest request, String updaterEmail) {
+        User updater = getRequesterWithRole(updaterEmail);
+        assertDeveloper(updater);
         Asset item = assetRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-
-        if (!item.getSeller().getEmail().equalsIgnoreCase(updaterEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertAssetOwner(item, updater);
 
         if (request.getTitle() != null) {
             item.setTitle(request.getTitle());
@@ -178,9 +195,12 @@ public class AssetServiceImpl implements AssetService {
 
     @Override
     @Transactional(readOnly = true)
-    public String getPresignedUploadUrl(UUID itemId, String contentType) {
+    public String getPresignedUploadUrl(UUID itemId, String contentType, String requesterEmail) {
+        User requester = getRequesterWithRole(requesterEmail);
+        assertDeveloper(requester);
         Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+        assertAssetOwner(item, requester);
 
         String objectKey = buildObjectKey(item.getId());
         return seaweedFsService.generatePresignedUploadUrl(objectKey, contentType);
@@ -189,13 +209,11 @@ public class AssetServiceImpl implements AssetService {
     @Override
     @Transactional
     public void uploadItemFile(UUID itemId, MultipartFile file, String uploaderEmail) {
+        User uploader = getRequesterWithRole(uploaderEmail);
+        assertDeveloper(uploader);
         Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-
-        // Chỉ seller sở hữu item mới được upload
-        if (!item.getSeller().getEmail().equals(uploaderEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertAssetOwner(item, uploader);
 
         String objectKey = buildObjectKey(item.getId());
         // Upload qua SeaweedFsService
@@ -223,11 +241,11 @@ public class AssetServiceImpl implements AssetService {
     @Override
     @Transactional
     public String uploadItemMedia(UUID itemId, String mediaType, MultipartFile file, String uploaderEmail) {
+        User uploader = getRequesterWithRole(uploaderEmail);
+        assertDeveloper(uploader);
         Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-        if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertAssetOwner(item, uploader);
 
         // Chuẩn hóa media_type: thumbnail | screenshot | video | asset_image
         String type = switch (mediaType == null ? "" : mediaType.toLowerCase()) {
@@ -272,11 +290,11 @@ public class AssetServiceImpl implements AssetService {
     @Override
     @Transactional
     public void deleteAssetMedia(UUID itemId, String mediaUrl, String uploaderEmail) {
+        User uploader = getRequesterWithRole(uploaderEmail);
+        assertDeveloper(uploader);
         Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-        if (!item.getSeller().getEmail().equalsIgnoreCase(uploaderEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertAssetOwner(item, uploader);
 
         String targetKey = extractObjectKeyFromUrl(mediaUrl);
         mediaRepository.findByAsset_IdOrderByCreatedAtDesc(itemId).stream()
@@ -318,9 +336,12 @@ public class AssetServiceImpl implements AssetService {
 
     @Override
     @Transactional
-    public void confirmUploadComplete(UUID itemId, String objectKey) {
+    public void confirmUploadComplete(UUID itemId, String objectKey, String requesterEmail) {
+        User requester = getRequesterWithRole(requesterEmail);
+        assertDeveloper(requester);
         Asset item = assetRepository.findById(itemId)
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+        assertAssetOwner(item, requester);
 
         String actualKey = objectKey != null ? objectKey : buildObjectKey(item.getId());
         String fileUrl = seaweedFsService.getFileUrl(actualKey);

@@ -4,8 +4,7 @@
     "title": "Welcome Back, Indie Creator",
     "subtitle": "Check recent downloads, live dashboard trends, and community logs",
     "deployAsset": "Deploy Asset",
-    "syncRepository": "Sync Repository",
-    "syncRepositoryAlert": "Dev profile synchronizer complete!"
+    "syncRepository": "Sync Repository"
   },
   "stats": {
     "revenue": "Net Revenue",

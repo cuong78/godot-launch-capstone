@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { resolvePostLoginScreen } from '../utils/authRedirect';
 
 interface GitHubCallbackPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -65,7 +66,7 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
           localStorage.setItem("github_link_success", "true");
           setCurrentScreen('developer-onboarding');
         } else {
-          setCurrentScreen('dashboard');
+          setCurrentScreen(resolvePostLoginScreen(user));
         }
       } catch (err: any) {
         setErrorMsg(err.message || 'GitHub login failed. Please try again.');

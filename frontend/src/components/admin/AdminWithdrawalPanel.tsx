@@ -1,6 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../Button";
-import { Eye, RefreshCw } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+} from "lucide-react";
 import { walletApi } from "../../api/walletApi";
 import {
   PayoutBalanceResponse,
@@ -84,6 +88,7 @@ const getStatusMeta = (status: WithdrawalStatus) => {
 const PAYOUT_PROGRESS_TOTAL_MS = 30 * 1000;
 const PAYOUT_PROGRESS_SYNC_INTERVAL_MS = 1000;
 const PAYOUT_PROGRESS_FAILURE_CLOSE_DELAY_MS = 1200;
+const WITHDRAWALS_PER_PAGE = 6;
 
 interface PanelStatusFlash {
   tone: "success" | "warning";
@@ -94,7 +99,32 @@ interface PayoutMonitorState extends WithdrawalPayoutProgress {
   withdrawalId: string;
 }
 
-export const AdminWithdrawalPanel: React.FC = () => {
+const getWithdrawalSortTimestamp = (withdrawal: WithdrawalResponse) => {
+  const value =
+    withdrawal.createdAt ||
+    withdrawal.updatedAt ||
+    withdrawal.processedAt ||
+    withdrawal.payosCreatedAt;
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+interface AdminWithdrawalPanelProps {
+  onRefreshStateChange?: (state: {
+    refresh: () => Promise<void>;
+    isRefreshing: boolean;
+    isLoadingPrimary: boolean;
+    isLoadingSecondary?: boolean;
+  }) => void;
+}
+
+export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
+  onRefreshStateChange,
+}) => {
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
   const [selectedWithdrawal, setSelectedWithdrawal] =
     useState<WithdrawalDetailResponse | null>(null);
@@ -120,6 +150,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<"all" | WithdrawalStatus>(
     "all",
   );
+  const [currentPage, setCurrentPage] = useState(0);
 
   const loadAdminPayoutBalance = useCallback(async () => {
     setIsLoadingAdminPayoutBalance(true);
@@ -164,19 +195,77 @@ export const AdminWithdrawalPanel: React.FC = () => {
     void loadAdminPayoutBalance();
   }, [loadAdminPayoutBalance, loadWithdrawals]);
 
-  const filteredWithdrawals = withdrawals.filter((withdrawal) => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const matchesSearch =
-      !normalizedSearch ||
-      withdrawal.developerFullName?.toLowerCase().includes(normalizedSearch) ||
-      withdrawal.developerEmail?.toLowerCase().includes(normalizedSearch) ||
-      withdrawal.transferReference?.toLowerCase().includes(normalizedSearch) ||
-      withdrawal.bankName?.toLowerCase().includes(normalizedSearch);
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([loadWithdrawals(), loadAdminPayoutBalance()]);
+  }, [loadAdminPayoutBalance, loadWithdrawals]);
 
-    const matchesStatus =
-      statusFilter === "all" || withdrawal.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    onRefreshStateChange?.({
+      refresh: handleRefresh,
+      isRefreshing: isLoading || isLoadingAdminPayoutBalance,
+      isLoadingPrimary: isLoading,
+      isLoadingSecondary: isLoadingAdminPayoutBalance,
+    });
+  }, [
+    handleRefresh,
+    isLoading,
+    isLoadingAdminPayoutBalance,
+    onRefreshStateChange,
+  ]);
+
+  const filteredWithdrawals = useMemo(() => {
+    return withdrawals.filter((withdrawal) => {
+      const normalizedSearch = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+        !normalizedSearch ||
+        withdrawal.developerFullName
+          ?.toLowerCase()
+          .includes(normalizedSearch) ||
+        withdrawal.developerEmail?.toLowerCase().includes(normalizedSearch) ||
+        withdrawal.transferReference
+          ?.toLowerCase()
+          .includes(normalizedSearch) ||
+        withdrawal.bankName?.toLowerCase().includes(normalizedSearch);
+
+      const matchesStatus =
+        statusFilter === "all" || withdrawal.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [searchTerm, statusFilter, withdrawals]);
+
+  const sortedWithdrawals = useMemo(() => {
+    const items = [...filteredWithdrawals];
+
+    items.sort(
+      (left, right) =>
+        getWithdrawalSortTimestamp(right) - getWithdrawalSortTimestamp(left),
+    );
+
+    return items;
+  }, [filteredWithdrawals]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedWithdrawals.length / WITHDRAWALS_PER_PAGE),
+  );
+
+  const paginatedWithdrawals = useMemo(() => {
+    const startIndex = currentPage * WITHDRAWALS_PER_PAGE;
+    return sortedWithdrawals.slice(
+      startIndex,
+      startIndex + WITHDRAWALS_PER_PAGE,
+    );
+  }, [currentPage, sortedWithdrawals]);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchTerm, statusFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages - 1) {
+      setCurrentPage(Math.max(0, totalPages - 1));
+    }
+  }, [currentPage, totalPages]);
 
   const openDetail = async (requestId: string) => {
     setIsBusy(true);
@@ -560,46 +649,21 @@ export const AdminWithdrawalPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/70">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
-              Withdrawal Queue
-            </h3>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Tạo payout order, theo dõi PayOS status, rồi chỉ hoàn tất
-              withdrawal khi PayOS xác nhận chuyển tiền thành công.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              {filteredWithdrawals.length} requests
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<RefreshCw size={14} />}
-              onClick={loadWithdrawals}
-            >
-              Refresh
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px]">
+      <div className="rounded-[24px] border border-slate-200/90 bg-white/95 p-6 shadow-[0_18px_44px_rgba(148,163,184,0.14)] backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:shadow-none">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px]">
           <input
             type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search by developer, email, bank, or reference..."
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
           />
           <select
             value={statusFilter}
             onChange={(event) =>
               setStatusFilter(event.target.value as "all" | WithdrawalStatus)
             }
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
           >
             <option value="all">All statuses</option>
             <option value="pending">Pending</option>
@@ -655,7 +719,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
                     Đang tải withdrawal queue...
                   </td>
                 </tr>
-              ) : filteredWithdrawals.length === 0 ? (
+              ) : sortedWithdrawals.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
@@ -665,7 +729,7 @@ export const AdminWithdrawalPanel: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredWithdrawals.map((withdrawal) => {
+                paginatedWithdrawals.map((withdrawal) => {
                   const statusMeta = getStatusMeta(withdrawal.status);
                   return (
                     <tr
@@ -714,6 +778,31 @@ export const AdminWithdrawalPanel: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {sortedWithdrawals.length > 0 ? (
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(0, page - 1))}
+              disabled={currentPage === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.08)] transition-studio disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-200 dark:shadow-none"
+            >
+              <ChevronLeft size={14} />
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages - 1, page + 1))
+              }
+              disabled={currentPage >= totalPages - 1}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.08)] transition-studio disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-200 dark:shadow-none"
+            >
+              Next
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <AdminWithdrawalDetailModal
