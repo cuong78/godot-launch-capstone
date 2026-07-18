@@ -1,1 +1,27 @@
-{}
+{
+  "sidebar": {
+    "overview": { "label": "概要", "description": "プラットフォーム概要、マーケットプレイス活動、審査、ユーザー運用の可視化。" },
+    "moderation": { "label": "審査", "description": "ゲーム、アセット、AIレビュー、デモ確認。" },
+    "finance": { "label": "財務運用", "description": "ウォレット、決済、出金、支払い運用。" },
+    "users": { "label": "ユーザー運用", "description": "ディレクトリ、役割変更、アカウント状態。" },
+    "system": { "label": "システム運用", "description": "ログ、ストレージ、設定、紛争処理。" }
+  },
+  "tabs": {
+    "queue": "キュー",
+    "payments": "決済",
+    "wallet": "ウォレット",
+    "withdrawals": "出金",
+    "userDirectory": "ユーザーディレクトリ",
+    "auditLogs": "監査ログ",
+    "settings": "設定",
+    "storage": "ストレージ",
+    "disputes": "紛争"
+  },
+  "sectionTitle": {
+    "logs": "セキュリティ監査ログ",
+    "settings": "プラットフォーム設定",
+    "storage": "ストレージ管理",
+    "disputes": "紛争解決",
+    "default": "システム運用"
+  }
+}

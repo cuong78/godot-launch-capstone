@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import {
   ShieldAlert,
   Users,
@@ -142,11 +143,11 @@ const ADMIN_DEFAULT_TAB_BY_SECTION: Record<
   system: "logs",
 };
 
-const SYSTEM_SECTION_TITLE_BY_TAB: Partial<Record<AdminTabKey, string>> = {
-  logs: "Security Audit Logs",
-  settings: "Platform Settings",
-  storage: "Storage Management",
-  disputes: "Dispute Resolution",
+const SYSTEM_SECTION_TITLE_KEY_BY_TAB: Partial<Record<AdminTabKey, string>> = {
+  logs: "sectionTitle.logs",
+  settings: "sectionTitle.settings",
+  storage: "sectionTitle.storage",
+  disputes: "sectionTitle.disputes",
 };
 
 const isSoftDeletedUserEmail = (email: string) => email.includes("_deleted_");
@@ -392,6 +393,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser,
 }) => {
+  const { t } = useTranslation(["admin"]);
   const [activeTab, setActiveTab] = useState<AdminTabKey>("moderation");
   const [activeSection, setActiveSection] =
     useState<AdminSectionKey>("overview");
@@ -498,35 +500,34 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const sidebarItems: AdminSidebarNavItem[] = [
     {
       key: "overview",
-      label: "Overview",
-      description:
-        "Platform summary, marketplace activity, moderation, and user operations visibility.",
+      label: t("sidebar.overview.label"),
+      description: t("sidebar.overview.description"),
       icon: <Activity size={16} />,
     },
     {
       key: "moderation",
-      label: "Moderation",
-      description: "Games, assets, AI review, and demo checks.",
+      label: t("sidebar.moderation.label"),
+      description: t("sidebar.moderation.description"),
       icon: <FileCheck size={16} />,
       badge:
         moderationItemsCount > 0 ? String(moderationItemsCount) : undefined,
     },
     {
       key: "finance",
-      label: "Finance Ops",
-      description: "Wallet, payments, withdrawals, and payout operations.",
+      label: t("sidebar.finance.label"),
+      description: t("sidebar.finance.description"),
       icon: <DollarSign size={16} />,
     },
     {
       key: "users",
-      label: "User Ops",
-      description: "Directory, role changes, and account status.",
+      label: t("sidebar.users.label"),
+      description: t("sidebar.users.description"),
       icon: <Users size={16} />,
     },
     {
       key: "system",
-      label: "System Ops",
-      description: "Logs, storage, settings, and disputes.",
+      label: t("sidebar.system.label"),
+      description: t("sidebar.system.description"),
       icon: <Database size={16} />,
     },
   ];
@@ -542,28 +543,28 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             case "moderation":
               return {
                 key: tabKey,
-                label: "Queue",
+                label: t("tabs.queue"),
                 badge:
                   moderationItemsCount > 0
                     ? String(moderationItemsCount)
                     : undefined,
               };
             case "payments":
-              return { key: tabKey, label: "Payments" };
+              return { key: tabKey, label: t("tabs.payments") };
             case "wallet":
-              return { key: tabKey, label: "Wallet" };
+              return { key: tabKey, label: t("tabs.wallet") };
             case "withdrawal":
-              return { key: tabKey, label: "Withdrawals" };
+              return { key: tabKey, label: t("tabs.withdrawals") };
             case "users":
-              return { key: tabKey, label: "User Directory" };
+              return { key: tabKey, label: t("tabs.userDirectory") };
             case "logs":
-              return { key: tabKey, label: "Audit Logs" };
+              return { key: tabKey, label: t("tabs.auditLogs") };
             case "settings":
-              return { key: tabKey, label: "Settings" };
+              return { key: tabKey, label: t("tabs.settings") };
             case "storage":
-              return { key: tabKey, label: "Storage" };
+              return { key: tabKey, label: t("tabs.storage") };
             case "disputes":
-              return { key: tabKey, label: "Disputes" };
+              return { key: tabKey, label: t("tabs.disputes") };
             default:
               return { key: tabKey, label: tabKey };
           }
@@ -573,8 +574,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     currentUser?.username ||
     currentUser?.email ||
     "Admin operator";
-  const systemSectionTitle =
-    SYSTEM_SECTION_TITLE_BY_TAB[activeTab] || "System Operations";
+  const systemSectionTitleKey = SYSTEM_SECTION_TITLE_KEY_BY_TAB[activeTab];
+  const systemSectionTitle = systemSectionTitleKey
+    ? t(systemSectionTitleKey)
+    : t("sectionTitle.default");
   const adminIdentity = currentUser?.email || "admin@godotlaunch.com";
   const adminInitial = adminDisplayName.trim().charAt(0).toUpperCase() || "A";
   const handleSectionSelect = (section: AdminSectionKey) => {

@@ -1,1 +1,27 @@
-{}
+{
+  "sidebar": {
+    "overview": { "label": "Tổng quan", "description": "Tổng quan nền tảng, hoạt động marketplace, kiểm duyệt và người dùng." },
+    "moderation": { "label": "Kiểm duyệt", "description": "Game, asset, AI review và kiểm tra demo." },
+    "finance": { "label": "Tài chính", "description": "Ví, thanh toán, rút tiền và vận hành chi trả." },
+    "users": { "label": "Người dùng", "description": "Danh bạ, thay đổi vai trò và trạng thái tài khoản." },
+    "system": { "label": "Hệ thống", "description": "Nhật ký, lưu trữ, cấu hình và tranh chấp." }
+  },
+  "tabs": {
+    "queue": "Hàng chờ",
+    "payments": "Thanh toán",
+    "wallet": "Ví",
+    "withdrawals": "Rút tiền",
+    "userDirectory": "Danh bạ người dùng",
+    "auditLogs": "Nhật ký hệ thống",
+    "settings": "Cấu hình",
+    "storage": "Lưu trữ",
+    "disputes": "Tranh chấp"
+  },
+  "sectionTitle": {
+    "logs": "Nhật ký kiểm toán bảo mật",
+    "settings": "Cấu hình nền tảng",
+    "storage": "Quản lý lưu trữ",
+    "disputes": "Xử lý tranh chấp",
+    "default": "Vận hành hệ thống"
+  }
+}
