@@ -33,9 +33,9 @@ export interface KycConfirmPayload {
   address?: string;
   frontImageBase64?: string;
   backImageBase64?: string;
-  bankName: string;
-  bankAccount: string;
-  bankAccountHolder: string;
+  bankName?: string;
+  bankAccount?: string;
+  bankAccountHolder?: string;
 }
 
 export const kycApi = {

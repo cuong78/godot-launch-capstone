@@ -152,9 +152,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         withdrawal.setWallet(wallet);
         withdrawal.setAmount(request.getAmount());
         withdrawal.setCurrency(DEFAULT_CURRENCY);
-        withdrawal.setBankName(request.getBankName().trim());
-        withdrawal.setBankAccount(encryptBankAccount(request.getBankAccount().trim()));
-        withdrawal.setAccountHolder(request.getAccountHolder().trim());
         withdrawal.setStatus(WithdrawalStatus.pending);
         withdrawal.setRemark(buildRemarkSection("Developer note", request.getNote()));
 
@@ -480,9 +477,9 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .walletId(withdrawal.getWallet().getId())
                 .amount(withdrawal.getAmount())
                 .currency(firstNonBlank(withdrawal.getCurrency(), DEFAULT_CURRENCY))
-                .bankName(withdrawal.getBankName())
+                .bankName(withdrawal.getUser().getBankName())
                 .bankAccount(decryptBankAccount(withdrawal))
-                .accountHolder(withdrawal.getAccountHolder())
+                .accountHolder(withdrawal.getUser().getBankAccountHolder())
                 .transferReference(resolveTransferReference(withdrawal, null))
                 .payosPayoutId(withdrawal.getPayosPayoutId())
                 .payosReferenceId(withdrawal.getPayosReferenceId())
@@ -509,9 +506,9 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .walletId(wallet.getId())
                 .amount(withdrawal.getAmount())
                 .currency(firstNonBlank(withdrawal.getCurrency(), DEFAULT_CURRENCY))
-                .bankName(withdrawal.getBankName())
+                .bankName(withdrawal.getUser().getBankName())
                 .bankAccount(decryptBankAccount(withdrawal))
-                .accountHolder(withdrawal.getAccountHolder())
+                .accountHolder(withdrawal.getUser().getBankAccountHolder())
                 .transferReference(resolveTransferReference(withdrawal, null))
                 .payosPayoutId(withdrawal.getPayosPayoutId())
                 .payosReferenceId(withdrawal.getPayosReferenceId())
@@ -541,10 +538,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .withdrawalRequestId(withdrawal.getId())
                 .amount(withdrawal.getAmount())
                 .currency(firstNonBlank(withdrawal.getCurrency(), DEFAULT_CURRENCY))
-                .bankName(withdrawal.getBankName())
+                .bankName(withdrawal.getUser().getBankName())
                 .bankAccount(decryptBankAccount(withdrawal).replaceAll("\\s+", ""))
-                .accountHolder(withdrawal.getAccountHolder())
-                .toBankBin(resolveBankCodeOrThrow(withdrawal.getBankName()))
+                .accountHolder(withdrawal.getUser().getBankAccountHolder())
+                .toBankBin(resolveBankCodeOrThrow(withdrawal.getUser().getBankName()))
                 .categories(PAYOUT_CATEGORY)
                 .transferReference(transferReference)
                 .description(buildPayoutDescription(withdrawal))
@@ -584,15 +581,15 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     private String buildQrPayload(WithdrawalRequest withdrawal) {
         return "GodotLaunch Withdrawal\n"
-                + "Bank: " + withdrawal.getBankName() + "\n"
+                + "Bank: " + withdrawal.getUser().getBankName() + "\n"
                 + "Account: " + decryptBankAccount(withdrawal) + "\n"
-                + "Holder: " + withdrawal.getAccountHolder() + "\n"
+                + "Holder: " + withdrawal.getUser().getBankAccountHolder() + "\n"
                 + "Amount: " + withdrawal.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VND\n"
                 + "Reference: " + resolveTransferReference(withdrawal, null);
     }
 
     private String buildPreferredQrImageUrl(WithdrawalRequest withdrawal) {
-        String bankCode = resolveBankCode(withdrawal.getBankName());
+        String bankCode = resolveBankCode(withdrawal.getUser().getBankName());
         if (bankCode == null) {
             return null;
         }
@@ -600,7 +597,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         String accountNumber = decryptBankAccount(withdrawal).replaceAll("\\s+", "");
         String amount = withdrawal.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString();
         String info = urlEncode(resolveTransferReference(withdrawal, null));
-        String accountName = urlEncode(withdrawal.getAccountHolder());
+        String accountName = urlEncode(withdrawal.getUser().getBankAccountHolder());
         return "https://img.vietqr.io/image/" + bankCode + "-" + accountNumber
                 + "-compact2.png?amount=" + amount
                 + "&addInfo=" + info
@@ -661,13 +658,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     }
 
     private String decryptBankAccount(WithdrawalRequest withdrawal) {
-        String stored = withdrawal.getBankAccount();
-        try {
-            return encryptionUtils.decrypt(stored);
-        } catch (RuntimeException e) {
-            // Rows created before encryption was introduced still hold plaintext.
-            return stored;
-        }
+        return withdrawal.getUser().getBankAccount() != null ? withdrawal.getUser().getBankAccount() : "";
     }
 
     private boolean isAdmin(User user) {

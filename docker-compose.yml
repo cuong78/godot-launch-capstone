@@ -80,8 +80,8 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=godot_launch
-      - DB_USER=postgres
-      - DB_PASSWORD=12345
+      - DB_USER=user_godot_launch
+      - DB_PASSWORD=password_godot_launch
       - FACE_SIMILARITY_THRESHOLD=0.5
       - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-vision.json
       # AI review — DeepSeek text (đổ key thật vào .env hoặc shell env). Trống → module DeepSeek bị skip.

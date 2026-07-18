@@ -620,8 +620,11 @@ public class AuthServiceImpl implements AuthService {
                 .status(user.getStatus())
                 .avatarUrl(user.getAvatarUrl())
                 .preferredLanguage(StringUtils.hasText(user.getPreferredLanguage())
-                        ? user.getPreferredLanguage().trim().toLowerCase(Locale.ROOT)
-                        : "vi")
+                         ? user.getPreferredLanguage().trim().toLowerCase(Locale.ROOT)
+                         : "vi")
+                .bankName(user.getBankName())
+                .bankAccount(user.getBankAccount())
+                .bankAccountHolder(user.getBankAccountHolder())
                 .createdAt(user.getCreatedAt())
                 .build();
     }

@@ -23,5 +23,8 @@ public class UserResponse {
     private String status;
     private String avatarUrl;
     private String preferredLanguage;
+    private String bankName;
+    private String bankAccount;
+    private String bankAccountHolder;
     private Instant createdAt;
 }

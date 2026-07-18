@@ -46,14 +46,7 @@ public class WithdrawalRequest {
     @Column(name = "currency", nullable = false, length = 3)
     private String currency = "VND";
 
-    @Column(name = "bank_name", nullable = false, length = 200)
-    private String bankName;
 
-    @Column(name = "bank_account", nullable = false, length = 100)
-    private String bankAccount;
-
-    @Column(name = "account_holder", nullable = false, length = 200)
-    private String accountHolder;
 
     @Column(name = "transfer_reference", length = 120)
     private String transferReference;

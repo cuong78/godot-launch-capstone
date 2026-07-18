@@ -27,12 +27,9 @@ public class KycConfirmRequest {
 
     private String backImageBase64;
 
-    @NotBlank(message = "Bank name is required.")
     private String bankName;
 
-    @NotBlank(message = "Bank account number is required.")
     private String bankAccount;
 
-    @NotBlank(message = "Bank account holder name is required.")
     private String bankAccountHolder;
 }

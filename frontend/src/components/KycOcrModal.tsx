@@ -123,10 +123,6 @@ export default function KycOcrModal({
       setError('Họ tên và số giấy tờ không được để trống.');
       return;
     }
-    if (!form.bankName.trim() || !form.bankAccount.trim() || !form.bankAccountHolder.trim()) {
-      setError('Vui lòng cung cấp đầy đủ thông tin tài khoản ngân hàng.');
-      return;
-    }
     setStep('submitting');
     setError(null);
 
@@ -372,23 +368,7 @@ export default function KycOcrModal({
                 </div>
               ))}
 
-              <div className="flex items-center gap-2 text-white/40 text-[11px] pt-1">
-                <span className="h-px flex-1 bg-white/10" />
-                Tài khoản ngân hàng nhận thanh toán
-                <span className="h-px flex-1 bg-white/10" />
-              </div>
 
-              {(['bankName', 'bankAccount', 'bankAccountHolder'] as const).map((field) => (
-                <div key={field}>
-                  <label className="text-white/50 text-xs mb-1 block">{FIELD_LABELS[field]}</label>
-                  <input
-                    type="text"
-                    value={form[field] ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-400/60"
-                  />
-                </div>
-              ))}
 
               {error && (
                 <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 rounded-xl px-4 py-3">

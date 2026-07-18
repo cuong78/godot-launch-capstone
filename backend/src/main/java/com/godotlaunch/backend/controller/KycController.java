@@ -134,8 +134,9 @@ public class KycController {
         // lại bằng CCCD hoặc số tài khoản ngân hàng khác — kiểm tra TRƯỚC
         // check trùng thông thường bên dưới, vì đây là chặn cứng vĩnh viễn.
         String normalizedIdNumber = request.getIdNumber().trim();
-        if (bannedIdentityRepository.existsByKycIdNumber(normalizedIdNumber)
-                || bannedIdentityRepository.existsByBankAccount(request.getBankAccount().trim())) {
+        boolean isBankBanned = request.getBankAccount() != null && !request.getBankAccount().isBlank()
+                && bannedIdentityRepository.existsByBankAccount(request.getBankAccount().trim());
+        if (bannedIdentityRepository.existsByKycIdNumber(normalizedIdNumber) || isBankBanned) {
             throw new AppException(ErrorCode.IDENTITY_BANNED);
         }
 
@@ -184,9 +185,6 @@ public class KycController {
         user.setKycFullName(request.getFullName());
         user.setKycIdNumber(normalizedIdNumber);
         user.setKycAddress(request.getAddress());
-        user.setBankName(request.getBankName());
-        user.setBankAccount(request.getBankAccount());
-        user.setBankAccountHolder(request.getBankAccountHolder());
 
         if (request.getDateOfBirth() != null && !request.getDateOfBirth().isBlank()) {
             user.setKycDateOfBirth(parseDob(request.getDateOfBirth()));

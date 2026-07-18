@@ -306,9 +306,7 @@ CREATE TABLE public.code_embeddings (
     id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
     game_id uuid NOT NULL,
     embedding public.vector(768) NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT fk_code_embeddings_game FOREIGN KEY (game_id)
-        REFERENCES public.games(id) ON DELETE CASCADE
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE public.community_chats (
@@ -401,8 +399,6 @@ CREATE TABLE public.embeddings (
     embedding_128 public.vector(128),
     embedding_512 public.vector(512),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT fk_embeddings_user FOREIGN KEY (user_id)
-        REFERENCES public.users(id) ON DELETE CASCADE,
     CONSTRAINT chk_embeddings_type CHECK (type IN ('face', 'kyc_front', 'kyc_back')),
     CONSTRAINT chk_embeddings_vector_matches_type CHECK (
         (type = 'face' AND embedding_128 IS NOT NULL AND embedding_512 IS NULL)
@@ -504,6 +500,11 @@ CREATE TABLE public.notifications (
 );
 
 -- V13: bỏ order_status, transaction_id; V36: thêm UNIQUE (buyer_id, game_id)
+CREATE TYPE public.order_type_enum AS ENUM (
+    'source_code_purchase',
+    'asset_purchase'
+);
+
 CREATE TABLE public.orders (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     buyer_id uuid NOT NULL,
@@ -517,15 +518,6 @@ CREATE TABLE public.orders (
         (asset_id IS NOT NULL AND game_id IS NULL) OR
         (asset_id IS NULL AND game_id IS NOT NULL)
     )
-);
-
-COMMENT ON TABLE public.orders IS 'Don hang mua source code hoac asset tren Marketplace';
-COMMENT ON COLUMN public.orders.asset_id IS 'NOT NULL: source code hoac asset duoc mua';
-COMMENT ON COLUMN public.orders.price_paid IS 'Gia thuc te thanh toan, co the khac gia niem yet neu co discount';
-
-CREATE TYPE public.order_type_enum AS ENUM (
-    'source_code_purchase',
-    'asset_purchase'
 );
 
 -- V14: bỏ order_id, payment_method, receipt_url, payer_name, payer_bank,
@@ -556,10 +548,6 @@ CREATE TABLE public.plagiarism_flags (
     severity character varying(20) NOT NULL,
     reviewed_by_admin boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT fk_plagiarism_flags_game FOREIGN KEY (game_id)
-        REFERENCES public.games(id) ON DELETE CASCADE,
-    CONSTRAINT fk_plagiarism_flags_matched_game FOREIGN KEY (matched_game_id)
-        REFERENCES public.games(id) ON DELETE CASCADE,
     CONSTRAINT chk_plagiarism_flags_distinct CHECK (game_id <> matched_game_id)
 );
 
@@ -624,9 +612,7 @@ CREATE TABLE public.source_commits (
     context_match_status character varying(20) DEFAULT 'pending' NOT NULL,
     ai_note text,
     ai_evaluated_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT fk_source_commits_game FOREIGN KEY (game_id)
-        REFERENCES public.games(id) ON DELETE CASCADE
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 -- V15: bỏ submitted_by, repo_url, commit_sha, file_count, file_hashes
@@ -740,6 +726,10 @@ CREATE TABLE public.users (
     preferred_language character varying(10) DEFAULT 'vi'::character varying NOT NULL,
     kyc_front_image_url text,
     kyc_back_image_url text,
+    -- V41: bank account co dinh cua developer (de rut tien + lam nguon ban cho banned_identities)
+    bank_name character varying(200),
+    bank_account character varying(100),
+    bank_account_holder character varying(200),
     CONSTRAINT check_users_preferred_language CHECK (((preferred_language)::text = ANY (ARRAY[('vi'::character varying)::text, ('en'::character varying)::text, ('ja'::character varying)::text]))),
     CONSTRAINT chk_github_fields CHECK (((github_id IS NULL) OR ((github_id IS NOT NULL) AND (github_username IS NOT NULL) AND (github_token_enc IS NOT NULL) AND (github_linked_at IS NOT NULL)))),
     CONSTRAINT users_status_check CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('inactive'::character varying)::text, ('banned'::character varying)::text])))
@@ -763,6 +753,20 @@ CREATE TABLE public.wallets (
 
 COMMENT ON TABLE public.wallets IS '1 user co 1 wallet (UNIQUE user_id)';
 
+-- V42: Blacklist da tang: face + CCCD + bank — chan user bi ban dang ky/them bank lai
+CREATE TABLE public.banned_identities (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    user_id uuid,
+    face_embedding public.vector(128),
+    kyc_id_number text,
+    bank_account text,
+    reason character varying(50) NOT NULL,
+    note text,
+    banned_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+COMMENT ON TABLE public.banned_identities IS 'Blacklist da tang: face + CCCD + bank — chan user bi ban dang ky/them bank lai.';
+
 -- V33: bỏ processed_by
 CREATE TABLE public.withdrawal_requests (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -770,9 +774,6 @@ CREATE TABLE public.withdrawal_requests (
     wallet_id uuid NOT NULL,
     amount numeric(15,2) NOT NULL,
     currency character(3) DEFAULT 'VND'::bpchar NOT NULL,
-    bank_name character varying(200) NOT NULL,
-    bank_account character varying(100) NOT NULL,
-    account_holder character varying(200) NOT NULL,
     status public.withdrawal_status_enum DEFAULT 'pending'::public.withdrawal_status_enum NOT NULL,
     processed_at timestamp with time zone,
     remark text,
@@ -788,7 +789,6 @@ CREATE TABLE public.withdrawal_requests (
 );
 
 COMMENT ON TABLE public.withdrawal_requests IS 'Admin duyet thu cong truoc khi xu ly rut tien';
-COMMENT ON COLUMN public.withdrawal_requests.bank_account IS 'Ma hoa o tang application truoc khi luu';
 
 -- ============================================================
 --  SEED DATA
@@ -1166,3 +1166,26 @@ ALTER TABLE ONLY public.withdrawal_requests
 
 ALTER TABLE ONLY public.withdrawal_requests
     ADD CONSTRAINT withdrawal_requests_wallet_id_fkey FOREIGN KEY (wallet_id) REFERENCES public.wallets(id) ON DELETE RESTRICT;
+
+-- Consolidated constraints & indexes for new tables
+ALTER TABLE ONLY public.code_embeddings
+    ADD CONSTRAINT fk_code_embeddings_game FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.embeddings
+    ADD CONSTRAINT fk_embeddings_user FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.plagiarism_flags
+    ADD CONSTRAINT fk_plagiarism_flags_game FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.plagiarism_flags
+    ADD CONSTRAINT fk_plagiarism_flags_matched_game FOREIGN KEY (matched_game_id) REFERENCES public.games(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.source_commits
+    ADD CONSTRAINT fk_source_commits_game FOREIGN KEY (game_id) REFERENCES public.games(id) ON DELETE CASCADE;
+
+CREATE INDEX idx_banned_bank ON public.banned_identities USING btree (bank_account);
+CREATE INDEX idx_banned_kyc ON public.banned_identities USING btree (kyc_id_number);
+CREATE INDEX idx_banned_face ON public.banned_identities USING ivfflat (face_embedding public.vector_cosine_ops) WITH (lists='100');
+
+ALTER TABLE ONLY public.banned_identities
+    ADD CONSTRAINT banned_identities_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+

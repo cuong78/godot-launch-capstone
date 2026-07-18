@@ -186,6 +186,14 @@ export const WalletPage: React.FC<{
     (option) => option.label.toLowerCase() === bankName.trim().toLowerCase(),
   );
 
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.bankName) setBankName(currentUser.bankName);
+      if (currentUser.bankAccount) setBankAccount(currentUser.bankAccount);
+      if (currentUser.bankAccountHolder) setAccountHolder(currentUser.bankAccountHolder);
+    }
+  }, [currentUser]);
+
   const loadWalletSummary = async () => {
     setIsLoadingSummary(true);
     setSummaryError(null);
@@ -1040,114 +1048,136 @@ export const WalletPage: React.FC<{
                 onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))}
                 required
               />
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                  {t("wallet:form.bankNameLabel")}
-                </label>
-                <div className="relative" ref={bankDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsBankDropdownOpen((current) => !current)}
-                    className="group flex w-full cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition hover:border-sky-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-sky-900/70 dark:hover:bg-slate-900/90"
-                    aria-label={t("wallet:form.bankDropdownButton")}
-                    aria-expanded={isBankDropdownOpen}
-                  >
-                    <div className="min-w-0">
-                      <div
-                        className={`mt-1 truncate text-sm font-semibold ${selectedBankOption ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}`}
-                      >
-                        {selectedBankOption
-                          ? selectedBankOption.label
-                          : t("wallet:form.bankNamePlaceholder")}
-                      </div>
-                    </div>
-                    <div className="ml-3 inline-flex items-center gap-2">
-                      {selectedBankOption && (
-                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300">
-                          BIN {selectedBankOption.code}
-                        </span>
-                      )}
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition group-hover:border-sky-200 group-hover:bg-sky-50 group-hover:text-sky-600 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-400 dark:group-hover:border-sky-800 dark:group-hover:bg-slate-950 dark:group-hover:text-sky-300">
-                        <ChevronDown
-                          size={16}
-                          className={`transition-transform ${isBankDropdownOpen ? "rotate-180" : ""}`}
-                        />
-                      </span>
-                    </div>
-                  </button>
-
-                  {isBankDropdownOpen && (
-                    <div className="absolute z-20 mt-3 w-full overflow-hidden rounded-[24px] border border-sky-100 bg-white shadow-[0_24px_80px_rgba(14,165,233,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_24px_80px_rgba(2,6,23,0.7)]">
-                      <div className="border-b border-sky-100 bg-gradient-to-r from-sky-50 via-white to-cyan-50 px-4 py-3 dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
-                          {WITHDRAWAL_BANK_OPTIONS.length} supported banks
-                        </div>
-                        <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                          Chọn ngân hàng từ danh sách hỗ trợ để payout xử lý
-                          chính xác.
-                        </div>
-                      </div>
-                      <div className="max-h-72 overflow-y-auto p-3">
-                        <div className="grid grid-cols-1 gap-2">
-                          {WITHDRAWAL_BANK_OPTIONS.map((option) => {
-                            const isSelected =
-                              bankName.trim().toLowerCase() ===
-                              option.label.toLowerCase();
-                            return (
-                              <button
-                                key={`${option.keyword}-${option.code}`}
-                                type="button"
-                                onClick={() => {
-                                  setBankName(option.label);
-                                  setIsBankDropdownOpen(false);
-                                }}
-                                className={`flex w-full cursor-pointer items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
-                                  isSelected
-                                    ? "border-sky-200 bg-sky-50 shadow-[0_10px_24px_rgba(14,165,233,0.12)] dark:border-sky-900/70 dark:bg-sky-950/30"
-                                    : "border-slate-100 bg-white hover:border-sky-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:bg-slate-900"
-                                }`}
-                              >
-                                <div>
-                                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                    {option.label}
-                                  </div>
-                                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                                    <span className="text-[11px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                                      {option.keyword}
-                                    </span>
-                                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                                      BIN {option.code}
-                                    </span>
-                                  </div>
-                                </div>
-                                {isSelected && (
-                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
-                                    <Check size={15} />
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+              {currentUser?.bankName && currentUser?.bankAccount ? (
+                <div className="rounded-2xl border border-sky-100 bg-sky-50/50 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
+                  <div className="text-xs font-semibold text-sky-700 dark:text-sky-400 uppercase tracking-wider mb-2">
+                    Tài khoản Payout đã đăng ký
+                  </div>
+                  <div className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    {currentUser.bankName}
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Số tài khoản: <span className="font-semibold">{currentUser.bankAccount}</span>
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Chủ tài khoản: <span className="font-semibold">{currentUser.bankAccountHolder}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-3">
+                    * Sử dụng tài khoản thanh toán đã đăng ký của bạn. Để thay đổi, vui lòng cập nhật trong phần Trở thành Developer.
+                  </div>
                 </div>
-              </div>
-              <Input
-                label={t("wallet:form.accountNumberLabel")}
-                placeholder={t("wallet:form.accountNumberPlaceholder")}
-                value={bankAccount}
-                onChange={(e) => setBankAccount(e.target.value)}
-                required
-              />
-              <Input
-                label={t("wallet:form.accountHolderLabel")}
-                placeholder={t("wallet:form.accountHolderPlaceholder")}
-                value={accountHolder}
-                onChange={(e) => setAccountHolder(e.target.value)}
-                required
-              />
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                      {t("wallet:form.bankNameLabel")}
+                    </label>
+                    <div className="relative" ref={bankDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsBankDropdownOpen((current) => !current)}
+                        className="group flex w-full cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition hover:border-sky-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-sky-900/70 dark:hover:bg-slate-900/90"
+                        aria-label={t("wallet:form.bankDropdownButton")}
+                        aria-expanded={isBankDropdownOpen}
+                      >
+                        <div className="min-w-0">
+                          <div
+                            className={`mt-1 truncate text-sm font-semibold ${selectedBankOption ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}`}
+                          >
+                            {selectedBankOption
+                              ? selectedBankOption.label
+                              : t("wallet:form.bankNamePlaceholder")}
+                          </div>
+                        </div>
+                        <div className="ml-3 inline-flex items-center gap-2">
+                          {selectedBankOption && (
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              BIN {selectedBankOption.code}
+                            </span>
+                          )}
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition group-hover:border-sky-200 group-hover:bg-sky-50 group-hover:text-sky-600 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-400 dark:group-hover:border-sky-800 dark:group-hover:bg-slate-950 dark:group-hover:text-sky-300">
+                            <ChevronDown
+                              size={16}
+                              className={`transition-transform ${isBankDropdownOpen ? "rotate-180" : ""}`}
+                            />
+                          </span>
+                        </div>
+                      </button>
+
+                      {isBankDropdownOpen && (
+                        <div className="absolute z-20 mt-3 w-full overflow-hidden rounded-[24px] border border-sky-100 bg-white shadow-[0_24px_80px_rgba(14,165,233,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_24px_80px_rgba(2,6,23,0.7)]">
+                          <div className="border-b border-sky-100 bg-gradient-to-r from-sky-50 via-white to-cyan-50 px-4 py-3 dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+                              {WITHDRAWAL_BANK_OPTIONS.length} supported banks
+                            </div>
+                            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                              Chọn ngân hàng từ danh sách hỗ trợ để payout xử lý
+                              chính xác.
+                            </div>
+                          </div>
+                          <div className="max-h-72 overflow-y-auto p-3">
+                            <div className="grid grid-cols-1 gap-2">
+                              {WITHDRAWAL_BANK_OPTIONS.map((option) => {
+                                const isSelected =
+                                  bankName.trim().toLowerCase() ===
+                                  option.label.toLowerCase();
+                                return (
+                                  <button
+                                    key={`${option.keyword}-${option.code}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setBankName(option.label);
+                                      setIsBankDropdownOpen(false);
+                                    }}
+                                    className={`flex w-full cursor-pointer items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                                      isSelected
+                                        ? "border-sky-200 bg-sky-50 shadow-[0_10px_24px_rgba(14,165,233,0.12)] dark:border-sky-900/70 dark:bg-sky-950/30"
+                                        : "border-slate-100 bg-white hover:border-sky-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+                                    }`}
+                                  >
+                                    <div>
+                                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                        {option.label}
+                                      </div>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        <span className="text-[11px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                                          {option.keyword}
+                                        </span>
+                                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                                          BIN {option.code}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {isSelected && (
+                                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                                        <Check size={15} />
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Input
+                    label={t("wallet:form.accountNumberLabel")}
+                    placeholder={t("wallet:form.accountNumberPlaceholder")}
+                    value={bankAccount}
+                    onChange={(e) => setBankAccount(e.target.value)}
+                    required
+                  />
+                  <Input
+                    label={t("wallet:form.accountHolderLabel")}
+                    placeholder={t("wallet:form.accountHolderPlaceholder")}
+                    value={accountHolder}
+                    onChange={(e) => setAccountHolder(e.target.value)}
+                    required
+                  />
+                </>
+              )}
               <TextArea
                 label={t("wallet:form.noteLabel")}
                 placeholder={t("wallet:form.notePlaceholder")}

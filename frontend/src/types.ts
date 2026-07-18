@@ -48,6 +48,9 @@ export interface User {
   roleName?: string;
   status?: string;
   preferredLanguage?: "vi" | "en" | "ja";
+  bankName?: string;
+  bankAccount?: string;
+  bankAccountHolder?: string;
   createdAt?: string;
 }
 
@@ -251,6 +254,9 @@ export interface UpdateProfileRequest {
   fullName: string;
   avatarUrl?: string;
   password?: string;
+  bankName?: string;
+  bankAccount?: string;
+  bankAccountHolder?: string;
 }
 
 export interface SignInRequest {

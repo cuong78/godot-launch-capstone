@@ -213,6 +213,9 @@ public class UserServiceImpl implements UserService {
 
         user.setFullName(request.getFullName());
         user.setAvatarUrl(request.getAvatarUrl());
+        user.setBankName(request.getBankName());
+        user.setBankAccount(request.getBankAccount());
+        user.setBankAccountHolder(request.getBankAccountHolder());
 
         if (StringUtils.hasText(request.getPassword())) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -329,6 +332,9 @@ public class UserServiceImpl implements UserService {
                 .status(user.getStatus())
                 .avatarUrl(user.getAvatarUrl())
                 .preferredLanguage(resolvePreferredLanguage(user))
+                .bankName(user.getBankName())
+                .bankAccount(user.getBankAccount())
+                .bankAccountHolder(user.getBankAccountHolder())
                 .createdAt(user.getCreatedAt())
                 .build();
     }
