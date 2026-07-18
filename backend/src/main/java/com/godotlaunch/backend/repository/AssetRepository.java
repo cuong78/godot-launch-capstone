@@ -27,4 +27,8 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
            "LOWER(a.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(a.thumbnailUrl) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Asset> searchAssetThumbnails(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT a FROM Asset a WHERE :search IS NULL OR :search = '' OR " +
+           "LOWER(a.title) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<Asset> searchAssetsForFileManagement(@Param("search") String search, Pageable pageable);
 }

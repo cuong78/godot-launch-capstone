@@ -2,6 +2,10 @@ package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.UploadedFileResponse;
+import com.godotlaunch.backend.dto.response.GameFileSummaryResponse;
+import com.godotlaunch.backend.dto.response.GameFileDetailResponse;
+import com.godotlaunch.backend.dto.response.AssetFileSummaryResponse;
+import com.godotlaunch.backend.dto.response.AssetFileDetailResponse;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
@@ -14,7 +18,11 @@ import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
 import com.godotlaunch.backend.entity.Contract;
 import com.godotlaunch.backend.entity.SourceSnapshot;
+import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.service.SeaweedFsService;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,8 +41,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import com.godotlaunch.backend.exception.AppException;
-import com.godotlaunch.backend.constant.ErrorCode;
 
 import java.util.List;
 import java.util.UUID;
@@ -230,6 +236,151 @@ public class AdminStorageController {
         }
 
         return ResponseEntity.ok(ApiResponse.success(resultPage, "OK"));
+    }
+
+    // ── Game / Asset — drill-down (gom thumbnail + source snapshot / file chính theo từng thực thể) ──
+
+    @GetMapping("/games")
+    @Operation(summary = "Danh sách Game — mỗi dòng gộp thumbnail + source snapshot của game đó")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<Page<GameFileSummaryResponse>>> listGamesForFileManagement(
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Game> games = gameRepo.searchGamesForFileManagement(search.trim(), pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(games.map(g -> {
+            int fileCount = (g.getThumbnailUrl() != null && !g.getThumbnailUrl().isBlank() ? 1 : 0)
+                    + snapshotRepo.findByGameIdOrderByCreatedAtDesc(g.getId()).size();
+            return GameFileSummaryResponse.builder()
+                    .id(g.getId())
+                    .title(g.getTitle())
+                    .thumbnailUrl(g.getThumbnailUrl() != null ? seaweedFsService.resolvePublicUrl(g.getThumbnailUrl()) : null)
+                    .publishingType(g.getPublishingType() != null ? g.getPublishingType().name() : null)
+                    .status(g.getStatus() != null ? g.getStatus().name() : null)
+                    .creatorName(g.getCreator() != null ? g.getCreator().getFullName() : "Unknown")
+                    .fileCount(fileCount)
+                    .createdAt(g.getCreatedAt())
+                    .build();
+        }), "OK"));
+    }
+
+    @GetMapping("/games/{id}")
+    @Operation(summary = "Chi tiết file của 1 Game — thumbnail + toàn bộ SourceSnapshot")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<GameFileDetailResponse>> getGameFileDetail(@PathVariable UUID id) {
+        Game g = gameRepo.findById(id).orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+
+        List<UploadedFileResponse> files = new ArrayList<>();
+        if (g.getThumbnailUrl() != null && !g.getThumbnailUrl().isBlank()) {
+            files.add(UploadedFileResponse.builder()
+                    .id("gamethumb-" + g.getId())
+                    .fileName(extractFileName(g.getThumbnailUrl()))
+                    .fileType("game_media")
+                    .fileUrl(seaweedFsService.resolvePublicUrl(g.getThumbnailUrl()))
+                    .storageProvider(inferProvider(g.getThumbnailUrl()))
+                    .ownerId(g.getId())
+                    .ownerType("Game")
+                    .ownerName(g.getTitle())
+                    .createdAt(g.getCreatedAt())
+                    .build());
+        }
+
+        files.addAll(snapshotRepo.findByGameIdOrderByCreatedAtDesc(id).stream()
+                .filter(s -> s.getBundleUrl() != null && !s.getBundleUrl().isBlank())
+                .map(s -> UploadedFileResponse.builder()
+                        .id("snapshot-" + s.getId())
+                        .fileName(extractFileName(s.getBundleUrl()))
+                        .fileType("source_bundle")
+                        .fileUrl(seaweedFsService.resolvePublicUrl(s.getBundleUrl()))
+                        .storageProvider(inferProvider(s.getBundleUrl()))
+                        .ownerId(s.getId())
+                        .ownerType("SourceSnapshot")
+                        .ownerName("Backup: " + g.getTitle())
+                        .createdAt(s.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList()));
+
+        return ResponseEntity.ok(ApiResponse.success(GameFileDetailResponse.builder()
+                .id(g.getId())
+                .title(g.getTitle())
+                .publishingType(g.getPublishingType() != null ? g.getPublishingType().name() : null)
+                .status(g.getStatus() != null ? g.getStatus().name() : null)
+                .creatorName(g.getCreator() != null ? g.getCreator().getFullName() : "Unknown")
+                .files(files)
+                .build(), "OK"));
+    }
+
+    @GetMapping("/assets")
+    @Operation(summary = "Danh sách Asset — mỗi dòng gộp thumbnail + file chính của asset đó")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<Page<AssetFileSummaryResponse>>> listAssetsForFileManagement(
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Asset> assets = itemRepo.searchAssetsForFileManagement(search.trim(), pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(assets.map(a -> {
+            boolean hasThumb = a.getThumbnailUrl() != null && !a.getThumbnailUrl().isBlank();
+            boolean hasFile = a.getFileUrl() != null && !a.getFileUrl().isBlank() && !"pending".equals(a.getFileUrl());
+            int fileCount = (hasThumb ? 1 : 0) + (hasFile ? 1 : 0);
+            return AssetFileSummaryResponse.builder()
+                    .id(a.getId())
+                    .title(a.getTitle())
+                    .thumbnailUrl(hasThumb ? seaweedFsService.resolvePublicUrl(a.getThumbnailUrl()) : null)
+                    .status(a.getStatus() != null ? a.getStatus().name() : null)
+                    .sellerName(a.getSeller() != null ? a.getSeller().getFullName() : "Unknown")
+                    .fileCount(fileCount)
+                    .createdAt(a.getCreatedAt())
+                    .build();
+        }), "OK"));
+    }
+
+    @GetMapping("/assets/{id}")
+    @Operation(summary = "Chi tiết file của 1 Asset — thumbnail + file chính")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<AssetFileDetailResponse>> getAssetFileDetail(@PathVariable UUID id) {
+        Asset a = itemRepo.findById(id).orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+
+        List<UploadedFileResponse> files = new ArrayList<>();
+        if (a.getThumbnailUrl() != null && !a.getThumbnailUrl().isBlank()) {
+            files.add(UploadedFileResponse.builder()
+                    .id("assetthumb-" + a.getId())
+                    .fileName(extractFileName(a.getThumbnailUrl()))
+                    .fileType("asset_media")
+                    .fileUrl(seaweedFsService.resolvePublicUrl(a.getThumbnailUrl()))
+                    .storageProvider(inferProvider(a.getThumbnailUrl()))
+                    .ownerId(a.getId())
+                    .ownerType("Asset")
+                    .ownerName(a.getTitle())
+                    .createdAt(a.getCreatedAt())
+                    .build());
+        }
+        if (a.getFileUrl() != null && !a.getFileUrl().isBlank() && !"pending".equals(a.getFileUrl())) {
+            files.add(UploadedFileResponse.builder()
+                    .id("assetfile-" + a.getId())
+                    .fileName(extractFileName(a.getFileUrl()))
+                    .fileType("source_bundle")
+                    .fileUrl(seaweedFsService.resolvePublicUrl(a.getFileUrl()))
+                    .storageProvider(inferProvider(a.getFileUrl()))
+                    .ownerId(a.getId())
+                    .ownerType("Asset")
+                    .ownerName(a.getTitle())
+                    .createdAt(a.getCreatedAt())
+                    .build());
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(AssetFileDetailResponse.builder()
+                .id(a.getId())
+                .title(a.getTitle())
+                .status(a.getStatus() != null ? a.getStatus().name() : null)
+                .sellerName(a.getSeller() != null ? a.getSeller().getFullName() : "Unknown")
+                .files(files)
+                .build(), "OK"));
     }
 
     @DeleteMapping("/files")

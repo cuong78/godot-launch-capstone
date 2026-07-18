@@ -17,9 +17,19 @@ import {
   Download,
   HardDrive,
   FolderOpen,
-  Server
+  Server,
+  Gamepad2,
+  Package,
+  ArrowLeft
 } from 'lucide-react';
-import { storageApi, UploadedFileResponse } from '../../api/storageApi';
+import {
+  storageApi,
+  UploadedFileResponse,
+  GameFileSummaryResponse,
+  GameFileDetailResponse,
+  AssetFileSummaryResponse,
+  AssetFileDetailResponse
+} from '../../api/storageApi';
 
 interface CategoryOption {
   value: string;
@@ -27,57 +37,83 @@ interface CategoryOption {
   icon: React.ReactNode;
 }
 
+// 2 category đặc biệt: gom theo thực thể (Game/Asset), drill-down xem file con.
+// Các category còn lại vẫn là danh sách file phẳng (Avatar/Hợp đồng/KYC/Media...).
+const ENTITY_CATEGORIES = ['game', 'asset'] as const;
+type EntityCategory = typeof ENTITY_CATEGORIES[number];
+
+const PUBLISHING_TYPE_LABEL: Record<string, { label: string; className: string }> = {
+  marketplace_listing: { label: 'Marketplace', className: 'bg-sky-400/10 text-sky-400 border-sky-400/20' },
+  full_acquisition: { label: 'Store (Mua đứt)', className: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
+  co_publishing: { label: 'Store (Hợp tác)', className: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
+};
+
 export const AdminFileManagementPanel: React.FC = () => {
-  const [category, setCategory] = useState<string>('game_zip');
+  const [category, setCategory] = useState<string>('game');
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(0);
   const [size, setSize] = useState<number>(20);
   const [files, setFiles] = useState<UploadedFileResponse[]>([]);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalElements, setTotalElements] = useState<number>(0);
-  
+
+  // Entity mode (Game/Asset) — danh sách gộp + drill-down
+  const [gameList, setGameList] = useState<GameFileSummaryResponse[]>([]);
+  const [assetList, setAssetList] = useState<AssetFileSummaryResponse[]>([]);
+  const [selectedGame, setSelectedGame] = useState<GameFileDetailResponse | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<AssetFileDetailResponse | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
+
+  const isEntityMode = ENTITY_CATEGORIES.includes(category as EntityCategory);
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Copy state
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  
+
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState<UploadedFileResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const categories: CategoryOption[] = [
-    { value: 'game_zip', label: 'Bản cài Game (ZIP)', icon: <Archive size={14} /> },
-    { value: 'marketplace_zip', label: 'Sản phẩm M.place (ZIP)', icon: <Archive size={14} /> },
-    { value: 'game_thumbnail', label: 'Ảnh nền Game', icon: <Image size={14} /> },
-    { value: 'marketplace_thumbnail', label: 'Ảnh nền M.place', icon: <Image size={14} /> },
-    { value: 'media_file', label: 'Thư viện Media (Ảnh/Video)', icon: <Video size={14} /> },
-    { value: 'avatar', label: 'Avatar người dùng', icon: <User size={14} /> },
+    { value: 'game', label: 'Game (Source & Media)', icon: <Gamepad2 size={14} /> },
+    { value: 'asset', label: 'Asset (Marketplace)', icon: <Package size={14} /> },
     { value: 'contract_pdf', label: 'Hợp đồng (PDF)', icon: <FileText size={14} /> },
-    { value: 'source_snapshot', label: 'Sao lưu Snapshots', icon: <Archive size={14} /> },
-    { value: 'chat_media', label: 'File trong Chat', icon: <Image size={14} /> },
-    { value: 'cccd_image', label: 'Ảnh xác thực CCCD/Passport', icon: <User size={14} /> },
+    { value: 'cccd_image', label: 'Ảnh xác thực CCCD/Passport (KYC)', icon: <User size={14} /> },
   ];
-
-  const [mediaFilter, setMediaFilter] = useState<'all' | 'image' | 'video'>('all');
 
   const fetchFiles = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await storageApi.listUploadedFiles(
-        category,
-        search,
-        page,
-        size,
-        category === 'media_file' ? mediaFilter : undefined
-      );
-      if (res.success && res.data) {
-        setFiles(res.data.content);
-        setTotalPages(res.data.totalPages);
-        setTotalElements(res.data.totalElements);
+      if (category === 'game') {
+        const res = await storageApi.listGames(search, page, size);
+        if (res.success && res.data) {
+          setGameList(res.data.content);
+          setTotalPages(res.data.totalPages);
+          setTotalElements(res.data.totalElements);
+        } else {
+          setError(res.message || 'Lỗi tải danh sách Game.');
+        }
+      } else if (category === 'asset') {
+        const res = await storageApi.listAssets(search, page, size);
+        if (res.success && res.data) {
+          setAssetList(res.data.content);
+          setTotalPages(res.data.totalPages);
+          setTotalElements(res.data.totalElements);
+        } else {
+          setError(res.message || 'Lỗi tải danh sách Asset.');
+        }
       } else {
-        setError(res.message || 'Lỗi tải danh sách tập tin.');
+        const res = await storageApi.listUploadedFiles(category, search, page, size);
+        if (res.success && res.data) {
+          setFiles(res.data.content);
+          setTotalPages(res.data.totalPages);
+          setTotalElements(res.data.totalElements);
+        } else {
+          setError(res.message || 'Lỗi tải danh sách tập tin.');
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ.');
@@ -87,12 +123,42 @@ export const AdminFileManagementPanel: React.FC = () => {
   };
 
   useEffect(() => {
+    setSelectedGame(null);
+    setSelectedAsset(null);
     fetchFiles();
-  }, [category, page, size, mediaFilter]);
+  }, [category, page, size]);
 
-  useEffect(() => {
-    setMediaFilter('all');
-  }, [category]);
+  const openGameDetail = async (gameId: string) => {
+    setIsDetailLoading(true);
+    try {
+      const res = await storageApi.getGameFileDetail(gameId);
+      if (res.success && res.data) {
+        setSelectedGame(res.data);
+      } else {
+        alert(res.message || 'Không tải được chi tiết Game.');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Lỗi khi tải chi tiết Game.');
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
+
+  const openAssetDetail = async (assetId: string) => {
+    setIsDetailLoading(true);
+    try {
+      const res = await storageApi.getAssetFileDetail(assetId);
+      if (res.success && res.data) {
+        setSelectedAsset(res.data);
+      } else {
+        alert(res.message || 'Không tải được chi tiết Asset.');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Lỗi khi tải chi tiết Asset.');
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,8 +233,9 @@ export const AdminFileManagementPanel: React.FC = () => {
 
   // Helper render file preview icon/thumbnail
   const renderPreview = (file: UploadedFileResponse) => {
-    const isImage = file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) || 
-                    ['avatar', 'game_thumbnail', 'marketplace_thumbnail', 'cccd_image'].includes(category);
+    const isImage = file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) ||
+                    ['avatar', 'cccd_image'].includes(category) ||
+                    file.fileType === 'game_media' || file.fileType === 'asset_media';
     const isVid = file.fileUrl.match(/\.(mp4|webm|ogg|mov)/i);
 
     if (isImage) {
@@ -198,6 +265,240 @@ export const AdminFileManagementPanel: React.FC = () => {
       </div>
     );
   };
+
+  const renderPagination = () =>
+    totalPages > 1 && (
+      <div className="flex justify-between items-center bg-white dark:bg-slate-900/10 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
+        <span className="text-xs text-slate-500 font-mono">
+          Trang {page + 1} của {totalPages} ({totalElements} mục)
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+            disabled={page === 0 || isLoading}
+            className="p-1.5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}
+            disabled={page >= totalPages - 1 || isLoading}
+            className="p-1.5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+    );
+
+  const renderFileChip = (file: UploadedFileResponse) => (
+    <div
+      key={file.id}
+      className="flex items-center gap-3 p-3 bg-white/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-xl"
+    >
+      {renderPreview(file)}
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold truncate text-slate-800 dark:text-slate-100 text-xs" title={file.fileName}>
+          {file.fileName}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase tracking-wider">
+            {file.fileType}
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono">{new Date(file.createdAt).toLocaleString()}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => handleCopyUrl(file.fileUrl, file.id)}
+          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer"
+          title="Sao chép URL"
+        >
+          {copiedId === file.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+        </button>
+        <button
+          onClick={() => handleDownload(file, true)}
+          disabled={downloadingId !== null}
+          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer disabled:opacity-50"
+          title="Xem trực tiếp"
+        >
+          {downloadingId === file.id + '-view' ? <RefreshCw size={14} className="animate-spin" /> : <Eye size={14} />}
+        </button>
+        <button
+          onClick={() => handleDownload(file, false)}
+          disabled={downloadingId !== null}
+          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer disabled:opacity-50"
+          title="Tải về máy"
+        >
+          {downloadingId === file.id + '-download' ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+        </button>
+        <button
+          onClick={() => handleDeleteClick(file)}
+          className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 rounded-lg transition-all cursor-pointer"
+          title="Xóa tập tin"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderGameList = () =>
+    gameList.length === 0 ? (
+      <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+        Không tìm thấy Game nào.
+      </div>
+    ) : (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {gameList.map((g) => {
+            const pubType = g.publishingType ? PUBLISHING_TYPE_LABEL[g.publishingType] : null;
+            return (
+              <button
+                key={g.id}
+                onClick={() => openGameDetail(g.id)}
+                className="flex items-center gap-3 p-3 bg-white/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-xl hover:border-amber-400/60 dark:hover:border-amber-400/40 transition-all text-left cursor-pointer group"
+              >
+                <div className="w-14 h-14 rounded-lg overflow-hidden bg-slate-900 border border-slate-700/50 flex items-center justify-center shrink-0">
+                  {g.thumbnailUrl ? (
+                    <img src={g.thumbnailUrl} alt={g.title} className="object-cover w-full h-full" />
+                  ) : (
+                    <Gamepad2 size={20} className="text-slate-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate text-slate-800 dark:text-slate-100 text-xs group-hover:text-amber-500 transition-colors">
+                    {g.title}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">bởi {g.creatorName}</div>
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    {pubType && (
+                      <span className={`inline-block px-1.5 py-0.5 border text-[9px] font-bold rounded ${pubType.className}`}>
+                        {pubType.label}
+                      </span>
+                    )}
+                    <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase">
+                      {g.status}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-mono">
+                      <Archive size={9} /> {g.fileCount} file
+                    </span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {renderPagination()}
+      </div>
+    );
+
+  const renderGameDetail = () =>
+    selectedGame && (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 p-4 bg-white/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl">
+          <button
+            onClick={() => setSelectedGame(null)}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-xl transition-all cursor-pointer"
+            title="Quay lại danh sách Game"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{selectedGame.title}</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              bởi {selectedGame.creatorName} · {selectedGame.status}
+              {selectedGame.publishingType && PUBLISHING_TYPE_LABEL[selectedGame.publishingType]
+                ? ` · ${PUBLISHING_TYPE_LABEL[selectedGame.publishingType].label}`
+                : ''}
+            </div>
+          </div>
+        </div>
+
+        {selectedGame.files.length === 0 ? (
+          <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+            Game này chưa có file nào trên storage.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {selectedGame.files.map((f) => renderFileChip(f))}
+          </div>
+        )}
+      </div>
+    );
+
+  const renderAssetList = () =>
+    assetList.length === 0 ? (
+      <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+        Không tìm thấy Asset nào.
+      </div>
+    ) : (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {assetList.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => openAssetDetail(a.id)}
+              className="flex items-center gap-3 p-3 bg-white/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-xl hover:border-amber-400/60 dark:hover:border-amber-400/40 transition-all text-left cursor-pointer group"
+            >
+              <div className="w-14 h-14 rounded-lg overflow-hidden bg-slate-900 border border-slate-700/50 flex items-center justify-center shrink-0">
+                {a.thumbnailUrl ? (
+                  <img src={a.thumbnailUrl} alt={a.title} className="object-cover w-full h-full" />
+                ) : (
+                  <Package size={20} className="text-slate-500" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold truncate text-slate-800 dark:text-slate-100 text-xs group-hover:text-amber-500 transition-colors">
+                  {a.title}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">bởi {a.sellerName}</div>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase">
+                    {a.status}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-mono">
+                    <Archive size={9} /> {a.fileCount} file
+                  </span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+        {renderPagination()}
+      </div>
+    );
+
+  const renderAssetDetail = () =>
+    selectedAsset && (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 p-4 bg-white/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl">
+          <button
+            onClick={() => setSelectedAsset(null)}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-xl transition-all cursor-pointer"
+            title="Quay lại danh sách Asset"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{selectedAsset.title}</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">bởi {selectedAsset.sellerName} · {selectedAsset.status}</div>
+          </div>
+        </div>
+
+        {selectedAsset.files.length === 0 ? (
+          <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+            Asset này chưa có file nào trên storage.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {selectedAsset.files.map((f) => renderFileChip(f))}
+          </div>
+        )}
+      </div>
+    );
 
   return (
     <div className="space-y-6">
@@ -287,47 +588,32 @@ export const AdminFileManagementPanel: React.FC = () => {
               </button>
             </form>
 
-            {category === 'media_file' && (
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start md:self-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={() => { setMediaFilter('all'); setPage(0); }}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    mediaFilter === 'all'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Tất cả
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setMediaFilter('image'); setPage(0); }}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    mediaFilter === 'image'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Hình ảnh
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setMediaFilter('video'); setPage(0); }}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    mediaFilter === 'video'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  Video
-                </button>
-              </div>
-            )}
           </div>
 
-          {/* Files Table */}
-          {isLoading ? (
+          {/* Entity mode: Game/Asset detail (drill-down) hoặc list */}
+          {isEntityMode ? (
+            isDetailLoading ? (
+              <div className="flex items-center justify-center py-20 gap-2 text-slate-500 text-sm">
+                <RefreshCw className="animate-spin" size={18} /> Đang tải chi tiết...
+              </div>
+            ) : category === 'game' && selectedGame ? (
+              renderGameDetail()
+            ) : category === 'asset' && selectedAsset ? (
+              renderAssetDetail()
+            ) : isLoading ? (
+              <div className="flex items-center justify-center py-20 gap-2 text-slate-500 text-sm">
+                <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách...
+              </div>
+            ) : error ? (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                Có lỗi xảy ra: {error}
+              </div>
+            ) : category === 'game' ? (
+              renderGameList()
+            ) : (
+              renderAssetList()
+            )
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-20 gap-2 text-slate-500 text-sm">
               <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách tập tin...
             </div>
@@ -426,31 +712,7 @@ export const AdminFileManagementPanel: React.FC = () => {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-between items-center bg-white dark:bg-slate-900/10 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
-                  <span className="text-xs text-slate-500 font-mono">
-                    Trang {page + 1} của {totalPages} ({totalElements} tập tin)
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPage((prev) => Math.max(0, prev - 1))}
-                      disabled={page === 0 || isLoading}
-                      className="p-1.5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}
-                      disabled={page >= totalPages - 1 || isLoading}
-                      className="p-1.5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
+              {renderPagination()}
             </div>
           )}
         </div>

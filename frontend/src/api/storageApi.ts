@@ -63,6 +63,44 @@ export interface PaginatedResponse<T> {
   number: number;
 }
 
+export interface GameFileSummaryResponse {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+  publishingType: 'full_acquisition' | 'co_publishing' | 'marketplace_listing' | null;
+  status: string | null;
+  creatorName: string;
+  fileCount: number;
+  createdAt: string;
+}
+
+export interface GameFileDetailResponse {
+  id: string;
+  title: string;
+  publishingType: string | null;
+  status: string | null;
+  creatorName: string;
+  files: UploadedFileResponse[];
+}
+
+export interface AssetFileSummaryResponse {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+  status: string | null;
+  sellerName: string;
+  fileCount: number;
+  createdAt: string;
+}
+
+export interface AssetFileDetailResponse {
+  id: string;
+  title: string;
+  status: string | null;
+  sellerName: string;
+  files: UploadedFileResponse[];
+}
+
 export const storageApi = {
   // Accounts
   listAccounts: async (): Promise<ApiResponse<StorageAccountResponse[]>> => {
@@ -136,6 +174,24 @@ export const storageApi = {
       params: { fileUrl, fileType },
       responseType: 'blob'
     });
+    return res.data;
+  },
+
+  // Game / Asset — drill-down
+  listGames: async (search: string, page: number, size: number): Promise<ApiResponse<PaginatedResponse<GameFileSummaryResponse>>> => {
+    const res = await api.get('/api/admin/storage/games', { params: { search, page, size } });
+    return res.data;
+  },
+  getGameFileDetail: async (gameId: string): Promise<ApiResponse<GameFileDetailResponse>> => {
+    const res = await api.get(`/api/admin/storage/games/${gameId}`);
+    return res.data;
+  },
+  listAssets: async (search: string, page: number, size: number): Promise<ApiResponse<PaginatedResponse<AssetFileSummaryResponse>>> => {
+    const res = await api.get('/api/admin/storage/assets', { params: { search, page, size } });
+    return res.data;
+  },
+  getAssetFileDetail: async (assetId: string): Promise<ApiResponse<AssetFileDetailResponse>> => {
+    const res = await api.get(`/api/admin/storage/assets/${assetId}`);
     return res.data;
   }
 };
