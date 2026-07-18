@@ -34,6 +34,7 @@ public class GameController {
     private final GameService gameService;
 
     @PostMapping
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Create game draft", description = "Initializes a game submission record in draft status.")
     public ResponseEntity<ApiResponse<Map<String, UUID>>> createGameDraft(
             @Valid @RequestBody CreateGameRequest request,
@@ -44,6 +45,7 @@ public class GameController {
     }
 
     @PostMapping("/{id}/submit-repo")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Submit game bằng repo GitHub",
             description = "Verify owner repo → clone → virus scan → snapshot. Thay cho upload game.zip. Private chưa cấp quyền → 403 REPO_NEEDS_BOT.")
     public ResponseEntity<ApiResponse<Map<String, String>>> submitGameRepo(
@@ -64,6 +66,7 @@ public class GameController {
     }
 
     @PostMapping("/accept-bot")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Bot accept invitation repo private",
             description = "Sau khi developer mời bot vào repo, bot tự accept invitation. Trả granted=true nếu sẵn sàng submit.")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> acceptBot(
@@ -96,6 +99,7 @@ public class GameController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Update game information", description = "Updates metadata parameters for a game submission draft.")
     public ResponseEntity<ApiResponse<GameResponse>> updateGame(
             @PathVariable UUID id,
@@ -107,24 +111,28 @@ public class GameController {
     }
 
     @GetMapping("/{id}/upload-url")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Request SeaweedFS upload URL", description = "Generates a SeaweedFS upload link for file upload (thumbnail, screenshot, video, or game.zip).")
     public ResponseEntity<ApiResponse<Map<String, String>>> getUploadUrl(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "game") String fileType,
-            @RequestParam(defaultValue = "application/zip") String contentType) {
+            @RequestParam(defaultValue = "application/zip") String contentType,
+            Principal principal) {
 
-        String url = gameService.getPresignedUploadUrl(id, fileType, contentType);
+        String url = gameService.getPresignedUploadUrl(id, fileType, contentType, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("uploadUrl", url), "Presigned URL generated successfully"));
     }
 
     @PostMapping("/{id}/upload-complete")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Confirm upload complete", description = "Signals that the file has been successfully uploaded to storage. For game files, triggers asynchronous security verification.")
     public ResponseEntity<ApiResponse<Map<String, String>>> confirmUploadComplete(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "game") String fileType,
-            @RequestParam(required = false) String objectKey) {
+            @RequestParam(required = false) String objectKey,
+            Principal principal) {
 
-        gameService.confirmUploadComplete(id, fileType, objectKey);
+        gameService.confirmUploadComplete(id, fileType, objectKey, principal.getName());
         String msg = "thumbnail".equalsIgnoreCase(fileType)
                 ? "Thumbnail uploaded successfully"
                 : ("screenshot".equalsIgnoreCase(fileType) || "image".equalsIgnoreCase(fileType) || "video".equalsIgnoreCase(fileType)
@@ -135,6 +143,7 @@ public class GameController {
     }
 
     @PostMapping(value = "/{id}/media/upload", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Upload media qua proxy", description = "Upload thumbnail/screenshot/video qua backend → SeaweedFsService. Thay cho upload trực tiếp.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadGameMedia(
             @PathVariable UUID id,
@@ -147,6 +156,7 @@ public class GameController {
     }
 
     @DeleteMapping("/{id}/media")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Xóa media theo loại", description = "Xóa toàn bộ screenshot ('image') hoặc video ('video') của game — dùng khi cập nhật bộ ảnh mới cho version mới.")
     public ResponseEntity<ApiResponse<Map<String, String>>> clearGameMedia(
             @PathVariable UUID id,
@@ -158,6 +168,7 @@ public class GameController {
     }
 
     @DeleteMapping("/{id}/media/item")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Xóa 1 media cụ thể", description = "Xóa 1 screenshot/video theo mediaUrl — dùng khi developer gỡ 1 ảnh lẻ khỏi danh sách.")
     public ResponseEntity<ApiResponse<Map<String, String>>> deleteGameMediaItem(
             @PathVariable UUID id,
@@ -169,6 +180,7 @@ public class GameController {
     }
 
     @PostMapping(value = "/{id}/web-demo", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Upload Game Web Demo", description = "Upload bản Web export (.zip) của game để chơi thử. Giải nén tĩnh lên SeaweedFS.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadWebDemo(
             @PathVariable UUID id,

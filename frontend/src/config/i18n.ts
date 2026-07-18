@@ -1,6 +1,9 @@
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
+import flagJapan from "../../assets/flags/flag-japan.jpg";
+import flagUnitedKingdom from "../../assets/flags/flag-united-kingdom.webp";
+import flagVietnam from "../../assets/flags/flag-vietnam.jpg";
 
 // Import locale files
 import viCommon from "../locales/vi/common.json";
@@ -34,9 +37,9 @@ import jaHome from "../locales/ja/home.json";
 import jaDashboard from "../locales/ja/dashboard.json";
 
 export const LANGUAGE_OPTIONS = [
-  { code: "vi", name: "Tiếng Việt", flag: "🇻🇳" },
-  { code: "en", name: "English", flag: "🇬🇧" },
-  { code: "ja", name: "日本語", flag: "🇯🇵" },
+  { code: "vi", name: "Tiếng Việt", flag: flagVietnam },
+  { code: "en", name: "English", flag: flagUnitedKingdom },
+  { code: "ja", name: "日本語", flag: flagJapan },
 ] as const;
 
 export type SupportedLanguage = (typeof LANGUAGE_OPTIONS)[number]["code"];

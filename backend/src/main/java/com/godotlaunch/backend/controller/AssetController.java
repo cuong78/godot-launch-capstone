@@ -29,7 +29,7 @@ public class AssetController {
     private final AssetService assetService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Create marketplace item", description = "Initializes a marketplace item. Bypasses GitHub verification automatically for now.")
     public ResponseEntity<ApiResponse<Map<String, UUID>>> createAsset(
             @Valid @RequestBody CreateAssetRequest request,
@@ -54,7 +54,7 @@ public class AssetController {
     }
 
     @GetMapping("/my-items")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Get current seller items", description = "Retrieves all marketplace items listed by the authenticated developer.")
     public ResponseEntity<ApiResponse<List<AssetResponse>>> getMyAssets(Principal principal) {
         String sellerEmail = principal.getName();
@@ -70,7 +70,7 @@ public class AssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Update marketplace item", description = "Updates metadata parameters for a marketplace listing.")
     public ResponseEntity<ApiResponse<AssetResponse>> updateAsset(
             @PathVariable UUID id,
@@ -82,17 +82,18 @@ public class AssetController {
     }
 
     @GetMapping("/{id}/upload-url")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Request SeaweedFS upload URL", description = "Generates a SeaweedFS upload link for file upload (project.zip).")
     public ResponseEntity<ApiResponse<Map<String, String>>> getUploadUrl(
             @PathVariable UUID id,
-            @RequestParam(defaultValue = "application/zip") String contentType) {
-        String url = assetService.getPresignedUploadUrl(id, contentType);
+            @RequestParam(defaultValue = "application/zip") String contentType,
+            Principal principal) {
+        String url = assetService.getPresignedUploadUrl(id, contentType, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("uploadUrl", url), "Presigned URL generated successfully"));
     }
 
     @PostMapping(value = "/{id}/upload", consumes = "multipart/form-data")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Upload item ZIP qua proxy", description = "Upload file (ASSET) qua backend → SeaweedFsService. Source_code dùng submit-repo thay vì upload.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadItemFile(
             @PathVariable UUID id,
@@ -103,7 +104,7 @@ public class AssetController {
     }
 
     @PostMapping(value = "/{id}/media", consumes = "multipart/form-data")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Upload media cho item", description = "mediaType: thumbnail | screenshot | video | asset_image. Upload qua SeaweedFsService.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadItemMedia(
             @PathVariable UUID id,
@@ -116,7 +117,7 @@ public class AssetController {
     }
 
     @DeleteMapping("/{id}/media")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Xóa 1 ảnh preview của asset")
     public ResponseEntity<ApiResponse<Map<String, String>>> deleteAssetMedia(
             @PathVariable UUID id,
@@ -128,12 +129,13 @@ public class AssetController {
 
 
     @PostMapping("/{id}/upload-complete")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Confirm upload complete", description = "Signals that the file has been successfully uploaded to storage. Updates database URL.")
     public ResponseEntity<ApiResponse<Map<String, String>>> confirmUploadComplete(
             @PathVariable UUID id,
-            @RequestParam(required = false) String objectKey) {
-        assetService.confirmUploadComplete(id, objectKey);
+            @RequestParam(required = false) String objectKey,
+            Principal principal) {
+        assetService.confirmUploadComplete(id, objectKey, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Marketplace item ZIP uploaded successfully"), "Success"));
     }
 
@@ -168,7 +170,7 @@ public class AssetController {
     }
 
     @PostMapping(value = "/{id}/media/upload", consumes = "multipart/form-data")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Upload media qua proxy", description = "Upload thumbnail/screenshot/video của marketplace item qua backend → StorageRouter.")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadMarketplaceMedia(
             @PathVariable UUID id,
@@ -181,7 +183,7 @@ public class AssetController {
     }
 
     @DeleteMapping("/{id}/media/item")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Xóa 1 media cụ thể", description = "Xóa 1 screenshot/video của marketplace item theo mediaUrl.")
     public ResponseEntity<ApiResponse<Map<String, String>>> deleteMarketplaceMediaItem(
             @PathVariable UUID id,

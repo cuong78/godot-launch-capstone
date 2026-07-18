@@ -35,7 +35,7 @@ public class DeveloperWithdrawalController {
     private final WithdrawalRequestService withdrawalRequestService;
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER')")
     @Operation(summary = "Get developer wallet summary")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<DeveloperWalletSummaryResponse>> getWalletSummary(Principal principal) {
@@ -44,7 +44,7 @@ public class DeveloperWithdrawalController {
     }
 
     @GetMapping("/sales-stats")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Get developer sales statistics (units sold and revenue per product)")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<DeveloperSalesStatsResponse>> getSalesStats(Principal principal) {
@@ -53,7 +53,7 @@ public class DeveloperWithdrawalController {
     }
 
     @GetMapping("/withdrawals")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER')")
     @Operation(summary = "Get developer withdrawal history")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<List<WithdrawalResponse>>> getDeveloperWithdrawals(Principal principal) {
@@ -62,7 +62,7 @@ public class DeveloperWithdrawalController {
     }
 
     @PostMapping("/withdrawals")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER')")
     @Operation(summary = "Create a withdrawal request")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> createDeveloperWithdrawal(
@@ -74,7 +74,7 @@ public class DeveloperWithdrawalController {
     }
 
     @GetMapping("/withdrawals/{id}")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER')")
     @Operation(summary = "Get withdrawal detail for the current developer")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> getDeveloperWithdrawalDetail(

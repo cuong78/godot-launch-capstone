@@ -3,8 +3,8 @@ import {
   Bot, ShieldAlert, CheckCircle2, AlertTriangle, XCircle, RefreshCw,
   Code2, ImageIcon, FileText, Eye, DollarSign, Percent, Tags,
 } from 'lucide-react';
-import { aiReviewApi } from '../api/aiReviewApi';
-import { AiReviewReport, AiRecommendation } from '../types';
+import { aiReviewApi } from '../../api/aiReviewApi';
+import { AiReviewReport, AiRecommendation } from '../../types';
 
 interface Props {
   gameId?: string;

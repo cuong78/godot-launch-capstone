@@ -71,6 +71,9 @@ const dialogActionClasses =
 const selectClassName =
   'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100';
 
+const filterSelectClassName =
+  'w-full rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2.5 text-sm font-medium text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800/80 dark:bg-slate-950/90 dark:text-slate-100';
+
 const getRoleLabel = (role: AdminUserRole) => {
   switch (role) {
     case 'admin':
@@ -218,14 +221,14 @@ const FilterSelect: React.FC<{
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
 }> = ({ label, value, options, onChange }) => (
-  <label className="min-w-[150px] flex-1 space-y-1.5 sm:flex-none">
-    <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+  <label className="space-y-1">
+    <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
       {label}
     </span>
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className={selectClassName}
+      className={filterSelectClassName}
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -438,10 +441,10 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h3 className="font-display text-sm font-semibold text-slate-800 dark:text-slate-200">
+          <h3 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[28px]">
             User Management
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Search accounts, inspect details, and manage roles or account access without deleting users.
           </p>
         </div>
@@ -457,44 +460,42 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 shadow-sm dark:border-slate-800/70 dark:bg-slate-950/20">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-          <label className="flex-1 space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+      <div className="rounded-[24px] border border-slate-200/90 bg-slate-50/75 p-4 shadow-[0_14px_30px_rgba(148,163,184,0.1)] dark:border-slate-800/70 dark:bg-slate-950/20 dark:shadow-none">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.5fr)_170px_170px] xl:items-end">
+          <label className="space-y-1">
+            <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
               Search User
             </span>
             <div className="relative">
               <Search
-                size={16}
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
               />
               <input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search by name or email..."
-                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-3.5 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                className="w-full rounded-xl border border-slate-200/80 bg-white/90 py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800/80 dark:bg-slate-950/90 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
           </label>
 
-          <div className="flex flex-col gap-3 sm:flex-row xl:min-w-[360px] xl:justify-end">
-            <FilterSelect
-              label="Role Filter"
-              value={roleFilter}
-              options={roleOptions}
-              onChange={(value) => setRoleFilter(value as RoleFilter)}
-            />
-            <FilterSelect
-              label="Status Filter"
-              value={statusFilter}
-              options={statusOptions}
-              onChange={(value) => setStatusFilter(value as StatusFilter)}
-            />
-          </div>
+          <FilterSelect
+            label="Role Filter"
+            value={roleFilter}
+            options={roleOptions}
+            onChange={(value) => setRoleFilter(value as RoleFilter)}
+          />
+          <FilterSelect
+            label="Status Filter"
+            value={statusFilter}
+            options={statusOptions}
+            onChange={(value) => setStatusFilter(value as StatusFilter)}
+          />
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-medium dark:border-slate-800 dark:bg-slate-950">
+          <span className="rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-1 text-[11px] font-medium dark:border-slate-800/80 dark:bg-slate-950/90">
             {filteredUsers.length} matching users
           </span>
           {(searchQuery || roleFilter !== 'all' || statusFilter !== 'all') && (
@@ -505,7 +506,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                 setRoleFilter('all');
                 setStatusFilter('all');
               }}
-              className="text-amber-500 transition-studio hover:text-amber-400"
+              className="text-[11px] font-medium text-amber-500 transition-studio hover:text-amber-400"
             >
               Clear filters
             </button>
@@ -525,7 +526,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="overflow-x-auto rounded-[22px] border border-slate-200/90 bg-white/92 shadow-[0_16px_36px_rgba(148,163,184,0.1)] dark:border-slate-800 dark:bg-slate-950/25 dark:shadow-none">
           <table className="w-full min-w-[920px] border-collapse text-left">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/50 text-[10px] font-semibold uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-950/20 dark:text-slate-400">

@@ -4,8 +4,7 @@
     "title": "Chào lại, Indie Creator",
     "subtitle": "Theo dõi lượt tải xuống gần đây, xu hướng dashboard thời gian thực và nhật ký cộng đồng",
     "deployAsset": "Đăng tải tài nguyên",
-    "syncRepository": "Đồng bộ kho",
-    "syncRepositoryAlert": "Đồng bộ hồ sơ dev hoàn tất!"
+    "syncRepository": "Đồng bộ kho"
   },
   "stats": {
     "revenue": "Tổng Doanh Thu (Thực Nhận)",

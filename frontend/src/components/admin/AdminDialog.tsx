@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface AdminDialogProps {
   isOpen: boolean;
@@ -24,6 +25,8 @@ export const AdminDialog: React.FC<AdminDialogProps> = ({
   onClose,
   children,
 }) => {
+  const { t } = useTranslation(['admin']);
+
   if (!isOpen) {
     return null;
   }
@@ -49,7 +52,7 @@ export const AdminDialog: React.FC<AdminDialogProps> = ({
             type="button"
             onClick={onClose}
             className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-studio hover:border-slate-300 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:text-white"
-            aria-label="Close dialog"
+            aria-label={t('dialog.close')}
           >
             <X size={18} />
           </button>

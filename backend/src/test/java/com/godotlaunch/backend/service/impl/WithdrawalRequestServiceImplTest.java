@@ -2,6 +2,7 @@ package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.ApproveWithdrawalRequest;
+import com.godotlaunch.backend.dto.request.CreateWithdrawalRequest;
 import com.godotlaunch.backend.dto.response.PayoutGatewayBalanceResponse;
 import com.godotlaunch.backend.dto.response.PayoutGatewayCreateResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalDetailResponse;
@@ -281,6 +282,41 @@ class WithdrawalRequestServiceImplTest {
 
         assertEquals(ErrorCode.PAYOUT_CREATE_FAILED, exception.getErrorCode());
         assertEquals(WithdrawalStatus.pending, withdrawal.getStatus());
+        verify(withdrawalRequestRepository, never()).save(any(WithdrawalRequest.class));
+    }
+
+    @Test
+    void getDeveloperWalletSummary_ShouldRejectAdminSelfServiceAccess() {
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> withdrawalRequestService.getDeveloperWalletSummary(adminUser.getEmail())
+        );
+
+        assertEquals(ErrorCode.ACCESS_DENIED, exception.getErrorCode());
+        verify(walletRepository, never()).findByUserId(adminUser.getId());
+    }
+
+    @Test
+    void createDeveloperWithdrawal_ShouldRejectAdminSelfServiceAccess() {
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> withdrawalRequestService.createDeveloperWithdrawal(
+                        new CreateWithdrawalRequest(
+                                new BigDecimal("100000"),
+                                "MB Bank",
+                                "0123456789",
+                                "Admin User",
+                                null
+                        ),
+                        adminUser.getEmail()
+                )
+        );
+
+        assertEquals(ErrorCode.ACCESS_DENIED, exception.getErrorCode());
         verify(withdrawalRequestRepository, never()).save(any(WithdrawalRequest.class));
     }
 }

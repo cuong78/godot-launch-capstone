@@ -1,9 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, Clock3, Eye, RefreshCw, X, XCircle } from 'lucide-react';
+import {
+  ArrowUpDown,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Eye,
+  RefreshCw,
+  X,
+  XCircle,
+} from 'lucide-react';
 import { paymentApi } from '../../api/paymentApi';
 import { Button } from '../Button';
 import { PaymentResponse } from '../../types';
+
+const PAYMENTS_PER_PAGE = 6;
+
+type PaymentSortOption =
+  | 'all'
+  | 'PAID'
+  | 'PENDING'
+  | 'CANCELLED'
+  | 'EXPIRED';
 
 const formatMoney = (amount: number) =>
   amount === 0
@@ -61,15 +80,38 @@ const getStatusMeta = (status: PaymentResponse['paymentStatus']) => {
   }
 };
 
-export const AdminPaymentVerificationPanel: React.FC = () => {
+const getPaymentSortTimestamp = (payment: PaymentResponse) => {
+  const value = payment.updatedAt || payment.paidAt || payment.createdAt;
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+interface AdminPaymentVerificationPanelProps {
+  onRefreshStateChange?: (state: {
+    refresh: () => Promise<void>;
+    isRefreshing: boolean;
+    isLoadingPrimary: boolean;
+    isLoadingSecondary?: boolean;
+  }) => void;
+}
+
+export const AdminPaymentVerificationPanel: React.FC<
+  AdminPaymentVerificationPanelProps
+> = ({ onRefreshStateChange }) => {
   const [payments, setPayments] = useState<PaymentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<PaymentResponse | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshingDetail, setIsRefreshingDetail] = useState(false);
+  const [sortOption, setSortOption] = useState<PaymentSortOption>('all');
+  const [currentPage, setCurrentPage] = useState(0);
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -84,11 +126,53 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchPayments();
-  }, []);
+    void fetchPayments();
+  }, [fetchPayments]);
+
+  useEffect(() => {
+    onRefreshStateChange?.({
+      refresh: fetchPayments,
+      isRefreshing: isLoading,
+      isLoadingPrimary: isLoading,
+    });
+  }, [fetchPayments, isLoading, onRefreshStateChange]);
+
+  const sortedPayments = useMemo(() => {
+    const items =
+      sortOption === 'all'
+        ? [...payments]
+        : payments.filter((payment) => payment.paymentStatus === sortOption);
+
+    items.sort(
+      (left, right) =>
+        getPaymentSortTimestamp(right) - getPaymentSortTimestamp(left),
+    );
+
+    return items;
+  }, [payments, sortOption]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedPayments.length / PAYMENTS_PER_PAGE),
+  );
+
+  const paginatedPayments = useMemo(() => {
+    const startIndex = currentPage * PAYMENTS_PER_PAGE;
+    return sortedPayments.slice(startIndex, startIndex + PAYMENTS_PER_PAGE);
+  }, [currentPage, sortedPayments]);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [sortOption]);
+
+  useEffect(() => {
+    if (currentPage > totalPages - 1) {
+      setCurrentPage(Math.max(0, totalPages - 1));
+    }
+  }, [currentPage, totalPages]);
 
   const openPaymentDetail = async (paymentId: string) => {
     try {
@@ -127,31 +211,35 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
   return (
     <>
       <div className="space-y-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">PayOS Payment Monitoring</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Monitor recent hosted checkout sessions and inspect webhook-confirmed marketplace payments.
-            </p>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-            onClick={fetchPayments}
-          >
-            Refresh List
-          </Button>
-        </div>
-
         {error && (
           <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 text-xs text-rose-600 dark:text-rose-400">
             {error}
           </div>
         )}
 
-        <div className="rounded-2xl border border-slate-200/90 bg-white/90 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 overflow-hidden">
+        <div className="flex justify-end">
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-200/90 bg-white/95 px-4 py-2 text-sm shadow-[0_10px_24px_rgba(148,163,184,0.12)] backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:shadow-none">
+            <span className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <ArrowUpDown size={14} />
+              Sort
+            </span>
+            <select
+              value={sortOption}
+              onChange={(event) =>
+                setSortOption(event.target.value as PaymentSortOption)
+              }
+              className="bg-transparent text-sm font-semibold text-slate-700 outline-none dark:text-slate-200"
+            >
+              <option value="all">All payments</option>
+              <option value="PAID">PAID</option>
+              <option value="PENDING">PENDING</option>
+              <option value="CANCELLED">CANCELLED</option>
+              <option value="EXPIRED">EXPIRED</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-[24px] border border-slate-200/90 bg-white/95 shadow-[0_18px_44px_rgba(148,163,184,0.14)] backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:shadow-none">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-950/50">
@@ -171,14 +259,14 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
                       Loading payment sessions...
                     </td>
                   </tr>
-                ) : payments.length === 0 ? (
+                ) : sortedPayments.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500">
                       No payment sessions are available right now.
                     </td>
                   </tr>
                 ) : (
-                  payments.map((payment) => {
+                  paginatedPayments.map((payment) => {
                     const statusMeta = getStatusMeta(payment.paymentStatus);
 
                     return (
@@ -217,6 +305,31 @@ export const AdminPaymentVerificationPanel: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {sortedPayments.length > 0 ? (
+            <div className="flex justify-end gap-2 border-t border-slate-200/70 px-4 py-4 dark:border-slate-800/70">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(0, page - 1))}
+                disabled={currentPage === 0}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-studio disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-200"
+              >
+                <ChevronLeft size={14} />
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(totalPages - 1, page + 1))
+                }
+                disabled={currentPage >= totalPages - 1}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-studio disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-200"
+              >
+                Next
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
 

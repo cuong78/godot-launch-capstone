@@ -17,13 +17,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   setSelectedPost,
   setSelectedAuthor
 }) => {
-  const { 
-    notifications, 
-    unreadNotificationsCount, 
-    markNotificationAsRead, 
-    markAllNotificationsAsRead,
-    setActiveRecipientId,
-    setActiveRecipientDetails
+  const {
+    notifications,
+    unreadNotificationsCount,
+    markNotificationAsRead,
+    markAllNotificationsAsRead
   } = useWebSocket();
   
   const [isOpen, setIsOpen] = useState(false);
@@ -49,18 +47,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     }
     
     // 2. Perform redirect navigation
-    if (notif.type === 'CHAT_MESSAGE' && notif.targetId) {
-      // Set active user details in context
-      setActiveRecipientDetails({
-        id: notif.sender.id,
-        fullName: notif.sender.fullName,
-        avatarUrl: notif.sender.avatarUrl
-      });
-      // Set active user in chat and navigate to chat screen
-      setActiveRecipientId(notif.targetId);
-      setCurrentScreen('chat');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (notif.targetId) {
+    if (notif.targetId) {
       // Set selected post and navigate to community detail screen
       setSelectedAssetId(notif.targetId);
       setSelectedPost(null); // Force self-heal details query

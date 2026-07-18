@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { resolvePostLoginScreen } from '../utils/authRedirect';
 
 interface GitHubCallbackPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -34,10 +35,14 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
             setErrorMsg('GitHub primary email does not match your registered email. Please use a GitHub account with matching email.');
             break;
           case 'GL-4071':
-            setErrorMsg('This GitHub account is already linked to another user account.');
+            setErrorMsg('This GitHub account is already linked to another account. Your GitHub email must match your platform login email — please use the GitHub account whose email matches this account.');
             break;
           case 'GL-4072':
             setErrorMsg('GitHub linking session not found or expired. Please try again from your profile.');
+            break;
+          case 'GL-5020':
+          case 'GL-5021':
+            setErrorMsg('Could not reach GitHub to complete sign-in. Please try again in a moment.');
             break;
           case 'access_denied':
             setErrorMsg('GitHub login/linking cancelled by user.');
@@ -51,7 +56,7 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
 
       if (!tokenParam) {
         localStorage.removeItem("github_link_pending");
-        setErrorMsg('GitHub login failed. No token returned.');
+        setErrorMsg('GitHub login failed — no session was returned. Your GitHub email must match your platform login email. Please use a GitHub account whose email matches your account.');
         setLoading(false);
         return;
       }
@@ -65,7 +70,7 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
           localStorage.setItem("github_link_success", "true");
           setCurrentScreen('developer-onboarding');
         } else {
-          setCurrentScreen('dashboard');
+          setCurrentScreen(resolvePostLoginScreen(user));
         }
       } catch (err: any) {
         setErrorMsg(err.message || 'GitHub login failed. Please try again.');

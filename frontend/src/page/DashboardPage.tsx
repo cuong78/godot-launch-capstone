@@ -205,8 +205,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     useState<boolean>(false);
   const dashboardWorkspaceRef = React.useRef<HTMLDivElement | null>(null);
 
-  const fetchMyGames = async () => {
-    if (!currentUser?.email) return;
+  const fetchMyGames = async (): Promise<boolean> => {
+    if (!currentUser?.email) return false;
     setIsLoadingGames(true);
     setGamesError(null);
     try {
@@ -218,6 +218,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             game.creatorName?.toLowerCase() === currentUser.email.toLowerCase(),
         );
         setMyGames(filtered);
+        return true;
       } else {
         setGamesError(
           response.message ||
@@ -225,6 +226,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               message: "Failed to load your games",
             }),
         );
+        return false;
       }
     } catch (err: any) {
       setGamesError(
@@ -234,19 +236,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             message: "Failed to fetch your games",
           }),
       );
+      return false;
     } finally {
       setIsLoadingGames(false);
     }
   };
 
-  const fetchMyMarketplaceItems = async () => {
-    if (!currentUser?.email) return;
+  const fetchMyMarketplaceItems = async (): Promise<boolean> => {
+    if (!currentUser?.email) return false;
     setIsLoadingMarketplace(true);
     setMarketplaceError(null);
     try {
       const response = await marketplaceApi.getMyMarketplaceItems();
       if (response.success && response.data) {
         setMyMarketplaceItems(response.data);
+        return true;
       } else {
         setMarketplaceError(
           response.message ||
@@ -254,6 +258,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               message: "Failed to load your marketplace items",
             }),
         );
+        return false;
       }
     } catch (err: any) {
       setMarketplaceError(
@@ -263,6 +268,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             message: "Failed to fetch your marketplace items",
           }),
       );
+      return false;
     } finally {
       setIsLoadingMarketplace(false);
     }
@@ -289,31 +295,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  const fetchMyContracts = async () => {
-    if (!currentUser?.email) return;
+  const fetchMyContracts = async (): Promise<boolean> => {
+    if (!currentUser?.email) return false;
     setIsLoadingContracts(true);
     try {
       const response = await contractApi.getMyContracts();
       if (response.success && response.data) {
         setContracts(response.data);
+        return true;
       }
+      return false;
     } catch (err) {
       console.error("Failed to fetch contracts", err);
+      return false;
     } finally {
       setIsLoadingContracts(false);
     }
   };
 
-  const fetchSalesStats = async () => {
-    if (!currentUser?.email) return;
+  const fetchSalesStats = async (): Promise<boolean> => {
+    if (!currentUser?.email) return false;
     setIsLoadingSales(true);
     setSalesError(null);
     try {
       const response = await walletApi.getDeveloperSalesStats();
       if (response.success && response.data) {
         setSalesStats(response.data);
+        return true;
       } else {
         setSalesError(response.message || "Failed to load sales statistics");
+        return false;
       }
     } catch (err: any) {
       setSalesError(
@@ -321,9 +332,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           err.message ||
           "Failed to fetch sales statistics",
       );
+      return false;
     } finally {
       setIsLoadingSales(false);
     }
+  };
+
+  const handleOpenRepositoryWorkspace = () => {
+    if (currentUser?.role === "customer") {
+      setCurrentScreen("developer-onboarding");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    setActiveTab("git-repos");
+    dashboardWorkspaceRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   const handleOpenSignModal = (contract: ContractResponse) => {
@@ -474,13 +500,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               variant="primary"
               size="sm"
               icon={<Plus size={14} />}
-              onClick={() => setCurrentScreen("upload")}
+              onClick={() => {
+                setCurrentScreen(
+                  currentUser?.role === "customer"
+                    ? "developer-onboarding"
+                    : "upload",
+                );
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             >
               {t("dashboard:overview.deployAsset")}
             </Button>
             <button
-              onClick={() => alert(t("dashboard:overview.syncRepositoryAlert"))}
-              className="p-2 bg-slate-800 border border-slate-750 text-slate-350 hover:text-white transition-studio rounded-lg text-xs font-semibold cursor-pointer"
+              onClick={handleOpenRepositoryWorkspace}
+              className="inline-flex items-center gap-2 p-2 bg-slate-800 border border-slate-750 text-slate-350 hover:text-white transition-studio rounded-lg text-xs font-semibold cursor-pointer"
             >
               {t("dashboard:overview.syncRepository")}
             </button>

@@ -16,8 +16,8 @@ public interface AssetService {
     List<AssetResponse> getAssetsByStatus(ItemStatus status, String requesterEmail);
     List<AssetResponse> getAssetsBySeller(String sellerEmail);
     AssetResponse updateAsset(UUID id, UpdateAssetRequest request, String updaterEmail);
-    String getPresignedUploadUrl(UUID itemId, String contentType);
-    void confirmUploadComplete(UUID itemId, String objectKey);
+    String getPresignedUploadUrl(UUID itemId, String contentType, String requesterEmail);
+    void confirmUploadComplete(UUID itemId, String objectKey, String requesterEmail);
 
     /**
      * Proxy upload zip qua backend → SeaweedFsService.

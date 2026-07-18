@@ -109,11 +109,29 @@ public class GameServiceImpl implements GameService {
         }
     }
 
+    private User getRequesterWithRole(String requesterEmail) {
+        return userRepository.findWithRoleByEmail(requesterEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private void assertDeveloper(User user) {
+        String roleName = user.getRole() != null ? user.getRole().getName() : null;
+        if (!"developer".equalsIgnoreCase(roleName)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void assertGameOwner(Game game, User requester) {
+        if (!game.getCreator().getId().equals(requester.getId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
     @Override
     @Transactional
     public UUID createGameDraft(CreateGameRequest request, String creatorEmail) {
-        User creator = userRepository.findByEmail(creatorEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User creator = getRequesterWithRole(creatorEmail);
+        assertDeveloper(creator);
 
         Game game = new Game();
         game.setTitle(request.getTitle());
@@ -154,14 +172,12 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional
     public void submitGameRepo(UUID gameId, String repoUrl, String branch, String creatorEmail) {
-        User creator = userRepository.findByEmail(creatorEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User creator = getRequesterWithRole(creatorEmail);
+        assertDeveloper(creator);
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
-        if (!game.getCreator().getId().equals(creator.getId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertGameOwner(game, creator);
         if (repoUrl == null || repoUrl.isBlank()) {
             throw new AppException(ErrorCode.REPO_URL_REQUIRED);
         }
@@ -238,8 +254,8 @@ public class GameServiceImpl implements GameService {
 
     @Override
     public boolean acceptBotInvitation(String repoUrl, String creatorEmail) {
-        userRepository.findByEmail(creatorEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User requester = getRequesterWithRole(creatorEmail);
+        assertDeveloper(requester);
         if (repoUrl == null || repoUrl.isBlank()) {
             throw new AppException(ErrorCode.REPO_URL_REQUIRED);
         }
@@ -328,12 +344,12 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional
     public GameResponse updateGame(UUID gameId, UpdateGameRequest request, String updaterEmail) {
+        User updater = getRequesterWithRole(updaterEmail);
+        assertDeveloper(updater);
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
-        if (!game.getCreator().getEmail().equalsIgnoreCase(updaterEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertGameOwner(game, updater);
 
         if (request.getTitle() != null) {
             game.setTitle(request.getTitle());
@@ -371,12 +387,12 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional
     public void clearGameMedia(UUID gameId, String mediaType, String updaterEmail) {
+        User updater = getRequesterWithRole(updaterEmail);
+        assertDeveloper(updater);
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
-        if (!game.getCreator().getEmail().equalsIgnoreCase(updaterEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertGameOwner(game, updater);
 
         // Chuẩn hóa: "screenshot" → "image" (DB lưu mediaType là "image")
         String normalized = "video".equalsIgnoreCase(mediaType) ? "video" : "image";
@@ -386,12 +402,12 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional
     public void deleteGameMediaByUrl(UUID gameId, String mediaUrl, String updaterEmail) {
+        User updater = getRequesterWithRole(updaterEmail);
+        assertDeveloper(updater);
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
-        if (!game.getCreator().getEmail().equalsIgnoreCase(updaterEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertGameOwner(game, updater);
 
         // Frontend gửi presigned URL — match bằng objectKey (bỏ query string ?X-Amz-...)
         String targetKey = extractObjectKeyFromUrl(mediaUrl);
@@ -492,9 +508,12 @@ public class GameServiceImpl implements GameService {
 
     @Override
     @Transactional(readOnly = true)
-    public String getPresignedUploadUrl(UUID gameId, String fileType, String contentType) {
+    public String getPresignedUploadUrl(UUID gameId, String fileType, String contentType, String requesterEmail) {
+        User requester = getRequesterWithRole(requesterEmail);
+        assertDeveloper(requester);
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+        assertGameOwner(game, requester);
 
         // thumbnail/video: key random mỗi lần upload để tránh browser cache ảnh/video cũ khi thay file mới
         String objectKey;
@@ -513,9 +532,12 @@ public class GameServiceImpl implements GameService {
 
     @Override
     @Transactional
-    public void confirmUploadComplete(UUID gameId, String fileType, String objectKey) {
+    public void confirmUploadComplete(UUID gameId, String fileType, String objectKey, String requesterEmail) {
+        User requester = getRequesterWithRole(requesterEmail);
+        assertDeveloper(requester);
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+        assertGameOwner(game, requester);
 
         if ("thumbnail".equalsIgnoreCase(fileType)) {
             if (objectKey == null) {
@@ -560,12 +582,12 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional
     public String uploadGameMedia(UUID gameId, String fileType, MultipartFile file, String uploaderEmail) {
+        User uploader = getRequesterWithRole(uploaderEmail);
+        assertDeveloper(uploader);
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
-        if (!game.getCreator().getEmail().equalsIgnoreCase(uploaderEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertGameOwner(game, uploader);
 
         validateMediaFileSize(fileType, file);
 
@@ -748,12 +770,12 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional
     public void uploadWebDemo(UUID gameId, MultipartFile file, String creatorEmail) {
+        User creator = getRequesterWithRole(creatorEmail);
+        assertDeveloper(creator);
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
-        if (!game.getCreator().getEmail().equalsIgnoreCase(creatorEmail)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        assertGameOwner(game, creator);
 
         // 1. Quét virus file ZIP bằng ClamAV
         try (java.io.InputStream scanStream = file.getInputStream()) {

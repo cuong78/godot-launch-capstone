@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   Smartphone, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Upload, ExternalLink,
 } from 'lucide-react';
-import { storePublishApi } from '../api/storePublishApi';
-import { ExternalPublishResponse } from '../types';
+import { storePublishApi } from '../../api/storePublishApi';
+import { ExternalPublishResponse } from '../../types';
 
 interface Props {
   gameId: string;

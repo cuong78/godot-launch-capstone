@@ -22,4 +22,8 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
            "LOWER(g.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(g.thumbnailUrl) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Game> searchGameThumbnails(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT g FROM Game g WHERE :search IS NULL OR :search = '' OR " +
+           "LOWER(g.title) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<Game> searchGamesForFileManagement(@Param("search") String search, Pageable pageable);
 }

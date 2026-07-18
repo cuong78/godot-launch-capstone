@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, ShieldCheck, Scale, Ban } from 'lucide-react';
-import { disputeApi, DisputeResponse, ResolveDisputePayload } from '../api/disputeApi';
+import { disputeApi, DisputeResponse, ResolveDisputePayload } from '../../api/disputeApi';
 
 const STATUS_LABEL: Record<string, { text: string; color: string }> = {
   open: { text: 'Mới', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
@@ -34,11 +34,6 @@ export default function AdminDisputePanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Scale className="w-5 h-5 text-amber-400" />
-        <h3 className="text-white font-semibold">Tranh chấp bản quyền ({disputes.length})</h3>
-      </div>
-
       {disputes.length === 0 ? (
         <p className="text-white/40 text-sm py-8 text-center">Chưa có khiếu nại nào.</p>
       ) : (
