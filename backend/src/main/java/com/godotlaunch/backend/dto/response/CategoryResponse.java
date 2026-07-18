@@ -14,5 +14,6 @@ public class CategoryResponse {
     private String slug;
     private String description;
     private UUID parentId;
+    private String type;
     private Instant createdAt;
 }

@@ -12,4 +12,5 @@ public interface CategoryService {
     void deleteCategory(UUID id);
     CategoryResponse getCategoryById(UUID id);
     List<CategoryResponse> getAllCategories();
+    List<CategoryResponse> getCategoriesByType(String type);
 }

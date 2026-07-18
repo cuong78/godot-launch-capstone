@@ -8,7 +8,6 @@ import {
   Code2,
   Download,
   ExternalLink,
-  ReceiptText,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -230,33 +229,6 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               {t('payment:center.emptyIntro')}
             </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button variant="primary" size="md" onClick={onBackToMarketplace}>
-                {t('payment:center.emptyPrimaryAction')}
-              </Button>
-              {!isEmbedded && (
-                <Button variant="ghost" size="md" onClick={() => setCurrentScreen('dashboard')}>
-                  {t('payment:center.emptySecondaryAction')}
-                </Button>
-              )}
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-dashed border-slate-200/80 bg-white/60 p-5 dark:border-slate-800/80 dark:bg-slate-950/35">
-              <div className="flex items-start gap-3">
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 p-3 text-slate-500 dark:border-slate-800/80 dark:bg-slate-950/55 dark:text-slate-400">
-                  <ReceiptText size={18} />
-                </div>
-                <div>
-                  <p className="font-display text-base font-bold text-slate-850 dark:text-white">
-                    {t('payment:center.emptyAutoTitle')}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                    {t('payment:center.emptyAutoDescription')}
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -326,9 +298,6 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                 className="border border-slate-200/80 bg-white/70 dark:border-slate-800/80 dark:bg-slate-950/35"
               >
                 {t('payment:center.refresh')}
-              </Button>
-              <Button variant="primary" size="sm" onClick={onBackToMarketplace}>
-                {t('payment:center.browseMarketplace')}
               </Button>
             </div>
           </div>

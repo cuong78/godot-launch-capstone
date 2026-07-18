@@ -187,17 +187,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
   // Sync categoryId when publishProgram, itemType or categories list changes
   useEffect(() => {
-    const filtered = categories.filter((cat) => {
-      const isMediaCat = ["2d-assets", "3d-models", "audio-sfx"].includes(cat.slug);
-      const isTechnicalCat = ["scripts-plugins", "shaders-vfx"].includes(cat.slug);
-      
-      if (publishProgram === "game") {
-        return !isMediaCat && !isTechnicalCat;
-      }
-      
-      // Marketplace asset: gồm category media (2D, 3D, Audio) + technical (scripts, shaders)
-      return isMediaCat || isTechnicalCat;
-    });
+    const filtered = categories.filter((cat) =>
+      publishProgram === "game" ? cat.type === "game" : cat.type === "asset",
+    );
     if (filtered.length > 0) {
       const isValid = filtered.some((cat) => cat.id === categoryId);
       if (!isValid) {
@@ -828,25 +820,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
                 >
                   {(() => {
-                    const gameGenres = categories.filter(cat => 
-                      !["scripts-plugins", "shaders-vfx", "2d-assets", "3d-models", "audio-sfx"].includes(cat.slug)
-                    );
-                    const technicalResources = categories.filter(cat => 
-                      ["scripts-plugins", "shaders-vfx"].includes(cat.slug)
-                    );
-                    const mediaResources = categories.filter(cat => 
-                      ["2d-assets", "3d-models", "audio-sfx"].includes(cat.slug)
+                    const relevantCategories = categories.filter((cat) =>
+                      publishProgram === "game" ? cat.type === "game" : cat.type === "asset",
                     );
 
-                    if (publishProgram === "game") {
-                      return gameGenres.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ));
-                    }
-
-                    return [...mediaResources, ...technicalResources].map((cat) => (
+                    return relevantCategories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
                       </option>

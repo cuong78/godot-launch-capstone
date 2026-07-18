@@ -4,21 +4,13 @@ import {
   CheckCircle2,
   Play,
   Rocket,
-  Search,
   X,
   Sun,
   Moon,
-  Compass,
-  ArrowUpRight,
   ShoppingCart,
   ShoppingBag,
   Trash2,
   Plus,
-  Users,
-  WalletCards,
-  LayoutDashboard,
-  ShieldCheck,
-  ReceiptText,
 } from "lucide-react";
 import { Button } from "./Button";
 import { Asset, User, ScreenType } from "../types";
@@ -47,20 +39,6 @@ interface HeaderProps {
     message: string,
     type?: "info" | "success" | "warning" | "error",
   ) => void;
-}
-
-type DesktopMenuKey = "discover" | "creator" | "workspace";
-
-interface DesktopMenuItem {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  iconClassName: string;
-  isActive: boolean;
-  glowClassName: string;
-  onClick: () => void;
-  featured?: boolean;
 }
 
 const resolveCurrencyLocale = (language: string) => {
@@ -272,7 +250,6 @@ export function Header({
   setCurrentUser,
   darkMode,
   setDarkMode,
-  searchText,
   setSearchText,
   cart,
   isCartOpen,
@@ -285,11 +262,8 @@ export function Header({
   showToast,
 }: HeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
-  const [openDesktopMenu, setOpenDesktopMenu] =
-    React.useState<DesktopMenuKey | null>(null);
   const [isCreatorJourneyDialogOpen, setIsCreatorJourneyDialogOpen] =
     React.useState(false);
-  const desktopMenuCloseTimeoutRef = React.useRef<number | null>(null);
   const { t, i18n } = useTranslation(["common", "payment"]);
   const activeLanguage = i18n.resolvedLanguage || i18n.language || "vi";
   const currencyLocale = resolveCurrencyLocale(activeLanguage);
@@ -321,59 +295,18 @@ export function Header({
 
     return Array.from(itemMap.values());
   }, [cart]);
-  const desktopSearchClassName = currentUser
-    ? "hidden md:flex shrink-0 w-[210px] xl:w-[260px] 2xl:w-[320px] relative"
-    : "hidden md:flex shrink-0 w-[250px] lg:w-[310px] xl:w-[360px] relative";
   const navGroupButtonClassName = (isActive: boolean, isOpen: boolean) =>
     `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 xl:px-3 py-1.5 text-sm font-medium rounded-lg transition-studio ${
       isActive || isOpen
         ? "bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400"
         : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white"
     }`;
-  const isDiscoverActive =
-    currentScreen === "explore" ||
-    currentScreen === "marketplace" ||
-    currentScreen === "community";
   const isCreatorActive =
     currentScreen === "path" || currentScreen === "upload";
-  const isWorkspaceActive =
-    currentScreen === "wallet" ||
-    currentScreen === "dashboard" ||
-    currentScreen === "admin";
-  const clearDesktopMenuCloseTimeout = React.useCallback(() => {
-    if (desktopMenuCloseTimeoutRef.current !== null) {
-      window.clearTimeout(desktopMenuCloseTimeoutRef.current);
-      desktopMenuCloseTimeoutRef.current = null;
-    }
-  }, []);
-  const openDesktopMenuPanel = React.useCallback(
-    (menu: DesktopMenuKey) => {
-      clearDesktopMenuCloseTimeout();
-      setOpenDesktopMenu(menu);
-    },
-    [clearDesktopMenuCloseTimeout],
-  );
-  const scheduleDesktopMenuClose = React.useCallback(
-    (menu: DesktopMenuKey) => {
-      clearDesktopMenuCloseTimeout();
-      desktopMenuCloseTimeoutRef.current = window.setTimeout(() => {
-        setOpenDesktopMenu((current) => (current === menu ? null : current));
-        desktopMenuCloseTimeoutRef.current = null;
-      }, 180);
-    },
-    [clearDesktopMenuCloseTimeout],
-  );
-  React.useEffect(() => {
-    return () => {
-      clearDesktopMenuCloseTimeout();
-    };
-  }, [clearDesktopMenuCloseTimeout]);
   const handleNavigate = (screen: ScreenType) => {
-    setOpenDesktopMenu(null);
     setCurrentScreen(screen);
   };
   const handleOpenCreatorCenter = () => {
-    setOpenDesktopMenu(null);
     setIsCartOpen(false);
     setIsProfileOpen(false);
 
@@ -409,174 +342,8 @@ export function Header({
         );
       }
     }
-    setOpenDesktopMenu(null);
     setCurrentScreen("path");
   };
-  const desktopMenuPositionClassName = (menu: DesktopMenuKey) => {
-    if (menu === "workspace") {
-      return "right-0";
-    }
-
-    if (menu === "creator") {
-      return "left-1/2 -translate-x-1/2";
-    }
-
-    return "left-0";
-  };
-  const discoverMenuItems: DesktopMenuItem[] = [
-    {
-      id: "explore",
-      title: t("explore"),
-      description: t("explore_hint"),
-      icon: <Compass size={18} />,
-      iconClassName: "border-amber-500/20 bg-amber-400/12 text-amber-500",
-      isActive: currentScreen === "explore",
-      glowClassName: "from-amber-400/22 via-amber-400/10 to-transparent",
-      featured: true,
-      onClick: () => {
-        setOpenDesktopMenu(null);
-        setCurrentScreen("explore");
-        setSearchText("");
-      },
-    },
-    {
-      id: "marketplace",
-      title: t("marketplace"),
-      description: t("marketplace_hint"),
-      icon: <ShoppingBag size={18} />,
-      iconClassName: "border-sky-500/20 bg-sky-500/12 text-sky-500",
-      isActive: currentScreen === "marketplace",
-      glowClassName: "from-sky-500/22 via-sky-500/10 to-transparent",
-      onClick: () => handleNavigate("marketplace"),
-    },
-    {
-      id: "community",
-      title: t("community"),
-      description: t("community_hint"),
-      icon: <Users size={18} />,
-      iconClassName: "border-purple-500/20 bg-purple-500/12 text-purple-500",
-      isActive: currentScreen === "community",
-      glowClassName: "from-purple-500/20 via-purple-500/8 to-transparent",
-      onClick: () => handleNavigate("community"),
-    },
-  ];
-  // "Trung tâm sáng tạo" giờ đi thẳng vào trang Upload (không dropdown) → bỏ creatorMenuItems.
-  const workspaceMenuItems: DesktopMenuItem[] = [
-    {
-      id: "wallet",
-      title: t("wallet"),
-      description: t("wallet_hint"),
-      icon: <WalletCards size={18} />,
-      iconClassName: "border-emerald-500/20 bg-emerald-500/12 text-emerald-500",
-      isActive: currentScreen === "wallet",
-      glowClassName: "from-emerald-500/20 via-emerald-500/8 to-transparent",
-      onClick: () => handleNavigate("wallet"),
-    },
-    {
-      id: "payment",
-      title: t("payment:center.title", "Quản lý đơn hàng"),
-      description: t(
-        "payment:center.subtitle",
-        "Lịch sử mua hàng & tải tài nguyên",
-      ),
-      icon: <ReceiptText size={18} />,
-      iconClassName: "border-amber-500/20 bg-amber-500/12 text-amber-500",
-      isActive: currentScreen === "payment",
-      glowClassName: "from-amber-500/20 via-amber-500/8 to-transparent",
-      onClick: () => handleNavigate("payment"),
-    },
-    ...(currentUser?.role !== "customer"
-      ? [
-          {
-            id: "dashboard",
-            title: t("dashboard"),
-            description: t("dashboard_hint"),
-            icon: <LayoutDashboard size={18} />,
-            iconClassName: "border-sky-500/20 bg-sky-500/12 text-sky-500",
-            isActive: currentScreen === "dashboard",
-            glowClassName: "from-sky-500/20 via-sky-500/8 to-transparent",
-            onClick: () => handleNavigate("dashboard"),
-          },
-        ]
-      : []),
-    ...(currentUser?.role === "admin"
-      ? [
-          {
-            id: "admin",
-            title: t("admin_portal"),
-            description: t("admin_portal_hint"),
-            icon: <ShieldCheck size={18} />,
-            iconClassName: "border-rose-500/20 bg-rose-500/12 text-rose-500",
-            isActive: currentScreen === "admin",
-            glowClassName: "from-rose-500/20 via-rose-500/8 to-transparent",
-            onClick: () => handleNavigate("admin"),
-          },
-        ]
-      : []),
-  ];
-  const renderDesktopMenuPanel = (
-    menu: DesktopMenuKey,
-    title: string,
-    subtitle: string,
-    items: DesktopMenuItem[],
-  ) => {
-    if (openDesktopMenu !== menu) {
-      return null;
-    }
-
-    return (
-      <div
-        className={`absolute top-full z-50 pt-3 ${desktopMenuPositionClassName(menu)}`}
-        onMouseEnter={clearDesktopMenuCloseTimeout}
-        onMouseLeave={() => scheduleDesktopMenuClose(menu)}
-      >
-        <div className="w-[min(92vw,20rem)] overflow-hidden rounded-[20px] border border-slate-700/80 bg-slate-800/96 p-2 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.78)] backdrop-blur-xl dark:border-slate-700/90 dark:bg-slate-850/96">
-          <div className="border-b border-slate-700/70 px-3 pb-2 pt-1.5">
-            <p className="text-[9px] font-mono uppercase tracking-[0.18em] text-slate-400">
-              {title}
-            </p>
-            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-              {subtitle}
-            </p>
-          </div>
-
-          <div className="mt-2 space-y-1">
-            {items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={item.onClick}
-                title={item.description}
-                className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-studio ${
-                  item.isActive
-                    ? "bg-slate-700/80 text-white shadow-[inset_0_0_0_1px_rgba(251,191,36,0.16)]"
-                    : "text-slate-100 hover:bg-slate-700/72 hover:text-white"
-                }`}
-              >
-                <span
-                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${item.iconClassName}`}
-                >
-                  {item.icon}
-                </span>
-                <span className="min-w-0 flex-1 font-display text-sm font-semibold tracking-tight">
-                  {item.title}
-                </span>
-                <ArrowUpRight
-                  size={14}
-                  className={`shrink-0 transition-transform duration-300 ${
-                    item.isActive
-                      ? "text-amber-400"
-                      : "text-slate-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-slate-200"
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <header
       id="godotlaunch-navbar"
@@ -587,7 +354,6 @@ export function Header({
         <div
           className="flex shrink-0 items-center gap-2 cursor-pointer"
           onClick={() => {
-            setOpenDesktopMenu(null);
             setCurrentScreen("explore");
             setSearchText("");
           }}
@@ -608,68 +374,19 @@ export function Header({
           </div>
         </div>
 
-        {/* Combined Quick Search input bar */}
-        <div className={desktopSearchClassName}>
-          <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-            <Search size={15} />
-          </span>
-          <input
-            type="text"
-            placeholder="Search scripts, shaders, templates..."
-            value={searchText}
-            onChange={(e) => {
-              setOpenDesktopMenu(null);
-              setSearchText(e.target.value);
-              if (
-                currentScreen !== "marketplace" &&
-                currentScreen !== "detail"
-              ) {
-                setCurrentScreen("marketplace");
-              }
-            }}
-            className="w-full pl-9 pr-4 py-2 bg-slate-100/80 dark:bg-slate-950 border border-transparent dark:border-slate-800/60 rounded-lg outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-sm text-slate-800 dark:text-slate-200 transition-studio placeholder-slate-500 dark:placeholder-slate-400"
-          />
-          {searchText && (
-            <button
-              onClick={() => setSearchText("")}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-amber-400"
-            >
-              <X size={13} />
-            </button>
-          )}
-        </div>
-
         {/* Navigation Items (Responsive on Desktop) */}
         <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-1 px-1 xl:gap-2 2xl:gap-4">
-          <div
-            className="relative shrink-0"
-            onMouseEnter={() => openDesktopMenuPanel("discover")}
-            onMouseLeave={() => scheduleDesktopMenuClose("discover")}
-          >
+          <div className="relative shrink-0">
             <button
               type="button"
               className={navGroupButtonClassName(
-                isDiscoverActive,
-                openDesktopMenu === "discover",
+                currentScreen === "marketplace",
+                false,
               )}
-              onClick={() => {
-                clearDesktopMenuCloseTimeout();
-                setOpenDesktopMenu(null);
-                setCurrentScreen("explore");
-                setSearchText("");
-              }}
-              aria-expanded={openDesktopMenu === "discover"}
-              aria-haspopup="true"
+              onClick={() => handleNavigate("marketplace")}
             >
-              {t("explore")}
+              {t("marketplace")}
             </button>
-
-            {renderDesktopMenuPanel(
-              "discover",
-              t("explore"),
-              t("discover_menu_subtitle"),
-              discoverMenuItems,
-            )}
           </div>
 
           <div className="relative shrink-0">
@@ -684,39 +401,37 @@ export function Header({
             </button>
           </div>
 
-          {currentUser && (
-            <div
-              className="relative shrink-0"
-              onMouseEnter={() => openDesktopMenuPanel("workspace")}
-              onMouseLeave={() => scheduleDesktopMenuClose("workspace")}
-            >
+          {currentUser && currentUser.role !== "customer" && (
+            <div className="relative shrink-0">
               <button
                 type="button"
                 className={navGroupButtonClassName(
-                  isWorkspaceActive,
-                  openDesktopMenu === "workspace",
+                  currentScreen === "dashboard",
+                  false,
                 )}
                 onClick={() => {
-                  clearDesktopMenuCloseTimeout();
-                  setOpenDesktopMenu(null);
                   setSearchText("");
                   setCurrentScreen("dashboard");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                aria-expanded={openDesktopMenu === "workspace"}
-                aria-haspopup="true"
               >
-                {t("workspace_hub")}
+                {t("dashboard")}
               </button>
-
-              {renderDesktopMenuPanel(
-                "workspace",
-                t("workspace_hub"),
-                t("workspace_hub_subtitle"),
-                workspaceMenuItems,
-              )}
             </div>
           )}
+
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              className={navGroupButtonClassName(
+                currentScreen === "community",
+                false,
+              )}
+              onClick={() => handleNavigate("community")}
+            >
+              {t("community")}
+            </button>
+          </div>
         </nav>
 
         {/* Utility Action tools: Dark Mode, Cart Badge dropdown trigger, Publish Button */}
@@ -738,7 +453,6 @@ export function Header({
             <button
               id="shopping-cart-btn"
               onClick={() => {
-                setOpenDesktopMenu(null);
                 setIsCartOpen(!isCartOpen);
                 setIsProfileOpen(false);
               }}
@@ -872,7 +586,6 @@ export function Header({
                     src={currentUser.avatarUrl}
                     alt={currentUser.username}
                     onClick={() => {
-                      setOpenDesktopMenu(null);
                       setIsProfileOpen(!isProfileOpen);
                       setIsCartOpen(false);
                     }}
@@ -903,15 +616,27 @@ export function Header({
                         >
                           {t("my_profile")}
                         </button>
+                        {currentUser.role === "admin" && (
+                          <button
+                            onClick={() => {
+                              setIsProfileOpen(false);
+                              setCurrentScreen("admin");
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-slate-700 transition-colors hover:text-amber-500 dark:text-slate-200 dark:hover:text-amber-400"
+                          >
+                            {t("admin_portal")}
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setIsProfileOpen(false);
-                            setCurrentScreen("payment");
+                            setCurrentScreen("wallet");
                             window.scrollTo({ top: 0, behavior: "smooth" });
                           }}
                           className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-slate-700 transition-colors hover:text-amber-500 dark:text-slate-200 dark:hover:text-amber-400"
                         >
-                          {t("payment:center.title", "Quản lý đơn hàng")}
+                          {t("wallet")}
                         </button>
                         {currentUser.role === "customer" && (
                           <>
@@ -978,17 +703,29 @@ export function Header({
       {/* Mobile Navigation bar strips */}
       <div className="lg:hidden border-t border-slate-100 dark:border-slate-800 flex justify-around py-1.5 bg-slate-50 dark:bg-slate-900/40 text-xs gap-1 max-w-full overflow-x-auto">
         <button
-          onClick={() => setCurrentScreen("explore")}
-          className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "explore" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-        >
-          {t("explore")}
-        </button>
-        <button
           onClick={() => setCurrentScreen("marketplace")}
           className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "marketplace" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
         >
           {t("marketplace")}
         </button>
+        {currentUser && (
+          <button
+            onClick={() => {
+              handleOpenCreatorCenter();
+            }}
+            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "upload" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
+          >
+            {t("upload_file")}
+          </button>
+        )}
+        {currentUser?.role !== "customer" && (
+          <button
+            onClick={() => setCurrentScreen("dashboard")}
+            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "dashboard" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
+          >
+            {t("dashboard")}
+          </button>
+        )}
         <button
           onClick={() => setCurrentScreen("community")}
           className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "community" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
@@ -1021,24 +758,6 @@ export function Header({
             className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "wallet" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
           >
             {t("wallet")}
-          </button>
-        )}
-        {currentUser && (
-          <button
-            onClick={() => {
-              handleOpenCreatorCenter();
-            }}
-            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "upload" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-          >
-            {t("upload_file")}
-          </button>
-        )}
-        {currentUser?.role !== "customer" && (
-          <button
-            onClick={() => setCurrentScreen("dashboard")}
-            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "dashboard" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-          >
-            {t("dashboard")}
           </button>
         )}
         {currentUser?.role === "admin" && (

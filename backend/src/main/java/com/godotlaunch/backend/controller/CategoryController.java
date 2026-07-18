@@ -41,9 +41,12 @@ public class CategoryController {
     }
 
     @GetMapping
-    @Operation(summary = "Get all categories")
-    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getAllCategories() {
-        List<CategoryResponse> categories = categoryService.getAllCategories();
+    @Operation(summary = "Get all categories", description = "Optionally filter by type=game or type=asset")
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getAllCategories(
+            @RequestParam(required = false) String type) {
+        List<CategoryResponse> categories = type != null
+                ? categoryService.getCategoriesByType(type)
+                : categoryService.getAllCategories();
         return ResponseEntity.ok(ApiResponse.success(categories, "Categories retrieved successfully"));
     }
 

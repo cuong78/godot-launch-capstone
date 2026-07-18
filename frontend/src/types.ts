@@ -6,12 +6,7 @@ export interface Asset {
   reviewedCount: number;
   author: string;
   authorAvatar: string;
-  category:
-    | "3D Models"
-    | "2D Assets"
-    | "Shaders & VFX"
-    | "Audio & SFX"
-    | "Scripts & Plugins";
+  category: string;
   description: string;
   image: string;
   tag: string;
@@ -397,15 +392,7 @@ export interface CategoryResponse {
   slug: string;
   description?: string;
   parentId?: string;
-  createdAt?: string;
-}
-
-export interface CategoryResponse {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  parentId?: string;
+  type: "game" | "asset";
   createdAt?: string;
 }
 

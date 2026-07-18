@@ -34,6 +34,7 @@ public class CategoryServiceImpl implements CategoryService {
         category.setName(request.getName());
         category.setSlug(request.getSlug());
         category.setDescription(request.getDescription());
+        category.setType(request.getType());
 
         if (request.getParentId() != null) {
             Category parent = categoryRepository.findById(request.getParentId())
@@ -67,6 +68,7 @@ public class CategoryServiceImpl implements CategoryService {
         category.setName(request.getName());
         category.setSlug(request.getSlug());
         category.setDescription(request.getDescription());
+        category.setType(request.getType());
 
         if (request.getParentId() != null) {
             checkParentCycle(id, request.getParentId());
@@ -106,6 +108,14 @@ public class CategoryServiceImpl implements CategoryService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> getCategoriesByType(String type) {
+        return categoryRepository.findByType(type).stream()
+                .map(this::mapEntityToResponse)
+                .collect(Collectors.toList());
+    }
+
     private void checkParentCycle(UUID categoryId, UUID parentId) {
         if (categoryId.equals(parentId)) {
             throw new AppException(ErrorCode.CATEGORY_PARENT_CYCLE);
@@ -128,6 +138,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .slug(category.getSlug())
                 .description(category.getDescription())
                 .parentId(category.getParent() != null ? category.getParent().getId() : null)
+                .type(category.getType())
                 .createdAt(category.getCreatedAt())
                 .build();
     }

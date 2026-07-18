@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Plus,
-  Calendar,
-  Check,
   ChevronDown,
   ChevronUp,
   Download,
@@ -23,7 +20,6 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Button } from "../components/Button";
-import { DataTable } from "../components/DataTable";
 import { Input } from "../components/Input";
 import {
   Project,
@@ -40,7 +36,6 @@ import { marketplaceApi } from "../api/marketplaceApi";
 import { walletApi } from "../api/walletApi";
 import { SignaturePad } from "../components/SignaturePad";
 import { ContractViewerModal } from "../components/ContractViewerModal";
-import { PurchasedInventoryPanel } from "../components/PurchasedInventoryPanel";
 import { PaymentDetailPage } from "./PaymentDetailPage";
 
 interface DashboardPageProps {
@@ -150,9 +145,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return language === "vi" ? "vi-VN" : language === "ja" ? "ja-JP" : "en-US";
   }, [i18n.language, i18n.resolvedLanguage]);
 
-  // Tab control: 'my-games' | 'marketplace-items' | 'sales' | 'git-repos' | 'payment-center'
+  // Tab control: 'my-games' | 'marketplace-items' | 'sales' | 'payment-center'
   const [activeTab, setActiveTab] = useState<
-    "my-games" | "marketplace-items" | "sales" | "git-repos" | "payment-center"
+    "my-games" | "marketplace-items" | "sales" | "payment-center"
   >("my-games");
 
   // Game & Asset status filters
@@ -338,20 +333,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  const handleOpenRepositoryWorkspace = () => {
-    if (currentUser?.role === "customer") {
-      setCurrentScreen("developer-onboarding");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    setActiveTab("git-repos");
-    dashboardWorkspaceRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
   const handleOpenSignModal = (contract: ContractResponse) => {
     setSelectedContract(contract);
     // Prefill details with developer's full name, not email
@@ -476,45 +457,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   return (
     <>
       <div className="space-y-6 animate-fade-in py-2">
-        {/* Top overview row with developer metrics */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 gap-4 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl"></div>
-          <div>
-            <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase">
-              {t("dashboard:overview.badge")}
-            </span>
-            <h1 className="font-display font-bold text-2xl text-white pt-0.5">
-              {t("dashboard:overview.title")}
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              {t("dashboard:overview.subtitle")}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Plus size={14} />}
-              onClick={() => {
-                setCurrentScreen(
-                  currentUser?.role === "customer"
-                    ? "developer-onboarding"
-                    : "upload",
-                );
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            >
-              {t("dashboard:overview.deployAsset")}
-            </Button>
-            <button
-              onClick={handleOpenRepositoryWorkspace}
-              className="inline-flex items-center gap-2 p-2 bg-slate-800 border border-slate-750 text-slate-350 hover:text-white transition-studio rounded-lg text-xs font-semibold cursor-pointer"
-            >
-              {t("dashboard:overview.syncRepository")}
-            </button>
-          </div>
-        </div>
-
         {/* Quick counters grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
@@ -583,14 +525,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Split row: Reusable DataTable and Sidebar developer logs list */}
-        <div
-          className="grid grid-cols-1 gap-8 lg:grid-cols-3"
-          ref={dashboardWorkspaceRef}
-        >
+        <div className="grid grid-cols-1 gap-8" ref={dashboardWorkspaceRef}>
           {/* Left Column: Switchable tabs for Real Games vs Mock Git Repos */}
-          <div className="space-y-6 lg:col-span-2">
+          <div className="space-y-6">
             {/* Tab headers */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800/60 gap-1.5 max-w-full overflow-x-auto">
+            <div className="flex border-b border-slate-200 dark:border-slate-800/60 gap-1.5 max-w-full overflow-x-auto [&>button]:flex-1 [&>button]:justify-center">
               <button
                 onClick={() => setActiveTab("my-games")}
                 className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === "my-games" ? "border-sky-500 text-sky-500" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"}`}
@@ -614,15 +553,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <TrendingUp size={14} />{" "}
                 {t("dashboard:tabs.soldOrders", {
                   count: salesStats?.totalUnitsSold ?? 0,
-                })}
-              </button>
-              <button
-                onClick={() => setActiveTab("git-repos")}
-                className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === "git-repos" ? "border-sky-500 text-sky-500" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"}`}
-              >
-                <Calendar size={14} />{" "}
-                {t("dashboard:tabs.gitProjects", {
-                  count: projectRepositories.length,
                 })}
               </button>
               <button
@@ -1429,21 +1359,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             )}
 
-            {/* Tab 3: Reusable Mock Projects list */}
-            {activeTab === "git-repos" && (
-              <DataTable
-                data={projectRepositories}
-                onSelectRow={(row) =>
-                  alert(
-                    t("dashboard:table.projectDetails", {
-                      projectName: row.projectName,
-                      engine: row.engine,
-                    }),
-                  )
-                }
-              />
-            )}
-
             {/* Tab 4: Payment Center */}
             {activeTab === "payment-center" && (
               <PaymentDetailPage
@@ -1461,85 +1376,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 variant="dashboard"
               />
             )}
-          </div>
-
-          {/* Right Column: Support widgets */}
-          <div className="space-y-6">
-            <PurchasedInventoryPanel
-              payments={purchasedPayments}
-              onOpenPaymentCenter={() => {
-                setActiveTab("payment-center");
-                dashboardWorkspaceRef.current?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-              }}
-            />
-
-            {/* Release Schedule logging checklist */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl space-y-4 shadow-xs">
-              <h3 className="font-display font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5 pb-1">
-                <Calendar size={15} className="text-amber-500" />{" "}
-                {t("dashboard:releaseSchedule.title")}
-              </h3>
-
-              <div className="space-y-2.5">
-                {[
-                  {
-                    text: t("dashboard:releaseSchedule.tasks.task1"),
-                    done: true,
-                  },
-                  {
-                    text: t("dashboard:releaseSchedule.tasks.task2"),
-                    done: false,
-                  },
-                  {
-                    text: t("dashboard:releaseSchedule.tasks.task3"),
-                    done: false,
-                  },
-                  {
-                    text: t("dashboard:releaseSchedule.tasks.task4"),
-                    done: false,
-                  },
-                ].map((task, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-350 font-medium"
-                  >
-                    <div
-                      className={`w-4.5 h-4.5 rounded border flex items-center justify-center flex-none ${task.done ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-500 font-bold" : "border-slate-300 dark:border-slate-800"}`}
-                    >
-                      {task.done && <Check size={11} />}
-                    </div>
-                    <span
-                      className={
-                        task.done
-                          ? "line-through text-slate-400 dark:text-slate-500"
-                          : ""
-                      }
-                    >
-                      {task.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Simulated Discord CTA server link */}
-            <div className="bg-sky-500/5 dark:bg-sky-950/10 border border-sky-450 dark:border-sky-800 p-5 rounded-2xl space-y-3.5">
-              <h4 className="font-display font-bold text-sm text-sky-600 dark:text-sky-400">
-                {t("dashboard:discord.title")}
-              </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                {t("dashboard:discord.description")}
-              </p>
-              <button
-                onClick={() => alert(t("dashboard:discord.alert"))}
-                className="w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 hover:shadow-md text-white font-display text-xs font-bold rounded-lg transition-studio text-center cursor-pointer"
-              >
-                {t("dashboard:discord.button")}
-              </button>
-            </div>
           </div>
         </div>
       </div>
