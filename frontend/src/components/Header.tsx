@@ -18,7 +18,6 @@ import {
   WalletCards,
   LayoutDashboard,
   ShieldCheck,
-  MessageCircle,
   ReceiptText,
 } from "lucide-react";
 import { Button } from "./Button";
@@ -340,7 +339,6 @@ export function Header({
   const isWorkspaceActive =
     currentScreen === "wallet" ||
     currentScreen === "dashboard" ||
-    currentScreen === "chat" ||
     currentScreen === "admin";
   const clearDesktopMenuCloseTimeout = React.useCallback(() => {
     if (desktopMenuCloseTimeoutRef.current !== null) {
@@ -501,16 +499,6 @@ export function Header({
           },
         ]
       : []),
-    {
-      id: "messages",
-      title: t("messages"),
-      description: t("messages_hint"),
-      icon: <MessageCircle size={18} />,
-      iconClassName: "border-purple-500/20 bg-purple-500/12 text-purple-500",
-      isActive: currentScreen === "chat",
-      glowClassName: "from-purple-500/20 via-purple-500/8 to-transparent",
-      onClick: () => handleNavigate("chat"),
-    },
     ...(currentUser?.role === "admin"
       ? [
           {
@@ -944,17 +932,6 @@ export function Header({
                         <button
                           onClick={() => {
                             setIsProfileOpen(false);
-                            setCurrentScreen("chat");
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          }}
-                          className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-slate-700 transition-colors hover:text-amber-500 dark:text-slate-200 dark:hover:text-amber-400"
-                        >
-                          {t("direct_chat")}
-                        </button>
-                        <div className="border-t border-slate-100 dark:border-slate-805 my-1" />
-                        <button
-                          onClick={() => {
-                            setIsProfileOpen(false);
                             setCurrentUser(null);
                             setCurrentScreen("explore");
                             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1018,14 +995,6 @@ export function Header({
         >
           {t("community")}
         </button>
-        {currentUser && (
-          <button
-            onClick={() => setCurrentScreen("chat")}
-            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "chat" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-          >
-            {t("messages")}
-          </button>
-        )}
         <button
           onClick={() => {
             if (currentUser?.role === "customer") {

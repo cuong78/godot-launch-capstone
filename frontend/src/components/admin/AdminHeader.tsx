@@ -154,15 +154,6 @@ export function AdminHeader({
                   <div className="my-2 border-t border-slate-200 dark:border-slate-800" />
 
                   <button
-                    onClick={() => handleMenuNavigate("chat")}
-                    className="w-full cursor-pointer py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:text-sky-600 dark:text-slate-200 dark:hover:text-amber-400"
-                  >
-                    {t("direct_chat")}
-                  </button>
-
-                  <div className="my-2 border-t border-slate-200 dark:border-slate-800" />
-
-                  <button
                     onClick={handleSignOut}
                     className="flex w-full cursor-pointer items-center gap-1.5 py-2 text-left text-sm font-medium text-rose-500 transition-colors hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300"
                   >

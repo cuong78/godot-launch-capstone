@@ -71,7 +71,6 @@ export type ScreenType =
   | "profile"
   | "community-detail"
   | "author-profile"
-  | "chat"
   | "checkout"
   | "payment"
   | "payment-success"
@@ -603,22 +602,6 @@ export interface NotificationResponse {
   targetId: string;
   isRead: boolean;
   createdAt: string;
-}
-
-export interface ChatMessageResponse {
-  id: string;
-  sender: UserSummary;
-  recipient: UserSummary;
-  content: string;
-  isRead: boolean;
-  createdAt: string;
-}
-
-export interface ConversationResponse {
-  recipient: UserSummary;
-  lastMessage: string;
-  unreadCount: number;
-  lastActiveAt: string;
 }
 
 // --- Audit Log Types ---

@@ -33,7 +33,6 @@ import { GitHubCallbackPage } from './page/GitHubCallbackPage';
 import { ProfilePage } from './page/ProfilePage';
 import { CommunityDetailScreen } from './page/CommunityDetailScreen';
 import { ProfileScreen } from './page/ProfileScreen';
-import { ChatScreen } from './page/ChatScreen';
 import { CheckoutPage } from './page/CheckoutPage';
 import { PaymentDetailPage } from './page/PaymentDetailPage';
 import { PaymentResultPage } from './page/PaymentResultPage';
@@ -476,7 +475,6 @@ export default function App() {
     initialRoute.screen === 'checkout' ? 'marketplace' : initialRoute.screen,
   );
   const { currentUser, logout } = useAuth();
-  const { setActiveRecipientId, setActiveRecipientDetails } = useWebSocket();
   const setCurrentUser = (user: User | null) => {
     if (user === null) {
       logout();
@@ -489,8 +487,7 @@ export default function App() {
   const isAdminManagedScreen =
     currentUser?.role === 'admin' &&
     (displayScreen === 'admin' ||
-      displayScreen === 'profile' ||
-      displayScreen === 'chat');
+      displayScreen === 'profile');
 
   const redirectAdminToSection = useCallback((
     section: 'overview' | 'finance',
@@ -615,14 +612,6 @@ export default function App() {
       document.body.classList.remove('dark');
     }
   }, [darkMode]);
-
-  // Clear active chat recipient when leaving chat screen
-  useEffect(() => {
-    if (currentScreen !== 'chat') {
-      setActiveRecipientId(null);
-      setActiveRecipientDetails(null);
-    }
-  }, [currentScreen, setActiveRecipientId, setActiveRecipientDetails]);
 
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
   const [selectedPost, setSelectedPost] = useState<CommunityChatResponse | null>(null);
@@ -1452,20 +1441,7 @@ export default function App() {
               setCurrentScreen('community-detail');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            onMessageCreator={(recipient) => {
-              setSelectedAuthor(recipient);
-              setSelectedAssetId(recipient.id);
-              setActiveRecipientId(recipient.id);
-              setCurrentScreen('chat');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
           />
-        )}
-
-        {displayScreen === 'chat' && (
-          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
-            <ChatScreen />
-          </ProtectedRoute>
         )}
 
         {displayScreen === 'signin' && (
