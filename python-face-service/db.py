@@ -24,8 +24,8 @@ def find_duplicate_face(embedding: list[float], threshold: float) -> bool:
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
     sql = """
         SELECT 1
-        FROM face_embeddings
-        WHERE embedding <=> %s::vector <= %s
+        FROM embeddings
+        WHERE type = 'face' AND embedding_128 <=> %s::vector <= %s
         LIMIT 1
     """
     with get_connection() as conn:
@@ -37,8 +37,8 @@ def find_duplicate_face(embedding: list[float], threshold: float) -> bool:
 def save_face_embedding(user_id: str, embedding: list[float]) -> None:
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
     sql = """
-        INSERT INTO face_embeddings (user_id, embedding)
-        VALUES (%s, %s::vector)
+        INSERT INTO embeddings (user_id, type, embedding_128)
+        VALUES (%s, 'face', %s::vector)
     """
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -47,10 +47,48 @@ def save_face_embedding(user_id: str, embedding: list[float]) -> None:
 
 
 def delete_face_embedding(user_id: str) -> int:
-    sql = "DELETE FROM face_embeddings WHERE user_id = %s"
+    sql = "DELETE FROM embeddings WHERE user_id = %s AND type = 'face'"
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, (user_id,))
             deleted = cur.rowcount
         conn.commit()
     return deleted
+
+
+def find_duplicate_kyc_image(user_id: str, image_side: str, embedding: list[float], threshold: float) -> str | None:
+    """
+    Chống bypass KYC: re-upload ảnh CCCD/Passport CŨ (của người khác, đã từng
+    KYC trước đó) kèm sửa tay idNumber trên form. Query pgvector tìm ảnh cùng
+    side (front/back) có cosine distance <= threshold, LOẠI TRỪ chính user
+    này (cho phép họ tự re-KYC lại đúng ảnh của mình).
+
+    Trả về user_id của chủ ảnh trùng (để log/audit), None nếu không trùng.
+    """
+    vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
+    sql = """
+        SELECT user_id::text
+        FROM embeddings
+        WHERE type = %s AND user_id != %s
+          AND embedding_512 <=> %s::vector <= %s
+        LIMIT 1
+    """
+    kyc_type = f"kyc_{image_side}"
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (kyc_type, user_id, vec_str, threshold))
+            row = cur.fetchone()
+            return row[0] if row else None
+
+
+def save_kyc_image_embedding(user_id: str, image_side: str, embedding: list[float]) -> None:
+    vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
+    kyc_type = f"kyc_{image_side}"
+    sql = """
+        INSERT INTO embeddings (user_id, type, embedding_512)
+        VALUES (%s, %s, %s::vector)
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (user_id, kyc_type, vec_str))
+        conn.commit()

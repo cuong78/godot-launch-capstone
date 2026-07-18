@@ -4,8 +4,8 @@ services:
     container_name: godotlaunch-postgres
     environment:
       POSTGRES_DB: godot_launch
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "12345"
+      POSTGRES_USER: user_godot_launch
+      POSTGRES_PASSWORD: password_godot_launch
     ports:
       - "5435:5432"
     volumes:

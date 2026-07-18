@@ -116,21 +116,37 @@ def _parse_cccd(raw: str) -> dict:
             line_str = line.strip()
             if not line_str:
                 continue
-            # Nếu gặp các nhãn khác thì dừng lại
+            # Nếu gặp các nhãn khác (kể cả nhãn song ngữ lặp lại của chính field
+            # address — CCCD thường in "Nơi thường trú" và "Place of residence"
+            # trên 2 dòng riêng, đôi khi OCR lẫn thêm ký tự rác như "I", "/"
+            # phía trước do đọc nhầm icon/gạch phân cách) thì bỏ qua dòng đó,
+            # không dừng hẳn (dữ liệu địa chỉ thật có thể nằm ở dòng sau).
             if any(k in line_str.lower() for k in ["số / no", "họ và tên", "ngày sinh", "giới tính", "quốc tịch", "quê quán", "có giá trị đến", "expiry"]):
                 break
+            # Dòng CHỈ chứa nhãn "Place of residence"/"Nơi thường trú" (có thể kèm
+            # rác OCR ở 2 đầu như "I", "/", ":") thì bỏ, không lấy làm địa chỉ.
+            label_only = re.sub(
+                r'(?i)(?:place\s+of\s+residence|nơi\s+thường\s+trú)', '', line_str
+            ).strip(" /|:.,-I")
+            if not label_only:
+                continue
             addr_lines.append(line_str)
         if addr_lines:
             full_addr = ", ".join(addr_lines)
-            
+
             # Xử lý dọn dẹp nhãn đa tầng cực kỳ mạnh mẽ:
-            # Bước 1: Xóa các ký tự đặc biệt rác ở đầu (ví dụ: /, |, :, khoảng trắng)
-            full_addr = re.sub(r'^[^\w]+', '', full_addr).strip()
+            # Bước 1: Xóa các ký tự đặc biệt/rác OCR ở đầu (/, |, :, I, khoảng trắng...)
+            full_addr = re.sub(r'^[\s/|:.,\-I]+', '', full_addr).strip()
             # Bước 2: Loại bỏ label "Place of residence" hoặc "Nơi thường trú" ở đầu
-            full_addr = re.sub(r'(?i)^(?:Place\s+of\s+residence|Nơi\s+thường\s+trú)', '', full_addr).strip()
-            # Bước 3: Xóa tiếp các ký tự phân tách vừa lòi ra sau khi xóa label (như : hoặc khoảng trắng)
-            full_addr = re.sub(r'^[^\w]+', '', full_addr).strip()
-            
+            # (kể cả khi cả 2 nhãn song ngữ dính liền nhau trên cùng 1 dòng, hoặc
+            # nhãn nằm giữa chuỗi do rác OCR đứng trước nó)
+            full_addr = re.sub(
+                r'(?i)^(?:[\s/|:.,\-I]*(?:Place\s+of\s+residence|Nơi\s+thường\s+trú)[\s/|:.,\-]*)+',
+                '', full_addr
+            ).strip()
+            # Bước 3: Xóa tiếp các ký tự phân tách vừa lòi ra sau khi xóa label
+            full_addr = re.sub(r'^[\s/|:.,\-I]+', '', full_addr).strip()
+
             full_addr = re.sub(r',\s*,', ',', full_addr)  # Dọn dẹp dấu phẩy lặp
             result["address"] = full_addr.strip().strip(',').strip()
 

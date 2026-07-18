@@ -14,6 +14,9 @@ public class CategoryRequest {
     private String slug;
     
     private String description;
-    
+
     private UUID parentId;
+
+    @NotBlank(message = "Type is required")
+    private String type;
 }

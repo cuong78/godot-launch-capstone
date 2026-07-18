@@ -125,8 +125,10 @@ export const gameApi = {
     return response.data;
   },
 
-  getCategories: async (): Promise<ApiResponse<CategoryResponse[]>> => {
-    const response = await api.get<ApiResponse<CategoryResponse[]>>('/api/v1/categories');
+  getCategories: async (type?: 'game' | 'asset'): Promise<ApiResponse<CategoryResponse[]>> => {
+    const response = await api.get<ApiResponse<CategoryResponse[]>>('/api/v1/categories', {
+      params: type ? { type } : {},
+    });
     return response.data;
   },
 

@@ -1,7 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Sliders,
   Search,
   Info,
   Star,
@@ -13,7 +12,8 @@ import {
   PackageOpen,
 } from "lucide-react";
 import { Button } from "../components/Button";
-import { Asset } from "../types";
+import { Asset, CategoryResponse } from "../types";
+import { gameApi } from "../api/gameApi";
 
 interface MarketplacePageProps {
   filteredAssets: Asset[];
@@ -36,17 +36,6 @@ interface MarketplacePageProps {
 const DEFAULT_GODOT_VERSION = "All Versions";
 const DEFAULT_MAX_PRICE = 200000000;
 
-const CATEGORY_FILTER_OPTIONS = [
-  {
-    value: "Scripts & Plugins",
-    labelKey: "filters.categories.scriptsPlugins",
-  },
-  { value: "Shaders & VFX", labelKey: "filters.categories.shadersVfx" },
-  { value: "2D Assets", labelKey: "filters.categories.twoDAssets" },
-  { value: "3D Models", labelKey: "filters.categories.threeDModels" },
-  { value: "Audio & SFX", labelKey: "filters.categories.audioSfx" },
-] as const;
-
 const GODOT_VERSION_OPTIONS = [
   { value: DEFAULT_GODOT_VERSION, labelKey: "filters.versions.all" },
   { value: "Godot 4.x (Latest)", labelKey: "filters.versions.godot4Latest" },
@@ -59,14 +48,6 @@ const SORT_OPTIONS = [
   { value: "price-low", labelKey: "filters.sort.priceLow" },
   { value: "price-high", labelKey: "filters.sort.priceHigh" },
 ] as const;
-
-const ASSET_CATEGORY_LABEL_KEYS: Record<Asset["category"], string> = {
-  "Scripts & Plugins": "filters.categories.scriptsPlugins",
-  "Shaders & VFX": "filters.categories.shadersVfx",
-  "2D Assets": "filters.categories.twoDAssets",
-  "3D Models": "filters.categories.threeDModels",
-  "Audio & SFX": "filters.categories.audioSfx",
-};
 
 const resolveNumberLocale = (language?: string | null) => {
   const normalized = language?.toLowerCase().split("-")[0];
@@ -108,15 +89,26 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     i18n.resolvedLanguage || i18n.language,
   );
 
+  const [assetCategories, setAssetCategories] = React.useState<CategoryResponse[]>([]);
+
+  React.useEffect(() => {
+    const loadAssetCategories = async () => {
+      try {
+        const res = await gameApi.getCategories("asset");
+        if (res.success && res.data) setAssetCategories(res.data);
+      } catch (err) {
+        console.error("Failed to load asset categories:", err);
+      }
+    };
+    loadAssetCategories();
+  }, []);
+
   const resetMarketplaceFilters = () => {
     setSearchText("");
     setSelectedCategories([]);
     setGodotVersion(DEFAULT_GODOT_VERSION);
     setMaxPrice(DEFAULT_MAX_PRICE);
   };
-
-  const getCategoryLabel = (category: Asset["category"]) =>
-    t(ASSET_CATEGORY_LABEL_KEYS[category]);
 
   const renderEmptyState = (title: string, description: string) => (
     <div className="rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/30">
@@ -131,31 +123,6 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Top filter banner panel */}
-      <div className="bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 border border-slate-250 dark:border-slate-800 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3.5">
-        <div>
-          <h1 className="font-display font-bold text-[1.85rem] text-slate-850 dark:text-white flex items-center gap-2">
-            <Sliders size={20} className="text-amber-400" />{" "}
-            {t("page.catalogTitle")}
-          </h1>
-          <p className="text-xs text-slate-550 dark:text-slate-400 mt-0.5">
-            {t("page.catalogSubtitle")}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetMarketplaceFilters}
-            className="text-xs"
-          >
-            {t("page.resetFilters")}
-          </Button>
-          <span className="text-xs font-mono bg-amber-400/10 text-amber-500 px-3 py-1 rounded-full border border-amber-500/25">
-            {t("page.resultsMatch", { count: filteredAssets.length })}
-          </span>
-        </div>
-      </div>
 
       {/* Split Screen search layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -187,18 +154,18 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               {t("filters.categoryLabel")}
             </label>
             <div className="space-y-2">
-              {CATEGORY_FILTER_OPTIONS.map((option) => (
+              {assetCategories.map((category) => (
                 <label
-                  key={option.value}
+                  key={category.id}
                   className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 font-medium cursor-pointer"
                 >
                   <input
                     type="checkbox"
-                    checked={selectedCategories.includes(option.value)}
-                    onChange={() => toggleCategory(option.value)}
+                    checked={selectedCategories.includes(category.name)}
+                    onChange={() => toggleCategory(category.name)}
                     className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-800 accent-amber-400"
                   />
-                  {t(option.labelKey)}
+                  {category.name}
                 </label>
               ))}
             </div>
@@ -370,7 +337,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
                             <div className="mb-2 flex items-center justify-between text-sm">
                               <span className="font-medium text-slate-500 dark:text-slate-400">
-                                {getCategoryLabel(asset.category)}
+                                {asset.category}
                               </span>
                             </div>
 

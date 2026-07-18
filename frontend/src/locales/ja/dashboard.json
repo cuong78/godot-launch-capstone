@@ -20,11 +20,10 @@
     "itemsCount": "{{count}}件"
   },
   "tabs": {
-    "publishedGames": "公開済みゲーム（{{count}}）",
-    "marketplaceAssets": "マーケットプレイスアセット（{{count}}）",
+    "publishedGames": "ストアにゲームを公開（{{count}}）",
+    "marketplaceAssets": "マーケットプレイス（{{count}}）",
     "soldOrders": "販売済み注文（{{count}}）",
-    "gitProjects": "Gitプロジェクト（モック）（{{count}}）",
-    "purchasedOrders": "購入済み注文（{{count}}）"
+    "purchasedOrders": "注文管理（{{count}}）"
   },
   "filters": {
     "gameStatus": "ゲームの状態:",

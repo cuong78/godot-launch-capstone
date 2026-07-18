@@ -306,7 +306,9 @@ CREATE TABLE public.categories (
     slug character varying(100) NOT NULL,
     description text,
     parent_id uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    type character varying(20) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT categories_type_check CHECK (((type)::text = ANY (ARRAY[('game'::character varying)::text, ('asset'::character varying)::text])))
 );
 
 COMMENT ON TABLE public.categories IS 'Danh muc game, ho tro cha-con qua parent_id';
@@ -314,6 +316,8 @@ COMMENT ON TABLE public.categories IS 'Danh muc game, ho tro cha-con qua parent_
 COMMENT ON COLUMN public.categories.slug IS 'URL-friendly, vd: action-rpg';
 
 COMMENT ON COLUMN public.categories.parent_id IS 'NULL = top-level category';
+
+COMMENT ON COLUMN public.categories.type IS 'Phan loai: game (the loai game) hoac asset (loai marketplace item)';
 
 CREATE TABLE public.chat_media (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -823,18 +827,18 @@ COMMENT ON TABLE public.withdrawal_requests IS 'Admin duyet thu cong truoc khi x
 
 COMMENT ON COLUMN public.withdrawal_requests.bank_account IS 'Ma hoa o tang application truoc khi luu';
 
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('e94660a8-b999-4173-b1b2-375da42dd953', 'Action', 'action', NULL, NULL, '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('da16269c-af83-4065-9929-d389619a92fe', 'Puzzle', 'puzzle', NULL, NULL, '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('5025106f-3f99-468f-87da-98fc2a79cbcc', 'RPG', 'rpg', NULL, NULL, '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('3ea2b497-0c91-43c2-8ff4-da53b5a889e9', 'Platformer', 'platformer', NULL, NULL, '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('b5f40bc7-9e40-4545-813f-0f052013030c', 'Simulation', 'simulation', NULL, NULL, '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('af60337b-7fd3-4618-87d8-5d402689a70c', 'Strategy', 'strategy', NULL, NULL, '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('43c6fe76-a8ce-474f-8167-3f1b990b5cb2', 'Casual', 'casual', NULL, NULL, '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('39c83c14-73c9-4170-ba5e-d6157cc2a499', 'Scripts & Plugins', 'scripts-plugins', NULL, NULL, '2026-06-29 17:24:20.807257+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('5788d001-6fd5-40e6-a359-0908d9ac40ea', 'Shaders & VFX', 'shaders-vfx', NULL, NULL, '2026-06-29 17:24:20.807257+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('f4cd797b-8221-4260-9f26-455147b97fa3', '2D Assets', '2d-assets', NULL, NULL, '2026-06-29 17:24:20.807257+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('db1aeec3-7457-4c45-8df3-64564e7e9428', '3D Models', '3d-models', NULL, NULL, '2026-06-29 17:24:20.807257+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, created_at) VALUES ('49bc5714-64b6-4bf2-a00b-9b369a701c62', 'Audio & SFX', 'audio-sfx', NULL, NULL, '2026-06-29 17:24:20.807257+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('e94660a8-b999-4173-b1b2-375da42dd953', 'Action', 'action', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('da16269c-af83-4065-9929-d389619a92fe', 'Puzzle', 'puzzle', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('5025106f-3f99-468f-87da-98fc2a79cbcc', 'RPG', 'rpg', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('3ea2b497-0c91-43c2-8ff4-da53b5a889e9', 'Platformer', 'platformer', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('b5f40bc7-9e40-4545-813f-0f052013030c', 'Simulation', 'simulation', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('af60337b-7fd3-4618-87d8-5d402689a70c', 'Strategy', 'strategy', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('43c6fe76-a8ce-474f-8167-3f1b990b5cb2', 'Casual', 'casual', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('39c83c14-73c9-4170-ba5e-d6157cc2a499', 'Scripts & Plugins', 'scripts-plugins', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('5788d001-6fd5-40e6-a359-0908d9ac40ea', 'Shaders & VFX', 'shaders-vfx', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('f4cd797b-8221-4260-9f26-455147b97fa3', '2D Assets', '2d-assets', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('db1aeec3-7457-4c45-8df3-64564e7e9428', '3D Models', '3d-models', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
+INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('49bc5714-64b6-4bf2-a00b-9b369a701c62', 'Audio & SFX', 'audio-sfx', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
 
 INSERT INTO public.platform_settings (id, commission_rate, maintenance_mode, announcement_banner, updated_at) VALUES (1, 10.00, false, 'GodotLaunch Matrix Engine Upgrade is complete!', '2026-06-29 17:24:26.445727+00');
 

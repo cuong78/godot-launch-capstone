@@ -8,7 +8,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from face_service import extract_embedding
-from db import find_duplicate_face, save_face_embedding, delete_face_embedding
+from db import (
+    find_duplicate_face, save_face_embedding, delete_face_embedding,
+    find_duplicate_kyc_image, save_kyc_image_embedding,
+)
 from ocr_service import ocr_document, extract_text_from_image
 import source_service
 import frame_extractor
@@ -22,6 +25,9 @@ import requests as _requests
 app = FastAPI(title="GodotLaunch Face Service", version="1.0.0")
 
 THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.5"))
+# CLIP cosine distance cho ảnh CCCD — ngưỡng chặt hơn face (ảnh giấy tờ ít
+# biến thiên hơn khuôn mặt thật, re-upload cùng ảnh cho ra distance rất nhỏ).
+KYC_IMAGE_THRESHOLD = float(os.getenv("KYC_IMAGE_SIMILARITY_THRESHOLD", "0.1"))
 
 
 class FaceCheckRequest(BaseModel):
@@ -54,6 +60,18 @@ class OcrResponse(BaseModel):
     fullName: Optional[str] = None
     dateOfBirth: Optional[str] = None
     address: Optional[str] = None
+
+
+class KycImageCheckRequest(BaseModel):
+    userId: str
+    imageSide: str  # 'front' | 'back'
+    imageBase64: str
+
+
+class KycImageCheckResponse(BaseModel):
+    isDuplicate: bool
+    duplicateUserId: Optional[str] = None
+    message: str
 
 
 class SourceProcessRequest(BaseModel):
@@ -179,6 +197,40 @@ def ocr_id_document(req: OcrRequest):
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi OCR: {str(e)}")
+
+
+@app.post("/kyc/check-image", response_model=KycImageCheckResponse)
+def check_kyc_image(req: KycImageCheckRequest):
+    """
+    Chống bypass KYC: re-upload ảnh CCCD/Passport CŨ (của người khác, đã
+    từng KYC trước đó) kèm sửa tay idNumber trên form — check trùng text
+    không bắt được vì không nhìn vào ảnh thật. Tính CLIP embedding (512-dim,
+    tái dùng model đã self-host cho media-match), so cosine similarity với
+    toàn bộ ảnh CÙNG SIDE đã có, loại trừ chính user này.
+
+    Nếu KHÔNG trùng → lưu embedding luôn (gộp check + save trong 1 lần gọi,
+    Java chỉ cần gọi 1 lần trong confirmKyc). Nếu trùng → KHÔNG lưu, trả 409.
+    """
+    if req.imageSide not in ("front", "back"):
+        raise HTTPException(status_code=400, detail="imageSide phải là 'front' hoặc 'back'.")
+
+    embedding = clip_service.encode_image(req.imageBase64)
+    if embedding is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Không thể trích xuất đặc trưng ảnh. Vui lòng chụp/tải lại ảnh rõ hơn."
+        )
+
+    duplicate_user_id = find_duplicate_kyc_image(req.userId, req.imageSide, embedding, KYC_IMAGE_THRESHOLD)
+    if duplicate_user_id:
+        return KycImageCheckResponse(
+            isDuplicate=True,
+            duplicateUserId=duplicate_user_id,
+            message="Ảnh giấy tờ này đã được sử dụng để xác thực bởi một tài khoản khác."
+        )
+
+    save_kyc_image_embedding(req.userId, req.imageSide, embedding)
+    return KycImageCheckResponse(isDuplicate=False, message="OK")
 
 
 @app.post("/source/process", response_model=SourceProcessResponse)

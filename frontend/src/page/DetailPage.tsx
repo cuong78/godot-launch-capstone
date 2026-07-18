@@ -26,14 +26,6 @@ interface DetailPageProps {
   ownedProductIds: Set<string>;
 }
 
-const ASSET_CATEGORY_LABEL_KEYS: Record<Asset["category"], string> = {
-  "Scripts & Plugins": "filters.categories.scriptsPlugins",
-  "Shaders & VFX": "filters.categories.shadersVfx",
-  "2D Assets": "filters.categories.twoDAssets",
-  "3D Models": "filters.categories.threeDModels",
-  "Audio & SFX": "filters.categories.audioSfx",
-};
-
 const resolveNumberLocale = (language?: string | null) => {
   const normalized = language?.toLowerCase().split("-")[0];
   if (normalized === "en") return "en-US";
@@ -69,11 +61,6 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   const formatPrice = React.useCallback(
     (price: number) => `${new Intl.NumberFormat(numberLocale).format(price)} đ`,
     [numberLocale],
-  );
-
-  const getCategoryLabel = React.useCallback(
-    (category: Asset["category"]) => t(ASSET_CATEGORY_LABEL_KEYS[category]),
-    [t],
   );
 
   const handlePlayDemoClick = () => {
@@ -437,7 +424,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                           {item.title}
                         </h4>
                         <p className="text-[10px] text-slate-500 truncate">
-                          {getCategoryLabel(item.category)}
+                          {item.category}
                         </p>
                       </div>
                     </div>

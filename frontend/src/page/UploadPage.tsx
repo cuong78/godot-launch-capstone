@@ -195,17 +195,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
   // Sync categoryId when publishProgram, itemType or categories list changes
   useEffect(() => {
-    const filtered = categories.filter((cat) => {
-      const isMediaCat = ["2d-assets", "3d-models", "audio-sfx"].includes(cat.slug);
-      const isTechnicalCat = ["scripts-plugins", "shaders-vfx"].includes(cat.slug);
-      
-      if (publishProgram === "game") {
-        return !isMediaCat && !isTechnicalCat;
-      }
-      
-      // Marketplace asset: gồm category media (2D, 3D, Audio) + technical (scripts, shaders)
-      return isMediaCat || isTechnicalCat;
-    });
+    const filtered = categories.filter((cat) =>
+      publishProgram === "game" ? cat.type === "game" : cat.type === "asset",
+    );
     if (filtered.length > 0) {
       const isValid = filtered.some((cat) => cat.id === categoryId);
       if (!isValid) {
@@ -213,22 +205,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       }
     }
   }, [publishProgram, categories, categoryId]);
-
-  // Close custom dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        publishDropdownRef.current &&
-        !publishDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsPublishDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   // Polling logic for security virus scan
   useEffect(() => {
@@ -683,7 +659,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   })();
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-6xl mx-auto py-6 px-4">
+    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto py-4">
       {showBotInvite && (
         <BotInviteModal
           botUsername={botUsername}
@@ -695,473 +671,343 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         />
       )}
 
-      {/* Progress Stepper & Brand Header */}
-      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="bg-amber-500/10 text-amber-500 p-3 rounded-xl border border-amber-500/20 shrink-0">
-            <Gamepad2 size={24} className="text-amber-500" />
-          </div>
-          <div>
-            <h1 className="font-display font-bold text-xl text-slate-800 dark:text-white leading-tight">
-              {step === 1
-                ? publishProgram === "marketplace"
-                  ? "Publish Marketplace Asset"
-                  : "Publish Game Project"
-                : publishProgram === "marketplace"
-                  ? "Upload Project File"
-                  : "Upload Assets & Media"}
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {step === 1
-                ? "Step 1: Provide basic listing information, categories, and settings"
-                : "Step 2: Upload source files, media previews, and run diagnostics"}
-            </p>
-          </div>
+      {/* Page Header */}
+      <div className="border-l-4 border-amber-400 pl-3 flex justify-between items-center">
+        <div>
+          <h1 className="font-display font-bold text-2xl text-slate-800 dark:text-white">
+            {step === 1
+              ? publishProgram === "marketplace"
+                ? "Publish Marketplace Item"
+                : "Publish Your Game Draft"
+              : publishProgram === "marketplace"
+                ? "Upload Marketplace Project File"
+                : "Upload Assets & Media"}
+          </h1>
+          <p className="text-xs text-slate-500">
+            {step === 1
+              ? "Provide basic listing information, categories, and settings"
+              : publishProgram === "marketplace"
+                ? "Securely upload marketplace project source package"
+                : "Securely upload game source package, screenshots, thumbnails, and demo clips"}
+          </p>
         </div>
-        
-        {/* Step Stepper Indicator */}
-        <div className="flex items-center gap-2 sm:gap-4 md:mr-2">
-          <div className="flex items-center gap-2">
-            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-mono transition-studio ${
-              step === 1 
-                ? "bg-amber-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.3)] ring-4 ring-amber-500/10" 
-                : "bg-emerald-500/15 border border-emerald-500/30 text-emerald-500"
-            }`}>
-              {step === 1 ? "1" : "✓"}
-            </span>
-            <span className={`text-xs font-semibold font-display ${step === 1 ? "text-slate-800 dark:text-slate-200 font-bold" : "text-slate-400 dark:text-slate-500"}`}>
-              Basic Details
-            </span>
-          </div>
-          <div className={`w-8 sm:w-16 h-[2px] rounded ${step === 2 ? "bg-emerald-500/50" : "bg-slate-200 dark:bg-slate-800"}`} />
-          <div className="flex items-center gap-2">
-            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-mono transition-studio ${
-              step === 2 
-                ? "bg-amber-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.3)] ring-4 ring-amber-500/10" 
-                : "bg-slate-100 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500"
-            }`}>
-              2
-            </span>
-            <span className={`text-xs font-semibold font-display ${step === 2 ? "text-slate-800 dark:text-slate-200 font-bold" : "text-slate-400 dark:text-slate-500"}`}>
-              Assets & Verification
-            </span>
-          </div>
-        </div>
+        <span className="text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-amber-500 px-3 py-1.5 rounded-lg">
+          Step {step} of 2
+        </span>
       </div>
 
       {step === 1 ? (
         <form
           onSubmit={handleCreateDraft}
-          className="bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 p-8 rounded-2xl space-y-8 shadow-md relative overflow-hidden backdrop-blur-sm"
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 p-6 rounded-2xl space-y-6 shadow-md"
         >
-          {/* Subtle Ambient Glowing Backgrounds */}
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-amber-500/10 dark:bg-amber-500/[0.02] rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-sky-500/10 dark:bg-sky-500/[0.02] rounded-full blur-[100px] pointer-events-none" />
-
-          {/* Section: Publishing Program Switch */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-bold font-display text-slate-400 uppercase tracking-widest pl-1">
-              Select Package Type
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <button
-                type="button"
-                onClick={() => setPublishProgram("marketplace")}
-                className={`group relative flex items-center gap-4.5 p-5.5 rounded-2xl border text-left cursor-pointer transition-studio ${
-                  publishProgram === "marketplace"
-                    ? "border-amber-400/80 bg-amber-500/[0.03] dark:bg-amber-500/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_4px_20px_-2px_rgba(245,158,11,0.08)] scale-[1.01]"
-                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-350 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850/50"
-                }`}
-              >
-                <div
-                  className={`p-3 rounded-xl transition-all duration-300 ${
-                    publishProgram === "marketplace"
-                      ? "bg-amber-500 text-slate-955 shadow-[0_4px_15px_rgba(245,158,11,0.4)]"
-                      : "bg-slate-100 dark:bg-slate-850 text-slate-450 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200"
-                  }`}
-                >
-                  <ShoppingBag
-                    size={22}
-                    className="transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span
-                    className={`block font-display font-bold text-sm ${
-                      publishProgram === "marketplace"
-                        ? "text-amber-500 dark:text-amber-400"
-                        : "text-slate-750 dark:text-slate-300"
-                    }`}
-                  >
-                    Standalone Asset Pack
-                  </span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-450 mt-1 font-normal leading-normal">
-                    Publish 2D/3D art assets, SFX/audio libraries, shaders, or custom editor tools (Direct ZIP upload).
-                  </span>
-                </div>
-                {publishProgram === "marketplace" && (
-                  <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPublishProgram("game")}
-                className={`group relative flex items-center gap-4.5 p-5.5 rounded-2xl border text-left cursor-pointer transition-studio ${
-                  publishProgram === "game"
-                    ? "border-amber-400/80 bg-amber-500/[0.03] dark:bg-amber-500/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_4px_20px_-2px_rgba(245,158,11,0.08)] scale-[1.01]"
-                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-350 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850/50"
-                }`}
-              >
-                <div
-                  className={`p-3 rounded-xl transition-all duration-300 ${
-                    publishProgram === "game"
-                      ? "bg-amber-500 text-slate-955 shadow-[0_4px_15px_rgba(245,158,11,0.4)]"
-                      : "bg-slate-100 dark:bg-slate-850 text-slate-450 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200"
-                  }`}
-                >
-                  <Gamepad2
-                    size={22}
-                    className="transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span
-                    className={`block font-display font-bold text-sm ${
-                      publishProgram === "game"
-                        ? "text-amber-500 dark:text-amber-400"
-                        : "text-slate-750 dark:text-slate-300"
-                    }`}
-                  >
-                    Game Source Code
-                  </span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-450 mt-1 font-normal leading-normal">
-                    Submit game project source code to list on store or apply for platform co-publishing (GitHub link required).
-                  </span>
-                </div>
-                {publishProgram === "game" && (
-                  <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <hr className="border-slate-100 dark:border-slate-800/80" />
-
-          {/* Section: General Information */}
-          <div className="space-y-5">
-            <h2 className="text-xs font-bold font-display text-slate-400 uppercase tracking-widest pl-1">
-              General Listing Information
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label={publishProgram === "game" ? "Game Title" : "Asset Title"}
-                placeholder={
-                  publishProgram === "game"
-                    ? "e.g. Neon Horizon Racer 3D"
-                    : "e.g. Fantasy Knight Sprite Sheet"
-                }
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                className="bg-slate-50/30 dark:bg-slate-900/20"
-              />
-
-              <Input
-                label="Proposed Price (VND)"
-                prefix="VND"
-                placeholder="e.g. 50,000 (Set 0 for Free)"
-                type="text"
-                value={price}
-                onChange={(e) => handlePriceChange(e.target.value)}
-                required
-                className="bg-slate-50/30 dark:bg-slate-900/20"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Category selector */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold font-display text-slate-750 dark:text-slate-200">
-                  {publishProgram === "game" ? "Game Category" : "Category"}
-                </label>
-                {isLoadingCategories ? (
-                  <div className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900/40 border border-slate-250 dark:border-slate-800 rounded-lg text-xs text-slate-500 animate-pulse">
-                    Fetching categories...
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <select
-                      value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 cursor-pointer appearance-none"
-                    >
-                      {(() => {
-                        const gameGenres = categories.filter(cat => 
-                          !["scripts-plugins", "shaders-vfx", "2d-assets", "3d-models", "audio-sfx"].includes(cat.slug)
-                        );
-                        const technicalResources = categories.filter(cat => 
-                          ["scripts-plugins", "shaders-vfx"].includes(cat.slug)
-                        );
-                        const mediaResources = categories.filter(cat => 
-                          ["2d-assets", "3d-models", "audio-sfx"].includes(cat.slug)
-                        );
-
-                        if (publishProgram === "game") {
-                          return gameGenres.map((cat) => (
-                            <option key={cat.id} value={cat.id} className="text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900">
-                              {cat.name}
-                            </option>
-                          ));
-                        }
-
-                        return [...mediaResources, ...technicalResources].map((cat) => (
-                          <option key={cat.id} value={cat.id} className="text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900">
-                            {cat.name}
-                          </option>
-                        ));
-                      })()}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400">
-                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                      </svg>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Multi-Select Tags */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold font-display text-slate-750 dark:text-slate-200">
-                  Tags{" "}
-                  <span className="text-xs font-normal text-slate-500">
-                    (select descriptors for search optimization)
-                  </span>
-                </label>
-                {tags.length === 0 ? (
-                  <div className="text-xs text-slate-500 py-2">
-                    Loading tags...
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2.5 mt-0.5">
-                    {tags.map((tag) => {
-                      const active = selectedTagIds.includes(tag.id);
-                      return (
-                        <button
-                          key={tag.id}
-                          type="button"
-                          onClick={() => toggleTag(tag.id)}
-                          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border cursor-pointer transition-studio flex items-center gap-1 ${
-                            active
-                              ? "bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/10 font-bold"
-                              : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/80 text-slate-600 dark:text-slate-400 hover:border-amber-500/40 hover:text-amber-500"
-                          }`}
-                        >
-                          {active && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
-                          {tag.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <hr className="border-slate-100 dark:border-slate-800/80" />
-
-          {/* Section: Technical Specifications */}
-          <div className="space-y-5">
-            <h2 className="text-xs font-bold font-display text-slate-400 uppercase tracking-widest pl-1">
-              Technical Specifications
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {publishProgram === "game" ? (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold font-display text-slate-750 dark:text-slate-200 flex items-center gap-1">
-                    Publishing / Acquisition Model{" "}
-                    <span title="Determines whether platform contract signing or direct listing is needed">
-                      <HelpCircle
-                        size={14}
-                        className="text-slate-400 cursor-help"
-                      />
-                    </span>
-                  </label>
-                  <div className="relative" ref={publishDropdownRef}>
-                    <button
-                      type="button"
-                      onClick={() => setIsPublishDropdownOpen(!isPublishDropdownOpen)}
-                      className="w-full px-3.5 py-2.5 bg-slate-950/70 border border-amber-500/35 hover:border-amber-500/60 rounded-lg text-sm text-white font-semibold outline-none transition-studio focus:ring-4 focus:ring-amber-500/10 flex items-center justify-between cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.05)]"
-                    >
-                      <span className="truncate text-left pr-2">
-                        {publishingType === "marketplace_listing"
-                          ? "Marketplace Listing (Sell Source Code - Direct Listing, No Contract)"
-                          : publishingType === "full_acquisition"
-                          ? "Full Acquisition (Sell all rights to Platform - Contract Required)"
-                          : "Co-Publishing (% Revenue Share with Platform - Contract Required)"}
-                      </span>
-                      <svg className={`fill-current h-4 w-4 text-amber-500/80 transition-transform duration-250 shrink-0 ${isPublishDropdownOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                      </svg>
-                    </button>
-
-                    {isPublishDropdownOpen && (
-                      <div className="absolute left-0 right-0 z-50 mt-1.5 bg-slate-950/85 backdrop-blur-lg border border-slate-800 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(245,158,11,0.05)] overflow-hidden divide-y divide-slate-850/80 animate-fade-in">
-                        {[
-                          {
-                            value: "marketplace_listing",
-                            label: "Marketplace Listing (Sell Source Code - Direct Listing, No Contract)",
-                          },
-                          {
-                            value: "full_acquisition",
-                            label: "Full Acquisition (Sell all rights to Platform - Contract Required)",
-                          },
-                          {
-                            value: "co_publishing",
-                            label: "Co-Publishing (% Revenue Share with Platform - Contract Required)",
-                          },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => {
-                              setPublishingType(option.value as any);
-                              setIsPublishDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-3.5 text-xs sm:text-sm transition-all duration-200 block text-slate-200 hover:text-white cursor-pointer hover:bg-slate-800/65 hover:border-l-2 hover:border-amber-500/80 pl-4 hover:pl-3.5 ${
-                              publishingType === option.value
-                                ? "bg-slate-800/40 font-bold border-l-2 border-amber-500 text-white pl-4"
-                                : "bg-transparent"
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <Input
-                  label="Version"
-                  placeholder="e.g. 1.0.0"
-                  value={version}
-                  onChange={(e) => setVersion(e.target.value)}
-                  className="bg-slate-50/30 dark:bg-slate-900/20"
-                />
-              )}
-
-              {publishProgram === "game" ? (
-                <Input
-                  label="Version"
-                  placeholder="e.g. 1.0.0"
-                  value="1.0.0"
-                  disabled
-                  helperText="Initial game version defaults to 1.0.0"
-                  className="bg-slate-50/10 dark:bg-slate-900/10 opacity-70"
-                />
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold font-display text-slate-750 dark:text-slate-200">
-                    Supported Platforms
-                  </label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {["Windows", "macOS", "Linux", "Web", "Android", "iOS"].map((platform) => {
-                      const active = supportedPlatforms.includes(platform);
-                      return (
-                        <button
-                          key={platform}
-                          type="button"
-                          onClick={() => {
-                            setSupportedPlatforms((prev) =>
-                              prev.includes(platform)
-                                ? prev.filter((p) => p !== platform)
-                                : [...prev, platform]
-                            );
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                            active
-                              ? "bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/10 font-bold"
-                              : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/80 text-slate-650 dark:text-slate-400 hover:border-amber-500/45 hover:text-amber-500"
-                          }`}
-                        >
-                          {platform}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <hr className="border-slate-100 dark:border-slate-800/80" />
-
-          {/* Section: Description */}
-          <div className="space-y-4">
-            <TextArea
-              label="Description & Key Features"
-              placeholder={
+          {/* Tab Selector */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <button
+              type="button"
+              onClick={() => setPublishProgram("marketplace")}
+              className={`group relative flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 ${
                 publishProgram === "marketplace"
-                  ? "Outline project requirements, deployment details, asset catalog, and guidelines..."
-                  : "Outline Godot version requirement, installation guidelines, key mechanics, controls, and assets..."
+                  ? "border-amber-400 bg-gradient-to-br from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-transparent shadow-[0_0_20px_rgba(245,158,11,0.05)] dark:shadow-[0_0_30px_rgba(245,158,11,0.1)] scale-[1.01]"
+                  : "border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/40 hover:border-slate-350 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-900/60"
+              }`}
+            >
+              <div
+                className={`p-3 rounded-xl transition-colors duration-300 ${
+                  publishProgram === "marketplace"
+                    ? "bg-amber-500 text-slate-950"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-slate-200"
+                }`}
+              >
+                <ShoppingBag
+                  size={22}
+                  className="transition-transform duration-300 group-hover:scale-110"
+                />
+              </div>
+              <div className="flex-1">
+                <span
+                  className={`block font-display font-bold text-sm ${
+                    publishProgram === "marketplace"
+                      ? "text-amber-500"
+                      : "text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  Standalone Asset Pack
+                </span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
+                  Publish standalone assets for game development such as 2D/3D characters, audio, effects, plugins (Direct ZIP download).
+                </span>
+              </div>
+              {publishProgram === "marketplace" && (
+                <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPublishProgram("game")}
+              className={`group relative flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 ${
+                publishProgram === "game"
+                  ? "border-amber-400 bg-gradient-to-br from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-transparent shadow-[0_0_20px_rgba(245,158,11,0.05)] dark:shadow-[0_0_30px_rgba(245,158,11,0.1)] scale-[1.01]"
+                  : "border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/40 hover:border-slate-350 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-900/60"
+              }`}
+            >
+              <div
+                className={`p-3 rounded-xl transition-colors duration-300 ${
+                  publishProgram === "game"
+                    ? "bg-amber-500 text-slate-950"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-slate-200"
+                }`}
+              >
+                <Gamepad2
+                  size={22}
+                  className="transition-transform duration-300 group-hover:scale-110"
+                />
+              </div>
+              <div className="flex-1">
+                <span
+                  className={`block font-display font-bold text-sm ${
+                    publishProgram === "game"
+                      ? "text-amber-500"
+                      : "text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  Game Project & Source Code
+                </span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
+                  List game project source code on the Marketplace, or submit a game for store publishing partnership (GitHub Repo link required).
+                </span>
+              </div>
+              {publishProgram === "game" && (
+                <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Input
+              label={
+                publishProgram === "game"
+                  ? "Game Title"
+                  : "Asset Title"
               }
-              rows={5}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="bg-slate-50/30 dark:bg-slate-900/20"
+              placeholder={
+                publishProgram === "game"
+                  ? "e.g. Neon Horizon Racer 3D"
+                  : "e.g. Fantasy Knight Sprite Sheet"
+              }
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+
+            <Input
+              label="Proposed Price (VND)"
+              prefix="VND"
+              placeholder="e.g. 50,000 (Set 0 for Free)"
+              type="text"
+              value={price}
+              onChange={(e) => handlePriceChange(e.target.value)}
+              required
             />
           </div>
 
-          {/* Form Actions Footer */}
-          <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                {publishProgram === "game" ? "Game Category" : "Category"}
+              </label>
+              {isLoadingCategories ? (
+                <div className="text-xs text-slate-500 animate-pulse py-2.5">
+                  Fetching categories...
+                </div>
+              ) : (
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
+                >
+                  {(() => {
+                    const relevantCategories = categories.filter((cat) =>
+                      publishProgram === "game" ? cat.type === "game" : cat.type === "asset",
+                    );
+
+                    return relevantCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ));
+                  })()}
+                </select>
+              )}
+            </div>
+
+            {/* Tags (select multiple) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                Tags{" "}
+                <span className="text-xs font-normal text-slate-500">
+                  (select multiple — key descriptors for your game/asset)
+                </span>
+              </label>
+              {tags.length === 0 ? (
+                <div className="text-xs text-slate-500 py-2">
+                  Loading tags...
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => {
+                    const active = selectedTagIds.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-studio cursor-pointer ${
+                          active
+                            ? "bg-amber-500 border-amber-500 text-black"
+                            : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-amber-400"
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {selectedTagIds.length > 0 && (
+                <span className="text-[11px] text-slate-500 mt-0.5">
+                  {selectedTagIds.length} tags selected
+                </span>
+              )}
+            </div>
+
+            {publishProgram === "game" && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                  Publishing / Acquisition Model{" "}
+                  <span title="Determines whether platform contract signing or direct listing is needed">
+                    <HelpCircle
+                      size={14}
+                      className="text-slate-400 cursor-help"
+                    />
+                  </span>
+                </label>
+                <select
+                  value={publishingType}
+                  onChange={(e) => setPublishingType(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
+                >
+                  <option value="marketplace_listing">
+                    Marketplace Listing (Sell Source Code on Marketplace - Direct Listing, No Contract)
+                  </option>
+                  <option value="full_acquisition">
+                    Full Acquisition (Sell all rights to Platform - Contract Required)
+                  </option>
+                  <option value="co_publishing">
+                    Co-Publishing (% Revenue Share with Platform - Contract Required)
+                  </option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-150 dark:border-slate-800 pt-6 space-y-6">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+              <ShieldCheck size={16} className="text-amber-500" /> Specifications
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Version"
+                placeholder="e.g. 1.0.0"
+                value={publishProgram === "game" ? "1.0.0" : version}
+                onChange={(e) => publishProgram !== "game" && setVersion(e.target.value)}
+                disabled={publishProgram === "game"}
+                helperText={publishProgram === "game" ? "Initial game version defaults to 1.0.0" : undefined}
+              />
+            </div>
+
+            {publishProgram === "marketplace" && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                  Supported Platforms
+                </label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {["Windows", "macOS", "Linux", "Web", "Android", "iOS"].map((platform) => {
+                    const active = supportedPlatforms.includes(platform);
+                    return (
+                      <button
+                        key={platform}
+                        type="button"
+                        onClick={() => {
+                          setSupportedPlatforms((prev) =>
+                            prev.includes(platform)
+                              ? prev.filter((p) => p !== platform)
+                              : [...prev, platform]
+                          );
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                          active
+                            ? "bg-amber-500 border-amber-500 text-black shadow-sm"
+                            : "bg-white dark:bg-slate-900 border-slate-350 dark:border-slate-855 text-slate-650 dark:text-slate-300 hover:border-amber-400"
+                        }`}
+                      >
+                        {platform}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <TextArea
+            label="Description & Features"
+            placeholder={
+              publishProgram === "marketplace"
+                ? "Outline project requirements, deploy instructions, key assets included..."
+                : "Outline Godot version requirements, how to deploy, key mechanics, and feature lists..."
+            }
+            rows={5}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+
+          <div className="flex justify-end pt-3">
             <Button
               variant="primary"
               size="md"
               type="submit"
               icon={<ArrowRight size={16} />}
-              className="px-6"
             >
               {publishProgram === "marketplace"
-                ? "Initialize Asset Listing"
-                : "Initialize Game Project"}
+                ? "Initialize Marketplace Item"
+                : "Initialize Game Draft"}
             </Button>
           </div>
         </form>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* File Selection Column (Left) */}
-          <div className="lg:col-span-8 space-y-7 bg-white dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 p-8 rounded-2xl shadow-md relative overflow-hidden backdrop-blur-sm">
-            <div className="absolute -top-40 -right-40 w-80 h-80 bg-amber-500/5 dark:bg-amber-500/[0.01] rounded-full blur-[100px] pointer-events-none" />
-            
-            <h2 className="font-display font-bold text-lg text-slate-850 dark:text-white pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
-              Required Artifacts & Source Files
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* File Selection Column */}
+          <div className="lg:col-span-2 space-y-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 p-6 rounded-2xl shadow-md">
+            <h2 className="font-display font-bold text-lg text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800">
+              Required Artifacts
             </h2>
 
             {uploadError && (
-              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold flex items-center gap-2.5 animate-fade-in">
-                <AlertTriangle size={16} className="shrink-0" />
-                <span>{uploadError}</span>
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <AlertTriangle size={16} />
+                {uploadError}
               </div>
             )}
 
-            {/* Marketplace ZIP Upload Zone */}
             {publishProgram === "marketplace" && (
-              <div className="space-y-3">
-                <label className="text-sm font-semibold text-slate-750 dark:text-slate-200 flex items-center gap-2">
-                  <FileText size={16} className="text-amber-500" /> Marketplace Item ZIP (.zip) <span className="text-rose-500">*</span>
+              <div className="space-y-2.5">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <FileText size={16} className="text-amber-500" /> Marketplace Item ZIP (.zip) *
                 </label>
-                
-                <div 
-                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-studio relative ${
-                    gameFile 
-                      ? "border-emerald-500/30 bg-emerald-500/[0.01] dark:bg-emerald-500/[0.02]" 
-                      : "border-slate-250 dark:border-slate-800 hover:border-amber-500/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/40"
-                  }`}
-                >
+                <div className="flex items-center gap-3">
                   <input
                     type="file"
                     accept=".zip"
@@ -1170,65 +1016,28 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       setGameFile(file);
                       if (file) uploadFileToStorage(file, "game", "game");
                     }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    className="hidden"
+                    id="game-zip-input"
                   />
-                  
-                  {!gameFile ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="p-3 bg-slate-100 dark:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-500 transition-colors">
-                        <Upload size={22} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Drag and drop or click to select ZIP file
-                        </span>
-                        <span className="text-[10px] text-slate-500 block mt-1 font-mono">
-                          ZIP format only, maximum size 50MB
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 text-left">
-                        <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                          <FileText size={20} />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-xs font-bold text-slate-750 dark:text-slate-200 block truncate max-w-[200px] sm:max-w-[320px]">
-                            {gameFile.name}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                            {(gameFile.size / (1024 * 1024)).toFixed(2)} MB
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {uploadStatus["game"] === "completed" && (
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1 shrink-0 animate-fade-in">
-                          <CheckCircle2 size={13} /> Uploaded
-                        </span>
-                      )}
-                      
-                      {uploadStatus["game"] === "failed" && (
-                        <span className="text-xs font-semibold text-rose-500 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full flex items-center gap-1 shrink-0 animate-fade-in">
-                          <AlertTriangle size={13} /> Failed
-                        </span>
-                      )}
-                      
-                      {uploadStatus["game"] === "idle" && (
-                        <span className="text-xs text-slate-500 italic shrink-0">Ready</span>
-                      )}
-                    </div>
-                  )}
+                  <label
+                    htmlFor="game-zip-input"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                  >
+                    <Upload size={14} /> Select ZIP File
+                  </label>
+                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
+                    {gameFile
+                      ? `${gameFile.name} (${(gameFile.size / (1024 * 1024)).toFixed(2)} MB)`
+                      : "No file selected (Max 50MB)"}
+                  </span>
                 </div>
-                
                 {uploadStatus["game"] === "uploading" && (
-                  <div className="space-y-1.5 mt-2 bg-sky-500/[0.02] border border-sky-500/10 p-3.5 rounded-xl">
+                  <div className="space-y-1.5 mt-1.5">
                     <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>Uploading project files...</span>
+                      <span>Uploading...</span>
                       <span>{uploadProgress["game"]}%</span>
                     </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-sky-500 h-full rounded-full transition-all duration-350"
                         style={{ width: `${uploadProgress["game"]}%` }}
@@ -1236,298 +1045,241 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     </div>
                   </div>
                 )}
+                {uploadStatus["game"] === "completed" && (
+                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                    <CheckCircle2 size={13} /> Upload Complete
+                  </span>
+                )}
+                {uploadStatus["game"] === "failed" && (
+                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
+                    <AlertTriangle size={13} /> Upload Failed
+                  </span>
+                )}
               </div>
             )}
 
-            {/* Marketplace Preview Images Grid */}
+            {/* Preview Images for Asset */}
             {publishProgram === "marketplace" && (
-              <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                <label className="text-sm font-semibold text-slate-750 dark:text-slate-200 flex items-center gap-2">
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Image size={16} className="text-amber-500" /> Preview Images{" "}
                   <span className="text-xs font-normal text-slate-500">
-                    (gallery to showcase asset details)
+                    (for buyers to preview the asset)
                   </span>
                 </label>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 mt-2">
-                  {assetImages.map((img, idx) => {
-                    const isUploaded = !!img.objectKey;
-                    return (
-                      <div key={idx} className="group relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/80 shadow-sm flex flex-col justify-end">
-                        <div className="absolute inset-0 z-0">
-                          <img 
-                            src={URL.createObjectURL(img.file)} 
-                            alt="preview" 
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                        </div>
-                        
-                        <button
-                          type="button"
-                          onClick={() => removeAssetImage(idx)}
-                          className="absolute top-1.5 right-1.5 z-20 w-6 h-6 rounded-full bg-slate-950/80 hover:bg-rose-600 border border-white/10 text-white flex items-center justify-center transition-colors shadow-md text-sm cursor-pointer"
-                        >
-                          ×
-                        </button>
-                        
-                        <div className="relative z-10 p-2 w-full">
-                          {!isUploaded ? (
-                            <div className="bg-slate-955/90 backdrop-blur-sm rounded-lg p-1.5 border border-white/5 space-y-1">
-                              <div className="flex justify-between text-[8px] text-sky-400 font-bold font-mono">
-                                <span>Uploading...</span>
-                              </div>
-                              <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-                                <div className="bg-sky-500 h-full w-2/3 animate-pulse" />
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] font-bold text-emerald-400 bg-slate-955/75 border border-emerald-500/20 px-2 py-0.5 rounded-lg flex items-center justify-center gap-1 backdrop-blur-sm">
-                              <CheckCircle2 size={10} /> Saved
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  <label className="group aspect-video rounded-xl border-2 border-dashed border-slate-250 dark:border-slate-800 hover:border-amber-500/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-950/40 flex flex-col items-center justify-center gap-1 cursor-pointer transition-studio">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleAssetImageAdd}
-                      className="hidden"
-                      id="asset-img-input"
-                    />
-                    <div className="p-2 bg-slate-100 dark:bg-slate-850 rounded-lg text-slate-450 dark:text-slate-500 group-hover:text-amber-500 transition-colors">
-                      <Upload size={16} />
-                    </div>
-                    <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">
-                      Add Image
-                    </span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {/* Cover Thumbnail Upload Zone */}
-            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-              <label className="text-sm font-semibold text-slate-750 dark:text-slate-200 flex items-center gap-2">
-                <Image size={16} className="text-amber-500" /> Primary Cover Thumbnail <span className="text-rose-500">*</span>
-              </label>
-              
-              <div 
-                className={`border-2 border-dashed rounded-xl p-6 text-center transition-studio relative ${
-                  thumbnailFile 
-                    ? "border-emerald-500/30 bg-emerald-500/[0.01] dark:bg-emerald-500/[0.02]" 
-                    : "border-slate-250 dark:border-slate-800 hover:border-amber-500/60 bg-slate-50/30 dark:bg-slate-955/20 hover:bg-slate-50 dark:hover:bg-slate-955/40"
-                }`}
-              >
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files ? e.target.files[0] : null;
-                    if (file && file.size > 10 * 1024 * 1024) {
-                      alert("Thumbnail image must be smaller than 10MB.");
-                      e.target.value = "";
-                      return;
-                    }
-                    setThumbnailFile(file);
-                    if (file) uploadFileToStorage(file, "thumbnail", "thumbnail");
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  multiple
+                  onChange={handleAssetImageAdd}
+                  className="hidden"
+                  id="asset-img-input"
                 />
-                
-                {!thumbnailFile ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="p-3 bg-slate-100 dark:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-500">
-                      <Upload size={22} />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Drag and drop or click to select cover image
-                      </span>
-                      <span className="text-[10px] text-slate-500 block mt-1">
-                        PNG, JPG, or WEBP (Recommended aspect ratio 16:9, max 10MB)
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="relative w-16 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shrink-0">
-                        <img 
-                          src={URL.createObjectURL(thumbnailFile)} 
-                          alt="thumbnail preview" 
-                          className="w-full h-full object-cover"
+                <label
+                  htmlFor="asset-img-input"
+                  className="inline-flex px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer items-center gap-1.5"
+                >
+                  <Upload size={14} /> Add Image
+                </label>
+                {assetImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {assetImages.map((img, idx) => (
+                      <div key={idx} className="relative">
+                        <img
+                          src={URL.createObjectURL(img.file)}
+                          alt="preview"
+                          className="w-20 h-20 object-cover rounded-lg border border-slate-300 dark:border-slate-800"
                         />
+                        <button
+                          type="button"
+                          onClick={() => removeAssetImage(idx)}
+                          className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                        >
+                          ×
+                        </button>
+                        {!img.objectKey && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded-lg">
+                            ...
+                          </span>
+                        )}
                       </div>
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-slate-750 dark:text-slate-200 block truncate max-w-[200px] sm:max-w-[320px]">
-                          {thumbnailFile.name}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                          {(thumbnailFile.size / (1024 * 1024)).toFixed(2)} MB
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {uploadStatus["thumbnail"] === "completed" && (
-                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1 shrink-0 animate-fade-in">
-                        <CheckCircle2 size={13} /> Uploaded
-                      </span>
-                    )}
-                    
-                    {uploadStatus["thumbnail"] === "failed" && (
-                      <span className="text-xs font-semibold text-rose-500 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full flex items-center gap-1 shrink-0 animate-fade-in">
-                        <AlertTriangle size={13} /> Failed
-                      </span>
-                    )}
-                    
-                    {uploadStatus["thumbnail"] === "idle" && (
-                      <span className="text-xs text-slate-500 italic shrink-0">Ready</span>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
-              
-              {uploadStatus["thumbnail"] === "uploading" && (
-                <div className="space-y-1.5 mt-2 bg-sky-500/[0.02] border border-sky-500/10 p-3.5 rounded-xl">
-                  <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                    <span>Uploading cover thumbnail...</span>
-                    <span>{uploadProgress["thumbnail"]}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-sky-500 h-full rounded-full transition-all duration-350"
-                      style={{ width: `${uploadProgress["thumbnail"]}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
-            {/* Game Screenshots Grid (Game Only) */}
-            {publishProgram === "game" && (
-              <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                <label className="text-sm font-semibold text-slate-750 dark:text-slate-200 flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Image size={16} className="text-amber-500" /> Game Screenshots{" "}
-                    <span className="text-xs font-normal text-slate-500">
-                      (Optional, showcase gameplay highlights)
-                    </span>
+            {/* 2. Thumbnail image */}
+            {(publishProgram === "game" || publishProgram === "marketplace") && (
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Image size={16} className="text-amber-500" /> Primary Cover
+                  Thumbnail *
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files ? e.target.files[0] : null;
+                      if (file && file.size > 10 * 1024 * 1024) {
+                        alert("Thumbnail image must be smaller than 10MB.");
+                        e.target.value = "";
+                        return;
+                      }
+                      setThumbnailFile(file);
+                      if (file) uploadFileToStorage(file, "thumbnail", "thumbnail");
+                    }}
+                    className="hidden"
+                    id="thumb-input"
+                  />
+                  <label
+                    htmlFor="thumb-input"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                  >
+                    <Upload size={14} /> Select Thumbnail
+                  </label>
+                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
+                    {thumbnailFile ? thumbnailFile.name : "No image chosen"}
                   </span>
-                  <span className="text-xs font-mono font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                </div>
+                {uploadStatus["thumbnail"] === "uploading" && (
+                  <div className="space-y-1.5 mt-1.5">
+                    <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
+                      <span>Uploading...</span>
+                      <span>{uploadProgress["thumbnail"]}%</span>
+                    </div>
+                    <div className="w-full bg-slate-155 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-sky-500 h-full rounded-full transition-all duration-355"
+                        style={{ width: `${uploadProgress["thumbnail"]}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+                {uploadStatus["thumbnail"] === "completed" && (
+                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                    <CheckCircle2 size={13} /> Upload Complete
+                  </span>
+                )}
+                {uploadStatus["thumbnail"] === "failed" && (
+                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
+                    <AlertTriangle size={13} /> Upload Failed
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* 3. Screenshots (Multiple) */}
+            {publishProgram === "game" && (
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Image size={16} className="text-amber-500" /> Screenshots
+                    (Optional, Max 5)
+                  </span>
+                  <span className="text-xs font-mono font-bold text-slate-500">
                     {screenshots.length} / 5
                   </span>
                 </label>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 mt-2">
-                  {screenshots.map((file, idx) => {
-                    const key = getFileKey(file);
-                    const isUploaded = uploadStatus[key] === "completed";
-                    const isUploading = uploadStatus[key] === "uploading";
-                    const isFailed = uploadStatus[key] === "failed";
-                    
-                    return (
-                      <div key={idx} className="group relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/80 shadow-sm flex flex-col justify-end">
-                        <div className="absolute inset-0 z-0">
-                          <img 
-                            src={URL.createObjectURL(file)} 
-                            alt="screenshot preview" 
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                        </div>
-                        
-                        <button
-                          type="button"
-                          onClick={() => removeScreenshot(idx)}
-                          className="absolute top-1.5 right-1.5 z-20 w-6 h-6 rounded-full bg-slate-955/80 hover:bg-rose-600 border border-white/10 text-white flex items-center justify-center transition-colors shadow-md text-sm cursor-pointer"
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleScreenshotAdd}
+                    className="hidden"
+                    id="screenshot-input"
+                    disabled={screenshots.length >= 5}
+                  />
+                  <label
+                    htmlFor="screenshot-input"
+                    className={`px-4 py-2.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-studio cursor-pointer ${
+                      screenshots.length >= 5
+                        ? "bg-slate-255 dark:bg-slate-955 opacity-50 cursor-not-allowed border-transparent text-slate-400"
+                        : "bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border-slate-250 dark:border-slate-800 text-slate-700 dark:text-slate-350"
+                    }`}
+                  >
+                    <Upload size={14} /> Add Screenshots
+                  </label>
+                </div>
+
+                {screenshots.length > 0 && (
+                  <div className="space-y-2.5 mt-3 bg-slate-50 dark:bg-slate-955/20 p-3 rounded-xl border border-slate-200/50 dark:border-slate-850">
+                    {screenshots.map((file, idx) => {
+                      const key = getFileKey(file);
+                      return (
+                        <div
+                          key={idx}
+                          className="flex flex-col gap-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-2.5 rounded-lg shadow-sm"
                         >
-                          ×
-                        </button>
-                        
-                        <div className="relative z-10 p-2 w-full">
-                          {isUploading && (
-                            <div className="bg-slate-955/90 backdrop-blur-sm rounded-lg p-1.5 border border-white/5 space-y-1">
-                              <div className="flex justify-between text-[8px] text-sky-400 font-bold font-mono">
-                                <span>Uploading...</span>
-                                <span>{uploadProgress[key]}%</span>
-                              </div>
-                              <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-                                <div 
-                                  className="bg-sky-500 h-full transition-all duration-300"
-                                  style={{ width: `${uploadProgress[key]}%` }}
-                                />
-                              </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-mono text-slate-650 dark:text-slate-300 truncate max-w-sm">
+                              {file.name}
+                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {uploadStatus[key] === "completed" && (
+                                <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                                  <CheckCircle2 size={12} /> Uploaded
+                                </span>
+                              )}
+                              {uploadStatus[key] === "uploading" && (
+                                <div className="flex items-center gap-1 text-sky-500 font-bold font-mono">
+                                  <RefreshCw
+                                    size={11}
+                                    className="animate-spin"
+                                  />{" "}
+                                  {uploadProgress[key]}%
+                                </div>
+                              )}
+                              {uploadStatus[key] === "failed" && (
+                                <span className="text-rose-500 font-semibold flex items-center gap-1">
+                                  <AlertTriangle size={12} /> Failed
+                                </span>
+                              )}
+                              {uploadStatus[key] === "idle" && (
+                                <button
+                                  onClick={() =>
+                                    uploadFileToStorage(file, "screenshot", key)
+                                  }
+                                  className="px-2 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 font-bold rounded text-[10px] transition-colors"
+                                >
+                                  Upload
+                                </button>
+                              )}
+                              <button
+                                onClick={() => removeScreenshot(idx)}
+                                className="p-1 hover:bg-rose-500/10 hover:text-rose-500 text-slate-400 rounded transition-colors"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                          {uploadStatus[key] === "uploading" && (
+                            <div className="w-full bg-slate-100 dark:bg-slate-955 h-1.5 rounded-full overflow-hidden">
+                              <div
+                                className="bg-sky-500 h-full rounded-full transition-all duration-350"
+                                style={{ width: `${uploadProgress[key]}%` }}
+                              ></div>
                             </div>
                           )}
-                          
-                          {isUploaded && (
-                            <span className="text-[10px] font-bold text-emerald-400 bg-slate-955/75 border border-emerald-500/20 px-2 py-0.5 rounded-lg flex items-center justify-center gap-1 backdrop-blur-sm">
-                              <CheckCircle2 size={10} /> Saved
-                            </span>
-                          )}
-                          
-                          {isFailed && (
-                            <span className="text-[10px] font-bold text-rose-400 bg-slate-955/75 border border-rose-500/20 px-2 py-0.5 rounded-lg flex items-center justify-center gap-1 backdrop-blur-sm">
-                              <AlertTriangle size={10} /> Failed
-                            </span>
-                          )}
-                          
-                          {uploadStatus[key] === "idle" && (
-                            <button
-                              type="button"
-                              onClick={() => uploadFileToStorage(file, "screenshot", key)}
-                              className="w-full py-1 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-[9px] transition-colors cursor-pointer"
-                            >
-                              Upload
-                            </button>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {screenshots.length < 5 && (
-                    <label className="group aspect-video rounded-xl border-2 border-dashed border-slate-250 dark:border-slate-800 hover:border-amber-500/60 bg-slate-50/30 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-955/40 flex flex-col items-center justify-center gap-1 cursor-pointer transition-studio">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleScreenshotAdd}
-                        className="hidden"
-                        disabled={screenshots.length >= 5}
-                      />
-                      <div className="p-2 bg-slate-100 dark:bg-slate-850 rounded-lg text-slate-450 dark:text-slate-500 group-hover:text-amber-500 transition-colors">
-                        <Upload size={16} />
-                      </div>
-                      <span className="text-[10px] font-semibold text-slate-650 dark:text-slate-400">
-                        Add Photo
-                      </span>
-                    </label>
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Gameplay Trailer Upload Zone (Game Only) */}
+            {/* 4. Video upload */}
             {publishProgram === "game" && (
-              <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                <label className="text-sm font-semibold text-slate-750 dark:text-slate-200 flex items-center gap-2">
-                  <Video size={16} className="text-amber-500" /> Gameplay Video Trailer <span className="text-xs text-slate-500 font-normal">(Optional)</span>
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Video size={16} className="text-amber-500" /> Gameplay Video
+                  Trailer (Optional)
                 </label>
-                
-                <div 
-                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-studio relative ${
-                    videoFile 
-                      ? "border-emerald-500/30 bg-emerald-500/[0.01] dark:bg-emerald-500/[0.02]" 
-                      : "border-slate-250 dark:border-slate-800 hover:border-amber-500/60 bg-slate-50/30 dark:bg-slate-955/20 hover:bg-slate-50 dark:hover:bg-slate-955/40"
-                  }`}
-                >
+                <div className="flex items-center gap-3">
                   <input
                     type="file"
                     accept="video/*"
@@ -1539,73 +1291,23 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     className="hidden"
                     id="video-input"
                   />
-                  
-                  {!videoFile ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={(e) => {
-                          const file = e.target.files ? e.target.files[0] : null;
-                          setVideoFile(file);
-                          if (file) uploadFileToStorage(file, "video", "video");
-                        }}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                      <div className="p-3 bg-slate-100 dark:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-500">
-                        <Video size={22} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Drag and drop or click to select trailer video
-                        </span>
-                        <span className="text-[10px] text-slate-500 block mt-1">
-                          MP4 or WEBM formats (Max size 100MB)
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 text-left">
-                        <div className="p-2.5 bg-sky-500/10 text-sky-500 rounded-xl">
-                          <Film size={20} />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-xs font-bold text-slate-750 dark:text-slate-200 block truncate max-w-[200px] sm:max-w-[320px]">
-                            {videoFile.name}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                            {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {uploadStatus["video"] === "completed" && (
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1 shrink-0 animate-fade-in">
-                          <CheckCircle2 size={13} /> Uploaded
-                        </span>
-                      )}
-                      
-                      {uploadStatus["video"] === "failed" && (
-                        <span className="text-xs font-semibold text-rose-500 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full flex items-center gap-1 shrink-0 animate-fade-in">
-                          <AlertTriangle size={13} /> Failed
-                        </span>
-                      )}
-                      
-                      {uploadStatus["video"] === "idle" && (
-                        <span className="text-xs text-slate-500 italic shrink-0">Ready</span>
-                      )}
-                    </div>
-                  )}
+                  <label
+                    htmlFor="video-input"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                  >
+                    <Upload size={14} /> Select Video
+                  </label>
+                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
+                    {videoFile ? videoFile.name : "No video chosen"}
+                  </span>
                 </div>
-                
                 {uploadStatus["video"] === "uploading" && (
-                  <div className="space-y-1.5 mt-2 bg-sky-500/[0.02] border border-sky-500/10 p-3.5 rounded-xl">
+                  <div className="space-y-1.5 mt-1.5">
                     <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>Uploading gameplay video...</span>
+                      <span>Uploading...</span>
                       <span>{uploadProgress["video"]}%</span>
                     </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-155 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-sky-500 h-full rounded-full transition-all duration-355"
                         style={{ width: `${uploadProgress["video"]}%` }}
@@ -1613,23 +1315,29 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     </div>
                   </div>
                 )}
+                {uploadStatus["video"] === "completed" && (
+                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                    <CheckCircle2 size={13} /> Upload Complete
+                  </span>
+                )}
+                {uploadStatus["video"] === "failed" && (
+                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
+                    <AlertTriangle size={13} /> Upload Failed
+                  </span>
+                )}
               </div>
             )}
 
-            {/* Web Demo Upload Zone (Game Only) */}
+            {/* 5. Web Demo ZIP (Optional) */}
             {publishProgram === "game" && gameId && publishingType === "marketplace_listing" && (
-              <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                <label className="text-sm font-semibold text-slate-750 dark:text-slate-200 flex items-center gap-2">
-                  <Upload size={16} className="text-amber-500" /> Web Demo ZIP <span className="text-xs text-slate-500 font-normal">(Optional, for browser-based play tests)</span>
+              <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Upload size={16} className="text-amber-500" /> Web Demo ZIP (Optional)
                 </label>
-                
-                <div 
-                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-studio relative ${
-                    demoFile 
-                      ? "border-emerald-500/30 bg-emerald-500/[0.01] dark:bg-emerald-500/[0.02]" 
-                      : "border-slate-250 dark:border-slate-800 hover:border-amber-500/60 bg-slate-50/30 dark:bg-slate-955/20 hover:bg-slate-50 dark:hover:bg-slate-955/40"
-                  }`}
-                >
+                <p className="text-xs text-slate-500">
+                  Upload an HTML5/WebAssembly build (.zip) so users can play the demo directly in their web browser.
+                </p>
+                <div className="flex items-center gap-3">
                   <input
                     type="file"
                     accept=".zip"
@@ -1640,65 +1348,28 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                         await handleUploadDemo(file);
                       }
                     }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    className="hidden"
+                    id="web-demo-zip-input"
                   />
-                  
-                  {!demoFile ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="p-3 bg-slate-100 dark:bg-slate-850 rounded-xl text-slate-450 dark:text-slate-500">
-                        <Upload size={22} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Drag and drop or click to select web demo ZIP
-                        </span>
-                        <span className="text-[10px] text-slate-500 block mt-1">
-                          HTML5/WASM export ZIP (Recommended size &lt; 50MB)
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 text-left">
-                        <div className="p-2.5 bg-sky-500/10 text-sky-500 rounded-xl">
-                          <Upload size={20} />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-xs font-bold text-slate-750 dark:text-slate-200 block truncate max-w-[200px] sm:max-w-[320px]">
-                            {demoFile.name}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                            {(demoFile.size / (1024 * 1024)).toFixed(2)} MB
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {demoUploadStatus === "completed" && (
-                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1 shrink-0 animate-fade-in">
-                          <CheckCircle2 size={13} /> Uploaded
-                        </span>
-                      )}
-                      
-                      {demoUploadStatus === "failed" && (
-                        <span className="text-xs font-semibold text-rose-500 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full flex items-center gap-1 shrink-0 animate-fade-in">
-                          <AlertTriangle size={13} /> Failed
-                        </span>
-                      )}
-                      
-                      {demoUploadStatus === "idle" && (
-                        <span className="text-xs text-slate-500 italic shrink-0">Uploading...</span>
-                      )}
-                    </div>
-                  )}
+                  <label
+                    htmlFor="web-demo-zip-input"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-255 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer flex items-center gap-1.5 transition-studio"
+                  >
+                    <Upload size={14} /> Select Demo ZIP
+                  </label>
+                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
+                    {demoFile
+                      ? `${demoFile.name} (${(demoFile.size / (1024 * 1024)).toFixed(2)} MB)`
+                      : "No file chosen (Recommended < 50MB)"}
+                  </span>
                 </div>
-                
                 {demoUploadStatus === "uploading" && (
-                  <div className="space-y-1.5 mt-2 bg-sky-500/[0.02] border border-sky-500/10 p-3.5 rounded-xl">
+                  <div className="space-y-1.5 mt-1.5">
                     <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>Uploading web demo...</span>
+                      <span>Uploading demo...</span>
                       <span>{demoUploadProgress}%</span>
                     </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-sky-500 h-full rounded-full transition-all duration-350"
                         style={{ width: `${demoUploadProgress}%` }}
@@ -1706,82 +1377,80 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* GitHub Repository Upload (Game Only) */}
-            {publishProgram === "game" && (
-              <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                <label className="text-sm font-semibold text-slate-750 dark:text-slate-200 flex items-center gap-2">
-                  <Github size={16} className="text-amber-500" /> GitHub Repository <span className="text-rose-500">*</span>
-                </label>
-                <p className="text-xs text-slate-500">
-                  Connect your repository to clone it, scan for security leaks/vulnerabilities, and secure a commit build snapshot.
-                </p>
-                
-                {uploadStatus["thumbnail"] !== "completed" ? (
-                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2.5 animate-fade-in leading-relaxed">
-                    <AlertTriangle size={16} className="shrink-0" />
-                    <span>Vui lòng tải lên Cover Thumbnail trước khi liên kết & xác thực GitHub Repository của game.</span>
-                  </div>
-                ) : (
-                  <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-200/80 dark:border-slate-800/80 rounded-xl p-5 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Repository URL</label>
-                        <input
-                          type="text"
-                          placeholder="https://github.com/username/my-godot-game"
-                          value={gameRepoUrl}
-                          onChange={(e) => setGameRepoUrl(e.target.value)}
-                          disabled={repoSubmitted}
-                          className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 disabled:opacity-60 transition-studio"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Branch</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. main (optional)"
-                          value={gameRepoBranch}
-                          onChange={(e) => setGameRepoBranch(e.target.value)}
-                          disabled={repoSubmitted}
-                          className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 disabled:opacity-60 transition-studio"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-1">
-                      {!repoSubmitted ? (
-                        <button
-                          type="button"
-                          onClick={handleSubmitRepo}
-                          disabled={repoSubmitting || !gameRepoUrl.trim()}
-                          className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-studio cursor-pointer"
-                        >
-                          {repoSubmitting ? (
-                            <>
-                              <RefreshCw size={14} className="animate-spin" /> Verifying...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 size={14} /> Link & Verify Repository
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 animate-fade-in shadow-sm">
-                          <CheckCircle2 size={14} /> Repository linked and scanned clean
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                {demoUploadStatus === "completed" && (
+                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                    <CheckCircle2 size={13} /> Web demo uploaded and verified!
+                  </span>
+                )}
+                {demoUploadStatus === "failed" && (
+                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
+                    <AlertTriangle size={13} /> Demo upload failed. Please verify ZIP structure.
+                  </span>
                 )}
               </div>
             )}
 
-            {/* Stepper Footer Action Buttons */}
-            <div className="flex justify-between pt-6 border-t border-slate-100 dark:border-slate-800/80">
+            {/* 6. GitHub Repository */}
+            {publishProgram === "game" && (
+              <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <FileText size={16} className="text-amber-500" /> GitHub Repository *
+                </label>
+                <p className="text-xs text-slate-500">
+                  The system will verify the repository belongs to your GitHub account, clone it, scan for security vulnerabilities, and take a commit snapshot.
+                </p>
+                
+                {uploadStatus["thumbnail"] !== "completed" ? (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                    <AlertTriangle size={15} />
+                    Vui lòng upload Primary Cover Thumbnail trước khi cấu hình & xác thực GitHub Repository của game.
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="https://github.com/username/my-godot-game"
+                      value={gameRepoUrl}
+                      onChange={(e) => setGameRepoUrl(e.target.value)}
+                      disabled={repoSubmitted}
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Branch (optional, default: main branch)"
+                      value={gameRepoBranch}
+                      onChange={(e) => setGameRepoBranch(e.target.value)}
+                      disabled={repoSubmitted}
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-955 border border-slate-250 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-350 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                    />
+                    {!repoSubmitted ? (
+                      <button
+                        type="button"
+                        onClick={handleSubmitRepo}
+                        disabled={repoSubmitting || !gameRepoUrl.trim()}
+                        className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-studio"
+                      >
+                        {repoSubmitting ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" /> Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={14} /> Verify & Submit Repo
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
+                        <CheckCircle2 size={13} /> Repo verified, cloned & scanned clean
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button
                 variant="ghost"
                 size="md"
@@ -1798,9 +1467,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   setScreenshots([]);
                   setScreenshotKeys({});
                 }}
-                className="flex items-center gap-2 hover:translate-x-[-2px]"
               >
-                <ArrowLeft size={15} /> Back to Details
+                Back to Details
               </Button>
 
               <Button
@@ -1828,126 +1496,63 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             </div>
           </div>
 
-          {/* Telemetry/Security diagnostics panel (Right Column) */}
-          <div className="lg:col-span-4 space-y-4">
-            <h3 className="font-display font-bold text-xs text-slate-400 dark:text-slate-500 pl-1 uppercase tracking-widest">
-              Diagnostics Status
+          {/* Right Status / Scanning Telemetry panel */}
+          <div className="space-y-4">
+            <h3 className="font-display font-bold text-sm text-slate-400 dark:text-slate-500 pl-1 uppercase tracking-wider">
+              Verification Status
             </h3>
 
-            <div className="bg-slate-900 dark:bg-slate-950 text-slate-200 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg font-mono text-xs relative overflow-hidden">
-              {/* Telemetry Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div className="flex items-center gap-2">
-                  <Terminal size={14} className="text-amber-500" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Security Telemetry
-                  </span>
+            <div className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm backdrop-blur-md">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <ShieldCheck size={18} className="text-amber-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  Security Telemetry
+                </span>
+              </div>
+
+              {scanStatus === "idle" && (
+                <p className="text-xs text-slate-500 leading-relaxed italic">
+                  {publishProgram === "marketplace"
+                    ? "Upload your Marketplace Project ZIP package to initiate static safety scanner, uncompress bomb checks, and virus diagnostics."
+                    : "Upload your Game Source ZIP package to initiate automatic static plagiarism scan, uncompress bomb checks, and ClamAV sandbox virus diagnostics."}
+                </p>
+              )}
+
+              {scanStatus === "scanning" && (
+                <div className="space-y-3 py-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-sky-500">
+                    <RefreshCw className="animate-spin" size={14} />
+                    <span>Analyzing package contents...</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-normal bg-slate-50 dark:bg-slate-950/40 p-3 rounded-lg border border-slate-200/50 dark:border-slate-850">
+                    {scanMessage}
+                  </p>
                 </div>
-                {scanStatus === "scanning" && (
-                  <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                  </span>
-                )}
-                {scanStatus === "clean" && (
-                  <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                )}
-                {scanStatus === "infected" && (
-                  <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>
-                )}
-              </div>
+              )}
 
-              {/* Status Output Console */}
-              <div className="space-y-3 min-h-[160px] flex flex-col justify-between py-1 text-slate-350">
-                {scanStatus === "idle" && (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-[10px] text-slate-500 font-bold">// STANDBY MODE</p>
-                      <p className="text-slate-400 leading-normal">Awaiting package file upload to initialize security diagnostics...</p>
-                      <p className="text-[11px] text-slate-500 leading-relaxed mt-2.5">
-                        Godot Launch Guard system stands ready to execute: ClamAV diagnostics, zip-bomb expansion analysis, and repo static code scans.
-                      </p>
-                    </div>
-                    <div className="text-[10px] text-slate-600 border-t border-slate-850/50 pt-2.5 flex items-center gap-1.5">
-                      <ShieldCheck size={13} className="text-slate-500" /> Secure Sandbox ready
-                    </div>
-                  </>
-                )}
+              {scanStatus === "clean" && (
+                <div className="space-y-3 py-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
+                    <CheckCircle2 size={16} />
+                    <span>Scan Cleared & Safe</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-normal bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/20">
+                    {scanMessage}
+                  </p>
+                </div>
+              )}
 
-                {scanStatus === "scanning" && (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-sky-400 font-bold text-[10px] animate-pulse">// SCANNING IN PROGRESS</p>
-                      <div className="space-y-1 font-mono text-[11px] text-slate-450">
-                        <p className="text-slate-500">Connecting scanner daemon...</p>
-                        <p className="text-emerald-500/80">✓ Payload size matches limits</p>
-                        <p className="text-emerald-500/80">✓ Integrity checksum registered</p>
-                        <p className="text-sky-400 animate-pulse mt-1">→ Running static threat scan...</p>
-                        <p className="text-slate-350 leading-normal text-xs bg-slate-900 border border-slate-800 p-3 rounded-lg mt-2.5 font-mono select-all">
-                          {scanMessage}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-sky-450 font-bold animate-pulse">
-                      <RefreshCw size={12} className="animate-spin" /> Sandbox analyzing payloads...
-                    </div>
-                  </>
-                )}
-
-                {scanStatus === "clean" && (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-emerald-400 font-bold text-[10px]">// SECURITY AUDIT VERIFIED</p>
-                      <div className="space-y-1 font-mono text-[11px]">
-                        <p className="text-emerald-500">✓ 0 malware matches found</p>
-                        <p className="text-emerald-500">✓ ZIP Slip directory traversal check clean</p>
-                        <p className="text-emerald-500">✓ Source package integrity cleared</p>
-                        <p className="text-slate-350 leading-normal text-xs bg-slate-900 border border-slate-800 p-3 rounded-lg mt-2.5 font-mono">
-                          {scanMessage}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-lg w-fit flex items-center gap-1.5">
-                      <CheckCircle2 size={12} /> SECURE PAYLOAD
-                    </div>
-                  </>
-                )}
-
-                {scanStatus === "infected" && (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-rose-500 font-bold text-[10px]">// SECURITY THREAT DETECTED</p>
-                      <div className="space-y-1 font-mono text-[11px] text-rose-350">
-                        <p>✗ Malicious signature match</p>
-                        <p>✗ Sandbox execution failed</p>
-                        <p className="text-rose-400 leading-normal text-xs bg-slate-900 border border-rose-950 p-3 rounded-lg mt-2.5 font-mono">
-                          {scanMessage}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-rose-400 font-bold bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-lg w-fit flex items-center gap-1.5 animate-pulse">
-                      <AlertTriangle size={12} /> THREAT BLOCKED
-                    </div>
-                  </>
-                )}
-
-                {scanStatus === "failed" && (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-amber-500 font-bold text-[10px]">// PIPELINE EXECUTION ERROR</p>
-                      <div className="space-y-1 font-mono text-[11px] text-slate-400">
-                        <p className="text-rose-450">✗ Diagnostics socket connection lost</p>
-                        <p className="text-slate-400 leading-normal text-xs bg-slate-900 border border-slate-800 p-3 rounded-lg mt-2.5 font-mono">
-                          {scanMessage}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-amber-500 font-bold bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg w-fit flex items-center gap-1.5">
-                      <AlertTriangle size={12} /> ERROR OCCURRED
-                    </div>
-                  </>
-                )}
-              </div>
+              {scanStatus === "infected" && (
+                <div className="space-y-3 py-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-rose-500">
+                    <AlertTriangle size={16} />
+                    <span>Security Threat Detected</span>
+                  </div>
+                  <p className="text-[11px] text-rose-500 leading-normal bg-rose-500/5 p-3 rounded-lg border border-rose-500/20">
+                    {scanMessage}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

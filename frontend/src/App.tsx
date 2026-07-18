@@ -75,35 +75,6 @@ const readStoredSelectedPaymentOrder = () => {
   }
 };
 
-const normalizeMarketplaceCategory = (
-  categoryName?: string
-): Asset['category'] => {
-  const normalized = categoryName?.trim().toLowerCase();
-
-  switch (normalized) {
-    case 'scripts & plugins':
-    case 'scripts-plugins':
-    case 'scripts and plugins':
-      return 'Scripts & Plugins';
-    case 'shaders & vfx':
-    case 'shaders-vfx':
-    case 'shaders and vfx':
-      return 'Shaders & VFX';
-    case '2d assets':
-    case '2d-assets':
-      return '2D Assets';
-    case '3d models':
-    case '3d-models':
-      return '3D Models';
-    case 'audio & sfx':
-    case 'audio-sfx':
-    case 'audio and sfx':
-      return 'Audio & SFX';
-    default:
-      return '2D Assets';
-  }
-};
-
 const formatMarketplaceDate = (date?: string) => {
   if (!date) {
     return 'Recently listed';
@@ -124,20 +95,18 @@ const formatMarketplaceDate = (date?: string) => {
 const hashString = (value: string) =>
   Array.from(value).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0);
 
-const getMarketplaceImage = (
-  item: MarketplaceItemResponse,
-  category: Asset['category']
-) => {
-  const imagePool = {
-    'Shaders & VFX': [IMAGE_SEED_MAP.interior, IMAGE_SEED_MAP.sky],
-    '2D Assets': [IMAGE_SEED_MAP.forest, IMAGE_SEED_MAP.interior],
-    '3D Models': [IMAGE_SEED_MAP.knight, IMAGE_SEED_MAP.char],
-    'Audio & SFX': [IMAGE_SEED_MAP.char, IMAGE_SEED_MAP.sky],
-    'Scripts & Plugins': [IMAGE_SEED_MAP.planner, IMAGE_SEED_MAP.tycoon]
-  }[category];
+const MARKETPLACE_IMAGE_POOL = [
+  IMAGE_SEED_MAP.interior,
+  IMAGE_SEED_MAP.sky,
+  IMAGE_SEED_MAP.forest,
+  IMAGE_SEED_MAP.knight,
+  IMAGE_SEED_MAP.char,
+  IMAGE_SEED_MAP.planner,
+  IMAGE_SEED_MAP.tycoon,
+];
 
-  return imagePool[Math.abs(hashString(item.id)) % imagePool.length];
-};
+const getMarketplaceImage = (item: MarketplaceItemResponse) =>
+  MARKETPLACE_IMAGE_POOL[Math.abs(hashString(item.id)) % MARKETPLACE_IMAGE_POOL.length];
 
 const buildMarketplaceTagList = (
   item: MarketplaceItemResponse,
@@ -150,7 +119,7 @@ const buildMarketplaceTagList = (
 ].filter((tag): tag is string => Boolean(tag));
 
 const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
-  const category = normalizeMarketplaceCategory(item.categoryName);
+  const category = item.categoryName?.trim() || 'Uncategorized';
   const dbTags = item.tags || [];
   const tagList = dbTags.length > 0 ? dbTags : buildMarketplaceTagList(item, category);
 
@@ -164,7 +133,7 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
     authorAvatar: DEFAULT_AUTHOR_AVATAR,
     category,
     description: item.description || '',
-    image: item.thumbnailUrl || (item.mediaUrls && item.mediaUrls.length > 0 ? item.mediaUrls[0] : undefined) || getMarketplaceImage(item, category),
+    image: item.thumbnailUrl || (item.mediaUrls && item.mediaUrls.length > 0 ? item.mediaUrls[0] : undefined) || getMarketplaceImage(item),
     tag: item.version || category,
     tagList,
     itemType: 'asset',
@@ -734,7 +703,7 @@ export default function App() {
     reviewedCount: 0,
     author: game.creatorName || 'Unknown Creator',
     authorAvatar: DEFAULT_AUTHOR_AVATAR,
-    category: (game.categoryName || 'Scripts & Plugins') as any,
+    category: game.categoryName || 'Uncategorized',
     description: game.description || '',
     image: game.thumbnailUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
     tag: game.publishingType ? `Publishing: ${game.publishingType}` : 'Game',

@@ -34,6 +34,9 @@ public class Category {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "type", nullable = false, length = 20)
+    private String type;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 }

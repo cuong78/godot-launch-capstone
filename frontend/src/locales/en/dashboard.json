@@ -20,11 +20,10 @@
     "itemsCount": "{{count}} items"
   },
   "tabs": {
-    "publishedGames": "Published Games ({{count}})",
-    "marketplaceAssets": "Marketplace Assets ({{count}})",
+    "publishedGames": "Publish Game To Store ({{count}})",
+    "marketplaceAssets": "Marketplace ({{count}})",
     "soldOrders": "Sold Orders ({{count}})",
-    "gitProjects": "Git Projects (Mock) ({{count}})",
-    "purchasedOrders": "Purchased Orders ({{count}})"
+    "purchasedOrders": "Management Order ({{count}})"
   },
   "filters": {
     "gameStatus": "Game Status:",
