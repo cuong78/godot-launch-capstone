@@ -23,5 +23,29 @@
     "storage": "ストレージ管理",
     "disputes": "紛争解決",
     "default": "システム運用"
+  },
+  "dialog": {
+    "close": "ダイアログを閉じる"
+  },
+  "nav": {
+    "adminOnlySurface": "管理者専用エリア",
+    "navigation": "ナビゲーション"
+  },
+  "header": {
+    "badge": "ADMIN",
+    "managementMatrix": "管理マトリックス",
+    "toggleTheme": "テーマ切り替え",
+    "fallbackName": "管理者"
+  },
+  "activityChart": {
+    "title": "マーケットプレイス出品数と販売数",
+    "weekShort": "週",
+    "week": "第{{number}}週",
+    "metrics": {
+      "sourceListed": "ソースコード出品",
+      "sourceSold": "ソースコード販売済み",
+      "assetListed": "アセット出品",
+      "assetSold": "アセット販売済み"
+    }
   }
 }

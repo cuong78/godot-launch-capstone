@@ -23,5 +23,29 @@
     "storage": "Quản lý lưu trữ",
     "disputes": "Xử lý tranh chấp",
     "default": "Vận hành hệ thống"
+  },
+  "dialog": {
+    "close": "Đóng hộp thoại"
+  },
+  "nav": {
+    "adminOnlySurface": "Khu vực chỉ dành cho Admin",
+    "navigation": "Điều hướng"
+  },
+  "header": {
+    "badge": "ADMIN",
+    "managementMatrix": "BẢNG ĐIỀU KHIỂN",
+    "toggleTheme": "Chuyển giao diện sáng/tối",
+    "fallbackName": "Quản trị viên"
+  },
+  "activityChart": {
+    "title": "Đăng bán & Đã bán trên Marketplace",
+    "weekShort": "T",
+    "week": "Tuần {{number}}",
+    "metrics": {
+      "sourceListed": "Source Code đăng bán",
+      "sourceSold": "Source Code đã bán",
+      "assetListed": "Asset đăng bán",
+      "assetSold": "Asset đã bán"
+    }
   }
 }

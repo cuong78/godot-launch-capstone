@@ -23,5 +23,29 @@
     "storage": "Storage Management",
     "disputes": "Dispute Resolution",
     "default": "System Operations"
+  },
+  "dialog": {
+    "close": "Close dialog"
+  },
+  "nav": {
+    "adminOnlySurface": "Admin-only surface",
+    "navigation": "Navigation"
+  },
+  "header": {
+    "badge": "ADMIN",
+    "managementMatrix": "MANAGEMENT MATRIX",
+    "toggleTheme": "Toggle theme mode",
+    "fallbackName": "Administrator"
+  },
+  "activityChart": {
+    "title": "Marketplace Listings vs Sold",
+    "weekShort": "W",
+    "week": "Week {{number}}",
+    "metrics": {
+      "sourceListed": "Source Code Listed",
+      "sourceSold": "Source Code Sold",
+      "assetListed": "Asset Listed",
+      "assetSold": "Asset Sold"
+    }
   }
 }

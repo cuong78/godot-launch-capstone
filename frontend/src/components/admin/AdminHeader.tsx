@@ -4,8 +4,6 @@ import {
   Sun,
   Moon,
   LogOut,
-  Activity,
-  Cpu,
 } from "lucide-react";
 import { User, ScreenType } from "../../types";
 import { LanguageSwitcher } from "../LanguageSwitcher";
@@ -28,7 +26,7 @@ export function AdminHeader({
   setDarkMode,
 }: AdminHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
-  const { t } = useTranslation(["common", "payment"]);
+  const { t } = useTranslation(["common", "payment", "admin"]);
 
   const handleMenuNavigate = (screen: ScreenType) => {
     setIsProfileOpen(false);
@@ -58,7 +56,7 @@ export function AdminHeader({
   };
 
   const adminDisplayName =
-    currentUser?.fullName || currentUser?.username || currentUser?.email || "Administrator";
+    currentUser?.fullName || currentUser?.username || currentUser?.email || t("admin:header.fallbackName");
   const adminEmail = currentUser?.email || "admin@godotlaunch.com";
   const adminAvatar =
     currentUser?.avatarUrl ||
@@ -81,24 +79,12 @@ export function AdminHeader({
             <span className="flex items-center gap-1.5 font-display text-base font-bold leading-none tracking-tight text-slate-900 dark:text-white">
               godotlaunch{" "}
               <span className="rounded border border-rose-500/20 bg-rose-500/12 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/20 dark:text-rose-400">
-                ADMIN
+                {t("admin:header.badge")}
               </span>
             </span>
             <span className="font-mono text-[9px] tracking-wider text-slate-500 dark:text-slate-400">
-              MANAGEMENT MATRIX
+              {t("admin:header.managementMatrix")}
             </span>
-          </div>
-        </div>
-
-        <div className="hidden items-center gap-4 font-mono text-xs md:flex">
-          <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/85 px-2.5 py-1 text-emerald-600 shadow-sm dark:border-slate-700/40 dark:bg-slate-900/60 dark:text-emerald-400 dark:shadow-none">
-            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-500" />
-            <Activity size={12} />
-            <span>CLUSTERS: ONLINE</span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/85 px-2.5 py-1 text-sky-600 shadow-sm dark:border-slate-700/40 dark:bg-slate-900/60 dark:text-sky-400 dark:shadow-none">
-            <Cpu size={12} />
-            <span>NODE HEALTH: 99.98%</span>
           </div>
         </div>
 
@@ -108,7 +94,7 @@ export function AdminHeader({
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="rounded-xl border border-slate-200 bg-white/85 p-2 text-slate-500 shadow-sm transition-studio hover:text-amber-500 dark:border-slate-750 dark:bg-slate-900 dark:text-slate-400 dark:shadow-none dark:hover:text-amber-400"
-            title="Toggle theme mode"
+            title={t("admin:header.toggleTheme")}
           >
             {darkMode ? <Sun size={15} /> : <Moon size={15} />}
           </button>

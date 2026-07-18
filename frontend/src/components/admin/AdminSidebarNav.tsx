@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface AdminSidebarNavItem {
   key: string;
@@ -24,11 +25,13 @@ export const AdminSidebarNav: React.FC<AdminSidebarNavProps> = ({
   onSelect,
   footer,
 }) => {
+  const { t } = useTranslation(['admin']);
+
   return (
     <div className="overflow-hidden rounded-[28px] border border-[#0d1713] bg-[linear-gradient(180deg,#08110d_0%,#0b1510_100%)] text-slate-100 shadow-[0_22px_52px_rgba(15,23,42,0.22)] backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/92 dark:shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
       <div className="border-b border-white/8 px-5 py-5 dark:border-slate-800/80">
         <div className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-200 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200">
-          Admin-only surface
+          {t('nav.adminOnlySurface')}
         </div>
         <div className="mt-4">
           <h1 className="font-display text-xl font-bold text-white">{title}</h1>
@@ -37,7 +40,7 @@ export const AdminSidebarNav: React.FC<AdminSidebarNavProps> = ({
 
       <nav className="px-3 py-4">
         <div className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500/90 dark:text-slate-500">
-          Navigation
+          {t('nav.navigation')}
         </div>
         <div className="space-y-1.5">
           {items.map((item) => {

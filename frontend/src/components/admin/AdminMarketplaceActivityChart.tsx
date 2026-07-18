@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameResponse, MarketplaceItemResponse, PaymentResponse } from '../../types';
 
 interface AdminMarketplaceActivityChartProps {
@@ -22,7 +23,7 @@ interface AxisTick {
 
 interface ActivityBucket {
   key: string;
-  weekLabel: string;
+  weekIndex: number;
   rangeLabel: string;
   sourceListed: number;
   sourceSold: number;
@@ -35,31 +36,31 @@ const ASSET_LISTED_STATUSES = new Set(['active']);
 
 const METRIC_META: Array<{
   key: MetricKey;
-  label: string;
+  labelKey: string;
   barClass: string;
   badgeClass: string;
 }> = [
   {
     key: 'sourceListed',
-    label: 'Source Code Listed',
+    labelKey: 'admin:activityChart.metrics.sourceListed',
     barClass: 'bg-sky-500/80',
     badgeClass: 'border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300',
   },
   {
     key: 'sourceSold',
-    label: 'Source Code Sold',
+    labelKey: 'admin:activityChart.metrics.sourceSold',
     barClass: 'bg-cyan-300',
     badgeClass: 'border-cyan-400/25 bg-cyan-400/10 text-cyan-700 dark:text-cyan-200',
   },
   {
     key: 'assetListed',
-    label: 'Asset Listed',
+    labelKey: 'admin:activityChart.metrics.assetListed',
     barClass: 'bg-emerald-500/80',
     badgeClass: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
   },
   {
     key: 'assetSold',
-    label: 'Asset Sold',
+    labelKey: 'admin:activityChart.metrics.assetSold',
     barClass: 'bg-lime-300',
     badgeClass: 'border-lime-400/25 bg-lime-400/10 text-lime-700 dark:text-lime-200',
   },
@@ -153,7 +154,7 @@ const buildActivityBuckets = (
 
     return {
       key: start.toISOString().slice(0, 10),
-      weekLabel: `Week ${index + 1}`,
+      weekIndex: index + 1,
       rangeLabel: `${rangeFormatter.format(start)} - ${rangeFormatter.format(end)}`,
       sourceListed: 0,
       sourceSold: 0,
@@ -218,13 +219,13 @@ const buildActivityBuckets = (
   return buckets;
 };
 
-const buildMetricTitle = (bucket: ActivityBucket) =>
+const buildMetricTitle = (bucket: ActivityBucket, t: (key: string) => string) =>
   [
     bucket.rangeLabel,
-    `Source Code Listed: ${bucket.sourceListed}`,
-    `Source Code Sold: ${bucket.sourceSold}`,
-    `Asset Listed: ${bucket.assetListed}`,
-    `Asset Sold: ${bucket.assetSold}`,
+    `${t('admin:activityChart.metrics.sourceListed')}: ${bucket.sourceListed}`,
+    `${t('admin:activityChart.metrics.sourceSold')}: ${bucket.sourceSold}`,
+    `${t('admin:activityChart.metrics.assetListed')}: ${bucket.assetListed}`,
+    `${t('admin:activityChart.metrics.assetSold')}: ${bucket.assetSold}`,
   ].join('\n');
 
 const getMetricValue = (bucket: ActivityBucket, key: MetricKey) => bucket[key];
@@ -234,6 +235,7 @@ export const AdminMarketplaceActivityChart: React.FC<AdminMarketplaceActivityCha
   marketplaceItems,
   payments,
 }) => {
+  const { t } = useTranslation(['admin']);
   const [visibleWeeks, setVisibleWeeks] = useState<VisibleWeeks>(5);
 
   const chartData = useMemo(
@@ -274,7 +276,7 @@ export const AdminMarketplaceActivityChart: React.FC<AdminMarketplaceActivityCha
     <div className="min-w-0 rounded-[24px] border border-slate-200/90 bg-white/95 p-6 shadow-[0_18px_42px_rgba(148,163,184,0.14)] backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/45 dark:shadow-none">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="font-display text-sm font-semibold text-slate-800 dark:text-slate-200">
-          Marketplace Listings vs Sold
+          {t('admin:activityChart.title')}
         </h3>
 
         <div className="inline-flex rounded-xl border border-slate-200/90 bg-slate-50/90 p-1 shadow-[0_8px_20px_rgba(148,163,184,0.08)] dark:border-slate-800 dark:bg-slate-950/70 dark:shadow-none">
@@ -292,7 +294,7 @@ export const AdminMarketplaceActivityChart: React.FC<AdminMarketplaceActivityCha
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
-                {range}W
+                {range}{t('admin:activityChart.weekShort')}
               </button>
             );
           })}
@@ -307,7 +309,7 @@ export const AdminMarketplaceActivityChart: React.FC<AdminMarketplaceActivityCha
           >
             <div className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${metric.barClass.replace('/80', '')}`}></span>
-              <span>{metric.label}</span>
+              <span>{t(metric.labelKey)}</span>
             </div>
             <span className="font-display text-sm text-slate-900 dark:text-white">{totals[metric.key]}</span>
           </div>
@@ -349,7 +351,7 @@ export const AdminMarketplaceActivityChart: React.FC<AdminMarketplaceActivityCha
               <div key={bucket.key} className="min-w-0">
                 <div
                   className="flex h-[240px] items-end justify-center gap-1 md:gap-1.5"
-                  title={buildMetricTitle(bucket)}
+                  title={buildMetricTitle(bucket, t)}
                 >
                   {METRIC_META.map((metric) => {
                     const value = getMetricValue(bucket, metric.key);
@@ -367,7 +369,7 @@ export const AdminMarketplaceActivityChart: React.FC<AdminMarketplaceActivityCha
                 </div>
 
                 <div className="mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {bucket.weekLabel}
+                  {t('admin:activityChart.week', { number: bucket.weekIndex })}
                 </div>
                 <div className="mt-1 text-center text-[10px] leading-tight text-slate-400">
                   {bucket.rangeLabel}

@@ -1278,7 +1278,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         <div className="space-y-5 animate-fade-in py-1">
           {activeSection === "overview" ? (
             <>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 <div className="rounded-[24px] border border-slate-200/90 bg-white/96 p-4 shadow-[0_14px_36px_rgba(148,163,184,0.12)] space-y-2.5 dark:border-slate-800/80 dark:bg-slate-900 dark:shadow-none">
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1">
                     <DollarSign size={12} className="text-sky-500" /> Payout
@@ -1332,19 +1332,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         Action required
                       </span>
                     )}
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-slate-200/90 bg-white/96 p-4 shadow-[0_14px_36px_rgba(148,163,184,0.12)] space-y-2.5 dark:border-slate-800/80 dark:bg-slate-900 dark:shadow-none">
-                  <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1">
-                    <Activity size={12} className="text-emerald-500" /> Node
-                    Infrastructure
-                  </span>
-                  <div className="flex items-center gap-1.5 pt-0.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                    <span className="text-2xl font-display font-bold dark:text-white">
-                      99.98%
-                    </span>
                   </div>
                 </div>
               </div>
@@ -2151,10 +2138,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         </span>
                                                         <p className="italic text-[11px] text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-rose-500/10 break-words">
                                                           "
-                                                          {
-                                                            activeRejectedContract.rejectionReason ??
-                                                            ""
-                                                          }
+                                                          {activeRejectedContract.rejectionReason ??
+                                                            ""}
                                                           "
                                                         </p>
                                                       </div>
@@ -2447,7 +2432,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                       colSpan={7}
                                       className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
                                     >
-                                      🎉 Clean slate! No pending submissions to
+                                      Clean slate! No pending submissions to
                                       moderate.
                                     </td>
                                   </tr>
@@ -2852,7 +2837,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                       colSpan={6}
                                       className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
                                     >
-                                      🎉 Clean slate! No pending marketplace
+                                      Clean slate! No pending marketplace
                                       submissions to moderate.
                                     </td>
                                   </tr>
