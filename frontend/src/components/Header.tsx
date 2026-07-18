@@ -924,7 +924,7 @@ export function Header({
                               }}
                               className="w-full cursor-pointer py-1.5 text-left text-sm font-medium text-amber-500 transition-colors hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
                             >
-                              ✨ {t("become_developer")}
+                              {t("become_developer")}
                             </button>
                           </>
                         )}

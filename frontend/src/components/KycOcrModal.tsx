@@ -97,8 +97,8 @@ export default function KycOcrModal({
         setError(res.message || 'Không thể đọc thông tin. Vui lòng thử lại với ảnh rõ hơn.');
         setStep('upload');
       }
-    } catch {
-      setError('Lỗi kết nối. Vui lòng thử lại.');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Lỗi kết nối. Vui lòng thử lại.');
       setStep('upload');
     }
   }, [frontBase64, backBase64, docType]);
@@ -142,8 +142,8 @@ export default function KycOcrModal({
         setError(res.message || 'Lưu thông tin thất bại.');
         setStep('review');
       }
-    } catch {
-      setError('Lỗi kết nối. Vui lòng thử lại.');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Lỗi kết nối. Vui lòng thử lại.');
       setStep('review');
     }
   }, [form, frontBase64, backBase64, onSuccess]);

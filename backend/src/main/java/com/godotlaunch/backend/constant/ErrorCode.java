@@ -22,6 +22,8 @@ public enum ErrorCode {
     FACE_NOT_DETECTED(HttpStatus.BAD_REQUEST, "Không tìm thấy khuôn mặt rõ ràng trong ảnh. Vui lòng chụp lại với ánh sáng tốt hơn và nhìn thẳng vào camera."),
     FACE_DUPLICATE(HttpStatus.CONFLICT, "Khuôn mặt này đã được đăng ký với một tài khoản khác trong hệ thống."),
     FACE_VERIFY_REQUIRED(HttpStatus.FORBIDDEN, "Bạn cần xác thực khuôn mặt trước khi đăng tải lên Marketplace lần đầu tiên."),
+    KYC_ID_NUMBER_DUPLICATE(HttpStatus.CONFLICT, "Số CCCD/Passport này đã được xác thực bởi một tài khoản khác trong hệ thống."),
+    KYC_IMAGE_DUPLICATE(HttpStatus.CONFLICT, "Ảnh giấy tờ này đã được sử dụng để xác thực bởi một tài khoản khác trong hệ thống."),
     
     // 403 Forbidden
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "You do not have permission to execute this operation."),

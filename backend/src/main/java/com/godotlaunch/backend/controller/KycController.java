@@ -128,6 +128,26 @@ public class KycController {
             return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "KYC đã được xác thực trước đó."));
         }
 
+        // Chặn 2 tài khoản khác nhau cùng verify 1 CCCD/Passport — mỗi giấy tờ
+        // chỉ được gắn với đúng 1 user trong hệ thống. Chuẩn hóa (trim) trước khi
+        // so sánh để tránh né bằng khoảng trắng thừa.
+        String normalizedIdNumber = request.getIdNumber().trim();
+        if (userRepository.existsByKycIdNumberAndIdNot(normalizedIdNumber, user.getId())) {
+            throw new AppException(ErrorCode.KYC_ID_NUMBER_DUPLICATE);
+        }
+
+        // Chặn re-upload ẢNH CCCD/Passport CŨ (của người khác, đã từng KYC
+        // trước đó) kèm sửa tay idNumber để bypass check ở trên — check text
+        // không nhìn vào ảnh thật. So bằng CLIP embedding (ảnh↔ảnh), tách biệt
+        // hoàn toàn khỏi check idNumber. Gọi TRƯỚC khi upload lên storage để
+        // không lưu ảnh rác nếu bị chặn.
+        if (request.getFrontImageBase64() != null && !request.getFrontImageBase64().isBlank()) {
+            checkKycImageDuplicate(user.getId().toString(), "front", request.getFrontImageBase64());
+        }
+        if (request.getBackImageBase64() != null && !request.getBackImageBase64().isBlank()) {
+            checkKycImageDuplicate(user.getId().toString(), "back", request.getBackImageBase64());
+        }
+
         // Upload images if provided
         if (request.getFrontImageBase64() != null && !request.getFrontImageBase64().isBlank()) {
             try {
@@ -152,7 +172,7 @@ public class KycController {
 
         user.setKycDocumentType(request.getDocumentType());
         user.setKycFullName(request.getFullName());
-        user.setKycIdNumber(request.getIdNumber());
+        user.setKycIdNumber(normalizedIdNumber);
         user.setKycAddress(request.getAddress());
 
         if (request.getDateOfBirth() != null && !request.getDateOfBirth().isBlank()) {
@@ -184,6 +204,36 @@ public class KycController {
             return base64.split(",")[1];
         }
         return base64;
+    }
+
+    // Gọi Python /kyc/check-image — tính CLIP embedding ảnh CCCD/Passport,
+    // chặn nếu trùng ảnh của user khác (gộp check + save trong 1 lần gọi).
+    private void checkKycImageDuplicate(String userId, String imageSide, String imageBase64) {
+        try {
+            String url = faceServiceUrl + "/kyc/check-image";
+            Map<String, String> body = Map.of(
+                "userId", userId,
+                "imageSide", imageSide,
+                "imageBase64", imageBase64
+            );
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.POST,
+                new HttpEntity<>(body),
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> data = response.getBody();
+            if (data != null && Boolean.TRUE.equals(data.get("isDuplicate"))) {
+                throw new AppException(ErrorCode.KYC_IMAGE_DUPLICATE);
+            }
+        } catch (AppException ae) {
+            throw ae;
+        } catch (Exception e) {
+            // Fail-soft: lỗi kết nối/service KYC image check không được chặn
+            // đứng luồng KYC chính (idNumber check vẫn là lớp bảo vệ chính).
+            log.error("KYC image duplicate check failed (fail-soft, not blocking): {}", e.getMessage());
+        }
     }
 
     private User findUser(Principal principal) {

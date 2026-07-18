@@ -16,6 +16,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     Optional<User> findByGithubId(String githubId);
     boolean existsByEmail(String email);
+
+    // Chống 2 tài khoản khác nhau cùng verify 1 CCCD/Passport — mỗi giấy tờ
+    // chỉ được gắn với đúng 1 user. Loại trừ chính user đang confirm (cho
+    // phép họ tự sửa lại thông tin KYC của mình).
+    boolean existsByKycIdNumberAndIdNot(String kycIdNumber, UUID id);
     List<User> findByFullNameContainingIgnoreCaseAndStatus(String fullName, String status);
     List<User> findByRole_NameIgnoreCase(String roleName);
 

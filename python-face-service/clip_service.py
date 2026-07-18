@@ -108,3 +108,25 @@ def _to_score(cosine: float) -> int:
     norm = (cosine - lo) / (hi - lo)
     norm = max(0.0, min(1.0, norm))
     return int(round(norm * 100))
+
+
+def encode_image(image_b64: str) -> list[float] | None:
+    """
+    Trả về image embedding CLIP thô (512-dim, đã normalize) của 1 ảnh.
+    Dùng để so cosine similarity ảnh↔ảnh (KYC: chống re-upload ảnh CCCD cũ
+    của người khác) — khác match() vốn so ảnh↔text (media-match AI review).
+    """
+    img = _decode_image(image_b64)
+    if img is None:
+        return None
+    try:
+        _load()
+        import torch
+
+        inputs = _processor(images=[img], return_tensors="pt")
+        with torch.no_grad():
+            img_emb = _model.get_image_features(**inputs)
+            img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
+        return img_emb.squeeze(0).tolist()
+    except Exception:
+        return None
