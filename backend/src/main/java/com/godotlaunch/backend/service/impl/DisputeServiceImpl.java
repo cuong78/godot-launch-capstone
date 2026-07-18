@@ -1,15 +1,18 @@
 package com.godotlaunch.backend.service.impl;
 
+import com.godotlaunch.backend.config.FaceServiceClient;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.CreateDisputeRequest;
 import com.godotlaunch.backend.dto.request.ResolveDisputeRequest;
 import com.godotlaunch.backend.dto.response.DisputeResponse;
+import com.godotlaunch.backend.entity.BannedIdentity;
 import com.godotlaunch.backend.entity.Dispute;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.DisputeStatus;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.DisputeRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
@@ -32,6 +35,8 @@ public class DisputeServiceImpl implements DisputeService {
     private final DisputeRepository disputeRepository;
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
+    private final BannedIdentityRepository bannedIdentityRepository;
+    private final FaceServiceClient faceServiceClient;
 
     private static final int REFUND_DAYS = 5;
     private static final int SPAM_REPORT_LIMIT = 3;
@@ -163,13 +168,25 @@ public class DisputeServiceImpl implements DisputeService {
     }
 
     private void banSeller(User seller, String reason) {
-        seller.setStatus("banned");
-        userRepository.save(seller);
+        banUser(seller, reason);
     }
 
     private void banReporter(User reporter, String reason) {
-        reporter.setStatus("banned");
-        userRepository.save(reporter);
+        banUser(reporter, reason);
+    }
+
+    private void banUser(User user, String reason) {
+        user.setStatus("banned");
+        userRepository.save(user);
+
+        BannedIdentity banned = new BannedIdentity();
+        banned.setUserId(user.getId());
+        banned.setKycIdNumber(user.getKycIdNumber());
+        banned.setBankAccount(user.getBankAccount());
+        banned.setReason(reason);
+        bannedIdentityRepository.save(banned);
+
+        faceServiceClient.banFace(user.getId(), reason);
     }
 
     private void safeNotify(UUID userId, String message) {

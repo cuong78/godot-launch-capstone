@@ -17,6 +17,9 @@ export interface KycStatus {
   dateOfBirth: string | null;
   address: string | null;
   kycVerifiedAt: string | null;
+  bankName: string | null;
+  bankAccount: string | null;
+  bankAccountHolder: string | null;
   // Chỉ có giá trị khi lần confirm này vừa nâng role lên developer (đủ 3 điều kiện
   // become-developer) — dùng để refresh session ngay, không cần đăng nhập lại.
   token?: string | null;
@@ -30,6 +33,9 @@ export interface KycConfirmPayload {
   address?: string;
   frontImageBase64?: string;
   backImageBase64?: string;
+  bankName: string;
+  bankAccount: string;
+  bankAccountHolder: string;
 }
 
 export const kycApi = {

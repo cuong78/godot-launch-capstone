@@ -157,229 +157,6 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
   };
 };
 
-const INITIAL_ASSETS: Asset[] = [
-  {
-    id: 'cyber_interior',
-    title: 'Cyberpunk Interior Kit',
-    price: 250000,
-    rating: 4.9,
-    reviewedCount: 82,
-    author: 'NeoArtisans',
-    authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80',
-    category: 'Shaders & VFX',
-    description: 'An immersive cyberpunk-themed modular tile and lighting template setup. Includes custom particle glows, neon emissive shaders, modular desk modules, database control desks, and clean grid integration parameters. Pre-configured for Godot Engine lights and shadows optimization.',
-    image: IMAGE_SEED_MAP.interior,
-    tag: 'Cyberpunk, 2D, Modular, Sci-Fi',
-    tagList: ['Tileset', '2D', 'Emissive Shaders', 'Godot 4', 'Sci-Fi'],
-    itemType: 'asset',
-    isBestseller: true,
-    version: '1.2.0',
-    lastUpdated: 'May 14, 2026',
-    details: {
-      tilesCount: '120+ Tiles (16x16 / 32x32)',
-      spritesCount: '15 Interactive Animated Sprites',
-      propsCount: '45 Retro Props & Terminal Objects',
-      featuresList: [
-        'Dynamic Godot tile map setup',
-        'Custom light reflection layer',
-        'Pre-coded simple door & monitor functions',
-        'Highly optimized draw calls'
-      ]
-    }
-  },
-  {
-    id: 'neon_drift',
-    title: 'Neon Drift 2088 Project Template',
-    price: 120000,
-    rating: 4.8,
-    reviewedCount: 142,
-    author: 'OctaneGames',
-    authorAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=80&h=80&q=80',
-    category: 'Scripts & Plugins',
-    description: 'A complete arcade racer structure using Godot VehicleBody3D nodes. Features modular drift handling logic, nitro injection formulas, waypoint AI racers, and a cyberpunk neon visual palette.',
-    image: IMAGE_SEED_MAP.drift,
-    tag: 'Templates, 3D, Drift, Physics',
-    tagList: ['Templates', '3D', 'Physics', 'Godot 4.x', 'Racing'],
-    itemType: 'source_code',
-    isBestseller: true,
-    version: '2.0.1',
-    lastUpdated: 'Jan 22, 2026',
-    details: {
-      tilesCount: 'N/A (3D Scene)',
-      spritesCount: '4 High Performance Cars',
-      propsCount: '45 Modular Track Prefabs',
-      featuresList: [
-        'Advanced slip-angle physics model',
-        'Optimized viewport split screen configs',
-        'Fully documented steering wheel controls'
-      ]
-    }
-  },
-  {
-    id: 'pixel_planner',
-    title: 'Pixel Planner Simulation Framework',
-    price: 0,
-    rating: 4.6,
-    reviewedCount: 310,
-    author: 'LofiDev',
-    authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&h=80&q=80',
-    category: 'Scripts & Plugins',
-    description: 'A ready-made system designed to manage simulation grids, build pathways, and spawn modular citizens. Perfect for starting top-down cozy city builders or farm simulation games.',
-    image: IMAGE_SEED_MAP.planner,
-    tag: '2D, Grid, Simulation, Free',
-    tagList: ['Frameworks', 'Cozy', 'Simulation', 'Godot 4.x', 'A-Star Pathfinding'],
-    itemType: 'source_code',
-    version: '0.9.8',
-    lastUpdated: 'Apr 02, 2026',
-    details: {
-      tilesCount: '64 Tile Variants',
-      spritesCount: '12 Cozy Anim States',
-      propsCount: '20 Simple Obstacles',
-      featuresList: [
-        'Efficient A* pathfinding server implementation',
-        'Auto-indexing terrain decorator rules',
-        'Custom local storage save state hooks'
-      ]
-    }
-  },
-  {
-    id: 'void_knight',
-    title: 'Void Knight 3D Character Model Pack',
-    price: 150000,
-    rating: 4.9,
-    reviewedCount: 54,
-    author: 'VoidSmithed',
-    authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=80&h=80&q=80',
-    category: '3D Models',
-    description: 'A high-fidelity low-poly stylized character rigged and optimized for game engines. Features dark magical emission layers, modular weaponry specs, and 24 AAA game-ready animations.',
-    image: IMAGE_SEED_MAP.knight,
-    tag: 'Characters, 3D, Rigged, Fantasy',
-    tagList: ['Characters', 'Stylized', '3D Scene', 'Rigged', 'Fantasy'],
-    itemType: 'asset',
-    version: '1.0.0',
-    lastUpdated: 'Feb 10, 2026',
-    details: {
-      tilesCount: 'N/A',
-      spritesCount: '1 Customizable Mesh',
-      propsCount: '6 Modular Weapon Models',
-      featuresList: [
-        'Rigged with industry-standard joints',
-        'Low poly count (~8.5k tris)',
-        'Includes source .blend and ready GLTF formats'
-      ]
-    }
-  },
-  {
-    id: 'metro_tycoon',
-    title: 'Metro Tycoon Management Kit',
-    price: 200000,
-    rating: 4.7,
-    reviewedCount: 95,
-    author: 'StrategyLab',
-    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&h=80&q=80',
-    category: 'Scripts & Plugins',
-    description: 'An extensive isometric strategy kit comprising economy balancing formulas, track editing scripts, path logic routing, and expandable statistics widgets for high gameplay immersion.',
-    image: IMAGE_SEED_MAP.tycoon,
-    tag: 'Strategy, UI, Economy, Grid',
-    tagList: ['Strategy', 'UI & Elements', 'Grid Systems', 'Simulating', 'Godot 4'],
-    itemType: 'source_code',
-    version: '1.5.0',
-    lastUpdated: 'Mar 18, 2026',
-    details: {
-      tilesCount: '40 Train track combinations',
-      spritesCount: '6 animated commuter vehicles',
-      propsCount: '15 Station assets',
-      featuresList: [
-        'Advanced finance-tracking calculations',
-        'Custom modular pop-up panels',
-        'Localized language CSV file support'
-      ]
-    }
-  },
-  {
-    id: 'dynamic_sky',
-    title: 'Stylized Dynamic Sky & Ocean System',
-    price: 300000,
-    rating: 5.0,
-    reviewedCount: 61,
-    author: 'GlowFlow',
-    authorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=80&h=80&q=80',
-    category: 'Shaders & VFX',
-    description: 'A stellar interactive skybox shader with Day/Night cycles, physical cloud scattering layers, and customized responsive ocean waves parameters to scale visual limits.',
-    image: IMAGE_SEED_MAP.sky,
-    tag: 'Shaders, Dynamic, Sky, Water',
-    tagList: ['Shaders', 'Skybox', 'Weather System', '3D Scene', 'Godot 4.x'],
-    itemType: 'asset',
-    isBestseller: true,
-    version: '2.1.0',
-    lastUpdated: 'Jun 01, 2026',
-    details: {
-      tilesCount: 'N/A',
-      spritesCount: 'N/A',
-      propsCount: 'N/A',
-      featuresList: [
-        'Dynamic day-night ambient light synchronization',
-        'Custom noise-driven storm cloud generators',
-        'Stunning light scattering water shader'
-      ]
-    }
-  },
-  {
-    id: 'forest_lush',
-    title: 'Lush Forest 2D Cozy Tileset',
-    price: 90000,
-    rating: 4.5,
-    reviewedCount: 28,
-    author: 'NaturePixel',
-    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=80&h=80&q=80',
-    category: '2D Assets',
-    description: 'A beautiful organic nature environment set. Includes trees, water shader presets, rock varieties, flowers, and modular cliffs to build immersive RPG forest scenarios.',
-    image: IMAGE_SEED_MAP.forest,
-    tag: '2D, Tileset, Forest, RPG',
-    tagList: ['Tileset', '2D Assets', 'Modular Forest', 'RPG', '16x16 Grid'],
-    itemType: 'asset',
-    version: '1.0.3',
-    lastUpdated: 'May 20, 2026',
-    details: {
-      tilesCount: '250+ Hand-painted tiles',
-      spritesCount: '5 Ambient Wildlife Anims',
-      propsCount: '30 Organic Scene Modifiers',
-      featuresList: [
-        'Pre-configured collision layers in Godot 4.3',
-        'Layered parallax forest backgrounds (5 layers)',
-        'Fully sliceable tile atlas maps'
-      ]
-    }
-  },
-  {
-    id: 'retro_sfx',
-    title: 'Retro Arcade SFX Sound Anthology',
-    price: 80000,
-    rating: 4.7,
-    reviewedCount: 89,
-    author: 'LofiDev',
-    authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&h=80&q=80',
-    category: 'Audio & SFX',
-    description: 'An retro synthesizer archive of over 450 vintage sound effects. Ideal for shooters, platformers, UI transitions, level completes, lasers, and explosions.',
-    image: IMAGE_SEED_MAP.char, 
-    tag: 'Audio, Sound Effects, Retro, Synthesizer',
-    tagList: ['Audio', 'Chiptune FX', '16-bit', 'Vaporwave', 'Godot Ready'],
-    itemType: 'asset',
-    version: '1.4.0',
-    lastUpdated: 'Apr 11, 2026',
-    details: {
-      tilesCount: 'N/A',
-      spritesCount: '15 Audio Mix Tracks',
-      propsCount: '450 WAV & MP3 Tracks',
-      featuresList: [
-        'High quality lossless 44.1kHz standards',
-        'Seamless dynamic ambient loop capabilities',
-        'Optimized for rapid memory playback pipelines'
-      ]
-    }
-  }
-];
-
 // Helper functions for mapping URLs to screen states
 const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } => {
   const segments = path.split('/').filter(Boolean);
@@ -587,11 +364,11 @@ export default function App() {
   const [selectedAuthor, setSelectedAuthor] = useState<UserSummary | null>(null);
   const [searchText, setSearchText] = useState<string>('');
   
-  const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
+  const [assets, setAssets] = useState<Asset[]>([]);
   
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [godotVersion, setGodotVersion] = useState<string>('All Versions');
-  const [maxPrice, setMaxPrice] = useState<number>(200000000);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState<'popular' | 'price-low' | 'price-high'>('popular');
 
   const [cart, setCart] = useState<Asset[]>([]);
@@ -1125,8 +902,8 @@ export default function App() {
         if (!selectedCategories.includes(item.category)) return false;
       }
 
-      // Max price filter 
-      if (item.price > maxPrice) return false;
+      // Max price filter
+      if (maxPrice !== null && item.price > maxPrice) return false;
 
       return true;
     }).sort((a, b) => {
@@ -1162,26 +939,30 @@ export default function App() {
   return (
     <div id="godotlaunch-root" className={`${darkMode ? 'dark bg-transparent text-slate-100' : 'bg-transparent text-slate-800'} min-h-screen flex flex-col font-sans transition-colors duration-300 relative`}>
       
-      {/* 3D Voxel Nature Environment Background */}
-      <img 
-        id="voxel-background-layer"
-        src={VOXEL_BG_IMAGE}
-        alt="Voxel Background Scenery"
-        className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none transition-all duration-700" 
-        style={{ 
-          filter: darkMode ? 'brightness(0.4) contrast(1.1) saturate(1.12)' : 'brightness(0.98) contrast(1.0) saturate(1.0)'
-        }}
-        referrerPolicy="no-referrer"
-      />
+      {/* 3D Voxel Nature Environment Background — ẩn riêng ở trang developer-onboarding (landing dùng nền tối riêng) */}
+      {displayScreen !== 'developer-onboarding' && (
+        <>
+          <img
+            id="voxel-background-layer"
+            src={VOXEL_BG_IMAGE}
+            alt="Voxel Background Scenery"
+            className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none transition-all duration-700"
+            style={{
+              filter: darkMode ? 'brightness(0.4) contrast(1.1) saturate(1.12)' : 'brightness(0.98) contrast(1.0) saturate(1.0)'
+            }}
+            referrerPolicy="no-referrer"
+          />
 
-      {/* Gradient light/dark overlay tint */}
-      <div 
-        id="voxel-background-tint"
-        className="fixed inset-0 z-[1] pointer-events-none transition-all duration-700 bg-gradient-to-b from-white/5 via-white/10 to-white/20 dark:from-slate-950/20 dark:via-slate-950/35 dark:to-slate-950/50"
-      />
+          {/* Gradient light/dark overlay tint */}
+          <div
+            id="voxel-background-tint"
+            className="fixed inset-0 z-[1] pointer-events-none transition-all duration-700 bg-gradient-to-b from-white/5 via-white/10 to-white/20 dark:from-slate-950/20 dark:via-slate-950/35 dark:to-slate-950/50"
+          />
 
-      {/* Decorative ambient pixel dot overlay layer */}
-      <div className="fixed inset-0 pointer-events-none pixel-grid-overlay z-[2]"></div>
+          {/* Decorative ambient pixel dot overlay layer */}
+          <div className="fixed inset-0 pointer-events-none pixel-grid-overlay z-[2]"></div>
+        </>
+      )}
 
       {/* HEADER SECTION */}
       {isAdminManagedScreen ? (
@@ -1220,6 +1001,8 @@ export default function App() {
           displayScreen === 'explore'
             ? 'w-full max-w-none px-0 py-0'
             : displayScreen === 'admin'
+            ? 'w-full max-w-none px-0 py-0'
+            : displayScreen === 'developer-onboarding'
             ? 'w-full max-w-none px-0 py-0'
             : displayScreen === 'marketplace' || displayScreen === 'detail'
             ? 'w-full max-w-none px-4 py-6 sm:px-6 lg:px-8'
@@ -1479,7 +1262,12 @@ export default function App() {
       )}
 
       {/* FOOTER ACCENTS SECTION */}
-      {!isAdminManagedScreen && <Footer setCurrentScreen={setCurrentScreen} />}
+      {!isAdminManagedScreen && (
+        <Footer
+          setCurrentScreen={setCurrentScreen}
+          noTopMargin={displayScreen === 'developer-onboarding'}
+        />
+      )}
 
       {/* Toast Notifications */}
       {toast && (

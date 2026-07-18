@@ -27,7 +27,8 @@ public enum ErrorCode {
     
     // 403 Forbidden
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "You do not have permission to execute this operation."),
-    
+    IDENTITY_BANNED(HttpStatus.FORBIDDEN, "Danh tính này đã bị cấm khỏi hệ thống do vi phạm trước đó."),
+
     // 404 Not Found
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested user does not exist."),
     GAME_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested game does not exist."),
@@ -38,8 +39,7 @@ public enum ErrorCode {
     DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy khiếu nại."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tập tin trên server lưu trữ (Có thể đã bị xóa hoặc là dữ liệu mẫu)."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ."),
-    IDENTITY_BANNED(HttpStatus.FORBIDDEN, "Danh tính này đã bị cấm khỏi hệ thống do vi phạm trước đó."),
-    
+
     // 400 Bad Request additions / Category
     CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "Category name or slug already exists."),
     PARENT_CATEGORY_NOT_FOUND(HttpStatus.BAD_REQUEST, "Parent category does not exist."),

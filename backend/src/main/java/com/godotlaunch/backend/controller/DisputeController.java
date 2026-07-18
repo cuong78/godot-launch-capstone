@@ -26,8 +26,8 @@ public class DisputeController {
     private final DisputeService disputeService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
-    @Operation(summary = "Tố cáo sản phẩm vi phạm bản quyền", description = "B tạo dispute tố A. Sản phẩm bị tự động gỡ chờ điều tra.")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Tố cáo sản phẩm vi phạm bản quyền", description = "B tạo dispute tố A. Sản phẩm bị tự động gỡ chờ điều tra. Chỉ developer (đã qua GitHub+Face+KYC) mới được tố cáo — dispute chỉ có ý nghĩa giữa các developer tranh chấp source code.")
     public ResponseEntity<ApiResponse<DisputeResponse>> createDispute(
             @Valid @RequestBody CreateDisputeRequest request, Principal principal) {
         DisputeResponse res = disputeService.createDispute(request, principal.getName());
@@ -35,7 +35,7 @@ public class DisputeController {
     }
 
     @GetMapping("/my-reports")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
     @Operation(summary = "Khiếu nại tôi đã gửi")
     public ResponseEntity<ApiResponse<List<DisputeResponse>>> myReports(Principal principal) {
         return ResponseEntity.ok(ApiResponse.success(

@@ -1,0 +1,11 @@
+{
+  "landing.title": "Bắt đầu bán hàng trên GodotLaunch",
+  "landing.description": "GodotLaunch giúp việc bán game và tài nguyên trở nên dễ dàng hơn với quy trình đăng ký trực quan, giữ lại phần lớn doanh thu và tham gia cộng đồng developer Godot đang phát triển mỗi ngày.",
+  "landing.ctaPrimary": "Bắt đầu",
+  "landing.revenue.title": "Giữ {{percent}}% doanh thu",
+  "landing.revenue.description": "Nền tảng chỉ thu {{commission}}% hoa hồng — phần còn lại thuộc về bạn, minh bạch trên từng đơn hàng.",
+  "landing.community.title": "Tiếp cận cộng đồng Godot",
+  "landing.community.description": "Đưa game và tài nguyên của bạn tới cộng đồng developer đang tìm kiếm công cụ và nội dung chất lượng mỗi ngày.",
+  "landing.tools.title": "Công cụ hỗ trợ sẵn sàng",
+  "landing.tools.description": "Đăng bán, quản lý hợp đồng, theo dõi doanh thu và rút tiền — tất cả trong một quy trình đơn giản, rõ ràng."
+}
