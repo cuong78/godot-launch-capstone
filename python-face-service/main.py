@@ -11,6 +11,7 @@ from face_service import extract_embedding
 from db import (
     find_duplicate_face, save_face_embedding, delete_face_embedding,
     find_duplicate_kyc_image, save_kyc_image_embedding,
+    find_banned_face, ban_face_embedding,
 )
 from ocr_service import ocr_document, extract_text_from_image
 import source_service
@@ -41,12 +42,17 @@ class FaceRegisterRequest(BaseModel):
 
 class FaceCheckResponse(BaseModel):
     isDuplicate: bool
+    isBanned: bool = False
     message: str
 
 
 class FaceRegisterResponse(BaseModel):
     success: bool
     message: str
+
+
+class FaceBanRequest(BaseModel):
+    reason: str
 
 
 class OcrRequest(BaseModel):
@@ -133,8 +139,9 @@ def health():
 @app.post("/face/check", response_model=FaceCheckResponse)
 def check_face(req: FaceCheckRequest):
     """
-    Kiểm tra xem khuôn mặt đã tồn tại trong DB chưa.
-    Gọi trước khi tạo user. Không lưu gì vào DB.
+    Kiểm tra xem khuôn mặt đã tồn tại trong DB chưa, và có trùng với danh
+    tính đã bị cấm (banned_identities) không. Gọi trước khi tạo user.
+    Không lưu gì vào DB.
     """
     embedding = extract_embedding(req.imageBase64)
 
@@ -144,9 +151,18 @@ def check_face(req: FaceCheckRequest):
             detail="Không tìm thấy khuôn mặt rõ ràng trong ảnh. Vui lòng chụp lại với ánh sáng tốt hơn và nhìn thẳng vào camera."
         )
 
+    is_banned = find_banned_face(embedding, THRESHOLD)
+    if is_banned:
+        return FaceCheckResponse(
+            isDuplicate=True,
+            isBanned=True,
+            message="Danh tính này đã bị cấm khỏi nền tảng."
+        )
+
     is_dup = find_duplicate_face(embedding, THRESHOLD)
     return FaceCheckResponse(
         isDuplicate=is_dup,
+        isBanned=False,
         message="Khuôn mặt đã được đăng ký với tài khoản khác." if is_dup else "OK"
     )
 
@@ -177,6 +193,20 @@ def delete_face(user_id: str):
     return FaceRegisterResponse(
         success=deleted > 0,
         message=f"Deleted {deleted} embedding(s)."
+    )
+
+
+@app.post("/face/ban/{user_id}", response_model=FaceRegisterResponse)
+def ban_face(user_id: str, req: FaceBanRequest):
+    """
+    Copy face embedding hiện có của user sang banned_identities (nếu có) —
+    gọi bởi Spring Boot khi resolve dispute (ban seller/reporter). Embedding
+    gốc trong `embeddings` KHÔNG bị xóa (giữ để đối chiếu lịch sử/audit).
+    """
+    copied = ban_face_embedding(user_id, req.reason)
+    return FaceRegisterResponse(
+        success=True,
+        message="Face embedding banned." if copied else "User has no registered face embedding; ban recorded without face vector."
     )
 
 

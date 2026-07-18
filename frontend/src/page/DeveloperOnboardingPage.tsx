@@ -3,6 +3,7 @@ import { CheckCircle2, Github, ScanFace, FileText, Sparkles, Loader2 } from 'luc
 import { Button } from '../components/Button';
 import { FaceVerifyModal } from '../components/FaceVerifyModal';
 import KycOcrModal from '../components/KycOcrModal';
+import { BecomeDeveloperLanding } from '../components/BecomeDeveloperLanding';
 import { userApi } from '../api/userApi';
 import { authApi } from '../api/authApi';
 import { faceVerifyApi } from '../api/faceVerifyApi';
@@ -24,21 +25,45 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [showKycModal, setShowKycModal] = useState(false);
   const [isLinkingGithub, setIsLinkingGithub] = useState(false);
+  // Trang chào mừng (Fab-style) hiện mặc định; bỏ qua thẳng vào 3 bước nếu
+  // user đã có tiến độ từ trước (không bắt xem lại landing mỗi lần quay lại).
+  const [hasStarted, setHasStarted] = useState(false);
 
   const loadStatus = async () => {
     setIsLoadingStatus(true);
     setError(null);
     try {
-      const [githubRes, faceRes, kycRes] = await Promise.all([
+      // allSettled: face-verify/kyc status đòi GitHub đã link ở backend, nên
+      // với user hoàn toàn mới (chưa link) 2 request đó sẽ reject — đây là
+      // trạng thái bình thường (chưa hoàn thành bước), không phải lỗi thật.
+      const [githubRes, faceRes, kycRes] = await Promise.allSettled([
         userApi.getGitHubStatus(),
         faceVerifyApi.getStatus(),
         kycApi.getStatus(),
       ]);
-      if (githubRes.success && githubRes.data) setGithubLinked(githubRes.data.linked);
-      if (faceRes.success && faceRes.data) setFaceVerified(faceRes.data.faceVerified);
-      if (kycRes.success && kycRes.data) setKycVerified(kycRes.data.kycVerified);
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Không thể tải trạng thái xác minh.');
+      const linked =
+        githubRes.status === 'fulfilled' && githubRes.value.success && githubRes.value.data
+          ? githubRes.value.data.linked
+          : false;
+      const faceOk =
+        faceRes.status === 'fulfilled' && faceRes.value.success && faceRes.value.data
+          ? faceRes.value.data.faceVerified
+          : false;
+      const kycOk =
+        kycRes.status === 'fulfilled' && kycRes.value.success && kycRes.value.data
+          ? kycRes.value.data.kycVerified
+          : false;
+      setGithubLinked(linked);
+      setFaceVerified(faceOk);
+      setKycVerified(kycOk);
+      if (linked || faceOk || kycOk) setHasStarted(true);
+
+      // Chỉ hiện lỗi thật nếu chính request lấy trạng thái GitHub thất bại
+      // (đây là request duy nhất không phụ thuộc điều kiện đã link trước đó).
+      if (githubRes.status === 'rejected') {
+        const err = githubRes.reason;
+        setError(err?.response?.data?.message || err?.message || 'Không thể tải trạng thái xác minh.');
+      }
     } finally {
       setIsLoadingStatus(false);
     }
@@ -109,23 +134,37 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
     },
   ];
 
+  const showLanding = !isLoadingStatus && !hasStarted && !allDone && !isDeveloper;
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6 animate-fade-in py-8">
-      <div className="text-center">
-        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">Trở thành Developer</h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Hoàn tất cả 3 bước dưới đây để được công nhận là Developer và có thể đăng tải game/asset lên GodotLaunch.
-        </p>
-      </div>
+    <div
+      className={
+        showLanding
+          ? 'animate-fade-in'
+          : 'mx-auto max-w-2xl space-y-6 px-4 py-8 animate-fade-in sm:px-6 lg:px-8'
+      }
+    >
+      {!showLanding && (
+        <div className="text-center">
+          <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">Trở thành Developer</h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Hoàn tất cả 3 bước dưới đây để được công nhận là Developer và có thể đăng tải game/asset lên GodotLaunch.
+          </p>
+        </div>
+      )}
 
       {error && (
-        <div className="rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>
+        <div className={showLanding ? 'px-4 sm:px-6 lg:px-8 mb-4' : ''}>
+          <div className="rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>
+        </div>
       )}
 
       {isLoadingStatus ? (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500 dark:text-slate-400">
           <Loader2 size={16} className="animate-spin" /> Đang tải trạng thái...
         </div>
+      ) : showLanding ? (
+        <BecomeDeveloperLanding onGetStarted={() => setHasStarted(true)} />
       ) : allDone || isDeveloper ? (
         <div className="rounded-3xl border border-emerald-300/70 bg-emerald-50 p-8 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">

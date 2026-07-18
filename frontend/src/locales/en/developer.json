@@ -1,0 +1,11 @@
+{
+  "landing.title": "Start selling on GodotLaunch",
+  "landing.description": "GodotLaunch makes selling games and assets easy with a straightforward onboarding process, generous revenue share, and a growing community of Godot developers.",
+  "landing.ctaPrimary": "Get Started",
+  "landing.revenue.title": "Keep {{percent}}% of revenue",
+  "landing.revenue.description": "The platform only takes a {{commission}}% commission — the rest is yours, transparent on every order.",
+  "landing.community.title": "Reach the Godot community",
+  "landing.community.description": "Put your games and assets in front of developers looking for quality tools and content every day.",
+  "landing.tools.title": "Ready-to-use tools",
+  "landing.tools.description": "List products, manage contracts, track revenue and withdraw earnings — all in one clear workflow."
+}

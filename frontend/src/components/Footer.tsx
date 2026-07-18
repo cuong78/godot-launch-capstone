@@ -2,11 +2,12 @@ import React from 'react';
 
 interface FooterProps {
   setCurrentScreen: (screen: 'explore' | 'marketplace' | 'upload' | 'path' | 'dashboard' | 'detail' | 'community') => void;
+  noTopMargin?: boolean;
 }
 
-export function Footer({ setCurrentScreen }: FooterProps) {
+export function Footer({ setCurrentScreen, noTopMargin = false }: FooterProps) {
   return (
-    <footer id="godotlaunch-footer" className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800/80 transition-colors duration-200 relative z-0 mt-16">
+    <footer id="godotlaunch-footer" className={`bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800/80 transition-colors duration-200 relative z-0 ${noTopMargin ? '' : 'mt-16'}`}>
       <div className="w-full px-4 py-10 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="space-y-1.5 flex flex-col items-center md:items-start text-center md:text-left">
           <span className="font-display font-bold text-sm tracking-tight text-slate-800 dark:text-white">

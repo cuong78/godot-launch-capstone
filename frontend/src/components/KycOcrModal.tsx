@@ -7,7 +7,15 @@ type Step = 'upload' | 'processing' | 'review' | 'submitting' | 'success';
 type DocType = 'cccd' | 'passport';
 
 interface Props {
-  onSuccess: (status: { fullName: string; idNumber: string; address: string | null; dateOfBirth: string | null }) => void;
+  onSuccess: (status: {
+    fullName: string;
+    idNumber: string;
+    address: string | null;
+    dateOfBirth: string | null;
+    bankName: string;
+    bankAccount: string;
+    bankAccountHolder: string;
+  }) => void;
   onClose: () => void;
   // Cho phép caller tùy chỉnh nội dung theo ngữ cảnh gọi (become-developer, ký hợp đồng...).
   // Mặc định giữ nguyên text gốc (luồng ký hợp đồng) để không đổi hành vi các nơi đã dùng
@@ -21,6 +29,9 @@ const FIELD_LABELS: Record<string, string> = {
   idNumber: 'Số CCCD / Hộ chiếu',
   dateOfBirth: 'Ngày sinh (DD/MM/YYYY)',
   address: 'Địa chỉ thường trú',
+  bankName: 'Ngân hàng',
+  bankAccount: 'Số tài khoản',
+  bankAccountHolder: 'Chủ tài khoản',
 };
 
 export default function KycOcrModal({
@@ -43,6 +54,9 @@ export default function KycOcrModal({
     idNumber: '',
     dateOfBirth: '',
     address: '',
+    bankName: '',
+    bankAccount: '',
+    bankAccountHolder: '',
   });
   const [error, setError] = useState<string | null>(null);
   const frontInputRef = useRef<HTMLInputElement>(null);
@@ -85,13 +99,14 @@ export default function KycOcrModal({
       const res = await kycApi.ocr(frontBase64, docType);
       if (res.success && res.data) {
         setOcrResult(res.data);
-        setForm({
+        setForm((f) => ({
+          ...f,
           documentType: docType,
           fullName: res.data.fullName ?? '',
           idNumber: res.data.idNumber ?? '',
           dateOfBirth: res.data.dateOfBirth ?? '',
           address: res.data.address ?? '',
-        });
+        }));
         setStep('review');
       } else {
         setError(res.message || 'Không thể đọc thông tin. Vui lòng thử lại với ảnh rõ hơn.');
@@ -106,6 +121,10 @@ export default function KycOcrModal({
   const handleConfirm = useCallback(async () => {
     if (!form.fullName.trim() || !form.idNumber.trim()) {
       setError('Họ tên và số giấy tờ không được để trống.');
+      return;
+    }
+    if (!form.bankName.trim() || !form.bankAccount.trim() || !form.bankAccountHolder.trim()) {
+      setError('Vui lòng cung cấp đầy đủ thông tin tài khoản ngân hàng.');
       return;
     }
     setStep('submitting');
@@ -136,6 +155,9 @@ export default function KycOcrModal({
             idNumber: form.idNumber,
             address: form.address || null,
             dateOfBirth: form.dateOfBirth || null,
+            bankName: form.bankName,
+            bankAccount: form.bankAccount,
+            bankAccountHolder: form.bankAccountHolder,
           });
         }, 1500);
       } else {
@@ -347,6 +369,24 @@ export default function KycOcrModal({
                       className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-400/60"
                     />
                   )}
+                </div>
+              ))}
+
+              <div className="flex items-center gap-2 text-white/40 text-[11px] pt-1">
+                <span className="h-px flex-1 bg-white/10" />
+                Tài khoản ngân hàng nhận thanh toán
+                <span className="h-px flex-1 bg-white/10" />
+              </div>
+
+              {(['bankName', 'bankAccount', 'bankAccountHolder'] as const).map((field) => (
+                <div key={field}>
+                  <label className="text-white/50 text-xs mb-1 block">{FIELD_LABELS[field]}</label>
+                  <input
+                    type="text"
+                    value={form[field] ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-400/60"
+                  />
                 </div>
               ))}
 

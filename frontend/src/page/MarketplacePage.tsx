@@ -23,8 +23,8 @@ interface MarketplacePageProps {
   toggleCategory: (category: string) => void;
   godotVersion: string;
   setGodotVersion: (version: string) => void;
-  maxPrice: number;
-  setMaxPrice: (price: number) => void;
+  maxPrice: number | null;
+  setMaxPrice: (price: number | null) => void;
   sortOrder: "popular" | "price-low" | "price-high";
   setSortOrder: (order: "popular" | "price-low" | "price-high") => void;
   handleViewAssetDetails: (asset: Asset) => void;
@@ -34,14 +34,7 @@ interface MarketplacePageProps {
 }
 
 const DEFAULT_GODOT_VERSION = "All Versions";
-const DEFAULT_MAX_PRICE = 200000000;
-
-const GODOT_VERSION_OPTIONS = [
-  { value: DEFAULT_GODOT_VERSION, labelKey: "filters.versions.all" },
-  { value: "Godot 4.x (Latest)", labelKey: "filters.versions.godot4Latest" },
-  { value: "Godot 3.5 LTS", labelKey: "filters.versions.godot35Lts" },
-  { value: "Legacy Godot 3.x", labelKey: "filters.versions.legacyGodot3x" },
-] as const;
+const MAX_PRICE_CEILING = 10000000;
 
 const SORT_OPTIONS = [
   { value: "popular", labelKey: "filters.sort.popular" },
@@ -83,31 +76,46 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   ownedProductIds,
 }) => {
   const { t, i18n } = useTranslation(["marketplace"]);
-  // Marketplace giờ chỉ còn asset thuần (source_code chuyển sang Game market)
-  const assetListings = filteredAssets;
   const numberLocale = resolveNumberLocale(
     i18n.resolvedLanguage || i18n.language,
   );
 
+  const [catalogType, setCatalogType] = React.useState<"game" | "asset">("game");
+  const [gameCategories, setGameCategories] = React.useState<CategoryResponse[]>([]);
   const [assetCategories, setAssetCategories] = React.useState<CategoryResponse[]>([]);
 
   React.useEffect(() => {
-    const loadAssetCategories = async () => {
+    const loadCategories = async () => {
       try {
-        const res = await gameApi.getCategories("asset");
-        if (res.success && res.data) setAssetCategories(res.data);
+        const [gameRes, assetRes] = await Promise.all([
+          gameApi.getCategories("game"),
+          gameApi.getCategories("asset"),
+        ]);
+        if (gameRes.success && gameRes.data) setGameCategories(gameRes.data);
+        if (assetRes.success && assetRes.data) setAssetCategories(assetRes.data);
       } catch (err) {
-        console.error("Failed to load asset categories:", err);
+        console.error("Failed to load categories:", err);
       }
     };
-    loadAssetCategories();
+    loadCategories();
   }, []);
+
+  const activeCategories = catalogType === "game" ? gameCategories : assetCategories;
+  const targetItemType = catalogType === "game" ? "source_code" : "asset";
+  const assetListings = filteredAssets.filter(
+    (asset) => asset.itemType === targetItemType,
+  );
+
+  const handleCatalogTypeChange = (type: "game" | "asset") => {
+    setCatalogType(type);
+    setSelectedCategories([]);
+  };
 
   const resetMarketplaceFilters = () => {
     setSearchText("");
     setSelectedCategories([]);
     setGodotVersion(DEFAULT_GODOT_VERSION);
-    setMaxPrice(DEFAULT_MAX_PRICE);
+    setMaxPrice(null);
   };
 
   const renderEmptyState = (title: string, description: string) => (
@@ -153,8 +161,32 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
               {t("filters.categoryLabel")}
             </label>
+            <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-slate-50 p-1 dark:bg-slate-950">
+              <button
+                type="button"
+                onClick={() => handleCatalogTypeChange("game")}
+                className={`rounded-md py-1.5 text-xs font-bold transition-studio ${
+                  catalogType === "game"
+                    ? "bg-white text-slate-850 shadow-sm dark:bg-slate-800 dark:text-white"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
+              >
+                {t("filters.catalogType.game", "Game")}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCatalogTypeChange("asset")}
+                className={`rounded-md py-1.5 text-xs font-bold transition-studio ${
+                  catalogType === "asset"
+                    ? "bg-white text-slate-850 shadow-sm dark:bg-slate-800 dark:text-white"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
+              >
+                {t("filters.catalogType.asset", "Asset")}
+              </button>
+            </div>
             <div className="space-y-2">
-              {assetCategories.map((category) => (
+              {activeCategories.map((category) => (
                 <label
                   key={category.id}
                   className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 font-medium cursor-pointer"
@@ -171,24 +203,6 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
             </div>
           </div>
 
-          {/* Godot spec target edition dropdown */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-              {t("filters.versionLabel")}
-            </label>
-            <select
-              value={godotVersion}
-              onChange={(e) => setGodotVersion(e.target.value)}
-              className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-sky-500 text-slate-600 dark:text-slate-200"
-            >
-              {GODOT_VERSION_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {t(option.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Sliding price filter input */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between text-xs">
@@ -196,15 +210,17 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 {t("filters.priceLabel")}
               </label>
               <span className="font-mono font-bold text-amber-500">
-                {formatCurrencyAmount(maxPrice, numberLocale)}
+                {maxPrice === null
+                  ? t("filters.price.noLimit")
+                  : formatCurrencyAmount(maxPrice, numberLocale)}
               </span>
             </div>
             <input
               type="range"
               min="0"
-              max={DEFAULT_MAX_PRICE}
-              step="1000000"
-              value={maxPrice}
+              max={MAX_PRICE_CEILING}
+              step="500000"
+              value={maxPrice ?? MAX_PRICE_CEILING}
               onChange={(e) => setMaxPrice(parseInt(e.target.value))}
               className="w-full accent-amber-400 h-1 bg-slate-100 dark:bg-slate-950 rounded-lg appearance-none cursor-pointer"
             />
@@ -217,12 +233,12 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               </span>
               <span>
                 {t("filters.price.mid", {
-                  amount: formatCurrencyAmount(100000000, numberLocale),
+                  amount: formatCurrencyAmount(MAX_PRICE_CEILING / 2, numberLocale),
                 })}
               </span>
               <span>
                 {t("filters.price.max", {
-                  amount: formatCurrencyAmount(DEFAULT_MAX_PRICE, numberLocale),
+                  amount: formatCurrencyAmount(MAX_PRICE_CEILING, numberLocale),
                 })}
               </span>
             </div>

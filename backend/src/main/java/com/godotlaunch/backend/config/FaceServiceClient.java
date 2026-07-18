@@ -24,10 +24,20 @@ public class FaceServiceClient {
 
     /**
      * Kiểm tra khuôn mặt có trùng với tài khoản đã đăng ký không.
-     * @return true nếu trùng (duplicate), false nếu hợp lệ
+     * @return true nếu trùng (duplicate — kể cả banned), false nếu hợp lệ
      * @throws FaceServiceException nếu không tìm thấy mặt hoặc service lỗi
      */
     public boolean isDuplicateFace(String imageBase64) {
+        return checkFace(imageBase64).isDuplicate();
+    }
+
+    /**
+     * Kiểm tra khuôn mặt: trùng thường (duplicate) hay trùng với danh tính đã
+     * bị cấm (banned) — 2 trạng thái khác nhau, banned phải chặn cứng không
+     * cho verify lại, khác với duplicate thường (báo lỗi, có thể do nhầm ảnh).
+     * @throws FaceServiceException nếu không tìm thấy mặt hoặc service lỗi
+     */
+    public FaceCheckResult checkFace(String imageBase64) {
         try {
             String url = faceServiceUrl + "/face/check";
             Map<String, String> body = Map.of("imageBase64", imageBase64);
@@ -42,7 +52,9 @@ public class FaceServiceClient {
             if (result == null) {
                 throw new FaceServiceException("Face service trả về response rỗng.");
             }
-            return Boolean.TRUE.equals(result.get("isDuplicate"));
+            boolean isDuplicate = Boolean.TRUE.equals(result.get("isDuplicate"));
+            boolean isBanned = Boolean.TRUE.equals(result.get("isBanned"));
+            return new FaceCheckResult(isDuplicate, isBanned);
 
         } catch (FaceServiceException e) {
             throw e;
@@ -53,9 +65,11 @@ public class FaceServiceClient {
         } catch (Exception e) {
             log.error("Face service unavailable: {}", e.getMessage());
             // Fail open: nếu service down thì vẫn cho đăng ký
-            return false;
+            return new FaceCheckResult(false, false);
         }
     }
+
+    public record FaceCheckResult(boolean isDuplicate, boolean isBanned) {}
 
     /**
      * Lưu face embedding sau khi user đã được tạo thành công.
@@ -84,6 +98,22 @@ public class FaceServiceClient {
             restTemplate.delete(url);
         } catch (Exception e) {
             log.error("Failed to delete face for user {}: {}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * Copy face embedding hiện có của user sang banned_identities khi ban.
+     * Fail-soft: không throw để không chặn luồng resolve dispute nếu
+     * face-service down (embedding gốc vẫn còn, có thể ban lại thủ công sau).
+     */
+    public void banFace(UUID userId, String reason) {
+        try {
+            String url = faceServiceUrl + "/face/ban/" + userId;
+            Map<String, String> body = Map.of("reason", reason);
+            restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(body),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.error("Failed to ban face for user {}: {}", userId, e.getMessage());
         }
     }
 

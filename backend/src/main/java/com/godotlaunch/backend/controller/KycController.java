@@ -9,6 +9,7 @@ import com.godotlaunch.backend.dto.response.KycStatusResponse;
 import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.RoleRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.AuthService;
@@ -46,6 +47,7 @@ public class KycController {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final BannedIdentityRepository bannedIdentityRepository;
     private final AuthService authService;
     private final SeaweedFsService seaweedFsService;
     private final RestTemplate restTemplate = new RestTemplate();
@@ -128,10 +130,18 @@ public class KycController {
             return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "KYC đã được xác thực trước đó."));
         }
 
+        // Chặn danh tính đã bị cấm (dispute resolve → ban) đăng ký/xác thực
+        // lại bằng CCCD hoặc số tài khoản ngân hàng khác — kiểm tra TRƯỚC
+        // check trùng thông thường bên dưới, vì đây là chặn cứng vĩnh viễn.
+        String normalizedIdNumber = request.getIdNumber().trim();
+        if (bannedIdentityRepository.existsByKycIdNumber(normalizedIdNumber)
+                || bannedIdentityRepository.existsByBankAccount(request.getBankAccount().trim())) {
+            throw new AppException(ErrorCode.IDENTITY_BANNED);
+        }
+
         // Chặn 2 tài khoản khác nhau cùng verify 1 CCCD/Passport — mỗi giấy tờ
         // chỉ được gắn với đúng 1 user trong hệ thống. Chuẩn hóa (trim) trước khi
         // so sánh để tránh né bằng khoảng trắng thừa.
-        String normalizedIdNumber = request.getIdNumber().trim();
         if (userRepository.existsByKycIdNumberAndIdNot(normalizedIdNumber, user.getId())) {
             throw new AppException(ErrorCode.KYC_ID_NUMBER_DUPLICATE);
         }
@@ -174,6 +184,9 @@ public class KycController {
         user.setKycFullName(request.getFullName());
         user.setKycIdNumber(normalizedIdNumber);
         user.setKycAddress(request.getAddress());
+        user.setBankName(request.getBankName());
+        user.setBankAccount(request.getBankAccount());
+        user.setBankAccountHolder(request.getBankAccountHolder());
 
         if (request.getDateOfBirth() != null && !request.getDateOfBirth().isBlank()) {
             user.setKycDateOfBirth(parseDob(request.getDateOfBirth()));
@@ -258,6 +271,9 @@ public class KycController {
                 .kycVerifiedAt(user.getKycVerifiedAt())
                 .kycFrontImageUrl(user.getKycFrontImageUrl())
                 .kycBackImageUrl(user.getKycBackImageUrl())
+                .bankName(user.getBankName())
+                .bankAccount(user.getBankAccount())
+                .bankAccountHolder(user.getBankAccountHolder())
                 .token(token)
                 .build();
     }

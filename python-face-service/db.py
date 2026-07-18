@@ -56,6 +56,48 @@ def delete_face_embedding(user_id: str) -> int:
     return deleted
 
 
+def find_banned_face(embedding: list[float], threshold: float) -> bool:
+    """
+    Query pgvector: khuôn mặt có trùng với 1 danh tính trong blacklist
+    banned_identities không — khác find_duplicate_face (chỉ báo trùng
+    thường), đây dùng để CHẶN CỨNG (không cho verify lại).
+    """
+    vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
+    sql = """
+        SELECT 1
+        FROM banned_identities
+        WHERE face_embedding IS NOT NULL
+          AND face_embedding <=> %s::vector <= %s
+        LIMIT 1
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (vec_str, threshold))
+            return cur.fetchone() is not None
+
+
+def ban_face_embedding(user_id: str, reason: str) -> bool:
+    """
+    Copy face embedding hiện có của user (nếu có) sang banned_identities.
+    Không xóa embedding gốc trong `embeddings` (giữ nguyên hành vi cũ —
+    dùng để đối chiếu lịch sử/audit). Trả False nếu user chưa từng đăng ký
+    face embedding (vẫn hợp lệ — CCCD/bank vẫn được Java lưu vào bảng ban).
+    """
+    sql = """
+        INSERT INTO banned_identities (user_id, face_embedding, reason)
+        SELECT %s, embedding_128, %s
+        FROM embeddings
+        WHERE user_id = %s AND type = 'face'
+        LIMIT 1
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (user_id, reason, user_id))
+            inserted = cur.rowcount
+        conn.commit()
+    return inserted > 0
+
+
 def find_duplicate_kyc_image(user_id: str, image_side: str, embedding: list[float], threshold: float) -> str | None:
     """
     Chống bypass KYC: re-upload ảnh CCCD/Passport CŨ (của người khác, đã từng

@@ -1,0 +1,11 @@
+{
+  "landing.title": "GodotLaunch で販売を始めよう",
+  "landing.description": "GodotLaunch は分かりやすい登録プロセス、高い収益還元率、そして日々成長する Godot 開発者コミュニティで、ゲームやアセットの販売を簡単にします。",
+  "landing.ctaPrimary": "始める",
+  "landing.revenue.title": "収益の{{percent}}%を獲得",
+  "landing.revenue.description": "プラットフォーム手数料はわずか{{commission}}% — 残りはすべてあなたのもの。すべての注文で透明性を保証します。",
+  "landing.community.title": "Godot コミュニティへリーチ",
+  "landing.community.description": "質の高いツールやコンテンツを求める開発者たちに、あなたのゲームやアセットを届けましょう。",
+  "landing.tools.title": "すぐ使えるツール",
+  "landing.tools.description": "出品、契約管理、収益追跡、出金申請まで、すべて一つの分かりやすいワークフローで完結します。"
+}

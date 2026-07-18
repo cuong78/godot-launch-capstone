@@ -65,10 +65,13 @@ public class FaceVerifyController {
             ));
         }
 
-        // Check duplicate
+        // Check duplicate / banned
         try {
-            boolean isDuplicate = faceServiceClient.isDuplicateFace(request.getFaceImageBase64());
-            if (isDuplicate) {
+            FaceServiceClient.FaceCheckResult check = faceServiceClient.checkFace(request.getFaceImageBase64());
+            if (check.isBanned()) {
+                throw new AppException(ErrorCode.IDENTITY_BANNED);
+            }
+            if (check.isDuplicate()) {
                 throw new AppException(ErrorCode.FACE_DUPLICATE);
             }
         } catch (AppException ae) {

@@ -97,6 +97,15 @@ public class User {
     @Column(name = "kyc_back_image_url", columnDefinition = "TEXT")
     private String kycBackImageUrl;
 
+    @Column(name = "bank_name", length = 200)
+    private String bankName;
+
+    @Column(name = "bank_account", length = 100)
+    private String bankAccount;
+
+    @Column(name = "bank_account_holder", length = 200)
+    private String bankAccountHolder;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 
