@@ -454,7 +454,7 @@ public class GameServiceImpl implements GameService {
     private GameResponse mapToResponse(Game game) {
         List<Media> mediaList = gameMedia(game.getId());
         List<String> screenshots = mediaList.stream()
-                .filter(m -> "image".equalsIgnoreCase(m.getMediaType()))
+                .filter(m -> "image".equalsIgnoreCase(m.getMediaType()) || "screenshot".equalsIgnoreCase(m.getMediaType()))
                 .map(m -> getPresignedGetUrl(m.getMediaUrl()))
                 .collect(Collectors.toList());
         String videoUrl = mediaList.stream()
