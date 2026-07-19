@@ -7,9 +7,9 @@ SET client_encoding TO 'UTF8';
 --  BCrypt cost 12 — khớp với BCryptPasswordEncoder của backend.
 --
 --  Chạy thủ công (KHÔNG phải Flyway migration):
---    psql -h localhost -U user_godot_launch -d godot_launch -f backend/seed_users.sql
+--    psql -h localhost -U user_godot_launch -d godot_launch -f backend/seed/seed_users.sql
 --  hoặc:
---    docker exec -i godotlaunch-postgres psql -U user_godot_launch -d godot_launch < backend/seed_users.sql
+--    docker exec -i godotlaunch-postgres psql -U user_godot_launch -d godot_launch < backend/seed/seed_users.sql
 --
 --  Idempotent: ON CONFLICT (email) DO NOTHING — chạy lại không tạo trùng.
 -- ============================================================
@@ -68,7 +68,12 @@ VALUES
      'dev5@godotlaunch.test',
      '$2b$12$12xKzF7yBLJO2e7sBTxiSOQN/nGnoHzB9ViAGIEoEnP32ObLeXdAO',
      'Ngô Văn Phú', 'active', FALSE)
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET
+    role_id = EXCLUDED.role_id,
+    password_hash = EXCLUDED.password_hash,
+    full_name = EXCLUDED.full_name,
+    status = EXCLUDED.status,
+    face_verified = EXCLUDED.face_verified;
 
 -- Kiểm tra kết quả
 SELECT u.email, r.name AS role, u.full_name, u.status, u.face_verified

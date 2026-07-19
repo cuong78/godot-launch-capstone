@@ -196,7 +196,7 @@ Features:
   'https://images.unsplash.com/photo-1601987177651-8edfe6c20009',
   'published',
   'marketplace_listing',
-  1200000.00,
+  0,
   0,
   TRUE,
   'https://github.com/darksilver/survival-horror-framework'
@@ -242,7 +242,7 @@ Features:
   'https://images.unsplash.com/photo-1511512578047-dfb367046420',
   'published',
   'marketplace_listing',
-  2500000.00,
+  0,
   0,
   TRUE,
   'https://github.com/darksilver/survival-template-pro'

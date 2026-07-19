@@ -204,12 +204,9 @@ ON CONFLICT (slug) DO NOTHING;
 -- Also add tag_ids for custom tags if they didn't exist in system previously
 INSERT INTO public.tags (id, name, slug) VALUES
   ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc3', 'Plugin', 'plugin'),
-  ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc4', 'CodePlugin', 'codeplugin'),
   ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc5', 'Character', 'character'),
-  ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc6', 'Anubis', 'anubis'),
-  ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc7', 'ControlRig', 'controlrig'),
-  ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc8', 'SciFi', 'scifi'),
-  ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc9', 'SpaceStation', 'spacestation')
+  ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc7', 'ControlRig', 'control-rig'),
+  ('d0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4fc8', 'SciFi', 'scifi')
 ON CONFLICT (slug) DO NOTHING;
 
 -- ============================================================
@@ -592,7 +589,7 @@ SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4002', id FROM public.tags WHERE slug IN
 
 -- Asset 3 (WallGS) tags: Plugin, Splat, CodePlugin, Splatter
 INSERT INTO public.asset_tags (asset_id, tag_id)
-SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4003', id FROM public.tags WHERE slug IN ('plugin', 'splat', 'codeplugin', 'splatter');
+SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4003', id FROM public.tags WHERE slug IN ('plugin', 'splat', 'code-plugin', 'splatter');
 
 -- Asset 4 (American Village) tags: Village, Americana
 INSERT INTO public.asset_tags (asset_id, tag_id)
@@ -600,7 +597,7 @@ SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4004', id FROM public.tags WHERE slug IN
 
 -- Asset 5 (Stylized Egyptian Characters) tags: Character, Pbr, Bundle, Sphinx, Swimming, Lowpoly, Anubis, MMO, Fantasy, GameReady, ThirdPerson, Script, NPC, RPG, Rigid, Handpainted, Stylized, Humanoid, Creature, Egypt, Animal, Controller, Cat, ControlRig, EpicSkeleton
 INSERT INTO public.asset_tags (asset_id, tag_id)
-SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4005', id FROM public.tags WHERE slug IN ('character', 'pbr', 'bundle', 'sphinx', 'swimming', 'lowpoly', 'anubis', 'mmo', 'fantasy', 'game-ready', 'third-person', 'script', 'npc', 'rpg', 'rigid', 'handpainted', 'stylized', 'humanoid', 'creature', 'egypt', 'animal', 'controller', 'cat', 'controlrig', 'epic-skeleton');
+SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4005', id FROM public.tags WHERE slug IN ('character', 'pbr', 'bundle', 'sphinx', 'swimming', 'lowpoly', 'anubis', 'mmo', 'fantasy', 'game-ready', 'third-person', 'script', 'npc', 'rpg', 'rigid', 'handpainted', 'stylized', 'humanoid', 'creature', 'egypt', 'animal', 'controller', 'cat', 'control-rig', 'epic-skeleton');
 
 -- Asset 6 (AutoEnv) tags: Nanite, Metro, Fast, Modular, Advanced, GameReady, Procedural, Script, Dynamic, Level, Realistic, Concrete, Scattering, Road, Support, Path, Environmental, Tool, Train, Generator, Spline, Tram, Blueprint, DynamicMaterials, VertexColors
 INSERT INTO public.asset_tags (asset_id, tag_id)
@@ -620,7 +617,7 @@ SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4009', id FROM public.tags WHERE slug IN
 
 -- Asset 10 (FANTASTIC - Sci-Fi) tags: Spacesuit, Pbr, Star, Lumen, Bridge, Modular, SciFi, Metal, Texture, Starfighter, Realistic, Exterior, Interior, Trek, Handcrafted, Spacecraft, Control, Fabric, Blueprint, Nanite, Room, SpaceStation, Custom, Spaceship
 INSERT INTO public.asset_tags (asset_id, tag_id)
-SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4010', id FROM public.tags WHERE slug IN ('spacesuit', 'pbr', 'star', 'lumen', 'bridge', 'modular', 'scifi', 'metal', 'texture', 'starfighter', 'realistic', 'exterior', 'interior', 'trek', 'handcrafted', 'spacecraft', 'control', 'fabric', 'blueprint', 'nanite', 'room', 'spacestation', 'custom', 'spaceship');
+SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4010', id FROM public.tags WHERE slug IN ('spacesuit', 'pbr', 'star', 'lumen', 'bridge', 'modular', 'scifi', 'metal', 'texture', 'starfighter', 'realistic', 'exterior', 'interior', 'trek', 'handcrafted', 'spacecraft', 'control', 'fabric', 'blueprint', 'nanite', 'room', 'space-station', 'custom', 'spaceship');
 
 -- Asset 11 (Tropical Beach Biome) tags: Arch, Adventure, Polygon, Survival, Coastal, Tropical, Rock, PolyArt, Lowpoly, Biome, Beach, CoralReef, Mobile, Shore, Water, Nature, Stylized, Ocean, Starfish, Reef, Island, Sand, Jungle, Palm, Shell
 INSERT INTO public.asset_tags (asset_id, tag_id)
@@ -636,7 +633,7 @@ SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4013', id FROM public.tags WHERE slug IN
 
 -- Asset 14 (Zebra Sample - UE) tags: Face, Animation, Zebra, Rig, Control, ControlRig
 INSERT INTO public.asset_tags (asset_id, tag_id)
-SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4014', id FROM public.tags WHERE slug IN ('face', 'animation', 'zebra', 'rig', 'control', 'controlrig');
+SELECT 'a0e1a2a3-b4c5-4d6e-8f9a-0b1c2d3e4014', id FROM public.tags WHERE slug IN ('face', 'animation', 'zebra', 'rig', 'control', 'control-rig');
 
 -- Asset 15 (70s Mafia Barn) tags: Retro, Abandoned, Mafia, 1970s, Crime, Rural, Modular, Barn, Vintage, Environment, Realistic, Old, Farm
 INSERT INTO public.asset_tags (asset_id, tag_id)

@@ -18,7 +18,7 @@ services:
       POSTGRES_USER: user_godot_launch
       POSTGRES_PASSWORD: password_godot_launch
     ports:
-      - "5435:5432"
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
