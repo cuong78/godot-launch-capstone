@@ -100,6 +100,9 @@ class WithdrawalRequestServiceImplTest {
         developerUser.setFullName("Dev User");
         developerUser.setPasswordHash("hash");
         developerUser.setStatus("active");
+        developerUser.setBankName("MBBank");
+        developerUser.setBankAccount("123456789");
+        developerUser.setBankAccountHolder("Dev User");
 
         wallet = new Wallet();
         wallet.setId(UUID.randomUUID());
@@ -113,9 +116,6 @@ class WithdrawalRequestServiceImplTest {
         withdrawal.setWallet(wallet);
         withdrawal.setAmount(new BigDecimal("100000"));
         withdrawal.setCurrency("VND");
-        withdrawal.setBankName("MB Bank");
-        withdrawal.setBankAccount("0123456789");
-        withdrawal.setAccountHolder("Dev User");
         withdrawal.setTransferReference("GLWD-ORIGINAL");
         withdrawal.setStatus(WithdrawalStatus.pending);
 
