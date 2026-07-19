@@ -14,6 +14,7 @@
     "userDirectory": "User Directory",
     "auditLogs": "Audit Logs",
     "settings": "Settings",
+    "banners": "Banners",
     "storage": "Storage",
     "disputes": "Disputes",
     "agreement": "Agreement"
@@ -21,6 +22,7 @@
   "sectionTitle": {
     "logs": "Security Audit Logs",
     "settings": "Platform Settings",
+    "banners": "Banner Management",
     "storage": "Storage Management",
     "disputes": "Dispute Resolution",
     "agreement": "Distribution Agreement",
