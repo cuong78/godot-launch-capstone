@@ -953,10 +953,10 @@ export default function App() {
             referrerPolicy="no-referrer"
           />
 
-          {/* Gradient light/dark overlay tint */}
+          {/* Storefront shade: deepest at the top-right, gradually clearing toward the bottom-right. */}
           <div
             id="voxel-background-tint"
-            className="fixed inset-0 z-[1] pointer-events-none transition-all duration-700 bg-gradient-to-b from-white/5 via-white/10 to-white/20 dark:from-slate-950/20 dark:via-slate-950/35 dark:to-slate-950/50"
+            className="storefront-background-shade fixed inset-0 z-[1] pointer-events-none transition-all duration-700"
           />
 
           {/* Decorative ambient pixel dot overlay layer */}
@@ -979,10 +979,6 @@ export default function App() {
           setCurrentScreen={setCurrentScreen}
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
-          searchText={searchText}
-          setSearchText={setSearchText}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
           cart={cart}
           isCartOpen={isCartOpen}
           setIsCartOpen={setIsCartOpen}
@@ -991,7 +987,6 @@ export default function App() {
           setSelectedAssetId={setSelectedAssetId}
           setSelectedPost={setSelectedPost}
           setSelectedAuthor={setSelectedAuthor}
-          showToast={showToast}
         />
       )}
 

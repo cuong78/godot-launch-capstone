@@ -2,31 +2,24 @@ import React from "react";
 import { createPortal } from "react-dom";
 import {
   CheckCircle2,
-  Play,
   Rocket,
   X,
-  Sun,
-  Moon,
   ShoppingCart,
   ShoppingBag,
   Trash2,
-  Plus,
 } from "lucide-react";
 import { Button } from "./Button";
 import { Asset, User, ScreenType } from "../types";
 import { NotificationBell } from "./NotificationBell";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
+import logoImage from "../../assets/logo.png";
 
 interface HeaderProps {
   currentScreen: ScreenType;
   setCurrentScreen: (screen: ScreenType) => void;
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
-  darkMode: boolean;
-  setDarkMode: (mode: boolean) => void;
-  searchText: string;
-  setSearchText: (text: string) => void;
   cart: Asset[];
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
@@ -35,10 +28,6 @@ interface HeaderProps {
   setSelectedAssetId: (id: string) => void;
   setSelectedPost: (post: any) => void;
   setSelectedAuthor: (author: any) => void;
-  showToast?: (
-    message: string,
-    type?: "info" | "success" | "warning" | "error",
-  ) => void;
 }
 
 const resolveCurrencyLocale = (language: string) => {
@@ -248,9 +237,6 @@ export function Header({
   setCurrentScreen,
   currentUser,
   setCurrentUser,
-  darkMode,
-  setDarkMode,
-  setSearchText,
   cart,
   isCartOpen,
   setIsCartOpen,
@@ -259,7 +245,6 @@ export function Header({
   setSelectedAssetId,
   setSelectedPost,
   setSelectedAuthor,
-  showToast,
 }: HeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [isCreatorJourneyDialogOpen, setIsCreatorJourneyDialogOpen] =
@@ -296,10 +281,10 @@ export function Header({
     return Array.from(itemMap.values());
   }, [cart]);
   const navGroupButtonClassName = (isActive: boolean, isOpen: boolean) =>
-    `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 xl:px-3 py-1.5 text-sm font-medium rounded-lg transition-studio ${
+    `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-studio ${
       isActive || isOpen
-        ? "bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400"
-        : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white"
+        ? "bg-[#292a31] text-white shadow-inner shadow-white/5"
+        : "text-[#b8bac5] hover:bg-white/[0.06] hover:text-white"
     }`;
   const isCreatorActive =
     currentScreen === "path" || currentScreen === "upload";
@@ -326,56 +311,35 @@ export function Header({
   const handleMaybeLater = () => {
     setIsCreatorJourneyDialogOpen(false);
     setCurrentScreen("explore");
-    setSearchText("");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  const handleOpenPath = () => {
-    if (currentUser?.role === "customer") {
-      if (showToast) {
-        showToast(
-          "Tính năng này chỉ có thể kích hoạt nếu có vai trò Developer khi kết nối với tài khoản GitHub.",
-          "warning",
-        );
-      } else {
-        alert(
-          "Tính năng này chỉ có thể kích hoạt nếu có vai trò Developer khi kết nối với tài khoản GitHub.",
-        );
-      }
-    }
-    setCurrentScreen("path");
   };
   return (
     <header
       id="godotlaunch-navbar"
-      className="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 z-40 transition-colors duration-200 shadow-sm"
+      className="sticky top-0 z-40 border-b border-white/10 bg-[#0d0e13]/95 text-white shadow-[0_10px_35px_rgba(0,0,0,0.24)] backdrop-blur-xl"
     >
-      <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3 xl:gap-5">
-        {/* Logo & Small Engine version brand tag */}
+      <div className="flex w-full min-w-0 items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8 xl:gap-6">
+        {/* Brand */}
         <div
-          className="flex shrink-0 items-center gap-2 cursor-pointer"
+          className="flex shrink-0 cursor-pointer items-center gap-2.5"
           onClick={() => {
             setCurrentScreen("explore");
-            setSearchText("");
           }}
         >
-          <div className="w-8 h-8 rounded-lg bg-amber-400 flex items-center justify-center font-display shadow-[0_3px_0_0_#9a7d00] transition-transform active:scale-95">
-            <Play size={16} className="text-slate-900 fill-slate-900 ml-0.5" />
+          <div className="relative h-10 w-10 shrink-0 overflow-hidden transition-transform active:scale-95">
+            <img
+              src={logoImage}
+              alt="GodotLaunch"
+              className="pointer-events-none absolute -left-[55px] -top-[10px] h-[82px] w-auto max-w-none select-none"
+            />
           </div>
-          <div>
-            <span className="font-display font-bold text-xl text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5 leading-none">
-              godotlaunch{" "}
-              <span className="bg-amber-400/20 text-amber-500 text-[9px] uppercase font-bold py-0.5 px-1.5 rounded border border-amber-500/30 font-mono">
-                v4
-              </span>
-            </span>
-            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-mono tracking-[0.18em]">
-              CREATORS MATRIX
-            </span>
-          </div>
+          <span className="font-display text-lg font-bold leading-none tracking-tight text-white sm:text-xl">
+            godotlaunch
+          </span>
         </div>
 
         {/* Navigation Items (Responsive on Desktop) */}
-        <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-1 px-1 xl:gap-2 2xl:gap-4">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 px-1 lg:flex xl:gap-2">
           <div className="relative shrink-0">
             <button
               type="button"
@@ -401,24 +365,21 @@ export function Header({
             </button>
           </div>
 
-          {currentUser && currentUser.role !== "customer" && (
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                className={navGroupButtonClassName(
-                  currentScreen === "dashboard",
-                  false,
-                )}
-                onClick={() => {
-                  setSearchText("");
-                  setCurrentScreen("dashboard");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              >
-                {t("dashboard")}
-              </button>
-            </div>
-          )}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              className={navGroupButtonClassName(
+                currentScreen === "dashboard",
+                false,
+              )}
+              onClick={() => {
+                setCurrentScreen("dashboard");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              {t("dashboard")}
+            </button>
+          </div>
 
           <div className="relative shrink-0">
             <button
@@ -434,19 +395,9 @@ export function Header({
           </div>
         </nav>
 
-        {/* Utility Action tools: Dark Mode, Cart Badge dropdown trigger, Publish Button */}
+        {/* Utility actions: language, cart, notifications, and account */}
         <div className="flex shrink-0 items-center gap-1.5">
-          <LanguageSwitcher className="hidden shrink-0 md:block" />
-
-          {/* Dark mode custom click toggle */}
-          <button
-            id="theme-toggler"
-            onClick={() => setDarkMode(!darkMode)}
-            className="shrink-0 rounded-lg border border-transparent bg-slate-100/80 p-1.5 text-slate-500 transition-studio hover:text-slate-850 dark:border-slate-850 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-amber-400"
-            title="Toggle theme mode"
-          >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          <LanguageSwitcher className="shrink-0 [&>button]:!border-white/10 [&>button]:!bg-white/[0.04] [&>button]:!text-[#b8bac5] [&>button:hover]:!border-white/20 [&>button:hover]:!bg-white/[0.08] [&>button:hover]:!text-white" />
 
           {/* Shopping Cart Trigger */}
           <div className="relative">
@@ -456,7 +407,7 @@ export function Header({
                 setIsCartOpen(!isCartOpen);
                 setIsProfileOpen(false);
               }}
-              className="relative shrink-0 rounded-lg border border-transparent bg-slate-100/80 p-1.5 text-slate-500 transition-studio hover:text-slate-850 dark:border-slate-850 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-amber-400"
+              className="relative shrink-0 rounded-lg border border-white/10 bg-white/[0.04] p-2 text-[#b8bac5] transition-studio hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
               title={t("cart_view_items")}
               aria-label={t("cart_view_items")}
             >
@@ -701,73 +652,31 @@ export function Header({
       </div>
 
       {/* Mobile Navigation bar strips */}
-      <div className="lg:hidden border-t border-slate-100 dark:border-slate-800 flex justify-around py-1.5 bg-slate-50 dark:bg-slate-900/40 text-xs gap-1 max-w-full overflow-x-auto">
+      <div className="flex max-w-full justify-start gap-1 overflow-x-auto border-t border-white/10 bg-[#101116]/95 px-3 py-2 text-xs lg:hidden sm:justify-center">
         <button
           onClick={() => setCurrentScreen("marketplace")}
-          className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "marketplace" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
+          className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "marketplace" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
         >
           {t("marketplace")}
         </button>
-        {currentUser && (
-          <button
-            onClick={() => {
-              handleOpenCreatorCenter();
-            }}
-            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "upload" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-          >
-            {t("upload_file")}
-          </button>
-        )}
-        {currentUser?.role !== "customer" && (
-          <button
-            onClick={() => setCurrentScreen("dashboard")}
-            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "dashboard" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-          >
-            {t("dashboard")}
-          </button>
-        )}
+        <button
+          onClick={handleOpenCreatorCenter}
+          className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "upload" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
+        >
+          {t("creator_hub")}
+        </button>
+        <button
+          onClick={() => setCurrentScreen("dashboard")}
+          className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "dashboard" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
+        >
+          {t("dashboard")}
+        </button>
         <button
           onClick={() => setCurrentScreen("community")}
-          className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "community" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
+          className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "community" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
         >
           {t("community")}
         </button>
-        <button
-          onClick={() => {
-            if (currentUser?.role === "customer") {
-              if (showToast) {
-                showToast(
-                  "Tính năng này chỉ có thể kích hoạt nếu có vai trò Developer khi kết nối với tài khoản GitHub.",
-                  "warning",
-                );
-              } else {
-                alert(
-                  "Tính năng này chỉ có thể kích hoạt nếu có vai trò Developer khi kết nối với tài khoản GitHub.",
-                );
-              }
-            }
-            setCurrentScreen("path");
-          }}
-          className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "path" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-        >
-          {t("sell_acquire")}
-        </button>
-        {currentUser && (
-          <button
-            onClick={() => setCurrentScreen("wallet")}
-            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "wallet" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-          >
-            {t("wallet")}
-          </button>
-        )}
-        {currentUser?.role === "admin" && (
-          <button
-            onClick={() => setCurrentScreen("admin")}
-            className={`py-1 px-2 rounded font-medium shrink-0 ${currentScreen === "admin" ? "text-amber-500 dark:text-amber-400 font-bold bg-slate-100 dark:bg-slate-850" : "text-slate-600 dark:text-slate-400"}`}
-          >
-            {t("admin_portal")}
-          </button>
-        )}
       </div>
 
       <CreatorJourneyDialog
