@@ -1,120 +1,169 @@
 package com.godotlaunch.backend.controller;
 
-// Temporarily commented out due to local WebMvcTest classpath resolution issue in offline workspace.
-/*
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.exception.AppException;
-import com.godotlaunch.backend.security.JwtAuthenticationFilter;
 import com.godotlaunch.backend.service.GitHubOAuthService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.security.Principal;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import org.springframework.context.annotation.Import;
-import com.godotlaunch.backend.config.SecurityConfig;
+@ExtendWith(MockitoExtension.class)
+class GitHubAuthControllerTest {
 
-@WebMvcTest(GitHubAuthController.class)
-@Import(SecurityConfig.class)
-public class GitHubAuthControllerTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockitoBean
+    @Mock
     private GitHubOAuthService githubOAuthService;
 
-    @MockitoBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @Mock
+    private HttpSession session;
+
+    @Mock
+    private HttpServletResponse response;
+
+    @Mock
+    private Principal principal;
+
+    @InjectMocks
+    private GitHubAuthController gitHubAuthController;
 
     @BeforeEach
-    void setUp() throws Exception {
-        doAnswer(invocation -> {
-            jakarta.servlet.ServletRequest request = invocation.getArgument(0);
-            jakarta.servlet.ServletResponse response = invocation.getArgument(1);
-            jakarta.servlet.FilterChain chain = invocation.getArgument(2);
-            chain.doFilter(request, response);
-            return null;
-        }).when(jwtAuthenticationFilter).doFilter(any(), any(), any());
+    void setUp() {
+        ReflectionTestUtils.setField(gitHubAuthController, "frontendUrl", "http://localhost:3000");
     }
 
     @Test
-    void redirectToGitHub_ShouldReturn302AndLocationHeader() throws Exception {
-        String mockAuthUrl = "https://github.com/login/oauth/authorize?client_id=123&state=xyz";
-        when(githubOAuthService.buildAuthorizationUrl(any())).thenReturn(mockAuthUrl);
+    @DisplayName("Should prepare link session successfully when authenticated principal provided")
+    void shouldPrepareLink_Successfully() {
+        // Arrange
+        when(principal.getName()).thenReturn("user@example.com");
+        when(githubOAuthService.prepareLinkSession("user@example.com", session))
+                .thenReturn("http://localhost:8080/api/v1/auth/github?action=link");
 
-        mockMvc.perform(get("/api/v1/auth/github"))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", mockAuthUrl));
+        // Act
+        ResponseEntity<ApiResponse<Map<String, String>>> result = gitHubAuthController.prepareLink(principal, session);
 
-        verify(githubOAuthService, times(1)).buildAuthorizationUrl(any());
+        // Assert
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
+        assertThat(result.getBody().getData().get("redirectUrl"))
+                .isEqualTo("http://localhost:8080/api/v1/auth/github?action=link");
     }
 
     @Test
-    void handleCallback_ShouldRedirectToFrontend_WhenCodeAndStateAreValid() throws Exception {
-        String mockCode = "mock_code_123";
-        String mockState = "mock_state_xyz";
-        String mockJwt = "mock_jwt_token_456";
-
-        when(githubOAuthService.handleCallback(eq(mockCode), eq(mockState), any())).thenReturn(mockJwt);
-
-        mockMvc.perform(get("/api/v1/auth/github/callback")
-                        .param("code", mockCode)
-                        .param("state", mockState))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", "http://localhost:3000/auth/callback?token=" + mockJwt));
-
-        verify(githubOAuthService, times(1)).handleCallback(eq(mockCode), eq(mockState), any());
+    @DisplayName("Should throw UNAUTHORIZED when principal is null on prepareLink")
+    void shouldThrowUnauthorized_WhenPrincipalIsNullOnPrepareLink() {
+        // Act & Assert
+        assertThatThrownBy(() -> gitHubAuthController.prepareLink(null, session))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
     }
 
     @Test
-    void handleCallback_ShouldReturn502_WhenGitHubReturnsError() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/github/callback")
-                        .param("error", "access_denied")
-                        .param("error_description", "User denied access")
-                        .param("state", "mock_state_xyz"))
-                .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.status").value(502));
+    @DisplayName("Should redirect to GitHub OAuth page with 302 FOUND")
+    void shouldRedirectToGitHub_Successfully() {
+        // Arrange
+        when(githubOAuthService.buildAuthorizationUrl(session))
+                .thenReturn("https://github.com/login/oauth/authorize?client_id=123");
 
-        verify(githubOAuthService, never()).handleCallback(any(), any(), any());
+        // Act
+        ResponseEntity<Void> result = gitHubAuthController.redirectToGitHub(null, true, session);
+
+        // Assert
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(result.getHeaders().getLocation()).isNotNull();
+        assertThat(result.getHeaders().getLocation().toString())
+                .isEqualTo("https://github.com/login/oauth/authorize?client_id=123");
+        verify(session, times(1)).setAttribute("github_oauth_remember_me", true);
     }
 
     @Test
-    void handleCallback_ShouldReturn502_WhenCodeIsMissing() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/github/callback")
-                        .param("state", "mock_state_xyz"))
-                .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.status").value(502));
+    @DisplayName("Should throw GITHUB_LINK_NOT_PREPARED when action=link but session has no linking user email")
+    void shouldThrowException_WhenLinkActionNotPrepared() {
+        // Arrange
+        when(session.getAttribute("github_linking_user_email")).thenReturn(null);
 
-        verify(githubOAuthService, never()).handleCallback(any(), any(), any());
+        // Act & Assert
+        assertThatThrownBy(() -> gitHubAuthController.redirectToGitHub("link", false, session))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.GITHUB_LINK_NOT_PREPARED);
     }
 
     @Test
-    void handleCallback_ShouldReturn502_WhenStateIsMismatchedOrInvalid() throws Exception {
-        String mockCode = "mock_code_123";
-        String mockState = "tampered_state";
+    @DisplayName("Should handle callback successfully for standard login flow")
+    void shouldHandleCallback_Successfully_StandardLogin() {
+        // Arrange
+        when(session.getAttribute("github_linking_user_email")).thenReturn(null);
+        when(session.getAttribute("github_oauth_remember_me")).thenReturn(false);
+        when(githubOAuthService.handleCallback(eq("code123"), eq("state456"), eq(session)))
+                .thenReturn("jwt.auth.token");
 
-        when(githubOAuthService.handleCallback(eq(mockCode), eq(mockState), any()))
-                .thenThrow(new AppException(ErrorCode.GITHUB_AUTH_FAILED));
+        // Act
+        ResponseEntity<Void> result = gitHubAuthController.handleCallback("code123", null, "state456", session, response);
 
-        mockMvc.perform(get("/api/v1/auth/github/callback")
-                        .param("code", mockCode)
-                        .param("state", mockState))
-                .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.status").value(502));
+        // Assert
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(result.getHeaders().getLocation().toString())
+                .isEqualTo("http://localhost:3000/auth/callback?token=jwt.auth.token");
 
-        verify(githubOAuthService, times(1)).handleCallback(eq(mockCode), eq(mockState), any());
+        ArgumentCaptor<Cookie> cookieCaptor = ArgumentCaptor.forClass(Cookie.class);
+        verify(response, times(1)).addCookie(cookieCaptor.capture());
+        assertThat(cookieCaptor.getValue().getName()).isEqualTo("app_token");
+        assertThat(cookieCaptor.getValue().getValue()).isEqualTo("jwt.auth.token");
+    }
+
+    @Test
+    @DisplayName("Should handle callback successfully for link flow")
+    void shouldHandleCallback_Successfully_LinkFlow() {
+        // Arrange
+        when(session.getAttribute("github_linking_user_email")).thenReturn("user@example.com");
+        when(session.getAttribute("github_oauth_remember_me")).thenReturn(true);
+        when(githubOAuthService.handleCallback(eq("code123"), eq("state456"), eq(session)))
+                .thenReturn("jwt.auth.token");
+
+        // Act
+        ResponseEntity<Void> result = gitHubAuthController.handleCallback("code123", null, "state456", session, response);
+
+        // Assert
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(result.getHeaders().getLocation().toString())
+                .isEqualTo("http://localhost:3000/auth/github/callback?token=jwt.auth.token&linked=true");
+    }
+
+    @Test
+    @DisplayName("Should redirect with error code param when AppException occurs during callback")
+    void shouldRedirectWithError_WhenAppExceptionOccursOnCallback() {
+        // Arrange
+        when(githubOAuthService.handleCallback(eq("code123"), eq("state456"), eq(session)))
+                .thenThrow(new AppException(ErrorCode.GITHUB_EMAIL_MISMATCH));
+
+        // Act
+        ResponseEntity<Void> result = gitHubAuthController.handleCallback("code123", null, "state456", session, response);
+
+        // Assert
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(result.getHeaders().getLocation().toString())
+                .contains("/auth/github/callback?error=" + ErrorCode.GITHUB_EMAIL_MISMATCH.getCode());
     }
 }
-*/
