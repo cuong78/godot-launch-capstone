@@ -883,31 +883,83 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             </div>
 
             {publishProgram === "game" && (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 md:col-span-2">
                 <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                  Publishing / Acquisition Model{" "}
-                  <span title="Determines whether platform contract signing or direct listing is needed">
+                  Publishing Destination{" "}
+                  <span title="Chọn nơi game của bạn sẽ được phân phối">
                     <HelpCircle
                       size={14}
                       className="text-slate-400 cursor-help"
                     />
                   </span>
                 </label>
-                <select
-                  value={publishingType}
-                  onChange={(e) => setPublishingType(e.target.value as any)}
-                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
-                >
-                  <option value="marketplace_listing">
-                    Marketplace Listing (Sell Source Code on Marketplace - Direct Listing, No Contract)
-                  </option>
-                  <option value="full_acquisition">
-                    Full Acquisition (Sell all rights to Platform - Contract Required)
-                  </option>
-                  <option value="co_publishing">
-                    Co-Publishing (% Revenue Share with Platform - Contract Required)
-                  </option>
-                </select>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPublishingType("marketplace_listing")}
+                    title="Marketplace: Bạn tự đăng bán trực tiếp source code game trên Marketplace nội bộ, không cần ký hợp đồng với nền tảng. Bạn giữ 100% số tiền bán được (trừ phí giao dịch nếu có)."
+                    className={`text-left p-3.5 rounded-xl border transition-studio cursor-help ${
+                      publishingType === "marketplace_listing"
+                        ? "border-amber-400 bg-amber-500/10 dark:bg-amber-500/15"
+                        : "border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-700"
+                    }`}
+                  >
+                    <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">
+                      Marketplace
+                    </span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Bán source code trực tiếp trên Marketplace, không cần hợp đồng.
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (publishingType === "marketplace_listing") {
+                        setPublishingType("full_acquisition");
+                      }
+                    }}
+                    title="Store: Nộp game để nền tảng xuất bản lên Google Play / App Store. Bắt buộc ký hợp đồng (Bán đứt hoặc Co-Publishing)."
+                    className={`text-left p-3.5 rounded-xl border transition-studio cursor-help ${
+                      publishingType !== "marketplace_listing"
+                        ? "border-amber-400 bg-amber-500/10 dark:bg-amber-500/15"
+                        : "border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-700"
+                    }`}
+                  >
+                    <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">
+                      Store
+                    </span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Xuất bản lên Google Play / App Store, cần ký hợp đồng với nền tảng.
+                    </span>
+                  </button>
+                </div>
+
+                {publishingType !== "marketplace_listing" && (
+                  <div className="flex flex-col gap-1.5 mt-2">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                      Hình thức hợp đồng
+                    </label>
+                    <select
+                      value={publishingType}
+                      onChange={(e) => setPublishingType(e.target.value as any)}
+                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
+                    >
+                      <option value="full_acquisition" title="Bán đứt: Bạn chuyển nhượng toàn bộ quyền sở hữu game cho nền tảng, nhận một khoản tiền một lần, không còn quyền lợi doanh thu về sau.">
+                        Full Acquisition (Bán đứt - nhận trọn một lần, chuyển toàn bộ quyền cho nền tảng)
+                      </option>
+                      <option value="co_publishing" title="Co-Publishing: Bạn vẫn giữ quyền sở hữu, nền tảng xuất bản hộ và chia % doanh thu liên tục theo hợp đồng.">
+                        Co-Publishing (% chia doanh thu liên tục, bạn vẫn giữ quyền sở hữu)
+                      </option>
+                    </select>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {publishingType === "full_acquisition"
+                        ? "Bán đứt: nhận tiền một lần, chuyển toàn bộ quyền sở hữu cho nền tảng."
+                        : "Co-Publishing: giữ quyền sở hữu, chia % doanh thu liên tục với nền tảng theo hợp đồng."}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

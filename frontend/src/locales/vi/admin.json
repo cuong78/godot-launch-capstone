@@ -15,13 +15,15 @@
     "auditLogs": "Nhật ký hệ thống",
     "settings": "Cấu hình",
     "storage": "Lưu trữ",
-    "disputes": "Tranh chấp"
+    "disputes": "Tranh chấp",
+    "agreement": "Thỏa thuận"
   },
   "sectionTitle": {
     "logs": "Nhật ký kiểm toán bảo mật",
     "settings": "Cấu hình nền tảng",
     "storage": "Quản lý lưu trữ",
     "disputes": "Xử lý tranh chấp",
+    "agreement": "Thỏa thuận phân phối",
     "default": "Vận hành hệ thống"
   },
   "dialog": {

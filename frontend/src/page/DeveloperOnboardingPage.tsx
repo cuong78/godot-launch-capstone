@@ -8,6 +8,7 @@ import { userApi } from '../api/userApi';
 import { authApi } from '../api/authApi';
 import { faceVerifyApi } from '../api/faceVerifyApi';
 import { kycApi } from '../api/kycApi';
+import { agreementApi } from '../api/agreementApi';
 import { useAuth } from '../hooks/useAuth';
 import { ScreenType } from '../types';
 
@@ -31,28 +32,6 @@ const BANK_OPTIONS = [
   "HDBank"
 ];
 
-const AGREEMENT_TEXT = `CHƯƠNG TRÌNH PHÂN PHỐI SẢN PHẨM TRÊN GODOTLAUNCH
-Cập nhật lần cuối: Tháng 7, 2026
-
-Chào mừng bạn đến với chương trình phân phối trên Marketplace của GodotLaunch. Thoả thuận này quy định các điều khoản pháp lý giữa bạn (Developer) và nền tảng GodotLaunch liên quan đến việc xuất bản, phân phối và bán mã nguồn (source code), tài nguyên đồ hoạ (assets) hoặc bất kỳ sản phẩm nào khác của bạn.
-
-ĐIỀU 1: ĐIỀU KHOẢN CHUNG & PHẠM VI ÁP DỤNG
-1.1. Bằng cách chọn hộp đồng ý và tiếp tục quá trình đăng ký, bạn xác nhận rằng bạn đã đọc, hiểu và đồng ý bị ràng buộc bởi các điều khoản của thoả thuận này.
-1.2. Bạn cam kết sở hữu đầy đủ quyền sở hữu trí tuệ hoặc có quyền phân phối hợp pháp đối với mọi sản phẩm được đăng tải.
-
-ĐIỀU 2: CHIA SẺ DOANH THU & PHÍ NỀN TẢNG
-2.1. Tỉ lệ chia sẻ doanh thu mặc định dành cho Developer là 88% giá trị giao dịch thành công thực tế (sau khi trừ thuế và phí thanh toán phát sinh bên ngoài).
-2.2. Nền tảng GodotLaunch sẽ nhận phí vận hành 12% trừ trực tiếp trên mỗi giao dịch. Tỉ lệ này có thể thay đổi tùy theo các chương trình Co-publishing hoặc các hợp đồng đặc thù riêng biệt.
-
-ĐIỀU 3: BẢO MẬT & BẢN QUYỀN
-3.1. Developer cam kết tuyệt đối không đăng tải các mã nguồn hoặc tài nguyên chứa mã độc, nội dung vi phạm bản quyền phần mềm khác, hoặc vi phạm thuần phong mỹ tục.
-3.2. Mọi khiếu nại hoặc tranh chấp liên quan đến việc sao chép ý tưởng, đạo văn sẽ được xử lý qua hệ thống Plagiarism Detection phối hợp cùng Ban Quản Trị GodotLaunch.
-
-ĐIỀU 4: THANH TOÁN & HOÀN TIỀN (PAYOUT)
-4.1. Tiền bán hàng sẽ được tích lũy vào Ví điện tử nội bộ trên GodotLaunch.
-4.2. Developer chỉ được phép thực hiện yêu cầu rút tiền (Withdrawal) về tài khoản ngân hàng chính chủ đã liên kết thành công ở bước Payout Setup.
-4.3. Nền tảng hỗ trợ thanh toán thông qua cổng PayOS an toàn. Quy trình kiểm duyệt rút tiền tối qua là 3 ngày làm việc.`;
-
 export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = ({ setCurrentScreen }) => {
   const { currentUser, updateUser } = useAuth();
   
@@ -62,6 +41,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
   const [kycVerified, setKycVerified] = useState(false);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [payoutSaved, setPayoutSaved] = useState(false);
+
+  // Nội dung thỏa thuận tải từ DB
+  const [agreementContent, setAgreementContent] = useState('');
+  const [isLoadingAgreement, setIsLoadingAgreement] = useState(true);
+  const [isAcceptingAgreement, setIsAcceptingAgreement] = useState(false);
 
   // Trạng thái chung
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
@@ -85,10 +69,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
     setIsLoadingStatus(true);
     setError(null);
     try {
-      const [githubRes, faceRes, kycRes] = await Promise.allSettled([
+      const [githubRes, faceRes, kycRes, agreementStatusRes] = await Promise.allSettled([
         userApi.getGitHubStatus(),
         faceVerifyApi.getStatus(),
         kycApi.getStatus(),
+        agreementApi.getAcceptanceStatus(),
       ]);
 
       const linked =
@@ -103,17 +88,20 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
         kycRes.status === 'fulfilled' && kycRes.value.success && kycRes.value.data
           ? kycRes.value.data.kycVerified
           : false;
+      const agreementOk =
+        agreementStatusRes.status === 'fulfilled' && agreementStatusRes.value.success && agreementStatusRes.value.data
+          ? agreementStatusRes.value.data.accepted
+          : false;
 
       setGithubLinked(linked);
       setFaceVerified(faceOk);
       setKycVerified(kycOk);
+      setAgreementAccepted(agreementOk);
 
       const hasBank = !!currentUser?.bankName && !!currentUser?.bankAccount;
       setPayoutSaved(hasBank);
 
-      // Nếu đã có tiến độ, tự nhận diện đồng ý điều khoản
-      if (linked || faceOk || kycOk || hasBank) {
-        setAgreementAccepted(true);
+      if (linked || faceOk || kycOk || hasBank || agreementOk) {
         setHasStarted(true);
       }
 
@@ -126,10 +114,42 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
     }
   };
 
+  const loadAgreementContent = async () => {
+    setIsLoadingAgreement(true);
+    try {
+      const res = await agreementApi.getActive();
+      if (res.success && res.data) {
+        setAgreementContent(res.data.content);
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Không thể tải nội dung thỏa thuận.');
+    } finally {
+      setIsLoadingAgreement(false);
+    }
+  };
+
   useEffect(() => {
     loadStatus();
+    loadAgreementContent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleAcceptAgreement = async () => {
+    setIsAcceptingAgreement(true);
+    setError(null);
+    try {
+      const res = await agreementApi.accept();
+      if (res.success && res.data?.accepted) {
+        setAgreementAccepted(true);
+      } else {
+        setError(res.message || 'Không thể ghi nhận đồng ý thỏa thuận.');
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Lỗi khi ghi nhận đồng ý thỏa thuận.');
+    } finally {
+      setIsAcceptingAgreement(false);
+    }
+  };
 
   // Đồng bộ hóa thông tin ngân hàng từ user profile
   useEffect(() => {
@@ -343,22 +363,40 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                   </div>
 
                   <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
-                    <div className="max-h-56 overflow-y-auto pr-2 text-xs leading-relaxed text-slate-400 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                      {AGREEMENT_TEXT.split('\n\n').map((para, i) => (
-                        <p key={i} className="mb-3">{para}</p>
-                      ))}
-                    </div>
+                    {isLoadingAgreement ? (
+                      <div className="flex items-center justify-center gap-2 py-8 text-slate-400 text-xs">
+                        <Loader2 size={16} className="animate-spin" /> Đang tải nội dung thỏa thuận...
+                      </div>
+                    ) : (
+                      <div className="max-h-56 overflow-y-auto pr-2 text-xs leading-relaxed text-slate-400 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                        {agreementContent.split('\n\n').map((para, i) => (
+                          <p key={i} className="mb-3">{para}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <label className="flex items-start gap-3 rounded-xl border border-white/5 bg-slate-900/30 p-4 cursor-pointer hover:bg-slate-900/50 transition">
                     <input
                       type="checkbox"
                       checked={agreementAccepted}
-                      onChange={(e) => setAgreementAccepted(e.target.checked)}
+                      disabled={isAcceptingAgreement || isLoadingAgreement}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          handleAcceptAgreement();
+                        } else {
+                          setAgreementAccepted(false);
+                        }
+                      }}
                       className="mt-0.5 h-4 w-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
                     />
                     <div className="text-xs text-slate-300">
                       Tôi đồng ý với các điều khoản phân phối trên Marketplace của GodotLaunch. Tôi cam đoan chịu trách nhiệm pháp lý đối với toàn bộ nội dung mà mình đăng tải.
+                      {isAcceptingAgreement && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-amber-500">
+                          <Loader2 size={12} className="animate-spin" /> Đang ghi nhận...
+                        </span>
+                      )}
                     </div>
                   </label>
                 </div>

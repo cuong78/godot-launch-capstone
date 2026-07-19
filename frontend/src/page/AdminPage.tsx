@@ -53,6 +53,7 @@ import { paymentApi } from "../api/paymentApi";
 import { SignaturePad } from "../components/SignaturePad";
 import { ContractViewerModal } from "../components/ContractViewerModal";
 import AdminDisputePanel from "../components/admin/AdminDisputePanel";
+import AdminAgreementPanel from "../components/admin/AdminAgreementPanel";
 import { AdminFileManagementPanel } from "../components/admin/AdminFileManagementPanel";
 import { auditLogApi } from "../api/auditLogApi";
 import {
@@ -101,7 +102,8 @@ type AdminTabKey =
   | "logs"
   | "settings"
   | "storage"
-  | "disputes";
+  | "disputes"
+  | "agreement";
 
 type AdminSectionKey =
   | "overview"
@@ -130,7 +132,7 @@ const ADMIN_SECTION_TABS: Record<
   moderation: ["moderation"],
   finance: ["wallet", "payments", "withdrawal"],
   users: ["users"],
-  system: ["logs", "settings", "storage", "disputes"],
+  system: ["logs", "settings", "storage", "disputes", "agreement"],
 };
 
 const ADMIN_DEFAULT_TAB_BY_SECTION: Record<
@@ -148,6 +150,7 @@ const SYSTEM_SECTION_TITLE_KEY_BY_TAB: Partial<Record<AdminTabKey, string>> = {
   settings: "sectionTitle.settings",
   storage: "sectionTitle.storage",
   disputes: "sectionTitle.disputes",
+  agreement: "sectionTitle.agreement",
 };
 
 const isSoftDeletedUserEmail = (email: string) => email.includes("_deleted_");
@@ -565,6 +568,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               return { key: tabKey, label: t("tabs.storage") };
             case "disputes":
               return { key: tabKey, label: t("tabs.disputes") };
+            case "agreement":
+              return { key: tabKey, label: t("tabs.agreement") };
             default:
               return { key: tabKey, label: tabKey };
           }
@@ -3316,6 +3321,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 {/* Tab 5: Storage Management */}
                 {activeTab === "storage" && <AdminFileManagementPanel />}
                 {activeTab === "disputes" && <AdminDisputePanel />}
+                {activeTab === "agreement" && <AdminAgreementPanel />}
 
                 {/* Tab 4: Platform Settings */}
                 {activeTab === "settings" && (

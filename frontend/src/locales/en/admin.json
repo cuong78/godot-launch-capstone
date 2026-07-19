@@ -15,13 +15,15 @@
     "auditLogs": "Audit Logs",
     "settings": "Settings",
     "storage": "Storage",
-    "disputes": "Disputes"
+    "disputes": "Disputes",
+    "agreement": "Agreement"
   },
   "sectionTitle": {
     "logs": "Security Audit Logs",
     "settings": "Platform Settings",
     "storage": "Storage Management",
     "disputes": "Dispute Resolution",
+    "agreement": "Distribution Agreement",
     "default": "System Operations"
   },
   "dialog": {

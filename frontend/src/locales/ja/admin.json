@@ -15,13 +15,15 @@
     "auditLogs": "監査ログ",
     "settings": "設定",
     "storage": "ストレージ",
-    "disputes": "紛争"
+    "disputes": "紛争",
+    "agreement": "契約"
   },
   "sectionTitle": {
     "logs": "セキュリティ監査ログ",
     "settings": "プラットフォーム設定",
     "storage": "ストレージ管理",
     "disputes": "紛争解決",
+    "agreement": "配信契約",
     "default": "システム運用"
   },
   "dialog": {

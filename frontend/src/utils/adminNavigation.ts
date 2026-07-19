@@ -14,7 +14,8 @@ export type AdminNavigationTab =
   | "logs"
   | "settings"
   | "storage"
-  | "disputes";
+  | "disputes"
+  | "agreement";
 
 export interface AdminNavigationDetail {
   section: AdminNavigationSection;
