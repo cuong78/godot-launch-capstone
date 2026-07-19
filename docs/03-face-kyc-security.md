@@ -1,4 +1,4 @@
-# Face Verify & KYC — Luồng bảo mật danh tính
+# 03. Face Verify & KYC — Luồng bảo mật danh tính
 
 GodotLaunch dùng hệ thống xác minh danh tính 3 tầng (Tier 0/1/2) theo nguyên tắc **progressive trust** — chỉ yêu cầu xác minh khi người dùng muốn thực hiện hành động có giá trị cao hơn, tránh làm phức tạp quá trình đăng ký ban đầu.
 

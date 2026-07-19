@@ -1,4 +1,4 @@
-# Plan: Live Preview (Game Web Demo)
+# 07. Live Preview (Game Web Demo)
 
 > Bối cảnh: hội đồng phản biện hỏi "buyer mua source game dựa vào đâu để tin tưởng,
 > ngoài ảnh/video trailer?" — ảnh/video là nội dung seller tự chọn, không chứng minh
@@ -109,7 +109,7 @@ Developer export Web (Godot) → nén .zip (index.html/.js/.wasm/.pck)
 
 ## 5. Chống lừa đảo — nối vào AI Review đã có (giai đoạn sau)
 
-Seller có thể upload demo của **game khác** (hay hơn) để dụ mua, thay vì demo đúng game đang bán. Xử lý bằng cách mở rộng `AiReviewReport.mediaMatchScore` (đã có sẵn — xem [ai-review-plan.md](ai-review-plan.md) mục 4.2):
+Seller có thể upload demo của **game khác** (hay hơn) để dụ mua, thay vì demo đúng game đang bán. Xử lý bằng cách mở rộng `AiReviewReport.mediaMatchScore` (đã có sẵn — xem [05. AI Review](05-ai-review-plan.md) mục 6.2):
 
 ```
 Web demo build → chụp screenshot tự động (headless browser load iframe)

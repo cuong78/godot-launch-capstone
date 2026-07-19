@@ -1,4 +1,4 @@
-# Plan: Source Code Publishing & Anti-Theft
+# 04. Source Code Publishing & Anti-Theft
 
 > Lộ trình cho luồng push game/source qua GitHub: verify → clone (kể cả private) →
 > virus scan → AI review → publish, kèm cơ chế chống đạo nhái và phòng thủ pháp lý.
@@ -98,7 +98,7 @@ Nền tảng là trung gian truy trách nhiệm người bán, không phải bê
 
 ### Tasks
 - [ ] Cập nhật scope trong frontend OAuth redirect URL
-- [ ] Cập nhật `docs/githubOauth.md` (mục 6 — scope)
+- [ ] Cập nhật `docs/02-github-oauth.md` (mục 6 — scope)
 - [ ] Re-link flow: user đã link với scope cũ → cần re-authorize để có `repo` scope
 - [ ] Lưu ý bảo mật: token giờ có quyền đọc TẤT CẢ private repo của user → log rõ, audit khi dùng
 
@@ -129,7 +129,7 @@ Backend Java (submit code — có githubRepoUrl)
   → POST /source/scan  → ClamAV (sạch/nhiễm)
   → POST /source/snapshot → { commitSha, fileHashes, bundleHash, clonedAt }
   → (giai đoạn 2) POST /source/similarity → flag nếu trùng cao
-  → AI review (xem ai-review-plan.md)
+  → AI review (xem 05-ai-review-plan.md)
   → lưu kết quả vào DB → chuyển trạng thái review
 ```
 
@@ -205,7 +205,7 @@ B submit source X
 
 > Sau clone + scan sạch → AI đánh giá → tạo report đề xuất → **admin quyết định cuối**.
 >
-> **→ Plan chi tiết: [ai-review-plan.md](ai-review-plan.md)**
+> **→ Luồng chi tiết: [05. AI Review](05-ai-review-plan.md)**
 
 Tóm tắt:
 - AI = đề xuất, KHÔNG phán quyết. Admin luôn review cuối.

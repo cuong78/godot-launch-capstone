@@ -61,7 +61,7 @@ note right of OrderRepo
   chính là bằng chứng đã thanh toán thành công.
 end note
 
-== Bước 3: Ghi sổ KÉP — 3 Transaction cho 3 ví (yêu cầu flow.md #5) ==
+== Bước 3: Ghi sổ KÉP — 3 Transaction cho 3 ví (yêu cầu docs/00-flow-overview.md #5) ==
 
 note over OrderSvc, TxnRepo #DDFFDD
   1 Order thành công = 3 row Transaction riêng, mỗi row chỉ
@@ -91,7 +91,7 @@ TxnRepo -> TxnRepo: save
 OrderSvc --> FE: Mua thành công
 FE --> B: Đã mua — có thể tải về
 
-== Bước 4: Tải Game/Asset (seller được tải lại NHIỀU LẦN — yêu cầu flow.md #5) ==
+== Bước 4: Tải Game/Asset (seller được tải lại NHIỀU LẦN — yêu cầu docs/00-flow-overview.md #5) ==
 
 B -> FE: Bấm "Tải xuống"
 FE -> DlSvc: GET /api/downloads/{orderId}

@@ -1,4 +1,4 @@
-# GodotLaunch — Luồng Push Game lên Google Play (CH Play)
+# 08. GodotLaunch — Luồng Push Game lên Google Play (CH Play)
 
 ## 1. Mục tiêu tài liệu
 
@@ -8,7 +8,7 @@ admin upload build → hệ thống tự động submit lên Google Play → pol
 
 Bám theo implementation hiện tại trong source code. Thiết kế gốc:
 [docs/diagram/2 push-game-sequence.puml](diagram/2%20push-game-sequence.puml),
-ghi chú nghiệp vụ: [docs/flow.md](flow.md) mục 2.2.
+ghi chú nghiệp vụ: [00. Tổng quan nghiệp vụ](00-flow-overview.md) mục 2.2.
 
 ---
 
