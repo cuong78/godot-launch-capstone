@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.EntityGraph;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +16,10 @@ import java.util.UUID;
 public interface AssetRepository extends JpaRepository<Asset, UUID> {
     List<Asset> findBySellerId(UUID sellerId);
     List<Asset> findByStatus(ItemStatus status);
+
+    @EntityGraph(attributePaths = {"seller", "category", "tags"})
+    @Query("SELECT DISTINCT a FROM Asset a WHERE a.status = :status")
+    List<Asset> findStorefrontAssets(@Param("status") ItemStatus status);
 
     @Query("SELECT a FROM Asset a WHERE a.fileUrl IS NOT NULL AND a.fileUrl <> '' " +
            "AND (:search IS NULL OR :search = '' OR " +

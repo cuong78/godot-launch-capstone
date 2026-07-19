@@ -39,6 +39,12 @@ public enum ErrorCode {
     DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy khiếu nại."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tập tin trên server lưu trữ (Có thể đã bị xóa hoặc là dữ liệu mẫu)."),
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested banner does not exist."),
+    COLLECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested collection does not exist."),
+    HOMEPAGE_SECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested homepage section does not exist."),
+    TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested tag does not exist."),
+    COLLECTION_SLUG_EXISTS(HttpStatus.CONFLICT, "Collection slug already exists."),
+    SYSTEM_SECTION_PROTECTED(HttpStatus.BAD_REQUEST, "System homepage sections cannot be deleted or change their rule."),
+    TAG_ALREADY_EXISTS(HttpStatus.CONFLICT, "Tag name or slug already exists."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ."),
 
     // 400 Bad Request additions / Category

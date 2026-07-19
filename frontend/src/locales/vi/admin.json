@@ -4,6 +4,7 @@
     "moderation": { "label": "Kiểm duyệt", "description": "Game, asset, AI review và kiểm tra demo." },
     "finance": { "label": "Tài chính", "description": "Ví, thanh toán, rút tiền và vận hành chi trả." },
     "users": { "label": "Người dùng", "description": "Danh bạ, thay đổi vai trò và trạng thái tài khoản." },
+    "content": { "label": "Nội dung", "description": "Homepage, banner, collection, tag và category." },
     "system": { "label": "Hệ thống", "description": "Nhật ký, lưu trữ, cấu hình và tranh chấp." }
   },
   "tabs": {
@@ -17,7 +18,8 @@
     "banners": "Banner",
     "storage": "Lưu trữ",
     "disputes": "Tranh chấp",
-    "agreement": "Thỏa thuận"
+    "agreement": "Thỏa thuận",
+    "content": "Quản lý nội dung"
   },
   "sectionTitle": {
     "logs": "Nhật ký kiểm toán bảo mật",
