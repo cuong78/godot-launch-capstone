@@ -9,6 +9,7 @@ import com.godotlaunch.backend.dto.response.KycStatusResponse;
 import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.RoleRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.AuthService;
@@ -41,6 +42,9 @@ class KycControllerTest {
 
     @Mock
     private RoleRepository roleRepository;
+
+    @Mock
+    private BannedIdentityRepository bannedIdentityRepository;
 
     @Mock
     private AuthService authService;
@@ -124,6 +128,7 @@ class KycControllerTest {
 
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(bannedIdentityRepository.existsByKycIdNumber("012345678901")).thenReturn(false);
         when(userRepository.existsByKycIdNumberAndIdNot("012345678901", userId)).thenReturn(false);
         when(roleRepository.findByName("developer")).thenReturn(Optional.of(developerRole));
         when(userRepository.save(any(User.class))).thenReturn(mockUser);
@@ -151,6 +156,7 @@ class KycControllerTest {
 
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(bannedIdentityRepository.existsByKycIdNumber("012345678901")).thenReturn(false);
         when(userRepository.existsByKycIdNumberAndIdNot("012345678901", userId)).thenReturn(true);
 
         // Act & Assert

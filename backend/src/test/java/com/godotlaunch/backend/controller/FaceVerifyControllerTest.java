@@ -88,7 +88,7 @@ class FaceVerifyControllerTest {
 
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
-        when(faceServiceClient.isDuplicateFace("base64-face-image-str")).thenReturn(false);
+        when(faceServiceClient.checkFace("base64-face-image-str")).thenReturn(new FaceServiceClient.FaceCheckResult(false, false));
         doNothing().when(faceServiceClient).registerFace(userId, "base64-face-image-str");
         when(userRepository.save(any(User.class))).thenReturn(mockUser);
 
@@ -121,7 +121,7 @@ class FaceVerifyControllerTest {
         // Assert
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody().getData().get("faceVerified")).isTrue();
-        verify(faceServiceClient, never()).isDuplicateFace(any());
+        verify(faceServiceClient, never()).checkFace(any());
         verify(userRepository, never()).save(any());
     }
 
@@ -134,7 +134,7 @@ class FaceVerifyControllerTest {
 
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
-        when(faceServiceClient.isDuplicateFace("duplicate-face")).thenReturn(true);
+        when(faceServiceClient.checkFace("duplicate-face")).thenReturn(new FaceServiceClient.FaceCheckResult(true, false));
 
         // Act & Assert
         assertThatThrownBy(() -> faceVerifyController.verifyFace(request, principal))
@@ -152,7 +152,7 @@ class FaceVerifyControllerTest {
 
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
-        when(faceServiceClient.isDuplicateFace("no-face-in-image"))
+        when(faceServiceClient.checkFace("no-face-in-image"))
                 .thenThrow(new FaceServiceClient.FaceServiceException("Face not detected"));
 
         // Act & Assert

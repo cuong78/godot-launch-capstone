@@ -1,173 +1,142 @@
 package com.godotlaunch.backend.controller;
 
-// Temporarily commented out due to local WebMvcTest classpath resolution issue in offline workspace.
-/*
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.godotlaunch.backend.dto.request.CategoryRequest;
+import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.CategoryResponse;
-import com.godotlaunch.backend.security.JwtAuthenticationFilter;
 import com.godotlaunch.backend.service.CategoryService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
-import java.time.Instant;
-import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import org.springframework.context.annotation.Import;
-import com.godotlaunch.backend.config.SecurityConfig;
+@ExtendWith(MockitoExtension.class)
+class CategoryControllerTest {
 
-@WebMvcTest(CategoryController.class)
-@Import(SecurityConfig.class)
-public class CategoryControllerTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    private ObjectMapper objectMapper;
-
-    @MockitoBean
+    @Mock
     private CategoryService categoryService;
 
-    @MockitoBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @InjectMocks
+    private CategoryController categoryController;
 
-    private CategoryResponse categoryResponse;
-    private CategoryRequest categoryRequest;
     private UUID categoryId;
+    private CategoryResponse categoryResponse;
 
     @BeforeEach
-    void setUp() throws Exception {
-        this.objectMapper = new ObjectMapper();
-
-        doAnswer(invocation -> {
-            jakarta.servlet.ServletRequest request = invocation.getArgument(0);
-            jakarta.servlet.ServletResponse response = invocation.getArgument(1);
-            jakarta.servlet.FilterChain chain = invocation.getArgument(2);
-            chain.doFilter(request, response);
-            return null;
-        }).when(jwtAuthenticationFilter).doFilter(any(), any(), any());
-
+    void setUp() {
         categoryId = UUID.randomUUID();
         categoryResponse = CategoryResponse.builder()
                 .id(categoryId)
-                .name("Action Games")
-                .slug("action-games")
-                .description("Action genre")
-                .parentId(null)
-                .createdAt(Instant.now())
+                .name("Action")
+                .slug("action")
+                .type("game")
                 .build();
-
-        categoryRequest = new CategoryRequest();
-        categoryRequest.setName("Action Games");
-        categoryRequest.setSlug("action-games");
-        categoryRequest.setDescription("Action genre");
     }
 
     @Test
-    void getAllCategories_ShouldReturnList_WhenPublic() throws Exception {
-        when(categoryService.getAllCategories()).thenReturn(Collections.singletonList(categoryResponse));
+    @DisplayName("shouldCreateCategory_WhenValidRequest")
+    void shouldCreateCategory_WhenValidRequest() {
+        // Arrange
+        CategoryRequest request = new CategoryRequest();
+        request.setName("Action");
+        request.setSlug("action");
+        request.setType("game");
 
-        mockMvc.perform(get("/api/v1/categories"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].id").value(categoryId.toString()))
-                .andExpect(jsonPath("$.data[0].name").value("Action Games"))
-                .andExpect(jsonPath("$.message").value("Categories retrieved successfully"));
+        when(categoryService.createCategory(any(CategoryRequest.class))).thenReturn(categoryResponse);
 
+        // Act
+        ResponseEntity<ApiResponse<CategoryResponse>> response = categoryController.createCategory(request);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().getData().getName()).isEqualTo("Action");
+        verify(categoryService, times(1)).createCategory(request);
+    }
+
+    @Test
+    @DisplayName("shouldUpdateCategory_WhenValidRequest")
+    void shouldUpdateCategory_WhenValidRequest() {
+        // Arrange
+        CategoryRequest request = new CategoryRequest();
+        request.setName("Action RPG");
+        request.setSlug("action-rpg");
+        request.setType("game");
+
+        CategoryResponse updatedResp = CategoryResponse.builder()
+                .id(categoryId)
+                .name("Action RPG")
+                .slug("action-rpg")
+                .type("game")
+                .build();
+
+        when(categoryService.updateCategory(eq(categoryId), any(CategoryRequest.class))).thenReturn(updatedResp);
+
+        // Act
+        ResponseEntity<ApiResponse<CategoryResponse>> response = categoryController.updateCategory(categoryId, request);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getData().getName()).isEqualTo("Action RPG");
+        verify(categoryService, times(1)).updateCategory(categoryId, request);
+    }
+
+    @Test
+    @DisplayName("shouldGetAllCategories_WhenTypeFilterProvidedOrNull")
+    void shouldGetAllCategories_WhenTypeFilterProvidedOrNull() {
+        // Arrange
+        when(categoryService.getCategoriesByType("game")).thenReturn(List.of(categoryResponse));
+        when(categoryService.getAllCategories()).thenReturn(List.of(categoryResponse));
+
+        // Act - filtered
+        ResponseEntity<ApiResponse<List<CategoryResponse>>> filtered = categoryController.getAllCategories("game");
+        // Act - all
+        ResponseEntity<ApiResponse<List<CategoryResponse>>> all = categoryController.getAllCategories(null);
+
+        // Assert
+        assertThat(filtered.getBody().getData()).hasSize(1);
+        assertThat(all.getBody().getData()).hasSize(1);
+        verify(categoryService, times(1)).getCategoriesByType("game");
         verify(categoryService, times(1)).getAllCategories();
     }
 
     @Test
-    void getCategoryById_ShouldReturnCategory_WhenPublic() throws Exception {
+    @DisplayName("shouldGetCategoryById_WhenExists")
+    void shouldGetCategoryById_WhenExists() {
+        // Arrange
         when(categoryService.getCategoryById(categoryId)).thenReturn(categoryResponse);
 
-        mockMvc.perform(get("/api/v1/categories/{id}", categoryId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value(categoryId.toString()))
-                .andExpect(jsonPath("$.message").value("Category retrieved successfully"));
+        // Act
+        ResponseEntity<ApiResponse<CategoryResponse>> response = categoryController.getCategoryById(categoryId);
 
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getData().getId()).isEqualTo(categoryId);
         verify(categoryService, times(1)).getCategoryById(categoryId);
     }
 
     @Test
-    @WithMockUser(authorities = "ROLE_ADMIN")
-    void createCategory_ShouldCreateCategory_WhenAdmin() throws Exception {
-        when(categoryService.createCategory(any(CategoryRequest.class))).thenReturn(categoryResponse);
+    @DisplayName("shouldDeleteCategory_WhenValidId")
+    void shouldDeleteCategory_WhenValidId() {
+        // Arrange
+        doNothing().when(categoryService).deleteCategory(categoryId);
 
-        mockMvc.perform(post("/api/v1/categories")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(categoryRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.name").value("Action Games"));
+        // Act
+        ResponseEntity<ApiResponse<Void>> response = categoryController.deleteCategory(categoryId);
 
-        verify(categoryService, times(1)).createCategory(any(CategoryRequest.class));
-    }
-
-    @Test
-    void createCategory_ShouldReturnForbidden_WhenAnonymous() throws Exception {
-        mockMvc.perform(post("/api/v1/categories")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(categoryRequest)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @WithMockUser(authorities = "ROLE_GUEST")
-    void createCategory_ShouldReturnForbidden_WhenNotAdmin() throws Exception {
-        mockMvc.perform(post("/api/v1/categories")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(categoryRequest)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @WithMockUser(authorities = "ROLE_ADMIN")
-    void updateCategory_ShouldUpdate_WhenAdmin() throws Exception {
-        when(categoryService.updateCategory(eq(categoryId), any(CategoryRequest.class))).thenReturn(categoryResponse);
-
-        mockMvc.perform(put("/api/v1/categories/{id}", categoryId)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(categoryRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.name").value("Action Games"));
-
-        verify(categoryService, times(1)).updateCategory(eq(categoryId), any(CategoryRequest.class));
-    }
-
-    @Test
-    @WithMockUser(authorities = "ROLE_ADMIN")
-    void createCategory_ShouldReturn400_WhenValidationFails() throws Exception {
-        CategoryRequest invalidRequest = new CategoryRequest();
-
-        mockMvc.perform(post("/api/v1/categories")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.errors.name").exists())
-                .andExpect(jsonPath("$.errors.slug").exists());
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(categoryService, times(1)).deleteCategory(categoryId);
     }
 }
-*/

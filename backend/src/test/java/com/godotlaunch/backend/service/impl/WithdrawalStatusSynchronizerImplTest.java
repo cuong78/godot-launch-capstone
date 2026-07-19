@@ -100,9 +100,6 @@ class WithdrawalStatusSynchronizerImplTest {
         withdrawal.setWallet(wallet);
         withdrawal.setAmount(new BigDecimal("100000"));
         withdrawal.setCurrency("VND");
-        withdrawal.setBankName("MB Bank");
-        withdrawal.setBankAccount("0123456789");
-        withdrawal.setAccountHolder("Dev User");
         withdrawal.setTransferReference("GLWD-ORIGINAL");
         withdrawal.setPayosPayoutId("po_123");
         withdrawal.setPayosReferenceId(withdrawal.getId().toString());
