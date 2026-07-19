@@ -13,7 +13,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class HomepageCacheService {
-    private static final String KEY = "homepage:v1";
+    private static final String KEY = "homepage:v2";
     private static final Duration TTL = Duration.ofMinutes(5);
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;

@@ -25,10 +25,11 @@ public class HomepageSectionServiceImpl implements HomepageSectionService {
 
     @Override @Transactional
     public HomepageSectionResponse create(HomepageSectionRequest request) {
+        ensureCollectionIsAvailable(request.getCollectionId(), null);
         HomepageSection section = new HomepageSection();
         section.setSectionType(HomepageSectionType.COLLECTION);
         section.setSystem(false);
-        applyCollectionSection(section, request.getTitle(), request.getCollectionId(), request.getDisplayOrder(), request.getItemLimit(), request.isActive());
+        applyCollectionSection(section, request.getTitle(), request.getCollectionId(), request.getDisplayOrder(), request.isActive());
         HomepageSectionResponse response = map(sectionRepository.save(section));
         homepageService.invalidateCache();
         return response;
@@ -40,10 +41,12 @@ public class HomepageSectionServiceImpl implements HomepageSectionService {
         section.setTitle(request.getTitle().trim());
         section.setDisplayOrder(request.getDisplayOrder());
         section.setActive(request.isActive());
-        if (section.isSystem()) {
-            section.setItemLimit(6);
-        } else {
-            applyCollectionSection(section, request.getTitle(), request.getCollectionId(), request.getDisplayOrder(), request.getItemLimit(), request.isActive());
+        if (!section.isSystem()) {
+            UUID collectionId = request.getCollectionId() == null
+                    ? section.getCollection().getId()
+                    : request.getCollectionId();
+            ensureCollectionIsAvailable(collectionId, id);
+            applyCollectionSection(section, request.getTitle(), collectionId, request.getDisplayOrder(), request.isActive());
         }
         HomepageSectionResponse response = map(sectionRepository.save(section));
         homepageService.invalidateCache();
@@ -58,17 +61,24 @@ public class HomepageSectionServiceImpl implements HomepageSectionService {
         homepageService.invalidateCache();
     }
 
-    private void applyCollectionSection(HomepageSection section, String title, UUID collectionId, Integer order, Integer limit, boolean active) {
+    private void applyCollectionSection(HomepageSection section, String title, UUID collectionId, Integer order, boolean active) {
         ContentCollection collection = collectionRepository.findById(collectionId).orElseThrow(() -> new AppException(ErrorCode.COLLECTION_NOT_FOUND));
         section.setTitle(title.trim()); section.setCollection(collection); section.setDisplayOrder(order);
-        section.setItemLimit(Math.min(limit, collection.getMaxItems())); section.setActive(active);
+        section.setActive(active);
+    }
+
+    private void ensureCollectionIsAvailable(UUID collectionId, UUID sectionId) {
+        boolean alreadyAssigned = sectionId == null
+                ? sectionRepository.existsByCollectionId(collectionId)
+                : sectionRepository.existsByCollectionIdAndIdNot(collectionId, sectionId);
+        if (alreadyAssigned) throw new AppException(ErrorCode.COLLECTION_ALREADY_ON_HOMEPAGE);
     }
 
     private HomepageSectionResponse map(HomepageSection section) {
         return HomepageSectionResponse.builder().id(section.getId()).title(section.getTitle()).sectionType(section.getSectionType())
                 .collectionId(section.getCollection() == null ? null : section.getCollection().getId())
                 .collectionSlug(section.getCollection() == null ? null : section.getCollection().getSlug())
-                .displayOrder(section.getDisplayOrder()).itemLimit(section.getItemLimit()).active(section.isActive()).system(section.isSystem())
+                .displayOrder(section.getDisplayOrder()).active(section.isActive()).system(section.isSystem())
                 .products(List.of()).build();
     }
 }

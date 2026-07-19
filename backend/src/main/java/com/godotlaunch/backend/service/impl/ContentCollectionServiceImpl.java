@@ -59,9 +59,6 @@ public class ContentCollectionServiceImpl implements ContentCollectionService {
         entity.setTitle(request.getTitle().trim());
         entity.setSlug(request.getSlug().trim());
         entity.setDescription(request.getDescription());
-        entity.setItemType(request.getItemType());
-        entity.setMatchMode(request.getMatchMode());
-        entity.setSortMode(request.getSortMode());
         entity.setMaxItems(request.getMaxItems());
         entity.setActive(request.isActive());
         Set<UUID> tagIds = request.getTagIds() == null ? Set.of() : request.getTagIds();
@@ -77,7 +74,6 @@ public class ContentCollectionServiceImpl implements ContentCollectionService {
     private ContentCollectionResponse map(ContentCollection entity) {
         return ContentCollectionResponse.builder()
                 .id(entity.getId()).title(entity.getTitle()).slug(entity.getSlug()).description(entity.getDescription())
-                .itemType(entity.getItemType()).matchMode(entity.getMatchMode()).sortMode(entity.getSortMode())
                 .maxItems(entity.getMaxItems()).active(entity.isActive())
                 .tags(entity.getTags().stream().map(tag -> TagResponse.builder().id(tag.getId()).name(tag.getName()).slug(tag.getSlug()).build()).toList())
                 .categories(entity.getCategories().stream().map(category -> CategoryResponse.builder()

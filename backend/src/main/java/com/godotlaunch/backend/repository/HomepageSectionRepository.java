@@ -8,6 +8,8 @@ import java.util.*;
 
 @Repository
 public interface HomepageSectionRepository extends JpaRepository<HomepageSection, UUID> {
+    boolean existsByCollectionId(UUID collectionId);
+    boolean existsByCollectionIdAndIdNot(UUID collectionId, UUID id);
     @EntityGraph(attributePaths = {"collection", "collection.tags", "collection.categories"})
     List<HomepageSection> findAllByOrderByDisplayOrderAsc();
     @EntityGraph(attributePaths = {"collection", "collection.tags", "collection.categories"})

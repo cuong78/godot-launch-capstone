@@ -12,7 +12,6 @@ public class HomepageSectionResponse {
     private UUID collectionId;
     private String collectionSlug;
     private Integer displayOrder;
-    private Integer itemLimit;
     private boolean active;
     private boolean system;
     private List<HomepageProductResponse> products;

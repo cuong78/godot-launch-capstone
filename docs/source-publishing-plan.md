@@ -217,12 +217,8 @@ Tóm tắt:
 
 ---
 
-## 6. Dispute Resolution — KHÔNG ESCROW, dùng cưỡng chế hoàn trả + danh tính
+## 6. Dispute Resolution 
 
-> **Tại sao bỏ escrow:** giam tiền gây thiệt cho người bán thật (họ muốn rút sớm),
-> và dispute bản quyền không giới hạn trong window cố định. Thay vào đó: **trả tiền ngay**,
-> rồi dùng **KYC/FaceID + điều khoản cưỡng chế hoàn trả** để truy trách nhiệm khi có tranh chấp.
->
 > Vai trò: **A = người bán (bị tố)**, **B = người báo cáo**.
 
 ### 6.1 Hợp đồng Indemnity (bổ sung vào contract bán source)

@@ -2,21 +2,16 @@ import api from './axios';
 import { ApiResponse } from '../types';
 import { BannerResponse } from './bannerApi';
 
-export type CollectionItemType = 'GAME' | 'ASSET' | 'ALL';
-export type CollectionMatchMode = 'ANY' | 'ALL';
-export type CollectionSortMode = 'NEWEST' | 'POPULAR' | 'RANDOM';
 export type HomepageSectionType = 'RECENT_RELEASES' | 'FREE_CONTENT' | 'COLLECTION';
 
 export interface ContentTag { id: string; name: string; slug: string }
 export interface ContentCategory { id: string; name: string; slug: string; description?: string; parentId?: string; type: string }
 export interface ContentCollection {
   id: string; title: string; slug: string; description?: string;
-  itemType: CollectionItemType; matchMode: CollectionMatchMode; sortMode: CollectionSortMode;
   maxItems: number; active: boolean; tags: ContentTag[]; categories: ContentCategory[];
 }
 export interface ContentCollectionPayload {
-  title: string; slug: string; description: string; itemType: CollectionItemType;
-  matchMode: CollectionMatchMode; sortMode: CollectionSortMode; maxItems: number;
+  title: string; slug: string; description: string; maxItems: number;
   active: boolean; tagIds: string[]; categoryIds: string[];
 }
 export interface HomepageProduct {
@@ -26,7 +21,7 @@ export interface HomepageProduct {
 }
 export interface HomepageSection {
   id: string; title: string; sectionType: HomepageSectionType; collectionId?: string;
-  collectionSlug?: string; displayOrder: number; itemLimit: number; active: boolean;
+  collectionSlug?: string; displayOrder: number; active: boolean;
   system: boolean; products: HomepageProduct[];
 }
 export interface HomepagePayload { banners: BannerResponse[]; sections: HomepageSection[] }
@@ -38,9 +33,9 @@ export const contentApi = {
   updateCollection: async (id: string, payload: ContentCollectionPayload) => (await api.put<ApiResponse<ContentCollection>>(`/api/v1/admin/collections/${id}`, payload)).data,
   deleteCollection: async (id: string) => (await api.delete<ApiResponse<void>>(`/api/v1/admin/collections/${id}`)).data,
   getSections: async () => (await api.get<ApiResponse<HomepageSection[]>>('/api/v1/admin/homepage-sections')).data,
-  createSection: async (payload: { title: string; collectionId: string; displayOrder: number; itemLimit: number; active: boolean }) =>
+  createSection: async (payload: { title: string; collectionId: string; displayOrder: number; active: boolean }) =>
     (await api.post<ApiResponse<HomepageSection>>('/api/v1/admin/homepage-sections', payload)).data,
-  updateSection: async (id: string, payload: { title: string; collectionId?: string; displayOrder: number; itemLimit: number; active: boolean }) =>
+  updateSection: async (id: string, payload: { title: string; collectionId?: string; displayOrder: number; active: boolean }) =>
     (await api.put<ApiResponse<HomepageSection>>(`/api/v1/admin/homepage-sections/${id}`, payload)).data,
   deleteSection: async (id: string) => (await api.delete<ApiResponse<void>>(`/api/v1/admin/homepage-sections/${id}`)).data,
   getTags: async () => (await api.get<ApiResponse<ContentTag[]>>('/api/v1/tags')).data,

@@ -9,6 +9,5 @@ public class UpdateHomepageSectionRequest {
     @NotBlank @Size(max = 160) private String title;
     private UUID collectionId;
     @NotNull @Min(0) private Integer displayOrder;
-    @NotNull @Min(1) @Max(10) private Integer itemLimit;
     private boolean active = true;
 }

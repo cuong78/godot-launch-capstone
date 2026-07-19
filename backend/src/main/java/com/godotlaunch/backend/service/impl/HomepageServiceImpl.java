@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class HomepageServiceImpl implements HomepageService {
+    private static final int SYSTEM_SECTION_LIMIT = 6;
     private final HomepageSectionRepository sectionRepository;
     private final GameRepository gameRepository;
     private final AssetRepository assetRepository;
@@ -43,34 +44,32 @@ public class HomepageServiceImpl implements HomepageService {
         if (section.getSectionType() == HomepageSectionType.RECENT_RELEASES) {
             products = Stream.concat(games.stream().map(this::mapGame), assets.stream().map(this::mapAsset))
                     .sorted(Comparator.comparing(HomepageProductResponse::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                    .limit(6).toList();
+                    .limit(SYSTEM_SECTION_LIMIT).toList();
         } else if (section.getSectionType() == HomepageSectionType.FREE_CONTENT) {
             products = new ArrayList<>(Stream.concat(
                     games.stream().filter(game -> isFree(game.getPriceProposed())).map(this::mapGame),
                     assets.stream().filter(asset -> isFree(asset.getPrice())).map(this::mapAsset)).toList());
             Collections.shuffle(products);
-            products = products.stream().limit(6).toList();
+            products = products.stream().limit(SYSTEM_SECTION_LIMIT).toList();
         } else {
-            products = buildCollection(section.getCollection(), games, assets, section.getItemLimit());
+            products = buildCollection(section.getCollection(), games, assets);
         }
         return HomepageSectionResponse.builder().id(section.getId()).title(section.getTitle()).sectionType(section.getSectionType())
                 .collectionId(section.getCollection() == null ? null : section.getCollection().getId())
                 .collectionSlug(section.getCollection() == null ? null : section.getCollection().getSlug())
-                .displayOrder(section.getDisplayOrder()).itemLimit(section.getItemLimit()).active(section.isActive()).system(section.isSystem())
+                .displayOrder(section.getDisplayOrder()).active(section.isActive()).system(section.isSystem())
                 .products(products).build();
     }
 
-    private List<HomepageProductResponse> buildCollection(ContentCollection collection, List<Game> games, List<Asset> assets, int sectionLimit) {
+    private List<HomepageProductResponse> buildCollection(ContentCollection collection, List<Game> games, List<Asset> assets) {
         if (collection == null || !collection.isActive()) return List.of();
-        Stream<HomepageProductResponse> gameStream = collection.getItemType() == CollectionItemType.ASSET ? Stream.empty()
-                : games.stream().filter(game -> matches(game.getCategory(), game.getTags(), collection)).map(this::mapGame);
-        Stream<HomepageProductResponse> assetStream = collection.getItemType() == CollectionItemType.GAME ? Stream.empty()
-                : assets.stream().filter(asset -> matches(asset.getCategory(), asset.getTags(), collection)).map(this::mapAsset);
+        Stream<HomepageProductResponse> gameStream = games.stream()
+                .filter(game -> matches(game.getCategory(), game.getTags(), collection)).map(this::mapGame);
+        Stream<HomepageProductResponse> assetStream = assets.stream()
+                .filter(asset -> matches(asset.getCategory(), asset.getTags(), collection)).map(this::mapAsset);
         List<HomepageProductResponse> products = new ArrayList<>(Stream.concat(gameStream, assetStream).toList());
-        if (collection.getSortMode() == CollectionSortMode.RANDOM) Collections.shuffle(products);
-        else if (collection.getSortMode() == CollectionSortMode.POPULAR) products.sort(Comparator.comparing(HomepageProductResponse::getPopularity, Comparator.nullsLast(Comparator.reverseOrder())));
-        else products.sort(Comparator.comparing(HomepageProductResponse::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
-        return products.stream().limit(Math.min(sectionLimit, collection.getMaxItems())).toList();
+        products.sort(Comparator.comparing(HomepageProductResponse::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
+        return products.stream().limit(collection.getMaxItems()).toList();
     }
 
     private boolean matches(Category category, Set<Tag> itemTags, ContentCollection collection) {
@@ -78,8 +77,7 @@ public class HomepageServiceImpl implements HomepageService {
         Set<UUID> selectedTagIds = collection.getTags().stream().map(Tag::getId).collect(java.util.stream.Collectors.toSet());
         Set<UUID> itemTagIds = itemTags.stream().map(Tag::getId).collect(java.util.stream.Collectors.toSet());
         boolean categoryMatch = categoryIds.isEmpty() || (category != null && categoryIds.contains(category.getId()));
-        boolean tagMatch = selectedTagIds.isEmpty() || (collection.getMatchMode() == CollectionMatchMode.ALL
-                ? itemTagIds.containsAll(selectedTagIds) : selectedTagIds.stream().anyMatch(itemTagIds::contains));
+        boolean tagMatch = selectedTagIds.isEmpty() || itemTagIds.containsAll(selectedTagIds);
         return categoryMatch && tagMatch;
     }
 
