@@ -26,6 +26,7 @@ public class BannerServiceImpl implements BannerService {
 
     private final BannerRepository bannerRepository;
     private final SeaweedFsService seaweedFsService;
+    private final HomepageCacheService homepageCacheService;
 
     @Override
     @Transactional(readOnly = true)
@@ -41,7 +42,9 @@ public class BannerServiceImpl implements BannerService {
     public BannerResponse create(CreateBannerRequest request) {
         Banner banner = new Banner();
         applyValues(banner, request.getTitle(), request.getDescription(), request.getImageUrl(), request.getDisplayOrder());
-        return mapToResponse(bannerRepository.save(banner));
+        BannerResponse response = mapToResponse(bannerRepository.save(banner));
+        homepageCacheService.evict();
+        return response;
     }
 
     @Override
@@ -49,7 +52,9 @@ public class BannerServiceImpl implements BannerService {
     public BannerResponse update(UUID id, UpdateBannerRequest request) {
         Banner banner = findById(id);
         applyValues(banner, request.getTitle(), request.getDescription(), request.getImageUrl(), request.getDisplayOrder());
-        return mapToResponse(bannerRepository.save(banner));
+        BannerResponse response = mapToResponse(bannerRepository.save(banner));
+        homepageCacheService.evict();
+        return response;
     }
 
     @Override
@@ -57,6 +62,7 @@ public class BannerServiceImpl implements BannerService {
     public void delete(UUID id) {
         Banner banner = findById(id);
         bannerRepository.delete(banner);
+        homepageCacheService.evict();
     }
 
     @Override

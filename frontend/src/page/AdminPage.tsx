@@ -26,6 +26,7 @@ import {
   ShoppingBag,
   Database,
   Play,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
@@ -69,6 +70,7 @@ import AiReviewReportCard from "../components/admin/AiReviewReportCard";
 import ExternalPublishStatusCard from "../components/admin/ExternalPublishStatusCard";
 import { AdminMarketplaceActivityChart } from "../components/admin/AdminMarketplaceActivityChart";
 import { AdminBannerPanel } from "../components/admin/AdminBannerPanel";
+import { AdminContentManagementPanel } from "../components/admin/AdminContentManagementPanel";
 import { AdminShell } from "../components/admin/AdminShell";
 import {
   AdminSidebarNav,
@@ -105,13 +107,15 @@ type AdminTabKey =
   | "storage"
   | "banners"
   | "disputes"
-  | "agreement";
+  | "agreement"
+  | "content";
 
 type AdminSectionKey =
   | "overview"
   | "moderation"
   | "finance"
   | "users"
+  | "content"
   | "system";
 
 type ModerationStatusFilter =
@@ -134,7 +138,8 @@ const ADMIN_SECTION_TABS: Record<
   moderation: ["moderation"],
   finance: ["wallet", "payments", "withdrawal"],
   users: ["users"],
-  system: ["logs", "settings", "banners", "storage", "disputes", "agreement"],
+  content: ["content"],
+  system: ["logs", "settings", "storage", "disputes", "agreement"],
 };
 
 const ADMIN_DEFAULT_TAB_BY_SECTION: Record<
@@ -144,6 +149,7 @@ const ADMIN_DEFAULT_TAB_BY_SECTION: Record<
   moderation: "moderation",
   finance: "wallet",
   users: "users",
+  content: "content",
   system: "logs",
 };
 
@@ -531,6 +537,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       icon: <Users size={16} />,
     },
     {
+      key: "content",
+      label: t("sidebar.content.label"),
+      description: t("sidebar.content.description"),
+      icon: <LayoutGrid size={16} />,
+    },
+    {
       key: "system",
       label: t("sidebar.system.label"),
       description: t("sidebar.system.description"),
@@ -571,6 +583,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               return { key: tabKey, label: t("tabs.storage") };
             case "banners":
               return { key: tabKey, label: t("tabs.banners") };
+            case "content":
+              return { key: tabKey, label: t("tabs.content") };
             case "disputes":
               return { key: tabKey, label: t("tabs.disputes") };
             case "agreement":
@@ -1589,6 +1603,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               {activeSection !== "moderation" &&
               activeSection !== "finance" &&
               activeSection !== "users" &&
+              activeSection !== "content" &&
               activeSection !== "system" ? (
                 <div className="flex flex-wrap gap-2">
                   {subTabItems.map((item) => (
@@ -3293,6 +3308,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                 {/* Tab 5: Storage Management */}
                 {activeTab === "banners" && <AdminBannerPanel />}
+                {activeTab === "content" && <AdminContentManagementPanel />}
                 {activeTab === "storage" && <AdminFileManagementPanel />}
                 {activeTab === "disputes" && <AdminDisputePanel />}
                 {activeTab === "agreement" && <AdminAgreementPanel />}

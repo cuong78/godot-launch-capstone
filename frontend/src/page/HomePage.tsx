@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Asset } from '../types';
-import { bannerApi, BannerResponse } from '../api/bannerApi';
+import { BannerResponse } from '../api/bannerApi';
+import { contentApi, HomepageProduct, HomepageSection } from '../api/contentApi';
 
 interface HomePageProps {
   assets: Asset[];
@@ -160,17 +161,19 @@ export const HomePage: React.FC<HomePageProps> = ({
     [t]
   );
   const [managedBanners, setManagedBanners] = React.useState<BannerResponse[]>([]);
+  const [homepageSections, setHomepageSections] = React.useState<HomepageSection[]>([]);
 
   React.useEffect(() => {
     let cancelled = false;
     const loadBanners = async () => {
       try {
-        const response = await bannerApi.getPublicBanners();
-        if (!cancelled && response.success && response.data?.length) {
-          setManagedBanners(response.data);
+        const response = await contentApi.getHomepage();
+        if (!cancelled && response.success && response.data) {
+          if (response.data.banners?.length) setManagedBanners(response.data.banners);
+          setHomepageSections(response.data.sections ?? []);
         }
       } catch (error) {
-        console.warn('Unable to load managed banners; using local fallback slides.', error);
+        console.warn('Unable to load managed homepage; using local fallback content.', error);
       }
     };
     loadBanners();
@@ -178,6 +181,29 @@ export const HomePage: React.FC<HomePageProps> = ({
       cancelled = true;
     };
   }, []);
+
+  const openProduct = React.useCallback((product: HomepageProduct) => {
+    const existing = assets.find((asset) => asset.id === product.id);
+    if (existing) {
+      handleViewAssetDetails(existing);
+      return;
+    }
+    handleViewAssetDetails({
+      id: product.id,
+      title: product.title,
+      price: product.price ?? 0,
+      rating: 0,
+      reviewedCount: 0,
+      author: product.creatorName ?? 'GodotLaunch Creator',
+      authorAvatar: '',
+      category: product.categoryName ?? (product.itemType === 'GAME' ? 'Game' : 'Asset'),
+      description: product.description ?? '',
+      image: product.thumbnailUrl ?? '',
+      tag: product.tags[0] ?? product.itemType,
+      tagList: product.tags,
+      itemType: product.itemType === 'GAME' ? 'source_code' : 'asset',
+    });
+  }, [assets, handleViewAssetDetails]);
 
   const heroSlides = React.useMemo<HeroSlide[]>(() => {
     if (managedBanners.length === 0) return fallbackHeroSlides;
@@ -438,7 +464,42 @@ export const HomePage: React.FC<HomePageProps> = ({
           }
         `}</style>
       </div>
-
+      <div className="mx-auto w-full max-w-[1480px] space-y-12 px-5 py-12 sm:px-8 lg:px-12">
+        {homepageSections.map((section) => (
+          <section key={section.id} aria-labelledby={`home-section-${section.id}`}>
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.24em] text-sky-400">
+                  {section.sectionType === 'COLLECTION' ? 'Curated collection' : 'GodotLaunch'}
+                </p>
+                <h2 id={`home-section-${section.id}`} className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+                  {section.title}
+                </h2>
+              </div>
+              <button type="button" onClick={() => setCurrentScreen('marketplace')} className="text-sm font-semibold text-slate-400 transition-colors hover:text-white">
+                Xem tất cả <ChevronRight size={16} className="inline" />
+              </button>
+            </div>
+            {section.products.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+                {section.products.map((product) => (
+                  <button key={`${section.id}-${product.itemType}-${product.id}`} type="button" onClick={() => openProduct(product)} className="group/product overflow-hidden rounded-2xl border border-white/[0.07] bg-[#18181b] text-left transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-[#202024]">
+                    <div className="aspect-[4/3] overflow-hidden bg-slate-900">
+                      {product.thumbnailUrl ? <img src={product.thumbnailUrl} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-105" /> : <div className="flex h-full items-center justify-center text-xs text-slate-600">No preview</div>}
+                    </div>
+                    <div className="space-y-1.5 p-3">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-sky-400">{product.itemType}</span>
+                      <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-white">{product.title}</h3>
+                      <p className="truncate text-xs text-slate-500">{product.creatorName ?? product.categoryName ?? 'GodotLaunch'}</p>
+                      <p className="pt-1 text-sm font-bold text-slate-100">{!product.price ? 'Miễn phí' : `${product.price.toLocaleString('vi-VN')} ₫`}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : <div className="rounded-2xl border border-dashed border-slate-800 px-5 py-10 text-center text-sm text-slate-500">Chưa có sản phẩm phù hợp trong section này.</div>}
+          </section>
+        ))}
+      </div>
     </div>
   );
 };

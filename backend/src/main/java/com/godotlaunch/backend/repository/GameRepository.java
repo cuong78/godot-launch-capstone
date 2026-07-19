@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.EntityGraph;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,6 +17,10 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
     List<Game> findByStatus(GameStatus status);
     List<Game> findAllByOrderByCreatedAtDesc();
     List<Game> findByStatusOrderByCreatedAtDesc(GameStatus status);
+
+    @EntityGraph(attributePaths = {"creator", "category", "tags"})
+    @Query("SELECT DISTINCT g FROM Game g WHERE g.status = :status")
+    List<Game> findStorefrontGames(@Param("status") GameStatus status);
 
     @Query("SELECT g FROM Game g WHERE g.thumbnailUrl IS NOT NULL AND g.thumbnailUrl <> '' " +
            "AND (:search IS NULL OR :search = '' OR " +

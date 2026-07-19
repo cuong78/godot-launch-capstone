@@ -60,6 +60,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/community/posts/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/platform-settings/public").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/banners/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/homepage").permitAll()
                 // Web demo phải đăng nhập mới chơi được -> khai báo TRƯỚC rule permitAll chung của /api/v1/games/** bên dưới
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/games/*/web-demo/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/games/**").permitAll()

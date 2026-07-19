@@ -4,6 +4,7 @@
     "moderation": { "label": "Moderation", "description": "Games, assets, AI review, and demo checks." },
     "finance": { "label": "Finance Ops", "description": "Wallet, payments, withdrawals, and payout operations." },
     "users": { "label": "User Ops", "description": "Directory, role changes, and account status." },
+    "content": { "label": "Content", "description": "Homepage, banners, collections, tags, and categories." },
     "system": { "label": "System Ops", "description": "Logs, storage, settings, and disputes." }
   },
   "tabs": {
@@ -17,7 +18,8 @@
     "banners": "Banners",
     "storage": "Storage",
     "disputes": "Disputes",
-    "agreement": "Agreement"
+    "agreement": "Agreement",
+    "content": "Content management"
   },
   "sectionTitle": {
     "logs": "Security Audit Logs",

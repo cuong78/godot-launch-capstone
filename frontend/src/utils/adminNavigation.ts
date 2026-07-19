@@ -3,6 +3,7 @@ export type AdminNavigationSection =
   | "moderation"
   | "finance"
   | "users"
+  | "content"
   | "system";
 
 export type AdminNavigationTab =
@@ -15,7 +16,8 @@ export type AdminNavigationTab =
   | "settings"
   | "storage"
   | "disputes"
-  | "agreement";
+  | "agreement"
+  | "content";
 
 export interface AdminNavigationDetail {
   section: AdminNavigationSection;

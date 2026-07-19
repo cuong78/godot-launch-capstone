@@ -1,4 +1,15 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: godotlaunch-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - seaweedfs-net
+    restart: unless-stopped
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: godotlaunch-postgres
@@ -133,6 +144,8 @@ services:
     restart: unless-stopped
 
 volumes:
+  redis-data:
+    driver: local
   postgres-data:
     driver: local
   seaweedfs-data:

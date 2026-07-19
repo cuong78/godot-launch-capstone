@@ -1,8 +1,44 @@
-    -- ============================================================
---  V3: Redesign Categories (Parent-Child) & Comprehensive Tags
+-- ============================================================
+--  V5: Redesign Categories (Parent-Child) & Comprehensive Tags
 -- ============================================================
 
--- Clear old categories and tags
+-- Preserve current product/collection assignments by slug. The seeded IDs below
+-- are intentionally replaced, so retaining raw foreign keys would not be safe.
+CREATE TEMP TABLE migration_v5_game_categories AS
+SELECT g.id AS game_id, c.slug
+FROM public.games g
+JOIN public.categories c ON c.id = g.category_id;
+
+CREATE TEMP TABLE migration_v5_asset_categories AS
+SELECT a.id AS asset_id, c.slug
+FROM public.assets a
+JOIN public.categories c ON c.id = a.category_id;
+
+CREATE TEMP TABLE migration_v5_game_tags AS
+SELECT gt.game_id, t.slug
+FROM public.game_tags gt
+JOIN public.tags t ON t.id = gt.tag_id;
+
+CREATE TEMP TABLE migration_v5_asset_tags AS
+SELECT at.asset_id, t.slug
+FROM public.asset_tags at
+JOIN public.tags t ON t.id = at.tag_id;
+
+CREATE TEMP TABLE migration_v5_collection_categories AS
+SELECT cc.collection_id, c.slug
+FROM public.content_collection_categories cc
+JOIN public.categories c ON c.id = cc.category_id;
+
+CREATE TEMP TABLE migration_v5_collection_tags AS
+SELECT ct.collection_id, t.slug
+FROM public.content_collection_tags ct
+JOIN public.tags t ON t.id = ct.tag_id;
+
+-- Collection foreign keys use ON DELETE RESTRICT, so detach them before reseeding.
+DELETE FROM public.content_collection_categories;
+DELETE FROM public.content_collection_tags;
+
+-- Clear old categories and tags. Product foreign keys are SET NULL/CASCADE by V1.
 DELETE FROM public.categories;
 DELETE FROM public.tags;
 
@@ -273,3 +309,40 @@ INSERT INTO public.tags (id, name, slug) VALUES ('0812f3e9-0c7b-462c-bead-901309
 INSERT INTO public.tags (id, name, slug) VALUES ('554ec3ed-12e4-4c0a-b732-691606ca7507', 'Widget', 'widget');
 INSERT INTO public.tags (id, name, slug) VALUES ('57aaad06-d48b-4cca-b24c-774e34d2142c', 'World', 'world');
 INSERT INTO public.tags (id, name, slug) VALUES ('0ae5aea8-42fd-4351-af8f-002351117cbe', 'Zoo', 'zoo');
+
+-- Restore every assignment whose slug still exists in the redesigned taxonomy.
+UPDATE public.games g
+SET category_id = c.id
+FROM migration_v5_game_categories old_category
+JOIN public.categories c ON c.slug = old_category.slug
+WHERE g.id = old_category.game_id;
+
+UPDATE public.assets a
+SET category_id = c.id
+FROM migration_v5_asset_categories old_category
+JOIN public.categories c ON c.slug = old_category.slug
+WHERE a.id = old_category.asset_id;
+
+INSERT INTO public.game_tags (game_id, tag_id)
+SELECT old_tag.game_id, t.id
+FROM migration_v5_game_tags old_tag
+JOIN public.tags t ON t.slug = old_tag.slug
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.asset_tags (asset_id, tag_id)
+SELECT old_tag.asset_id, t.id
+FROM migration_v5_asset_tags old_tag
+JOIN public.tags t ON t.slug = old_tag.slug
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.content_collection_categories (collection_id, category_id)
+SELECT old_category.collection_id, c.id
+FROM migration_v5_collection_categories old_category
+JOIN public.categories c ON c.slug = old_category.slug
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.content_collection_tags (collection_id, tag_id)
+SELECT old_tag.collection_id, t.id
+FROM migration_v5_collection_tags old_tag
+JOIN public.tags t ON t.slug = old_tag.slug
+ON CONFLICT DO NOTHING;
