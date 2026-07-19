@@ -94,7 +94,33 @@ select {
   background-size: 24px 24px;
 }
 .dark .pixel-grid-overlay {
-  background-image: radial-gradient(circle, rgba(255, 215, 0, 0.04) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+}
+
+/* Dark storefront atmosphere inspired by game distribution dashboards. */
+.storefront-background-shade {
+  background:
+    radial-gradient(
+      ellipse 92% 118% at 100% 0%,
+      rgba(5, 6, 10, 0.98) 0%,
+      rgba(5, 6, 10, 0.91) 28%,
+      rgba(5, 6, 10, 0.62) 56%,
+      rgba(5, 6, 10, 0.16) 100%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(7, 8, 12, 0.28) 0%,
+      rgba(7, 8, 12, 0.42) 48%,
+      rgba(7, 8, 12, 0.7) 100%
+    );
+}
+
+/* Fab-inspired neutral canvas for Home and Browser Game pages. */
+.storefront-solid-background {
+  background:
+    radial-gradient(circle at 76% -8%, rgba(74, 55, 92, 0.12), transparent 34%),
+    radial-gradient(circle at 12% 88%, rgba(25, 67, 70, 0.07), transparent 30%),
+    #0d0d11;
 }
 
 /* Print CSS to isolate the contract document for PDF generation/printing */

@@ -68,6 +68,7 @@ import { AdminWithdrawalPanel } from "../components/admin/AdminWithdrawalPanel";
 import AiReviewReportCard from "../components/admin/AiReviewReportCard";
 import ExternalPublishStatusCard from "../components/admin/ExternalPublishStatusCard";
 import { AdminMarketplaceActivityChart } from "../components/admin/AdminMarketplaceActivityChart";
+import { AdminBannerPanel } from "../components/admin/AdminBannerPanel";
 import { AdminShell } from "../components/admin/AdminShell";
 import {
   AdminSidebarNav,
@@ -102,6 +103,7 @@ type AdminTabKey =
   | "logs"
   | "settings"
   | "storage"
+  | "banners"
   | "disputes"
   | "agreement";
 
@@ -132,7 +134,7 @@ const ADMIN_SECTION_TABS: Record<
   moderation: ["moderation"],
   finance: ["wallet", "payments", "withdrawal"],
   users: ["users"],
-  system: ["logs", "settings", "storage", "disputes", "agreement"],
+  system: ["logs", "settings", "banners", "storage", "disputes", "agreement"],
 };
 
 const ADMIN_DEFAULT_TAB_BY_SECTION: Record<
@@ -149,6 +151,7 @@ const SYSTEM_SECTION_TITLE_KEY_BY_TAB: Partial<Record<AdminTabKey, string>> = {
   logs: "sectionTitle.logs",
   settings: "sectionTitle.settings",
   storage: "sectionTitle.storage",
+  banners: "sectionTitle.banners",
   disputes: "sectionTitle.disputes",
   agreement: "sectionTitle.agreement",
 };
@@ -566,6 +569,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               return { key: tabKey, label: t("tabs.settings") };
             case "storage":
               return { key: tabKey, label: t("tabs.storage") };
+            case "banners":
+              return { key: tabKey, label: t("tabs.banners") };
             case "disputes":
               return { key: tabKey, label: t("tabs.disputes") };
             case "agreement":
@@ -574,17 +579,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               return { key: tabKey, label: tabKey };
           }
         });
-  const adminDisplayName =
-    currentUser?.fullName ||
-    currentUser?.username ||
-    currentUser?.email ||
-    "Admin operator";
   const systemSectionTitleKey = SYSTEM_SECTION_TITLE_KEY_BY_TAB[activeTab];
   const systemSectionTitle = systemSectionTitleKey
     ? t(systemSectionTitleKey)
     : t("sectionTitle.default");
-  const adminIdentity = currentUser?.email || "admin@godotlaunch.com";
-  const adminInitial = adminDisplayName.trim().charAt(0).toUpperCase() || "A";
   const handleSectionSelect = (section: AdminSectionKey) => {
     setActiveSection(section);
 
@@ -1248,34 +1246,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       <AdminShell
         sidebar={
           <AdminSidebarNav
-            title="Admin Control Center"
-            subtitle="Moderation, finance, user, and system operations in one controlled surface."
             items={sidebarItems}
             activeKey={activeSection}
             onSelect={(key) => handleSectionSelect(key as AdminSectionKey)}
-            footer={
-              <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3 dark:border-slate-800 dark:bg-slate-900/80">
-                {currentUser?.avatarUrl ? (
-                  <img
-                    src={currentUser.avatarUrl}
-                    alt={adminDisplayName}
-                    className="h-11 w-11 rounded-2xl object-cover"
-                  />
-                ) : (
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-400/15 text-sm font-bold text-sky-100">
-                    {adminInitial}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-white">
-                    {adminDisplayName}
-                  </div>
-                  <div className="truncate text-xs text-slate-400">
-                    {adminIdentity}
-                  </div>
-                </div>
-              </div>
-            }
           />
         }
         topbar={null}
@@ -3319,6 +3292,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 )}
 
                 {/* Tab 5: Storage Management */}
+                {activeTab === "banners" && <AdminBannerPanel />}
                 {activeTab === "storage" && <AdminFileManagementPanel />}
                 {activeTab === "disputes" && <AdminDisputePanel />}
                 {activeTab === "agreement" && <AdminAgreementPanel />}

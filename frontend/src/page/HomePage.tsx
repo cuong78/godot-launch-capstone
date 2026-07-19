@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Asset } from '../types';
+import { bannerApi, BannerResponse } from '../api/bannerApi';
 
 interface HomePageProps {
   assets: Asset[];
@@ -54,7 +55,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     }),
     []
   );
-  const heroSlides = React.useMemo<HeroSlide[]>(
+  const fallbackHeroSlides = React.useMemo<HeroSlide[]>(
     () => [
       {
         id: 'hero-game',
@@ -78,11 +79,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         eyebrowClassName:
           'border-cyan-300/24 bg-cyan-400/14 text-cyan-100 shadow-[0_14px_30px_rgba(34,211,238,0.12)]',
         titleClassName:
-          'text-[clamp(2.75rem,6vw,4.9rem)] font-black leading-[0.95] tracking-[-0.045em] text-white drop-shadow-[0_18px_40px_rgba(15,23,42,0.6)]',
+          'text-[clamp(2.35rem,4.5vw,3.9rem)] font-black leading-[0.98] tracking-[-0.04em] text-white drop-shadow-[0_14px_34px_rgba(15,23,42,0.58)]',
         titleAccentClassName:
           'bg-[linear-gradient(180deg,#fff6db_0%,#ffc94d_42%,#ff9138_100%)] bg-clip-text text-transparent [text-shadow:none]',
         descriptionClassName:
-          'max-w-xl text-sm leading-7 text-white/88 sm:text-base',
+          'max-w-lg text-sm leading-6 text-white/88 sm:text-[15px] sm:leading-7',
         secondaryButtonClassName:
           'border-white/16 bg-white/8 text-white hover:bg-white/14',
         controlsClassName: 'justify-start',
@@ -111,11 +112,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         eyebrowClassName:
           'border-amber-200/24 bg-amber-300/12 text-amber-50 shadow-[0_14px_30px_rgba(251,191,36,0.1)]',
         titleClassName:
-          'text-[clamp(2.65rem,5.5vw,4.45rem)] font-black leading-[0.97] tracking-[-0.04em] text-white drop-shadow-[0_18px_40px_rgba(15,23,42,0.58)]',
+          'text-[clamp(2.35rem,4.5vw,3.9rem)] font-black leading-[0.98] tracking-[-0.04em] text-white drop-shadow-[0_14px_34px_rgba(15,23,42,0.56)]',
         titleAccentClassName:
           'bg-[linear-gradient(180deg,#fff8de_0%,#ffd66b_46%,#f59e0b_100%)] bg-clip-text text-transparent [text-shadow:none]',
         descriptionClassName:
-          'max-w-xl text-sm leading-7 text-white/84 sm:text-base',
+          'max-w-lg text-sm leading-6 text-white/84 sm:text-[15px] sm:leading-7',
         secondaryButtonClassName:
           'border-amber-100/16 bg-slate-950/28 text-white hover:bg-slate-950/42',
         controlsClassName: 'justify-start',
@@ -144,11 +145,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         eyebrowClassName:
           'border-lime-200/24 bg-lime-300/12 text-lime-50 shadow-[0_14px_30px_rgba(132,204,22,0.1)]',
         titleClassName:
-          'text-[clamp(2.65rem,5.5vw,4.35rem)] font-black leading-[0.97] tracking-[-0.04em] text-white drop-shadow-[0_18px_40px_rgba(15,23,42,0.5)]',
+          'text-[clamp(2.35rem,4.5vw,3.9rem)] font-black leading-[0.98] tracking-[-0.04em] text-white drop-shadow-[0_14px_34px_rgba(15,23,42,0.5)]',
         titleAccentClassName:
           'bg-[linear-gradient(180deg,#fefce8_0%,#d9f99d_46%,#84cc16_100%)] bg-clip-text text-transparent [text-shadow:none]',
         descriptionClassName:
-          'max-w-xl text-sm leading-7 text-white/82 sm:text-base',
+          'max-w-lg text-sm leading-6 text-white/82 sm:text-[15px] sm:leading-7',
         secondaryButtonClassName:
           'border-white/14 bg-black/16 text-white hover:bg-black/24',
         controlsClassName: 'justify-start',
@@ -158,6 +159,42 @@ export const HomePage: React.FC<HomePageProps> = ({
     ],
     [t]
   );
+  const [managedBanners, setManagedBanners] = React.useState<BannerResponse[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const loadBanners = async () => {
+      try {
+        const response = await bannerApi.getPublicBanners();
+        if (!cancelled && response.success && response.data?.length) {
+          setManagedBanners(response.data);
+        }
+      } catch (error) {
+        console.warn('Unable to load managed banners; using local fallback slides.', error);
+      }
+    };
+    loadBanners();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const heroSlides = React.useMemo<HeroSlide[]>(() => {
+    if (managedBanners.length === 0) return fallbackHeroSlides;
+
+    return managedBanners.map((banner, index) => {
+      const template = fallbackHeroSlides[index % fallbackHeroSlides.length];
+      return {
+        ...template,
+        id: banner.id,
+        image: banner.imageUrl,
+        titleLines: banner.title.split('|').map((line) => line.trim()).filter(Boolean),
+        description: banner.description,
+        action: { type: 'screen', screen: 'marketplace' },
+      };
+    });
+  }, [fallbackHeroSlides, managedBanners]);
+
   const [activeHeroSlide, setActiveHeroSlide] = React.useState(0);
   const [isHeroPaused, setIsHeroPaused] = React.useState(false);
   const currentHeroSlide = heroSlides[activeHeroSlide] ?? heroSlides[0];
@@ -182,12 +219,22 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   return (
     <div className="animate-fade-in">
-      <div className="relative isolate min-h-[100svh] w-full overflow-hidden border-b border-slate-200/80 bg-[#0c0c0e] shadow-[0_20px_60px_rgba(15,23,42,0.28)] dark:border-slate-800/80">
+      <div className="group relative isolate h-[clamp(400px,42vw,500px)] min-h-[400px] w-full overflow-hidden border-b border-slate-200/80 bg-[#0c0c0e] shadow-[0_20px_60px_rgba(15,23,42,0.28)] dark:border-slate-800/80">
         <div className="absolute inset-0">
           {heroSlides.map((slide, index) => (
             <div
               key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${index === activeHeroSlide ? 'opacity-100' : 'opacity-0'}`}
+              role="button"
+              tabIndex={index === activeHeroSlide ? 0 : -1}
+              aria-label={`${slide.titleLines.join(' ')} — open Browser Game`}
+              onClick={() => setCurrentScreen('marketplace')}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setCurrentScreen('marketplace');
+                }
+              }}
+              className={`absolute inset-0 transition-opacity duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${index === activeHeroSlide ? 'cursor-pointer opacity-100' : 'pointer-events-none opacity-0'}`}
             >
               <img
                 referrerPolicy="no-referrer"
@@ -206,16 +253,16 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           ))}
         </div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-40 bg-gradient-to-t from-[#0c0c0e] via-[#0c0c0e]/62 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-28 bg-gradient-to-t from-[#0c0c0e]/90 via-[#0c0c0e]/42 to-transparent" />
 
-        <div className="relative z-10 flex min-h-[100svh] flex-col justify-between px-4 py-6 sm:px-8 sm:py-8 lg:px-14 lg:py-10">
-          <div className="relative flex flex-1 items-end pb-8 sm:pb-10 lg:pb-12">
+        <div className="pointer-events-none relative z-10 flex h-full flex-col px-5 py-6 sm:px-9 sm:py-8 lg:px-14 lg:py-10">
+          <div className="relative flex flex-1 items-center pb-8 pt-2 sm:pb-10">
             <div
               key={currentHeroSlide.id}
-              className={`relative z-10 w-full space-y-5 pt-8 sm:pt-12 lg:pt-16 ${currentHeroSlide.contentClassName}`}
+              className={`relative z-10 w-full space-y-4 ${currentHeroSlide.contentClassName}`}
             >
               <div className={`flex flex-col gap-4 ${currentHeroSlide.copyAlignClassName}`}>
-                <div className={`space-y-3 ${currentHeroSlide.copyAlignClassName}`}>
+                <div className={`space-y-4 ${currentHeroSlide.copyAlignClassName}`}>
                   <h1
                     className={`max-w-4xl overflow-visible pb-2 [animation:heroTitleReveal_1380ms_cubic-bezier(0.22,1,0.36,1)_both] ${currentHeroSlide.titleClassName}`}
                     style={animationDelayStyle(160)}
@@ -245,8 +292,8 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         {heroSlides.length > 1 && (
-          <div className="absolute inset-x-0 bottom-6 z-20 flex justify-center sm:bottom-8 lg:bottom-10">
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/12 bg-black/26 px-4 py-3 pt-3 backdrop-blur-md">
+          <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center sm:bottom-5">
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-black/30 px-3.5 py-2.5 backdrop-blur-md">
               {heroSlides.map((slide, index) => (
                 <button
                   key={slide.id}
@@ -274,7 +321,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               onClick={() =>
                 setActiveHeroSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)
               }
-              className="absolute left-3 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/12 bg-black/26 text-white backdrop-blur-md transition-studio hover:bg-white/16 sm:left-6"
+              className="pointer-events-none absolute left-3 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/12 bg-black/32 text-white opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-white/16 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 sm:left-6"
             >
               <ChevronLeft size={20} />
             </button>
@@ -282,7 +329,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               type="button"
               aria-label="Next slide"
               onClick={() => setActiveHeroSlide((prev) => (prev + 1) % heroSlides.length)}
-              className="absolute right-3 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/12 bg-black/26 text-white backdrop-blur-md transition-studio hover:bg-white/16 sm:right-6"
+              className="pointer-events-none absolute right-3 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/12 bg-black/32 text-white opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-white/16 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 sm:right-6"
             >
               <ChevronRight size={20} />
             </button>

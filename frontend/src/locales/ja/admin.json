@@ -14,6 +14,7 @@
     "userDirectory": "ユーザーディレクトリ",
     "auditLogs": "監査ログ",
     "settings": "設定",
+    "banners": "バナー",
     "storage": "ストレージ",
     "disputes": "紛争",
     "agreement": "契約"
@@ -21,6 +22,7 @@
   "sectionTitle": {
     "logs": "セキュリティ監査ログ",
     "settings": "プラットフォーム設定",
+    "banners": "バナー管理",
     "storage": "ストレージ管理",
     "disputes": "紛争解決",
     "agreement": "配信契約",

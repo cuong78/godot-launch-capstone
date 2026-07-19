@@ -230,6 +230,8 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
   const displayScreen = currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen;
   const isCheckoutModalOpen = currentScreen === 'checkout';
+  const usesSolidStorefrontBackground =
+    displayScreen === 'explore' || displayScreen === 'marketplace';
   const isAdminManagedScreen =
     currentUser?.role === 'admin' &&
     (displayScreen === 'admin' ||
@@ -941,27 +943,29 @@ export default function App() {
       
       {/* 3D Voxel Nature Environment Background — ẩn riêng ở trang developer-onboarding (landing dùng nền tối riêng) */}
       {displayScreen !== 'developer-onboarding' && (
-        <>
-          <img
-            id="voxel-background-layer"
-            src={VOXEL_BG_IMAGE}
-            alt="Voxel Background Scenery"
-            className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none transition-all duration-700"
-            style={{
-              filter: darkMode ? 'brightness(0.4) contrast(1.1) saturate(1.12)' : 'brightness(0.98) contrast(1.0) saturate(1.0)'
-            }}
-            referrerPolicy="no-referrer"
-          />
+        usesSolidStorefrontBackground ? (
+          <div className="storefront-solid-background fixed inset-0 z-0 pointer-events-none" />
+        ) : (
+          <>
+            <img
+              id="voxel-background-layer"
+              src={VOXEL_BG_IMAGE}
+              alt="Voxel Background Scenery"
+              className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none transition-all duration-700"
+              style={{
+                filter: darkMode ? 'brightness(0.4) contrast(1.1) saturate(1.12)' : 'brightness(0.98) contrast(1.0) saturate(1.0)'
+              }}
+              referrerPolicy="no-referrer"
+            />
 
-          {/* Gradient light/dark overlay tint */}
-          <div
-            id="voxel-background-tint"
-            className="fixed inset-0 z-[1] pointer-events-none transition-all duration-700 bg-gradient-to-b from-white/5 via-white/10 to-white/20 dark:from-slate-950/20 dark:via-slate-950/35 dark:to-slate-950/50"
-          />
+            <div
+              id="voxel-background-tint"
+              className="storefront-background-shade fixed inset-0 z-[1] pointer-events-none transition-all duration-700"
+            />
 
-          {/* Decorative ambient pixel dot overlay layer */}
-          <div className="fixed inset-0 pointer-events-none pixel-grid-overlay z-[2]"></div>
-        </>
+            <div className="fixed inset-0 pointer-events-none pixel-grid-overlay z-[2]"></div>
+          </>
+        )
       )}
 
       {/* HEADER SECTION */}
@@ -979,10 +983,6 @@ export default function App() {
           setCurrentScreen={setCurrentScreen}
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
-          searchText={searchText}
-          setSearchText={setSearchText}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
           cart={cart}
           isCartOpen={isCartOpen}
           setIsCartOpen={setIsCartOpen}
@@ -991,7 +991,6 @@ export default function App() {
           setSelectedAssetId={setSelectedAssetId}
           setSelectedPost={setSelectedPost}
           setSelectedAuthor={setSelectedAuthor}
-          showToast={showToast}
         />
       )}
 

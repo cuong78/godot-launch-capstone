@@ -38,6 +38,7 @@ public enum ErrorCode {
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested payment does not exist."),
     DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy khiếu nại."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tập tin trên server lưu trữ (Có thể đã bị xóa hoặc là dữ liệu mẫu)."),
+    BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested banner does not exist."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ."),
 
     // 400 Bad Request additions / Category
