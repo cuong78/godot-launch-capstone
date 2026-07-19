@@ -2,7 +2,7 @@
 # Run this script from PowerShell: .\upload_game_images.ps1
 
 Param(
-    [string]$SourceFolder = "D:\capstone\go-dot-launch-capstone-fptu\resource\media\AssetData",
+    [string]$SourceFolder = "D:\capstone\go-dot-launch-capstone-fptu\resource\media\GameData",
     [string]$FilerUrl = "http://localhost:8888",
     [string]$DbUser = "user_godot_launch",
     [string]$DbName = "godot_launch"

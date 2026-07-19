@@ -791,47 +791,14 @@ CREATE TABLE public.withdrawal_requests (
 COMMENT ON TABLE public.withdrawal_requests IS 'Admin duyet thu cong truoc khi xu ly rut tien';
 
 -- ============================================================
---  SEED DATA
+--  REQUIRED SYSTEM DATA
 -- ============================================================
-
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('e94660a8-b999-4173-b1b2-375da42dd953', 'Action', 'action', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('da16269c-af83-4065-9929-d389619a92fe', 'Puzzle', 'puzzle', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('5025106f-3f99-468f-87da-98fc2a79cbcc', 'RPG', 'rpg', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('3ea2b497-0c91-43c2-8ff4-da53b5a889e9', 'Platformer', 'platformer', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('b5f40bc7-9e40-4545-813f-0f052013030c', 'Simulation', 'simulation', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('af60337b-7fd3-4618-87d8-5d402689a70c', 'Strategy', 'strategy', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('43c6fe76-a8ce-474f-8167-3f1b990b5cb2', 'Casual', 'casual', NULL, NULL, 'game', '2026-06-29 17:24:18.874717+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('5788d001-6fd5-40e6-a359-0908d9ac40ea', 'Shaders & VFX', 'shaders-vfx', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('f4cd797b-8221-4260-9f26-455147b97fa3', '2D Assets', '2d-assets', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('db1aeec3-7457-4c45-8df3-64564e7e9428', '3D Models', '3d-models', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
-INSERT INTO public.categories (id, name, slug, description, parent_id, type, created_at) VALUES ('49bc5714-64b6-4bf2-a00b-9b369a701c62', 'Audio & SFX', 'audio-sfx', NULL, NULL, 'asset', '2026-06-29 17:24:20.807257+00');
 
 INSERT INTO public.platform_settings (id, commission_rate, maintenance_mode, announcement_banner, updated_at) VALUES (1, 10.00, false, 'GodotLaunch Matrix Engine Upgrade is complete!', '2026-06-29 17:24:26.445727+00');
 
 INSERT INTO public.roles (id, name, description, created_at) VALUES ('12c4e654-c6d6-479b-9ed6-f017c0c4dc5b', 'admin', 'Quan tri vien nen tang — toan quyen', '2026-06-29 17:24:18.826633+00');
 INSERT INTO public.roles (id, name, description, created_at) VALUES ('68c3e028-491a-4722-b768-3efbccc06283', 'developer', 'Nha phat trien — dang va quan ly game', '2026-06-29 17:24:18.826633+00');
 INSERT INTO public.roles (id, name, description, created_at) VALUES ('300652b1-bf50-41de-92d5-3b01e3a9c90e', 'customer', 'Khách hàng — xem và mua game, asset, tham gia cộng đồng', '2026-06-29 17:24:20.186384+00');
-
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('7a38dd02-69f0-4e02-886a-550ff76fc89a', 'Pixel Art', 'pixel-art', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('34476bb9-1234-4eb0-8378-cf9b1e01bdea', 'Low Poly', 'low-poly', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('efbb2424-df8b-4889-99da-0813b517d815', 'Top Down', 'top-down', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('4933dea9-badc-42eb-8944-08f7026189d1', 'Side Scroller', 'side-scroller', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('c4d6734d-23b0-4aa2-a9c0-d2c3eb0816de', 'Multiplayer', 'multiplayer', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('b6f59ec8-748d-4f0a-be87-d2cd284ea969', 'Singleplayer', 'singleplayer', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('fc57df7b-c180-4a1f-8516-83506a99103b', 'Roguelike', 'roguelike', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('d472aeb9-2668-44d4-b89a-8f1247aa42e0', 'Procedural', 'procedural', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('b8e37c8d-fa53-4953-b891-3f4c756f02cd', 'Physics', 'physics', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('d0f6c6ad-238e-4e4b-9e1f-865cdd774623', 'UI Kit', 'ui-kit', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('0f876cfe-f4b7-4737-9c46-637e330f62b3', 'Inventory System', 'inventory-system', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('4a7e173e-dfc5-4dd1-a9a8-240a92fb5194', 'Dialogue System', 'dialogue-system', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('ec0813be-5a4a-4fea-a9a4-7e4b30e43877', 'Sound Effects', 'sound-effects', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('5131dfdf-7b50-4264-bcf3-6f7d2da545bf', 'Music', 'music', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('58cee9c8-4f18-463c-9a5d-5afa36e785ec', 'Shader', 'shader', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('9186cf44-302d-4015-a44d-5aba24619338', 'Animation', 'animation', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('942af3dc-e94b-4815-a4f7-08d330ef9934', 'Character', 'character', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('beb0dc3d-0cd5-4afe-9be6-c960330afa67', 'Tileset', 'tileset', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('1221ccb6-489a-42f9-9730-df8a81ddd7e2', 'GDScript', 'gdscript', '2026-06-29 17:24:24.128154+00');
-INSERT INTO public.tags (id, name, slug, created_at) VALUES ('d57d252d-79f0-4e7b-a811-cc1b08a6454d', 'CSharp', 'csharp', '2026-06-29 17:24:24.128154+00');
 
 -- ============================================================
 --  PRIMARY KEYS

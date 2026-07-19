@@ -6,6 +6,7 @@ import java.util.*;
 
 public interface TagService {
     List<TagResponse> getAll();
+    List<TagResponse> search(String query, int limit);
     TagResponse create(TagRequest request);
     TagResponse update(UUID id, TagRequest request);
     void delete(UUID id);

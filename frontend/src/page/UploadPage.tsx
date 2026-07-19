@@ -11,7 +11,6 @@ import {
   Image,
   Video,
   Trash2,
-  HelpCircle,
   ArrowRight,
   ShieldCheck,
   Film,
@@ -21,6 +20,8 @@ import {
   Terminal,
   ArrowLeft,
   Check,
+  Search,
+  X,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
@@ -40,6 +41,9 @@ interface UploadProgress {
 interface UploadStatus {
   [key: string]: "idle" | "uploading" | "completed" | "failed";
 }
+
+const MAX_SELECTED_TAGS = 10;
+const TAG_RESULT_LIMIT = 12;
 
 function extractObjectKey(url: string): string {
   try {
@@ -95,8 +99,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Giữ biến để các nhánh UI cũ tự ẩn; luôn = "asset".
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
-  const [tags, setTags] = useState<TagResponse[]>([]);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [tagOptions, setTagOptions] = useState<TagResponse[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TagResponse[]>([]);
+  const [tagQuery, setTagQuery] = useState("");
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [tagSearchError, setTagSearchError] = useState("");
+  const tagPickerRef = useRef<HTMLDivElement>(null);
+  const selectedTagIds = selectedTags.map((tag) => tag.id);
 
   // New Marketplace Fields
 
@@ -162,22 +172,55 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setIsLoadingCategories(false);
       }
     };
-    const loadTags = async () => {
-      try {
-        const res = await tagApi.getAllTags();
-        if (res.success && res.data) setTags(res.data);
-      } catch (err) {
-        console.error("Failed to load tags:", err);
-      }
-    };
     loadCategories();
-    loadTags();
   }, []);
 
-  const toggleTag = (tagId: string) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId],
-    );
+  useEffect(() => {
+    let ignoreResult = false;
+    const timeoutId = window.setTimeout(async () => {
+      setIsLoadingTags(true);
+      setTagSearchError("");
+      try {
+        const res = await tagApi.searchTags(tagQuery.trim(), TAG_RESULT_LIMIT);
+        if (!ignoreResult) {
+          setTagOptions(res.success && res.data ? res.data : []);
+          if (!res.success) setTagSearchError(res.message || "Unable to load tags.");
+        }
+      } catch (err) {
+        if (!ignoreResult) {
+          setTagOptions([]);
+          setTagSearchError("Unable to load tags. Please try again.");
+        }
+        console.error("Failed to search tags:", err);
+      } finally {
+        if (!ignoreResult) setIsLoadingTags(false);
+      }
+    }, tagQuery.trim() ? 300 : 0);
+
+    return () => {
+      ignoreResult = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [tagQuery]);
+
+  useEffect(() => {
+    const closeTagPicker = (event: MouseEvent) => {
+      if (!tagPickerRef.current?.contains(event.target as Node)) {
+        setIsTagDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", closeTagPicker);
+    return () => document.removeEventListener("mousedown", closeTagPicker);
+  }, []);
+
+  const toggleTag = (tag: TagResponse) => {
+    setSelectedTags((current) => {
+      if (current.some((selected) => selected.id === tag.id)) {
+        return current.filter((selected) => selected.id !== tag.id);
+      }
+      if (current.length >= MAX_SELECTED_TAGS) return current;
+      return [...current, tag];
+    });
   };
 
   const handlePriceChange = (val: string) => {
@@ -842,74 +885,173 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               )}
             </div>
 
-            {/* Tags (select multiple) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                Tags{" "}
-                <span className="text-xs font-normal text-slate-500">
-                  (select multiple — key descriptors for your game/asset)
+            {/* Searchable tag multi-select */}
+            <div ref={tagPickerRef} className="relative flex flex-col gap-1.5">
+              <div className="flex items-end justify-between gap-3">
+                <label
+                  htmlFor="tag-search"
+                  className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200"
+                >
+                  Tags
+                  <span className="ml-1 text-xs font-normal text-slate-500">
+                    key descriptors
+                  </span>
+                </label>
+                <span
+                  className={`text-[11px] ${
+                    selectedTags.length >= MAX_SELECTED_TAGS
+                      ? "font-semibold text-amber-500"
+                      : "text-slate-500"
+                  }`}
+                >
+                  {selectedTags.length}/{MAX_SELECTED_TAGS}
                 </span>
-              </label>
-              {tags.length === 0 ? (
-                <div className="text-xs text-slate-500 py-2">
-                  Loading tags...
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => {
-                    const active = selectedTagIds.includes(tag.id);
-                    return (
+              </div>
+
+              {selectedTags.length > 0 && (
+                <div className="flex min-h-8 flex-wrap gap-1.5 rounded-lg border border-slate-300 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/60">
+                  {selectedTags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-amber-500/35 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300"
+                    >
+                      {tag.name}
                       <button
-                        key={tag.id}
                         type="button"
-                        onClick={() => toggleTag(tag.id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-studio cursor-pointer ${
-                          active
-                            ? "bg-amber-500 border-amber-500 text-black"
-                            : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-amber-400"
-                        }`}
+                        onClick={() => toggleTag(tag)}
+                        className="rounded-full p-0.5 transition-colors hover:bg-amber-500/20"
+                        aria-label={`Remove ${tag.name}`}
                       >
-                        {tag.name}
+                        <X size={12} />
                       </button>
-                    );
-                  })}
+                    </span>
+                  ))}
                 </div>
               )}
-              {selectedTagIds.length > 0 && (
-                <span className="text-[11px] text-slate-500 mt-0.5">
-                  {selectedTagIds.length} tags selected
-                </span>
+
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                />
+                <input
+                  id="tag-search"
+                  type="search"
+                  value={tagQuery}
+                  onChange={(event) => {
+                    setTagQuery(event.target.value);
+                    setIsTagDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsTagDropdownOpen(true)}
+                  placeholder="Search tags by name..."
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-800 outline-none transition-studio placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                  aria-expanded={isTagDropdownOpen}
+                  aria-controls="tag-search-results"
+                />
+                {isLoadingTags && (
+                  <RefreshCw
+                    size={15}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-slate-500"
+                  />
+                )}
+              </div>
+
+              {isTagDropdownOpen && (
+                <div
+                  id="tag-search-results"
+                  className="absolute left-0 right-0 top-full z-40 mt-1 max-h-64 overflow-y-auto rounded-xl border border-slate-300 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                >
+                  {tagSearchError ? (
+                    <p className="px-3 py-3 text-xs text-red-500">{tagSearchError}</p>
+                  ) : !isLoadingTags && tagOptions.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-slate-500">
+                      No matching tags found.
+                    </p>
+                  ) : (
+                    tagOptions.map((tag) => {
+                      const active = selectedTags.some((selected) => selected.id === tag.id);
+                      const disabled = !active && selectedTags.length >= MAX_SELECTED_TAGS;
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          disabled={disabled}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
+                            active
+                              ? "bg-amber-500/12 text-amber-700 dark:text-amber-300"
+                              : disabled
+                                ? "cursor-not-allowed text-slate-400 opacity-50"
+                                : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium">{tag.name}</span>
+                            <span className="block truncate text-[11px] text-slate-500">#{tag.slug}</span>
+                          </span>
+                          {active && <Check size={16} className="shrink-0" />}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               )}
+
+              <p className="text-[11px] text-slate-500">
+                {selectedTags.length >= MAX_SELECTED_TAGS
+                  ? "Maximum 10 tags reached. Remove one to select another."
+                  : "Search and select up to 10 relevant tags."}
+              </p>
             </div>
 
             {publishProgram === "game" && (
-              <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                  Publishing Destination{" "}
-                  <span title="Chọn nơi game của bạn sẽ được phân phối">
-                    <HelpCircle
-                      size={14}
-                      className="text-slate-400 cursor-help"
-                    />
-                  </span>
-                </label>
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <div>
+                  <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                    Publishing Destination
+                  </label>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    Chọn cách bạn muốn phân phối game sau khi được duyệt.
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setPublishingType("marketplace_listing")}
-                    title="Marketplace: Bạn tự đăng bán trực tiếp source code game trên Marketplace nội bộ, không cần ký hợp đồng với nền tảng. Bạn giữ 100% số tiền bán được (trừ phí giao dịch nếu có)."
-                    className={`text-left p-3.5 rounded-xl border transition-studio cursor-help ${
+                    aria-pressed={publishingType === "marketplace_listing"}
+                    className={`group relative min-h-28 rounded-xl border p-4 text-left transition-studio ${
                       publishingType === "marketplace_listing"
-                        ? "border-amber-400 bg-amber-500/10 dark:bg-amber-500/15"
-                        : "border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-700"
+                        ? "border-amber-400 bg-amber-500/10 shadow-[0_0_0_1px_rgba(251,191,36,0.08)] dark:bg-amber-500/10"
+                        : "border-slate-300 bg-white hover:border-amber-400/60 hover:bg-amber-500/5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-400/50"
                     }`}
                   >
-                    <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">
-                      Marketplace
-                    </span>
-                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Bán source code trực tiếp trên Marketplace, không cần hợp đồng.
+                    <span className="flex items-start gap-3">
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                          publishingType === "marketplace_listing"
+                            ? "bg-amber-500 text-slate-950"
+                            : "bg-slate-100 text-slate-500 group-hover:text-amber-500 dark:bg-slate-800"
+                        }`}
+                      >
+                        <ShoppingBag size={19} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                            Marketplace
+                          </span>
+                          {publishingType === "marketplace_listing" && (
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950">
+                              <Check size={13} strokeWidth={3} />
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Bán source code trực tiếp, tự quản lý sản phẩm và không cần ký hợp đồng.
+                        </span>
+                      </span>
                     </span>
                   </button>
 
@@ -920,18 +1062,38 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                         setPublishingType("full_acquisition");
                       }
                     }}
-                    title="Store: Nộp game để nền tảng xuất bản lên Google Play / App Store. Bắt buộc ký hợp đồng (Bán đứt hoặc Co-Publishing)."
-                    className={`text-left p-3.5 rounded-xl border transition-studio cursor-help ${
+                    aria-pressed={publishingType !== "marketplace_listing"}
+                    className={`group relative min-h-28 rounded-xl border p-4 text-left transition-studio ${
                       publishingType !== "marketplace_listing"
-                        ? "border-amber-400 bg-amber-500/10 dark:bg-amber-500/15"
-                        : "border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-700"
+                        ? "border-amber-400 bg-amber-500/10 shadow-[0_0_0_1px_rgba(251,191,36,0.08)] dark:bg-amber-500/10"
+                        : "border-slate-300 bg-white hover:border-amber-400/60 hover:bg-amber-500/5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-400/50"
                     }`}
                   >
-                    <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">
-                      Store
-                    </span>
-                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Xuất bản lên Google Play / App Store, cần ký hợp đồng với nền tảng.
+                    <span className="flex items-start gap-3">
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                          publishingType !== "marketplace_listing"
+                            ? "bg-amber-500 text-slate-950"
+                            : "bg-slate-100 text-slate-500 group-hover:text-amber-500 dark:bg-slate-800"
+                        }`}
+                      >
+                        <Gamepad2 size={20} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                            Mobile Store
+                          </span>
+                          {publishingType !== "marketplace_listing" && (
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950">
+                              <Check size={13} strokeWidth={3} />
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Nền tảng hỗ trợ phát hành lên Google Play hoặc App Store theo hợp đồng.
+                        </span>
+                      </span>
                     </span>
                   </button>
                 </div>

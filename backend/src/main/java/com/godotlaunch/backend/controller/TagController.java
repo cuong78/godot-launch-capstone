@@ -31,6 +31,14 @@ public class TagController {
         return ResponseEntity.ok(ApiResponse.success(tagService.getAll(), "Tags retrieved successfully"));
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "Tìm kiếm tags", description = "Trả tối đa 20 tag phù hợp cho ô chọn tag khi upload game/asset.")
+    public ResponseEntity<ApiResponse<List<TagResponse>>> searchTags(
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "12") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(tagService.search(q, limit), "Tags retrieved successfully"));
+    }
+
     @PostMapping @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<TagResponse>> create(@Valid @RequestBody TagRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(tagService.create(request), "Tag created successfully"));

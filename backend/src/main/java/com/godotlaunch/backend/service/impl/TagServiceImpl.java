@@ -8,6 +8,7 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.TagRepository;
 import com.godotlaunch.backend.service.TagService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
@@ -16,6 +17,11 @@ import java.util.*;
 public class TagServiceImpl implements TagService {
     private final TagRepository repository;
     @Override @Transactional(readOnly = true) public List<TagResponse> getAll() { return repository.findAllByOrderByNameAsc().stream().map(this::map).toList(); }
+    @Override @Transactional(readOnly = true) public List<TagResponse> search(String query, int limit) {
+        String normalizedQuery = query == null ? "" : query.trim();
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        return repository.search(normalizedQuery, PageRequest.of(0, safeLimit)).stream().map(this::map).toList();
+    }
     @Override @Transactional public TagResponse create(TagRequest request) {
         if (repository.existsByName(request.getName()) || repository.existsBySlug(request.getSlug())) throw new AppException(ErrorCode.TAG_ALREADY_EXISTS);
         Tag tag = new Tag(); tag.setName(request.getName().trim()); tag.setSlug(request.getSlug().trim()); return map(repository.save(tag));
