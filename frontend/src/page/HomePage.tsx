@@ -41,6 +41,124 @@ type HeroSlide = {
 
 const HERO_ROTATION_MS = 5500;
 
+interface HomepageSectionRowProps {
+  section: HomepageSection;
+  openProduct: (product: HomepageProduct) => void;
+  setCurrentScreen: (screen: any) => void;
+  t: any;
+}
+
+const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
+  section,
+  openProduct,
+  setCurrentScreen,
+  t
+}) => {
+  const [startIndex, setStartIndex] = React.useState(0);
+  const itemsPerPage = 3;
+  const products = section.products || [];
+
+  const handlePrev = () => {
+    setStartIndex((prev) => Math.max(0, prev - itemsPerPage));
+  };
+
+  const handleNext = () => {
+    setStartIndex((prev) => {
+      const nextIndex = prev + itemsPerPage;
+      return nextIndex < products.length ? nextIndex : prev;
+    });
+  };
+
+  const visibleProducts = products.slice(startIndex, startIndex + itemsPerPage);
+  const hasPrev = startIndex > 0;
+  const hasNext = startIndex + itemsPerPage < products.length;
+
+  return (
+    <section aria-labelledby={`home-section-${section.id}`} className="relative group/section">
+      <div className="mb-5 flex items-center justify-between">
+        <button 
+          type="button" 
+          onClick={() => setCurrentScreen('marketplace')}
+          className="group flex items-center gap-2 text-2xl font-bold tracking-tight text-white sm:text-3xl hover:text-sky-400 transition-colors"
+        >
+          <span>{section.title}</span>
+          <ChevronRight size={24} className="text-slate-400 group-hover:text-sky-400 transition-colors" />
+        </button>
+      </div>
+
+      <div className="relative px-2">
+        {products.length > 0 ? (
+          <>
+            {/* Left navigation arrow */}
+            <button
+              type="button"
+              onClick={handlePrev}
+              disabled={!hasPrev}
+              className={`absolute -left-6 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950/80 text-white shadow-lg backdrop-blur-sm transition-all duration-300 ${
+                hasPrev 
+                  ? 'cursor-pointer hover:bg-white/20 hover:text-white opacity-100' 
+                  : 'opacity-0 pointer-events-none'
+              }`}
+              aria-label="Previous Page"
+            >
+              <ChevronLeft size={20} />
+            </button>
+
+            {/* Right navigation arrow */}
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={!hasNext}
+              className={`absolute -right-6 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-slate-950/80 text-white shadow-lg backdrop-blur-sm transition-all duration-300 ${
+                hasNext 
+                  ? 'cursor-pointer hover:bg-white/20 hover:text-white opacity-100' 
+                  : 'opacity-0 pointer-events-none'
+              }`}
+              aria-label="Next Page"
+            >
+              <ChevronRight size={20} />
+            </button>
+
+            {/* Grid */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleProducts.map((product) => (
+                <button 
+                  key={`${section.id}-${product.itemType}-${product.id}`} 
+                  type="button" 
+                  onClick={() => openProduct(product)} 
+                  className="group/product overflow-hidden rounded-2xl border border-white/[0.06] bg-[#121214] text-left transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-[#18181c] hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] w-full"
+                >
+                  <div className="relative aspect-video overflow-hidden bg-slate-900">
+                    {product.thumbnailUrl ? (
+                      <img src={product.thumbnailUrl} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-105" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-slate-500">No preview</div>
+                    )}
+                    <span className="absolute top-2.5 left-2.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm border border-white/10">
+                      {product.itemType === 'GAME' ? 'Game' : 'Asset'}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 p-4.5">
+                    <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-white group-hover/product:text-sky-400 transition-colors">{product.title}</h3>
+                    <p className="truncate text-xs text-slate-400">{product.creatorName ?? product.categoryName ?? 'GodotLaunch'}</p>
+                    <p className="pt-0.5 text-xs font-semibold text-slate-400">
+                      {!product.price ? t('marketplace:common.free', 'Miễn phí') : `${t('marketplace:common.from', 'From')} ₫${product.price.toLocaleString('en-US')}`}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-800 px-5 py-10 text-center text-sm text-slate-500">
+            Chưa có sản phẩm phù hợp trong section này.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
 export const HomePage: React.FC<HomePageProps> = ({
   assets,
   setCurrentScreen,
@@ -49,7 +167,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   handleAddToCart,
   ownedProductIds
 }) => {
-  const { t, i18n } = useTranslation(['home']);
+  const { t, i18n } = useTranslation(['home', 'marketplace']);
   const animationDelayStyle = React.useCallback(
     (delayMs: number): React.CSSProperties => ({
       animationDelay: `${delayMs}ms`,
@@ -266,6 +384,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 referrerPolicy="no-referrer"
                 src={slide.image}
                 alt={slide.titleLines.join(' ')}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 className={`h-full w-full ${slide.imageClassName} ${
                   index === activeHeroSlide
                     ? slide.imageAnimationClassName
@@ -466,38 +585,13 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
       <div className="mx-auto w-full max-w-[1480px] space-y-12 px-5 py-12 sm:px-8 lg:px-12">
         {homepageSections.map((section) => (
-          <section key={section.id} aria-labelledby={`home-section-${section.id}`}>
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.24em] text-sky-400">
-                  {section.sectionType === 'COLLECTION' ? 'Curated collection' : 'GodotLaunch'}
-                </p>
-                <h2 id={`home-section-${section.id}`} className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                  {section.title}
-                </h2>
-              </div>
-              <button type="button" onClick={() => setCurrentScreen('marketplace')} className="text-sm font-semibold text-slate-400 transition-colors hover:text-white">
-                Xem tất cả <ChevronRight size={16} className="inline" />
-              </button>
-            </div>
-            {section.products.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-                {section.products.map((product) => (
-                  <button key={`${section.id}-${product.itemType}-${product.id}`} type="button" onClick={() => openProduct(product)} className="group/product overflow-hidden rounded-2xl border border-white/[0.07] bg-[#18181b] text-left transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-[#202024]">
-                    <div className="aspect-[4/3] overflow-hidden bg-slate-900">
-                      {product.thumbnailUrl ? <img src={product.thumbnailUrl} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-105" /> : <div className="flex h-full items-center justify-center text-xs text-slate-600">No preview</div>}
-                    </div>
-                    <div className="space-y-1.5 p-3">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-sky-400">{product.itemType}</span>
-                      <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-white">{product.title}</h3>
-                      <p className="truncate text-xs text-slate-500">{product.creatorName ?? product.categoryName ?? 'GodotLaunch'}</p>
-                      <p className="pt-1 text-sm font-bold text-slate-100">{!product.price ? 'Miễn phí' : `${product.price.toLocaleString('vi-VN')} ₫`}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : <div className="rounded-2xl border border-dashed border-slate-800 px-5 py-10 text-center text-sm text-slate-500">Chưa có sản phẩm phù hợp trong section này.</div>}
-          </section>
+          <HomepageSectionRow
+            key={section.id}
+            section={section}
+            openProduct={openProduct}
+            setCurrentScreen={setCurrentScreen}
+            t={t}
+          />
         ))}
       </div>
     </div>

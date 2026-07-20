@@ -3,6 +3,7 @@
   "card.owned": "Owned",
   "card.resource": "Resource",
   "common.free": "FREE",
+  "common.from": "From",
   "empty.noAssetDescription": "Keep the current search logic, then widen category or price filters to bring asset packs back into view.",
   "empty.noAssetTitle": "No asset listing matches the active filters.",
   "empty.noMatchDescription": "We couldn't find matching files. Try a different keyword or reset the filters to return to the default list.",

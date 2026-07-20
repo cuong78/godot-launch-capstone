@@ -3,6 +3,7 @@
   "card.owned": "購入済み",
   "card.resource": "リソース",
   "common.free": "無料",
+  "common.from": "から",
   "empty.noAssetDescription": "現在の検索ロジックはそのままに、カテゴリまたは価格帯を広げてアセット一覧を再表示してください。",
   "empty.noAssetTitle": "有効なフィルターに一致するアセットがありません。",
   "empty.noMatchDescription": "一致する項目が見つかりませんでした。別のキーワードを試すか、フィルターをリセットして既定の一覧に戻してください。",

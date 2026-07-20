@@ -15,6 +15,8 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
+import requests
+
 # Thư mục chứa file/ext cần bỏ qua khi hash (giảm noise, tránh .git nội bộ)
 IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".godot", ".import"}
 
@@ -22,6 +24,9 @@ IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".godot", ".import"}
 MAX_CLONE_MB = 500          # repo quá lớn → từ chối
 CLONE_TIMEOUT_SEC = 120     # clone quá lâu → hủy
 MAX_BUNDLE_MB = 50          # bundle zip quá lớn → bỏ qua (chỉ giữ snapshot)
+MAX_EXTRACTED_BUNDLE_MB = 500
+MAX_BUNDLE_FILES = 20_000
+BUNDLE_DOWNLOAD_TIMEOUT_SEC = 90
 
 
 def _safe_repo_url(repo_url: str, token: str | None, branch: str | None):
@@ -195,6 +200,110 @@ def bundle_source(tmp_dir: str) -> str | None:
             os.remove(tmp_zip_path)
         except OSError:
             pass
+
+
+def download_and_extract_bundle(bundle_url: str, expected_hash: str | None = None) -> dict:
+    """
+    Tải source bundle bất biến từ storage, giải nén an toàn và xác minh canonical
+    bundle hash. Trả về {tmpDir, bundleHash, fileCount}; caller phải cleanup(tmpDir).
+
+    Hash được tính lại từ path + SHA-256 từng file, giống snapshot() lúc clone lần đầu,
+    nên không phụ thuộc metadata/timestamp của file ZIP.
+    """
+    if not bundle_url or not bundle_url.strip():
+        raise RuntimeError("Source snapshot chưa có bundle URL")
+
+    parsed = urlparse(bundle_url.strip())
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise RuntimeError("Bundle URL không hợp lệ")
+
+    extract_dir = tempfile.mkdtemp(prefix="gl_snapshot_")
+    fd, zip_path = tempfile.mkstemp(prefix="gl_snapshot_", suffix=".zip")
+    os.close(fd)
+    try:
+        response = _download_bundle(bundle_url)
+        downloaded = 0
+        try:
+            with open(zip_path, "wb") as output:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if not chunk:
+                        continue
+                    downloaded += len(chunk)
+                    if downloaded > MAX_BUNDLE_MB * 1024 * 1024:
+                        raise RuntimeError(f"Source bundle vượt quá {MAX_BUNDLE_MB}MB")
+                    output.write(chunk)
+        finally:
+            response.close()
+
+        _extract_zip_safely(zip_path, extract_dir)
+        calculated = snapshot(extract_dir)
+        actual_hash = calculated["bundleHash"]
+        if expected_hash and actual_hash.lower() != expected_hash.strip().lower():
+            raise RuntimeError(
+                f"Source bundle hash không khớp snapshot (expected={expected_hash}, actual={actual_hash})"
+            )
+        return {
+            "tmpDir": extract_dir,
+            "bundleHash": actual_hash,
+            "fileCount": calculated["fileCount"],
+        }
+    except Exception:
+        cleanup(extract_dir)
+        raise
+    finally:
+        try:
+            os.remove(zip_path)
+        except OSError:
+            pass
+
+
+def _download_bundle(bundle_url: str):
+    urls = [bundle_url]
+    if "localhost" in bundle_url:
+        urls.append(bundle_url.replace("localhost", "host.docker.internal"))
+    elif "127.0.0.1" in bundle_url:
+        urls.append(bundle_url.replace("127.0.0.1", "host.docker.internal"))
+
+    last_error = None
+    for url in urls:
+        try:
+            response = requests.get(url, stream=True, timeout=BUNDLE_DOWNLOAD_TIMEOUT_SEC)
+            response.raise_for_status()
+            content_length = int(response.headers.get("content-length", "0") or 0)
+            if content_length > MAX_BUNDLE_MB * 1024 * 1024:
+                response.close()
+                raise RuntimeError(f"Source bundle vượt quá {MAX_BUNDLE_MB}MB")
+            return response
+        except Exception as exc:
+            last_error = exc
+    raise RuntimeError(f"Không tải được source snapshot bundle: {str(last_error)[:160]}")
+
+
+def _extract_zip_safely(zip_path: str, extract_dir: str):
+    root = Path(extract_dir).resolve()
+    total_size = 0
+    with zipfile.ZipFile(zip_path, "r") as archive:
+        entries = archive.infolist()
+        if len(entries) > MAX_BUNDLE_FILES:
+            raise RuntimeError(f"Source bundle có quá nhiều file ({len(entries)})")
+
+        for entry in entries:
+            # Unix symlink bit trong external attributes.
+            unix_mode = entry.external_attr >> 16
+            if (unix_mode & 0o170000) == 0o120000:
+                raise RuntimeError("Source bundle không được chứa symbolic link")
+
+            target = (root / entry.filename).resolve()
+            if target != root and root not in target.parents:
+                raise RuntimeError("Source bundle chứa đường dẫn không an toàn")
+
+            total_size += entry.file_size
+            if total_size > MAX_EXTRACTED_BUNDLE_MB * 1024 * 1024:
+                raise RuntimeError(
+                    f"Source bundle sau giải nén vượt quá {MAX_EXTRACTED_BUNDLE_MB}MB"
+                )
+
+        archive.extractall(root)
 
 
 def scan_virus(tmp_dir: str) -> dict:

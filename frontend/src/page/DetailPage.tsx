@@ -1,9 +1,10 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Info, Star, Film, Play, X } from "lucide-react";
+import { Check, Info, Star, Film, Play, X, ChevronRight } from "lucide-react";
 import { Button } from "../components/Button";
-import { Asset, User } from "../types";
+import { Asset, User, CategoryResponse } from "../types";
 import { IMAGE_SEED_MAP } from "../../assets/images";
+import { gameApi } from "../api/gameApi";
 
 interface DetailPageProps {
   focusedAsset: Asset;
@@ -24,6 +25,8 @@ interface DetailPageProps {
     type?: "info" | "success" | "warning" | "error",
   ) => void;
   ownedProductIds: Set<string>;
+  handleCategoryClick: (category: string) => void;
+  handleTagClick: (tag: string) => void;
 }
 
 const resolveNumberLocale = (language?: string | null) => {
@@ -49,6 +52,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   currentUser,
   showToast,
   ownedProductIds,
+  handleCategoryClick,
+  handleTagClick,
 }) => {
   const { t, i18n } = useTranslation(["marketplace"]);
   const isOwned = ownedProductIds.has(focusedAsset.id);
@@ -57,6 +62,57 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   );
 
   const [isPlayDemoOpen, setIsPlayDemoOpen] = React.useState(false);
+  const [categories, setCategories] = React.useState<CategoryResponse[]>([]);
+
+  React.useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const [gameRes, assetRes] = await Promise.all([
+          gameApi.getCategories("game"),
+          gameApi.getCategories("asset"),
+        ]);
+        const allCats: CategoryResponse[] = [];
+        if (gameRes.success && gameRes.data) allCats.push(...gameRes.data);
+        if (assetRes.success && assetRes.data) allCats.push(...assetRes.data);
+        setCategories(allCats);
+      } catch (err) {
+        console.error("Failed to load categories in DetailPage:", err);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  React.useEffect(() => {
+    if (activeDetailTab === "tech" && !focusedAsset.webDemoUrl) {
+      setActiveDetailTab("overview");
+    }
+  }, [focusedAsset, activeDetailTab, setActiveDetailTab]);
+
+  const getParentCategoryName = React.useCallback((categoryName: string): string => {
+    if (!categoryName || categories.length === 0) return categoryName || "";
+    const currentCat = categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+    if (!currentCat) return categoryName;
+
+    let parent = currentCat;
+    let iterations = 0;
+    while (parent.parentId && iterations < 10) {
+      const nextParent = categories.find(c => c.id === parent.parentId);
+      if (!nextParent) break;
+      parent = nextParent;
+      iterations++;
+    }
+    return parent.name;
+  }, [categories]);
+
+  const authorAssets = React.useMemo(() => {
+    if (!focusedAsset.author || !assets) return [];
+    return assets.filter(
+      (item) =>
+        item.id !== focusedAsset.id &&
+        item.author &&
+        item.author.toLowerCase() === focusedAsset.author.toLowerCase()
+    );
+  }, [focusedAsset.author, focusedAsset.id, assets]);
 
   const formatPrice = React.useCallback(
     (price: number) => `${new Intl.NumberFormat(numberLocale).format(price)} đ`,
@@ -160,8 +216,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               </div>
             ))}
           </div>
-
-          {/* Description and technical tags selectors inside tabs */}
+          {/* Description and technical tags selectors inside tabs */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
             {/* Underlay toggles */}
             <div className="flex items-center border-b border-slate-100 dark:border-slate-850/80 pb-1.5 gap-4">
@@ -171,12 +226,14 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               >
                 {t("detail.tabs.overview")}
               </button>
-              <button
-                onClick={() => setActiveDetailTab("tech")}
-                className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-studio ${activeDetailTab === "tech" ? "border-amber-400 text-slate-800 dark:text-white" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
-              >
-                {t("detail.tabs.tech")}
-              </button>
+              {focusedAsset.webDemoUrl && (
+                <button
+                  onClick={() => setActiveDetailTab("tech")}
+                  className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-studio ${activeDetailTab === "tech" ? "border-amber-400 text-slate-800 dark:text-white" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+                >
+                  {t("detail.tabs.playDemo", "Chơi thử")}
+                </button>
+              )}
               {focusedAsset.documentation && (
                 <button
                   onClick={() => setActiveDetailTab("documentation")}
@@ -185,20 +242,11 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   {t("detail.tabs.documentation")}
                 </button>
               )}
-              {focusedAsset.webDemoUrl && (
-                <button
-                  onClick={handlePlayDemoClick}
-                  className="ml-auto flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-display font-bold text-xs rounded-lg transition-studio active:scale-[0.98] cursor-pointer shadow-sm"
-                >
-                  <Play size={13} fill="currentColor" />{" "}
-                  {t("detail.demo.playButton")}
-                </button>
-              )}
             </div>
 
             {activeDetailTab === "documentation" ? (
               <div className="space-y-4 animate-fade-in">
-                <div className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-850">
+                <div className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed whitespace-pre-wrap font-sans bg-slate-50 dark:bg-slate-955 p-4 rounded-xl border border-slate-200 dark:border-slate-850">
                   {focusedAsset.documentation}
                 </div>
               </div>
@@ -207,7 +255,6 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                   {focusedAsset.description}
                 </p>
-
                 {focusedAsset.details && (
                   <div className="space-y-3 pt-3">
                     <h4 className="font-display font-semibold text-xs uppercase tracking-wider text-slate-400">
@@ -227,48 +274,27 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
-                {focusedAsset.details ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl space-y-1">
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {t("detail.tech.tilesetsCount")}
-                      </span>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {focusedAsset.details.tilesCount}
-                      </p>
+              <div className="space-y-4 animate-fade-in">
+                {focusedAsset.webDemoUrl ? (
+                  <>
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 shadow-md">
+                      <iframe
+                        src={focusedAsset.webDemoUrl}
+                        sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
+                        allow="autoplay; fullscreen; gamepad; cross-origin-isolated"
+                        className="w-full h-full border-none"
+                        title={`${focusedAsset.title} Play Demo`}
+                      />
                     </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl space-y-1">
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {t("detail.tech.spritesPrefabs")}
-                      </span>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {focusedAsset.details.spritesCount}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl space-y-1">
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {t("detail.tech.objectProperties")}
-                      </span>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {focusedAsset.details.propsCount}
-                      </p>
-                    </div>
-                  </div>
+                    <p className="text-[11px] text-slate-500 text-center font-mono">
+                      {t("detail.demo.tabNote", "Click inside the window to play. Supports keyboard and controller.")}
+                    </p>
+                  </>
                 ) : (
                   <p className="text-xs text-slate-400">
-                    {t("detail.tech.noDetails")}
+                    {t("detail.demo.noDemo", "Không có bản chơi thử cho sản phẩm này.")}
                   </p>
                 )}
-
-                <div className="p-4 bg-amber-400/5 border border-amber-400/20 rounded-xl space-y-1.5">
-                  <h4 className="text-xs font-bold text-amber-500 uppercase font-display flex items-center gap-1">
-                    <Info size={11} /> {t("detail.tech.compatibilityTitle")}
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {t("detail.tech.compatibilityBody")}
-                  </p>
-                </div>
               </div>
             )}
           </div>
@@ -278,99 +304,120 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         <div className="space-y-6">
           {/* Product Purchase configuration */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-5 shadow-xs">
-            <div className="space-y-2">
-              <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-950 text-slate-500 dark:text-slate-400 uppercase font-bold border border-slate-200 dark:border-slate-800">
-                {t("detail.pricing.licensePack")}
+            
+            {/* Author Profile Pill */}
+            <div className="inline-flex items-center gap-2 bg-slate-900/90 dark:bg-slate-800/90 px-3 py-1.5 rounded-full border border-slate-850 dark:border-slate-700 max-w-fit shadow-md">
+              <img
+                referrerPolicy="no-referrer"
+                src={focusedAsset.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80'}
+                alt={focusedAsset.author}
+                className="w-5 h-5 rounded-full object-cover"
+              />
+              <span className="text-[11px] font-bold text-white dark:text-slate-100">
+                {focusedAsset.author}
               </span>
-              <h2 className="pt-1 font-display text-[2rem] font-bold leading-[1.05] text-white">
-                {focusedAsset.title}
-              </h2>
-              <p className="font-display text-xl font-bold text-amber-400">
-                {focusedAsset.price === 0
-                  ? t("detail.pricing.freeDownload")
-                  : formatPrice(focusedAsset.price)}
-              </p>
-              <p className="text-xs text-slate-400">
-                {t("detail.pricing.certification")}
-              </p>
             </div>
 
-            <div className="space-y-3 pt-2">
+            {/* Game Title */}
+            <h2 className="font-display text-[2rem] font-bold leading-[1.1] text-slate-850 dark:text-white">
+              {focusedAsset.title}
+            </h2>
+
+            {/* Tags / Category Breadcrumb */}
+            {focusedAsset.category && (
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-sky-500 dark:text-sky-400 font-semibold">
+                <span
+                  className="cursor-pointer hover:underline"
+                  onClick={() => handleCategoryClick(getParentCategoryName(focusedAsset.category))}
+                >
+                  {getParentCategoryName(focusedAsset.category)}
+                </span>
+                {getParentCategoryName(focusedAsset.category) !== focusedAsset.category && (
+                  <>
+                    <span className="text-slate-400 dark:text-slate-600 font-normal">&gt;</span>
+                    <span
+                      className="cursor-pointer hover:underline"
+                      onClick={() => handleCategoryClick(focusedAsset.category)}
+                    >
+                      {focusedAsset.category}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Price Display */}
+            <p className="font-display text-xl font-bold text-amber-400 pt-1">
+              {focusedAsset.price === 0
+                ? t("detail.pricing.freeDownload")
+                : formatPrice(focusedAsset.price)}
+            </p>
+
+            {/* Purchase actions (No Wishlist, Buy Now on top, Add to Cart below) */}
+            <div className="space-y-2.5 pt-2">
               {isOwned ? (
                 <div className="w-full py-2.5 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-500 font-display text-center">
                   {t("detail.pricing.ownedMessage")}
                 </div>
               ) : (
                 <>
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    size="md"
-                    onClick={() => handleAddToCart(focusedAsset)}
-                  >
-                    {t("detail.actions.addToCart")}
-                  </Button>
                   <button
                     onClick={() => handleBuyNow(focusedAsset)}
                     disabled={isPreparingBuyNow}
-                    className="w-full py-2.5 px-4 bg-transparent border border-sky-400 dark:border-sky-800 hover:bg-sky-500/20 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-sky-600 dark:text-white font-display text-center transition-studio cursor-pointer"
+                    className="w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-600 active:scale-[0.99] text-white rounded-lg text-xs font-bold font-display text-center transition-studio cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {isPreparingBuyNow
                       ? t("detail.actions.preparingPayment")
                       : t("detail.actions.buyNowBankTransfer")}
                   </button>
+                  <Button
+                    variant="secondary"
+                    className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 font-display text-center transition-studio cursor-pointer border border-slate-200 dark:border-slate-700/60"
+                    size="md"
+                    onClick={() => handleAddToCart(focusedAsset)}
+                  >
+                    {t("detail.actions.addToCart")}
+                  </Button>
                 </>
               )}
             </div>
 
             <hr className="border-slate-100 dark:border-slate-850/60" />
 
-            {/* Metadata and Author profile */}
-            <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-400">
-              <div className="flex items-center gap-2.5">
-                <img
-                  referrerPolicy="no-referrer"
-                  src={focusedAsset.authorAvatar}
-                  alt={focusedAsset.author}
-                  className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-800"
-                />
-                <div>
-                  <span className="block font-semibold text-slate-800 dark:text-slate-200">
-                    {focusedAsset.author}
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    {t("detail.meta.verifiedPartner")}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-2 text-[11px] font-mono">
-                <div className="flex justify-between">
-                  <span>{t("detail.meta.version")}</span>
-                  <span className="text-slate-800 dark:text-white font-bold">
-                    {focusedAsset.version || "1.0.0"}
-                  </span>
-                </div>
-
-                {focusedAsset.supportedPlatforms && (
+            {/* Metadata (Details) Section */}
+            <div className="space-y-3.5 text-xs text-slate-655 dark:text-slate-400">
+              <div>
+                <h3 className="font-display font-bold text-xs uppercase tracking-wider text-slate-400 mb-3.5">
+                  {t("detail.meta.detailsTitle", "Details")}
+                </h3>
+                <div className="space-y-2 text-[11px] font-mono">
                   <div className="flex justify-between">
-                    <span>{t("detail.meta.platforms")}</span>
+                    <span>{t("detail.meta.version")}</span>
                     <span className="text-slate-800 dark:text-white font-bold">
-                      {focusedAsset.supportedPlatforms}
+                      {focusedAsset.version || "1.0.0"}
                     </span>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span>{t("detail.meta.lastUpdated")}</span>
-                  <span className="text-slate-800 dark:text-white font-bold">
-                    {focusedAsset.lastUpdated}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{t("detail.meta.fileSize")}</span>
-                  <span className="text-slate-800 dark:text-white font-bold">
-                    {t("detail.meta.fileSizeValue")}
-                  </span>
+
+                  {focusedAsset.supportedPlatforms && (
+                    <div className="flex justify-between">
+                      <span>{t("detail.meta.platforms")}</span>
+                      <span className="text-slate-800 dark:text-white font-bold">
+                        {focusedAsset.supportedPlatforms}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>{t("detail.meta.lastUpdated")}</span>
+                    <span className="text-slate-800 dark:text-white font-bold">
+                      {focusedAsset.lastUpdated}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{t("detail.meta.fileSize")}</span>
+                    <span className="text-slate-800 dark:text-white font-bold">
+                      {t("detail.meta.fileSizeValue")}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -386,7 +433,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 {focusedAsset.tagList.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="rounded-lg bg-sky-500/10 dark:bg-sky-500/20 px-2.5 py-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400 border border-sky-500/10 dark:border-sky-500/20 shadow-xs"
+                    className="rounded-lg bg-sky-500/10 dark:bg-sky-500/20 px-2.5 py-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400 border border-sky-500/10 dark:border-sky-500/20 shadow-xs cursor-pointer hover:bg-sky-500/20 dark:hover:bg-sky-500/30 transition-colors"
+                    onClick={() => handleTagClick(tag)}
                   >
                     {tag}
                   </span>
@@ -439,6 +487,58 @@ export const DetailPage: React.FC<DetailPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* More from [Author] section */}
+      {authorAssets.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-xs">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display font-bold text-[1.4rem] text-slate-850 dark:text-white flex items-center gap-1.5 hover:text-sky-500 cursor-pointer transition-colors group">
+              <span>More from {focusedAsset.author}</span>
+              <ChevronRight size={22} className="text-slate-400 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all" />
+            </h3>
+            <div className="flex items-center gap-2">
+              <button type="button" className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60">
+                <ChevronRight size={14} className="rotate-180" />
+              </button>
+              <button type="button" className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60">
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+            {authorAssets.slice(0, 5).map((item) => (
+              <div
+                key={item.id}
+                onClick={() => {
+                  handleViewAssetDetails(item);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="group/author-item cursor-pointer overflow-hidden rounded-xl border border-slate-250 bg-white hover:border-[#FE9A00]/50 hover:shadow-md dark:border-slate-850 dark:bg-slate-950/20 dark:hover:border-[#FE9A00]/50 transition-all duration-200"
+              >
+                <div className="aspect-[1.5/1] overflow-hidden bg-slate-950/20 relative border-b border-slate-200 dark:border-slate-800">
+                  <img
+                    referrerPolicy="no-referrer"
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover/author-item:scale-105"
+                  />
+                </div>
+                <div className="p-3.5 space-y-1 text-left">
+                  <h5 className="text-sm font-bold text-slate-850 dark:text-white line-clamp-1 group-hover/author-item:text-[#FE9A00] transition-colors duration-200" title={item.title}>
+                    {item.title}
+                  </h5>
+                  <p className="text-xs text-slate-500 dark:text-slate-455 font-medium">
+                    {item.price === 0
+                      ? t("common.free")
+                      : `${t("common.from", "From")} ${formatPrice(item.price)}`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Play Game Demo — fullscreen modal, tách khỏi tab Overview/Tech Specs để có không gian chơi thử lớn nhất có thể */}
       {isPlayDemoOpen && focusedAsset.webDemoUrl && (
