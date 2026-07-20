@@ -13,6 +13,7 @@ import {
   ReactionType,
   MarketplaceItemResponse,
   PaymentResponse,
+  CategoryResponse,
 } from './types';
 import { Button } from './components/Button';
 import { ShieldAlert, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
@@ -369,7 +370,28 @@ export default function App() {
   const [assets, setAssets] = useState<Asset[]>([]);
   
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [catalogType, setCatalogType] = useState<'game' | 'asset'>('game');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [godotVersion, setGodotVersion] = useState<string>('All Versions');
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const [gameRes, assetRes] = await Promise.all([
+          gameApi.getCategories('game'),
+          gameApi.getCategories('asset'),
+        ]);
+        const allCats: CategoryResponse[] = [];
+        if (gameRes.success && gameRes.data) allCats.push(...gameRes.data);
+        if (assetRes.success && assetRes.data) allCats.push(...assetRes.data);
+        setCategories(allCats);
+      } catch (err) {
+        console.error("Failed to load categories in App:", err);
+      }
+    };
+    loadCategories();
+  }, []);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState<'popular' | 'price-low' | 'price-high'>('popular');
 
@@ -480,7 +502,7 @@ export default function App() {
     price: game.priceProposed || 0,
     rating: 5.0,
     reviewedCount: 0,
-    author: game.creatorName || 'Unknown Creator',
+    author: game.creatorFullName || game.creatorName || 'Unknown Creator',
     authorAvatar: DEFAULT_AUTHOR_AVATAR,
     category: game.categoryName || 'Uncategorized',
     description: game.description || '',
@@ -629,8 +651,22 @@ export default function App() {
   };
 
   // Switch to Marketplace with Category pre-selected helper
-  const handleCategoryClick = (category: string) => {
-    setSelectedCategories([category]);
+  const handleCategoryClick = (categoryName: string) => {
+    const isAssetCategory = assets.some(a => a.category === categoryName && a.itemType === 'asset');
+    setCatalogType(isAssetCategory ? 'asset' : 'game');
+    setSelectedCategories([categoryName]);
+    setSelectedTags([]);
+    setCurrentScreen('marketplace');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleTagClick = (tag: string) => {
+    const matchingAsset = assets.find(a => a.tagList?.includes(tag) || a.tag === tag);
+    if (matchingAsset) {
+      setCatalogType(matchingAsset.itemType === 'asset' ? 'asset' : 'game');
+    }
+    setSelectedCategories([]);
+    setSelectedTags([tag]);
     setCurrentScreen('marketplace');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -888,6 +924,31 @@ export default function App() {
     [assets]
   );
 
+  const getCategoryAndDescendants = useCallback((categoryNames: string[]): string[] => {
+    if (categoryNames.length === 0 || categories.length === 0) return categoryNames;
+    
+    const result = new Set<string>();
+    
+    // Helper function to recursively find child categories
+    const addDescendants = (catId: string) => {
+      const children = categories.filter(c => c.parentId === catId);
+      children.forEach(child => {
+        result.add(child.name);
+        addDescendants(child.id);
+      });
+    };
+
+    categoryNames.forEach(name => {
+      result.add(name);
+      const found = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (found) {
+        addDescendants(found.id);
+      }
+    });
+
+    return Array.from(result);
+  }, [categories]);
+
   // Filter & Sort Logic for Marketplace
   const filteredAssets = useMemo(() => {
     return marketplaceCatalogAssets.filter(item => {
@@ -901,7 +962,8 @@ export default function App() {
       
       // Category Checkboxes Filter
       if (selectedCategories.length > 0) {
-        if (!selectedCategories.includes(item.category)) return false;
+        const allowedCategories = getCategoryAndDescendants(selectedCategories);
+        if (!allowedCategories.some(catName => catName.toLowerCase() === item.category.toLowerCase())) return false;
       }
 
       // Max price filter
@@ -913,7 +975,7 @@ export default function App() {
       if (sortOrder === 'price-high') return b.price - a.price;
       return b.rating - a.rating; // default standard popularity index
     });
-  }, [marketplaceCatalogAssets, searchText, selectedCategories, maxPrice, sortOrder]);
+  }, [marketplaceCatalogAssets, searchText, selectedCategories, maxPrice, sortOrder, getCategoryAndDescendants]);
 
   // Current Detail entity focus
   const focusedAsset = useMemo(() => {
@@ -1022,6 +1084,7 @@ export default function App() {
 
         {displayScreen === 'marketplace' && (
           <MarketplacePage
+            allAssets={assets}
             filteredAssets={filteredAssets}
             searchText={searchText}
             setSearchText={setSearchText}
@@ -1037,6 +1100,10 @@ export default function App() {
             handleAddToCart={handleAddToCart}
             setSelectedCategories={setSelectedCategories}
             ownedProductIds={ownedProductIds}
+            catalogType={catalogType}
+            setCatalogType={setCatalogType}
+            selectedTags={selectedTags}
+            setSelectedTags={setSelectedTags}
           />
         )}
 
@@ -1107,6 +1174,8 @@ export default function App() {
             currentUser={currentUser}
             showToast={showToast}
             ownedProductIds={ownedProductIds}
+            handleCategoryClick={handleCategoryClick}
+            handleTagClick={handleTagClick}
           />
         )}
 

@@ -19,6 +19,7 @@ import { Asset, CategoryResponse } from "../types";
 import { gameApi } from "../api/gameApi";
 
 interface MarketplacePageProps {
+  allAssets: Asset[];
   filteredAssets: Asset[];
   searchText: string;
   setSearchText: (text: string) => void;
@@ -34,6 +35,10 @@ interface MarketplacePageProps {
   handleAddToCart: (asset: Asset) => void;
   setSelectedCategories: (categories: string[]) => void;
   ownedProductIds: Set<string>;
+  catalogType: "game" | "asset";
+  setCatalogType: React.Dispatch<React.SetStateAction<"game" | "asset">>;
+  selectedTags: string[];
+  setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const DEFAULT_GODOT_VERSION = "All Versions";
@@ -140,6 +145,7 @@ const formatCurrencyAmount = (amount: number, locale: string) =>
   `${new Intl.NumberFormat(locale).format(amount)} đ`;
 
 export const MarketplacePage: React.FC<MarketplacePageProps> = ({
+  allAssets,
   filteredAssets,
   searchText,
   setSearchText,
@@ -155,18 +161,20 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   handleAddToCart,
   setSelectedCategories,
   ownedProductIds,
+  catalogType,
+  setCatalogType,
+  selectedTags,
+  setSelectedTags,
 }) => {
   const { t, i18n } = useTranslation(["marketplace"]);
   const numberLocale = resolveNumberLocale(
     i18n.resolvedLanguage || i18n.language,
   );
 
-  const [catalogType, setCatalogType] = React.useState<"game" | "asset">("game");
   const [gameCategories, setGameCategories] = React.useState<CategoryResponse[]>([]);
   const [assetCategories, setAssetCategories] = React.useState<CategoryResponse[]>([]);
   const [expandedIds, setExpandedIds] = React.useState<string[]>([]);
   const [openDropdown, setOpenDropdown] = React.useState<"tags" | "price" | "date" | "sort" | null>(null);
-  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [minPriceInput, setMinPriceInput] = React.useState<number | "">("");
   const [maxPriceInput, setMaxPriceInput] = React.useState<number | "">("");
   const [freeOnly, setFreeOnly] = React.useState<boolean>(false);
@@ -252,14 +260,15 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   };
 
   const getCategoryCount = React.useCallback((node: CategoryNode): number => {
-    let count = filteredAssets.filter(a => a.category === node.name).length;
+    const targetItemType = catalogType === "game" ? "source_code" : "asset";
+    let count = allAssets.filter(a => a.itemType === targetItemType && a.category === node.name).length;
     if (node.children) {
       node.children.forEach(child => {
         count += getCategoryCount(child);
       });
     }
     return count;
-  }, [filteredAssets]);
+  }, [allAssets, catalogType]);
 
   const getCategoryIcon = (category: CategoryResponse) => {
     const name = category.name.toLowerCase();
@@ -375,6 +384,23 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     setTagSearchQuery("");
   };
 
+  const getParentCategoryName = React.useCallback((categoryName: string): string => {
+    if (!categoryName) return "";
+    const allCats = [...gameCategories, ...assetCategories];
+    const currentCat = allCats.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+    if (!currentCat) return categoryName;
+
+    let parent = currentCat;
+    let iterations = 0;
+    while (parent.parentId && iterations < 10) {
+      const nextParent = allCats.find(c => c.id === parent.parentId);
+      if (!nextParent) break;
+      parent = nextParent;
+      iterations++;
+    }
+    return parent.name;
+  }, [gameCategories, assetCategories]);
+
   const renderEmptyState = (title: string, description: string) => (
     <div className="rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/30">
       <p className="font-display text-sm font-semibold text-slate-800 dark:text-slate-200">
@@ -393,26 +419,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Dynamic Left sidebar selectors */}
         <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 space-y-5 flex-none max-h-fit self-start">
-          {/* Search string field inside sidebar */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              {t("filters.searchLabel")}
-            </label>
-            <div className="relative">
-              <Search
-                size={14}
-                className="absolute left-3 top-3 text-slate-400"
-              />
-              <input
-                type="text"
-                placeholder={t("filters.searchPlaceholder")}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-sky-500"
-              />
-            </div>
-          </div>
-          
+
           {/* Hierarchical Categories tree view filter */}
           <div className="space-y-3">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
@@ -660,8 +667,29 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 )}
               </div>
 
-              {/* Spacer */}
-              <div className="flex-1" />
+              {/* Search input in the middle taking up the available space */}
+              <div className="flex-1 min-w-[200px] relative">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+                <input
+                  type="text"
+                  placeholder={t("filters.searchPlaceholder")}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  className="w-full pl-8 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-sky-500 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 transition-all"
+                />
+                {searchText && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchText("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-semibold cursor-pointer"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
 
               {/* 4. Sort Dropdown */}
               <div className="relative">
@@ -794,9 +822,9 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                       <article
                         key={asset.id}
                         onClick={() => handleViewAssetDetails(asset)}
-                        className="group flex cursor-pointer flex-col overflow-hidden rounded-[16px] border border-slate-200/90 bg-white hover:border-sky-500/45 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-sky-500/45 transition-all duration-200"
+                        className="group flex cursor-pointer flex-col overflow-hidden rounded-[16px] border border-slate-200/90 bg-white hover:border-[#FE9A00]/45 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-[#FE9A00]/45 transition-all duration-200"
                       >
-                        <div className="relative aspect-[1.5/1] overflow-hidden bg-slate-950/20">
+                        <div className="relative aspect-[1.5/1] overflow-hidden bg-slate-950/20 border-b-2 border-transparent group-hover:border-[#FE9A00] transition-all duration-300">
                           <img
                             referrerPolicy="no-referrer"
                             src={asset.image}
@@ -805,6 +833,15 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                           />
                           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/40 to-transparent" />
                           
+                          {/* Parent Category Badge Overlay (visible on hover) */}
+                          {asset.category && (
+                            <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                              <span className="rounded bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white border border-white/10 backdrop-blur-sm shadow-md">
+                                {getParentCategoryName(asset.category)}
+                              </span>
+                            </div>
+                          )}
+
                           {/* Hover Actions overlay */}
                           <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             {ownedProductIds.has(asset.id) ? (
@@ -829,7 +866,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
                         <div className="flex flex-1 flex-col p-3 text-left">
                           <h5
-                            className="line-clamp-1 font-display text-[0.92rem] font-bold leading-5 text-slate-850 dark:text-white"
+                            className="line-clamp-1 font-display text-[0.92rem] font-bold leading-5 text-slate-850 dark:text-white group-hover:text-[#FE9A00] transition-colors duration-200"
                             title={asset.title}
                           >
                             {asset.title}
