@@ -26,13 +26,11 @@ import { UploadPage } from './page/UploadPage';
 import { PathPage } from './page/PathPage';
 import { DashboardPage } from './page/DashboardPage';
 import { WalletPage } from './page/WalletPage';
-import { CommunityPage } from './page/CommunityPage';
 import { SignInPage } from './page/SignInPage';
 import { SignUpPage } from './page/SignUpPage';
 import { AdminPage } from './page/AdminPage';
 import { GitHubCallbackPage } from './page/GitHubCallbackPage';
 import { ProfilePage } from './page/ProfilePage';
-import { CommunityDetailScreen } from './page/CommunityDetailScreen';
 import { ProfileScreen } from './page/ProfileScreen';
 import { CheckoutPage } from './page/CheckoutPage';
 import { PaymentDetailPage } from './page/PaymentDetailPage';
@@ -43,7 +41,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
 import { useWebSocket } from './context/WebSocketContext';
 import { gameApi } from './api/gameApi';
-import { communityApi } from './api/communityApi';
 import { marketplaceApi } from './api/marketplaceApi';
 import { paymentApi } from './api/paymentApi';
 import { orderApi } from './api/orderApi';
@@ -879,46 +876,6 @@ export default function App() {
     }
   };
 
-  // Community Actions for Detail Screen
-  const handleReactToPost = (postId: string, type: ReactionType) => {
-    setSelectedPost(prev => {
-      if (!prev || prev.id !== postId) return prev;
-      const prevReaction = prev.currentUserReaction;
-      const isToggleOff = prevReaction === type;
-      
-      const newReaction = isToggleOff ? undefined : type;
-      
-      return {
-        ...prev,
-        currentUserReaction: newReaction
-      };
-    });
-  };
-
-  const handleSharePost = async (postId: string) => {
-    const shareMessage = window.prompt("Giới thiệu bài đăng được chia sẻ này (tùy chọn):");
-    if (shareMessage === null) return;
-    try {
-      await communityApi.sharePost(postId, { message: shareMessage });
-      showToast("Chia sẻ bài viết thành công!", "success");
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Không thể chia sẻ bài viết", "error");
-    }
-  };
-
-  const handleDeletePost = async (postId: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) return;
-    try {
-      await communityApi.deletePost(postId);
-      showToast("Xóa bài viết thành công!", "success");
-      setCurrentScreen('community');
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Không thể xóa bài viết", "error");
-    }
-  };
-
-
-
   const marketplaceCatalogAssets = useMemo(
     () => assets.filter((item): item is Asset & { itemType: 'source_code' | 'asset' } => Boolean(item.itemType)),
     [assets]
@@ -1213,57 +1170,12 @@ export default function App() {
           </ProtectedRoute>
         )}
 
-        {displayScreen === 'community' && (
-          <CommunityPage
-            darkMode={darkMode}
-            setCurrentScreen={setCurrentScreen}
-            onViewPostDetails={(post) => {
-              setSelectedPost(post);
-              setSelectedAssetId(post.id);
-              setCurrentScreen('community-detail');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onViewAuthorProfile={(author) => {
-              setSelectedAuthor(author);
-              setSelectedAssetId(author.id);
-              setCurrentScreen('author-profile');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
-        )}
-
-        {displayScreen === 'community-detail' && (
-          <CommunityDetailScreen
-            post={selectedPost || undefined}
-            postId={selectedAssetId}
-            onNavigateBack={() => {
-              setCurrentScreen('community');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onNavigateToProfile={(author) => {
-              setSelectedAuthor(author);
-              setSelectedAssetId(author.id);
-              setCurrentScreen('author-profile');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onReact={handleReactToPost}
-            onShare={handleSharePost}
-            onDelete={handleDeletePost}
-          />
-        )}
-
         {displayScreen === 'author-profile' && (
           <ProfileScreen
             author={selectedAuthor || undefined}
             authorId={selectedAssetId}
             onNavigateBack={() => {
-              setCurrentScreen('community');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onViewPostDetails={(post) => {
-              setSelectedPost(post);
-              setSelectedAssetId(post.id);
-              setCurrentScreen('community-detail');
+              setCurrentScreen('explore');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           />

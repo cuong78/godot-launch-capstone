@@ -30,7 +30,7 @@ const FOOTER_SECTIONS: FooterSection[] = [
     title: "GodotLaunch",
     links: [
       { label: "About", screen: "explore" },
-      { label: "Support", screen: "community" },
+      { label: "Support", screen: "explore" },
       { label: "Publish on GodotLaunch", screen: "upload" },
       { label: "Refunds", screen: "wallet" },
       { label: "Legal", screen: "explore" },
@@ -60,7 +60,6 @@ const FOOTER_SECTIONS: FooterSection[] = [
     links: [
       { label: "Developer Dashboard", screen: "dashboard" },
       { label: "Wallet & Payments", screen: "wallet" },
-      { label: "Community", screen: "community" },
       { label: "Publishing Agreements", screen: "path" },
     ],
   },
@@ -69,7 +68,6 @@ const FOOTER_SECTIONS: FooterSection[] = [
     links: [
       { label: "Documentation", href: "https://docs.godotengine.org" },
       { label: "Developer Guide", screen: "developer-onboarding" },
-      { label: "Community Rules", screen: "community" },
       { label: "Security", screen: "explore" },
     ],
   },
@@ -77,9 +75,9 @@ const FOOTER_SECTIONS: FooterSection[] = [
     title: "Company",
     links: [
       { label: "About Us", screen: "explore" },
-      { label: "Newsroom", screen: "community" },
-      { label: "Careers", screen: "community" },
-      { label: "Contact", screen: "community" },
+      { label: "Newsroom", screen: "explore" },
+      { label: "Careers", screen: "explore" },
+      { label: "Contact", screen: "explore" },
     ],
   },
 ];
