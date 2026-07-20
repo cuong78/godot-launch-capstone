@@ -3,6 +3,7 @@
   "card.owned": "Đã sở hữu",
   "card.resource": "Tài nguyên",
   "common.free": "Miễn phí",
+  "common.from": "Từ",
   "empty.noAssetDescription": "Giữ nguyên logic tìm kiếm hiện tại, sau đó nới rộng danh mục hoặc khoảng giá để hiện lại các gói tài nguyên.",
   "empty.noAssetTitle": "Không có tài nguyên nào khớp với bộ lọc đang bật.",
   "empty.noMatchDescription": "Hãy thử từ khóa khác hoặc đặt lại bộ lọc để quay về danh sách mặc định.",

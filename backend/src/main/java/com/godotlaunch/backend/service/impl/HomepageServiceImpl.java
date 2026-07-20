@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class HomepageServiceImpl implements HomepageService {
-    private static final int SYSTEM_SECTION_LIMIT = 6;
+    private static final int SYSTEM_SECTION_LIMIT = 12;
     private final HomepageSectionRepository sectionRepository;
     private final GameRepository gameRepository;
     private final AssetRepository assetRepository;

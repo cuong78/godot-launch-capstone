@@ -10,6 +10,9 @@ import {
   Sparkles,
   FolderCode,
   PackageOpen,
+  ChevronRight,
+  ChevronDown,
+  ShoppingCart,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Asset, CategoryResponse } from "../types";
@@ -36,11 +39,95 @@ interface MarketplacePageProps {
 const DEFAULT_GODOT_VERSION = "All Versions";
 const MAX_PRICE_CEILING = 10000000;
 
-const SORT_OPTIONS = [
-  { value: "popular", labelKey: "filters.sort.popular" },
-  { value: "price-low", labelKey: "filters.sort.priceLow" },
-  { value: "price-high", labelKey: "filters.sort.priceHigh" },
-] as const;
+interface CategoryNode extends CategoryResponse {
+  children: CategoryNode[];
+}
+
+const CategoryTreeItem: React.FC<{
+  node: CategoryNode;
+  depth: number;
+  selectedCategories: string[];
+  handleCategorySelect: (category: string) => void;
+  expandedIds: string[];
+  toggleExpand: (id: string, e: React.MouseEvent) => void;
+  getCategoryCount: (node: CategoryNode) => number;
+  getCategoryIcon: (cat: CategoryResponse) => React.ReactNode;
+}> = ({
+  node,
+  depth,
+  selectedCategories,
+  handleCategorySelect,
+  expandedIds,
+  toggleExpand,
+  getCategoryCount,
+  getCategoryIcon
+}) => {
+  const hasChildren = node.children && node.children.length > 0;
+  const isExpanded = expandedIds.includes(node.id);
+  const isSelected = selectedCategories.includes(node.name);
+  const count = getCategoryCount(node);
+
+  return (
+    <div className="space-y-1">
+      <div
+        onClick={() => handleCategorySelect(node.name)}
+        className={`group flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-colors text-xs ${
+          isSelected 
+            ? 'bg-slate-100 dark:bg-slate-800 text-sky-500 dark:text-sky-400 font-bold' 
+            : 'text-slate-600 hover:bg-slate-50 dark:text-slate-350 dark:hover:bg-slate-900/40 text-slate-700'
+        }`}
+        style={{ paddingLeft: `${depth * 14 + 6}px` }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Expand/Collapse Chevron */}
+          {hasChildren ? (
+            <button
+              type="button"
+              onClick={(e) => toggleExpand(node.id, e)}
+              className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors text-slate-400 hover:text-slate-655 dark:hover:text-slate-200"
+            >
+              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            </button>
+          ) : (
+            <span className="w-4" /> /* spacer */
+          )}
+
+          {/* Category Icon */}
+          {getCategoryIcon(node)}
+
+          {/* Category Name */}
+          <span className="truncate">{node.name}</span>
+        </div>
+
+        {/* Count Badge */}
+        {count > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
+            {count >= 1000 ? `${(count / 1000).toFixed(1)}K` : count}
+          </span>
+        )}
+      </div>
+
+      {/* Children nodes */}
+      {hasChildren && isExpanded && (
+        <div className="space-y-1">
+          {node.children.map((child) => (
+            <CategoryTreeItem
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              selectedCategories={selectedCategories}
+              handleCategorySelect={handleCategorySelect}
+              expandedIds={expandedIds}
+              toggleExpand={toggleExpand}
+              getCategoryCount={getCategoryCount}
+              getCategoryIcon={getCategoryIcon}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const resolveNumberLocale = (language?: string | null) => {
   const normalized = language?.toLowerCase().split("-")[0];
@@ -51,12 +138,6 @@ const resolveNumberLocale = (language?: string | null) => {
 
 const formatCurrencyAmount = (amount: number, locale: string) =>
   `${new Intl.NumberFormat(locale).format(amount)} đ`;
-
-const formatCompactPrice = (
-  price: number,
-  locale: string,
-  freeLabel: string,
-) => (price === 0 ? freeLabel : formatCurrencyAmount(price, locale));
 
 export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   filteredAssets,
@@ -83,6 +164,15 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const [catalogType, setCatalogType] = React.useState<"game" | "asset">("game");
   const [gameCategories, setGameCategories] = React.useState<CategoryResponse[]>([]);
   const [assetCategories, setAssetCategories] = React.useState<CategoryResponse[]>([]);
+  const [expandedIds, setExpandedIds] = React.useState<string[]>([]);
+  const [openDropdown, setOpenDropdown] = React.useState<"tags" | "price" | "date" | "sort" | null>(null);
+  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+  const [minPriceInput, setMinPriceInput] = React.useState<number | "">("");
+  const [maxPriceInput, setMaxPriceInput] = React.useState<number | "">("");
+  const [freeOnly, setFreeOnly] = React.useState<boolean>(false);
+  const [publishDateFilter, setPublishDateFilter] = React.useState<string>("all-time");
+  const [localSortOrder, setLocalSortOrder] = React.useState<string>("newest");
+  const [tagSearchQuery, setTagSearchQuery] = React.useState<string>("");
 
   React.useEffect(() => {
     const loadCategories = async () => {
@@ -106,9 +196,169 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     (asset) => asset.itemType === targetItemType,
   );
 
+  // Extract all available tags dynamically from active categories/assets
+  const allAvailableTags = React.useMemo(() => {
+    const tagsSet = new Set<string>();
+    assetListings.forEach(a => {
+      if (a.tag) tagsSet.add(a.tag);
+      if (a.tagList) a.tagList.forEach(t => tagsSet.add(t));
+    });
+    return Array.from(tagsSet).sort();
+  }, [assetListings]);
+
+  // Filter tags in dropdown dynamically based on tagSearchQuery
+  const filteredTagsForDropdown = React.useMemo(() => {
+    if (!tagSearchQuery) return allAvailableTags;
+    return allAvailableTags.filter(tag =>
+      tag.toLowerCase().includes(tagSearchQuery.toLowerCase())
+    );
+  }, [allAvailableTags, tagSearchQuery]);
+
+  // Build hierarchical category tree from flat activeCategories
+  const categoryTree = React.useMemo(() => {
+    const nodes: { [id: string]: CategoryNode } = {};
+    activeCategories.forEach((cat) => {
+      nodes[cat.id] = { ...cat, children: [] };
+    });
+
+    const roots: CategoryNode[] = [];
+    activeCategories.forEach((cat) => {
+      const node = nodes[cat.id];
+      if (cat.parentId && nodes[cat.parentId]) {
+        nodes[cat.parentId].children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    return roots;
+  }, [activeCategories]);
+
+  // Auto-expand root categories when activeCategories loads
+  React.useEffect(() => {
+    if (activeCategories.length > 0) {
+      const rootIds = activeCategories
+        .filter(cat => !cat.parentId || !activeCategories.some(p => p.id === cat.parentId))
+        .map(cat => cat.id);
+      setExpandedIds(rootIds);
+    }
+  }, [activeCategories]);
+
+  const toggleExpand = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const getCategoryCount = React.useCallback((node: CategoryNode): number => {
+    let count = filteredAssets.filter(a => a.category === node.name).length;
+    if (node.children) {
+      node.children.forEach(child => {
+        count += getCategoryCount(child);
+      });
+    }
+    return count;
+  }, [filteredAssets]);
+
+  const getCategoryIcon = (category: CategoryResponse) => {
+    const name = category.name.toLowerCase();
+    const slug = category.slug.toLowerCase();
+    
+    if (slug.includes('3d') || name.includes('3d')) return <Boxes size={13} className="text-amber-500" />;
+    if (slug.includes('2d') || name.includes('2d')) return <FolderCode size={13} className="text-sky-400" />;
+    if (slug.includes('audio') || name.includes('audio') || name.includes('sound') || name.includes('sfx')) return <Sparkles size={13} className="text-emerald-400" />;
+    if (slug.includes('code') || name.includes('script') || name.includes('plugin')) return <Code2 size={13} className="text-indigo-400" />;
+    if (slug.includes('shader') || name.includes('vfx')) return <Sparkles size={13} className="text-purple-400" />;
+    
+    return <FolderCode size={13} className="text-slate-400 dark:text-slate-500" />;
+  };
+
+  // Redesigned local filter and sort logic
+  const sortedAssetListings = React.useMemo(() => {
+    let result = [...assetListings];
+
+    // Local Tags filter
+    if (selectedTags.length > 0) {
+      result = result.filter(item => 
+        selectedTags.some(t => item.tag === t || item.tagList?.includes(t))
+      );
+    }
+
+    // Local Price filter (Min, Max, Free Checkbox)
+    if (freeOnly) {
+      result = result.filter(item => item.price === 0);
+    } else {
+      if (minPriceInput !== "") {
+        result = result.filter(item => item.price >= Number(minPriceInput));
+      }
+      if (maxPriceInput !== "") {
+        result = result.filter(item => item.price <= Number(maxPriceInput));
+      }
+    }
+
+    // Local Publish date filter
+    if (publishDateFilter !== "all-time") {
+      result = result.filter(item => {
+        if (!item.lastUpdated) return false;
+        try {
+          const updatedDate = new Date(item.lastUpdated);
+          const now = new Date();
+          const diffTime = Math.abs(now.getTime() - updatedDate.getTime());
+          const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+          if (publishDateFilter === "24h") return diffDays <= 1;
+          if (publishDateFilter === "7days") return diffDays <= 7;
+          if (publishDateFilter === "30days") return diffDays <= 30;
+        } catch (e) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    // Local Diverse sorting logic
+    result.sort((a, b) => {
+      if (localSortOrder === "price-low") return a.price - b.price;
+      if (localSortOrder === "price-high") return b.price - a.price;
+      if (localSortOrder === "alphabetical-az") return a.title.localeCompare(b.title);
+      if (localSortOrder === "alphabetical-za") return b.title.localeCompare(a.title);
+      if (localSortOrder === "newest") {
+        const da = a.lastUpdated ? new Date(a.lastUpdated).getTime() : 0;
+        const db = b.lastUpdated ? new Date(b.lastUpdated).getTime() : 0;
+        return db - da;
+      }
+      if (localSortOrder === "oldest") {
+        const da = a.lastUpdated ? new Date(a.lastUpdated).getTime() : 0;
+        const db = b.lastUpdated ? new Date(b.lastUpdated).getTime() : 0;
+        return da - db;
+      }
+      return b.rating - a.rating;
+    });
+
+    return result;
+  }, [assetListings, selectedTags, minPriceInput, maxPriceInput, freeOnly, publishDateFilter, localSortOrder]);
+
+  const LOCAL_SORT_OPTIONS = [
+    { label: "Sắp xếp: Mới nhất", value: "newest" },
+    { label: "Sắp xếp: Cũ nhất", value: "oldest" },
+    { label: "Giá: Thấp đến Cao", value: "price-low" },
+    { label: "Giá: Cao đến Thấp", value: "price-high" },
+    { label: "Bảng chữ cái: A-Z", value: "alphabetical-az" },
+    { label: "Bảng chữ cái: Z-A", value: "alphabetical-za" },
+  ];
+
   const handleCatalogTypeChange = (type: "game" | "asset") => {
     setCatalogType(type);
     setSelectedCategories([]);
+  };
+
+  const handleCategorySelect = (categoryName: string) => {
+    if (selectedCategories.includes(categoryName)) {
+      setSelectedCategories([]);
+    } else {
+      setSelectedCategories([categoryName]);
+    }
   };
 
   const resetMarketplaceFilters = () => {
@@ -116,6 +366,13 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     setSelectedCategories([]);
     setGodotVersion(DEFAULT_GODOT_VERSION);
     setMaxPrice(null);
+    setSelectedTags([]);
+    setMinPriceInput("");
+    setMaxPriceInput("");
+    setFreeOnly(false);
+    setPublishDateFilter("all-time");
+    setLocalSortOrder("newest");
+    setTagSearchQuery("");
   };
 
   const renderEmptyState = (title: string, description: string) => (
@@ -123,7 +380,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
       <p className="font-display text-sm font-semibold text-slate-800 dark:text-slate-200">
         {title}
       </p>
-      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-2 text-xs text-slate-550 dark:text-slate-400">
         {description}
       </p>
     </div>
@@ -151,13 +408,13 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 placeholder={t("filters.searchPlaceholder")}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-sky-500"
+                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-sky-500"
               />
             </div>
           </div>
-
-          {/* Checklist Categories filter */}
-          <div className="space-y-2.5">
+          
+          {/* Hierarchical Categories tree view filter */}
+          <div className="space-y-3">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
               {t("filters.categoryLabel")}
             </label>
@@ -185,90 +442,320 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 {t("filters.catalogType.asset", "Asset")}
               </button>
             </div>
-            <div className="space-y-2">
-              {activeCategories.map((category) => (
-                <label
-                  key={category.id}
-                  className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 font-medium cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes(category.name)}
-                    onChange={() => toggleCategory(category.name)}
-                    className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-800 accent-amber-400"
-                  />
-                  {category.name}
-                </label>
+            
+            <div className="space-y-1 select-none overflow-y-auto max-h-[550px] pr-1">
+              {categoryTree.map((rootNode) => (
+                <CategoryTreeItem
+                  key={rootNode.id}
+                  node={rootNode}
+                  depth={0}
+                  selectedCategories={selectedCategories}
+                  handleCategorySelect={handleCategorySelect}
+                  expandedIds={expandedIds}
+                  toggleExpand={toggleExpand}
+                  getCategoryCount={getCategoryCount}
+                  getCategoryIcon={getCategoryIcon}
+                />
               ))}
             </div>
-          </div>
-
-          {/* Sliding price filter input */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between text-xs">
-              <label className="font-bold uppercase tracking-wider text-slate-400">
-                {t("filters.priceLabel")}
-              </label>
-              <span className="font-mono font-bold text-amber-500">
-                {maxPrice === null
-                  ? t("filters.price.noLimit")
-                  : formatCurrencyAmount(maxPrice, numberLocale)}
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max={MAX_PRICE_CEILING}
-              step="500000"
-              value={maxPrice ?? MAX_PRICE_CEILING}
-              onChange={(e) => setMaxPrice(parseInt(e.target.value))}
-              className="w-full accent-amber-400 h-1 bg-slate-100 dark:bg-slate-950 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-[9px] font-mono text-slate-500">
-              <span>
-                {t("filters.price.minFree", {
-                  amount: formatCurrencyAmount(0, numberLocale),
-                  free: t("common.free"),
-                })}
-              </span>
-              <span>
-                {t("filters.price.mid", {
-                  amount: formatCurrencyAmount(MAX_PRICE_CEILING / 2, numberLocale),
-                })}
-              </span>
-              <span>
-                {t("filters.price.max", {
-                  amount: formatCurrencyAmount(MAX_PRICE_CEILING, numberLocale),
-                })}
-              </span>
-            </div>
-          </div>
-
-          {/* Dynamic sorting index selector */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-              {t("filters.sortLabel")}
-            </label>
-            <select
-              value={sortOrder}
-              onChange={(e) =>
-                setSortOrder(e.target.value as MarketplacePageProps["sortOrder"])
-              }
-              className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-sky-500 text-slate-600 dark:text-slate-200"
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {t(option.labelKey)}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
         {/* Right Marketplace Grid results layout */}
         <div className="lg:col-span-3 space-y-5">
+          {/* Horizontal Filters Bar (Styled like fab.com search page) */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-3 p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl items-center">
+              
+              {/* 1. Tags Filter Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === "tags" ? null : "tags")}
+                  className={`flex items-center justify-between text-xs min-w-[120px] sm:min-w-[140px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-all ${
+                    selectedTags.length > 0 ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
+                  }`}
+                >
+                  <span className="font-semibold">Tags</span>
+                  {selectedTags.length > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-sky-500 text-white">
+                      {selectedTags.length}
+                    </span>
+                  )}
+                  <ChevronDown size={14} className={`ml-2 text-slate-455 transition-transform duration-200 ${openDropdown === "tags" ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openDropdown === "tags" && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
+                    <div className="absolute left-0 mt-1.5 z-40 w-64 p-3 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-2">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter by Tags</div>
+                      
+                      {/* Search tags input */}
+                      <div className="relative">
+                        <Search size={12} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Search tags..."
+                          value={tagSearchQuery}
+                          onChange={(e) => setTagSearchQuery(e.target.value)}
+                          className="w-full pl-7 pr-7 py-1.5 text-xs bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
+                        />
+                        {tagSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setTagSearchQuery("")}
+                            className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs"
+                          >
+                            &times;
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Matching dynamic list of tags */}
+                      {filteredTagsForDropdown.length === 0 ? (
+                        <div className="text-[11px] text-slate-500 py-1">No tags found</div>
+                      ) : (
+                        <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                          {filteredTagsForDropdown.map(tag => {
+                            const isChecked = selectedTags.includes(tag);
+                            return (
+                              <label key={tag} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer hover:text-slate-900 dark:hover:text-white select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setSelectedTags(prev =>
+                                      isChecked ? prev.filter(t => t !== tag) : [...prev, tag]
+                                    );
+                                  }}
+                                  className="w-3.5 h-3.5 rounded border-slate-350 dark:border-slate-800 accent-sky-500"
+                                />
+                                <span className="truncate">{tag}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Bottom Reset Button */}
+                      <div className="border-t border-slate-150 dark:border-slate-850 pt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTags([]);
+                            setTagSearchQuery("");
+                          }}
+                          className="text-[11px] font-bold text-slate-400 hover:text-sky-500 cursor-pointer transition-colors"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* 2. Price Filter Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === "price" ? null : "price")}
+                  className={`flex items-center justify-between text-xs min-w-[120px] sm:min-w-[140px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-all ${
+                    freeOnly || minPriceInput !== "" || maxPriceInput !== "" ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
+                  }`}
+                >
+                  <span className="font-semibold">Price</span>
+                  <ChevronDown size={14} className={`ml-2 text-slate-455 transition-transform duration-200 ${openDropdown === "price" ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openDropdown === "price" && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
+                    <div className="absolute left-0 mt-1.5 z-40 w-64 p-4 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Price Range</div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500">Min (₫)</label>
+                          <input
+                            type="number"
+                            placeholder="Min"
+                            value={minPriceInput}
+                            disabled={freeOnly}
+                            onChange={(e) => setMinPriceInput(e.target.value === "" ? "" : Number(e.target.value))}
+                            className="w-full text-xs p-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg outline-none focus:border-sky-500 disabled:opacity-50 text-slate-700 dark:text-slate-200"
+                          />
+                        </div>
+                        <span className="text-slate-400 mt-4">-</span>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500">Max (₫)</label>
+                          <input
+                            type="number"
+                            placeholder="Max"
+                            value={maxPriceInput}
+                            disabled={freeOnly}
+                            onChange={(e) => setMaxPriceInput(e.target.value === "" ? "" : Number(e.target.value))}
+                            className="w-full text-xs p-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg outline-none focus:border-sky-500 disabled:opacity-50 text-slate-700 dark:text-slate-200"
+                          />
+                        </div>
+                      </div>
+
+                      <label className="flex items-center gap-2 text-xs text-slate-655 dark:text-slate-350 cursor-pointer pt-1 select-none">
+                        <input
+                          type="checkbox"
+                          checked={freeOnly}
+                          onChange={(e) => setFreeOnly(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-800 accent-sky-500"
+                        />
+                        <span>Free products only</span>
+                      </label>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* 3. Publish Date Filter Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === "date" ? null : "date")}
+                  className={`flex items-center justify-between text-xs min-w-[130px] sm:min-w-[150px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-all ${
+                    publishDateFilter !== "all-time" ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
+                  }`}
+                >
+                  <span className="font-semibold">Publish Date</span>
+                  <ChevronDown size={14} className={`ml-2 text-slate-455 transition-transform duration-200 ${openDropdown === "date" ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openDropdown === "date" && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
+                    <ul className="absolute left-0 mt-1.5 z-40 w-44 p-1.5 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-0.5">
+                      {[
+                        { label: "Tất cả thời gian", value: "all-time" },
+                        { label: "24 giờ qua", value: "24h" },
+                        { label: "7 ngày qua", value: "7days" },
+                        { label: "30 ngày qua", value: "30days" },
+                      ].map((option) => (
+                        <li key={option.value}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPublishDateFilter(option.value);
+                              setOpenDropdown(null);
+                            }}
+                            className={`w-full text-left text-xs px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                              publishDateFilter === option.value
+                                ? 'bg-sky-500/10 text-sky-500 font-bold dark:bg-sky-500/20'
+                                : 'text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/40'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* 4. Sort Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
+                  className="flex items-center justify-between text-xs min-w-[160px] sm:min-w-[180px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-350 dark:hover:border-slate-700 transition-colors focus:border-sky-500"
+                >
+                  <span className="truncate">{LOCAL_SORT_OPTIONS.find(o => o.value === localSortOrder)?.label || "Sắp xếp: Mới nhất"}</span>
+                  <ChevronDown size={14} className={`ml-2 text-slate-455 transition-transform duration-200 ${openDropdown === "sort" ? 'rotate-180' : ''}`} />
+                </button>
+
+                {openDropdown === "sort" && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
+                    <ul className="absolute right-0 mt-1.5 z-40 w-48 p-1.5 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-0.5">
+                      {LOCAL_SORT_OPTIONS.map((option) => (
+                        <li key={option.value}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLocalSortOrder(option.value);
+                              setOpenDropdown(null);
+                            }}
+                            className={`w-full text-left text-xs px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                              localSortOrder === option.value
+                                ? 'bg-sky-500/10 text-sky-500 font-bold dark:bg-sky-500/20'
+                                : 'text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/40'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+
+            </div>
+
+            {/* Active filter pills section */}
+            {(selectedTags.length > 0 || freeOnly || minPriceInput !== "" || maxPriceInput !== "" || publishDateFilter !== "all-time") && (
+              <div className="flex flex-wrap items-center gap-2 p-1">
+                {selectedTags.map(tag => (
+                  <span key={tag} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
+                    <span>{tag}</span>
+                    <button type="button" onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs">&times;</button>
+                  </span>
+                ))}
+                
+                {freeOnly && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
+                    <span>Miễn phí</span>
+                    <button type="button" onClick={() => setFreeOnly(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs">&times;</button>
+                  </span>
+                )}
+                
+                {(minPriceInput !== "" || maxPriceInput !== "") && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
+                    <span>Giá: {minPriceInput !== "" ? `${minPriceInput.toLocaleString()}đ` : "0đ"} - {maxPriceInput !== "" ? `${maxPriceInput.toLocaleString()}đ` : "Không giới hạn"}</span>
+                    <button type="button" onClick={() => { setMinPriceInput(""); setMaxPriceInput(""); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs">&times;</button>
+                  </span>
+                )}
+                
+                {publishDateFilter !== "all-time" && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
+                    <span>
+                      {publishDateFilter === "24h" ? "Trong 24h qua" :
+                       publishDateFilter === "7days" ? "Trong 7 ngày qua" : "Trong 30 ngày qua"}
+                    </span>
+                    <button type="button" onClick={() => setPublishDateFilter("all-time")} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs">&times;</button>
+                  </span>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTags([]);
+                    setFreeOnly(false);
+                    setMinPriceInput("");
+                    setMaxPriceInput("");
+                    setPublishDateFilter("all-time");
+                  }}
+                  className="text-[11px] font-bold text-sky-500 hover:text-sky-400 cursor-pointer ml-1.5 transition-colors select-none"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Visual promo notification banner when list filtered */}
-          {filteredAssets.length === 0 ? (
+          {sortedAssetListings.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 text-center rounded-2xl flex flex-col items-center justify-center space-y-4">
               <Info size={36} className="text-sky-500" />
               <h3 className="font-display font-medium text-slate-800 dark:text-slate-200">
@@ -300,112 +787,69 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                         {t("page.assetSubtitle")}
                       </p>
                     </div>
-                    <span className="inline-flex self-start rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-mono font-bold text-sky-500 backdrop-blur-sm">
-                      {t("page.assetListings", { count: assetListings.length })}
-                    </span>
                   </div>
 
-                  {assetListings.length === 0 ? (
-                    renderEmptyState(
-                      t("empty.noAssetTitle"),
-                      t("empty.noAssetDescription"),
-                    )
-                  ) : (
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                      {assetListings.map((asset) => (
-                        <article
-                          key={asset.id}
-                          onClick={() => handleViewAssetDetails(asset)}
-                          className="group flex min-h-[21.65rem] cursor-pointer flex-col overflow-hidden rounded-[22px] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.98))] transition-studio hover:scale-[1.012] hover:border-sky-500/45 hover:shadow-[0_22px_40px_rgba(15,23,42,0.14)] dark:border-sky-900/45 dark:bg-[linear-gradient(180deg,rgba(8,14,28,0.96),rgba(10,15,27,0.98))] dark:hover:border-sky-500/45"
-                        >
-                          <div className="relative aspect-[1.5/1] overflow-hidden bg-slate-950/20">
-                            <img
-                              referrerPolicy="no-referrer"
-                              src={asset.image}
-                              alt={asset.title}
-                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/72 via-slate-950/12 to-transparent" />
-                            <span className="absolute bottom-3 right-3 rounded-lg border border-slate-800 bg-slate-950/85 px-2.5 py-1 text-xs font-bold text-amber-400 backdrop-blur-sm">
-                              {formatCompactPrice(
-                                asset.price,
-                                numberLocale,
-                                t("common.free"),
-                              )}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-1 flex-col p-3.5">
-                            <div className="flex items-start justify-between gap-3">
-                              <h5
-                                className="line-clamp-2 min-h-[2.45rem] font-display text-[0.98rem] font-bold leading-5 text-slate-850 dark:text-white"
-                                title={asset.title}
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {sortedAssetListings.map((asset) => (
+                      <article
+                        key={asset.id}
+                        onClick={() => handleViewAssetDetails(asset)}
+                        className="group flex cursor-pointer flex-col overflow-hidden rounded-[16px] border border-slate-200/90 bg-white hover:border-sky-500/45 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-sky-500/45 transition-all duration-200"
+                      >
+                        <div className="relative aspect-[1.5/1] overflow-hidden bg-slate-950/20">
+                          <img
+                            referrerPolicy="no-referrer"
+                            src={asset.image}
+                            alt={asset.title}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/40 to-transparent" />
+                          
+                          {/* Hover Actions overlay */}
+                          <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            {ownedProductIds.has(asset.id) ? (
+                              <span className="rounded-lg bg-emerald-500/90 text-white px-2 py-1 text-[9px] font-bold uppercase tracking-[0.08em] shadow-md">
+                                {t("card.owned", "OWNED")}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddToCart(asset);
+                                }}
+                                className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-[#FE9A00] text-white hover:text-slate-950 transition-colors shadow-md cursor-pointer"
+                                title={t("card.addToCart", "Add to Cart")}
                               >
-                                {asset.title}
-                              </h5>
-                              <span className="mt-1 inline-flex shrink-0 items-center gap-1 text-amber-500">
-                                <Star size={13} className="fill-amber-500" />
-                                <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                  {asset.rating.toFixed(1)}
-                                </span>
-                              </span>
-                            </div>
-
-                            <div className="mb-2 flex items-center justify-between text-sm">
-                              <span className="font-medium text-slate-500 dark:text-slate-400">
-                                {asset.category}
-                              </span>
-                            </div>
-
-                            <p className="mb-2.5 line-clamp-2 min-h-[2.2rem] text-[0.92rem] leading-5 text-slate-500 dark:text-slate-400">
-                              {asset.description}
-                            </p>
-
-                            <div className="mt-auto flex items-center justify-between gap-3">
-                              <div className="flex max-w-[48%] flex-col items-start gap-1.5">
-                                <PackageOpen size={12} className="shrink-0 text-sky-500" />
-                                {asset.tagList && asset.tagList.length > 0 ? (
-                                  <div className="flex flex-col items-start gap-1">
-                                    {asset.tagList.slice(0, 2).map((tag, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="max-w-[92px] truncate rounded-md bg-sky-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-sky-500"
-                                        title={tag}
-                                      >
-                                        {tag}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-[9px] font-bold uppercase tracking-[0.08em] text-slate-400">
-                                    {t("card.resource")}
-                                  </span>
-                                )}
-                              </div>
-                              {ownedProductIds.has(asset.id) ? (
-                                <span className="inline-flex min-h-[2.55rem] min-w-[6.35rem] items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-500">
-                                  {t("card.owned")}
-                                </span>
-                              ) : (
-                                <Button
-                                  variant="secondary-flat"
-                                  size="sm"
-                                  className="min-h-[2.55rem] min-w-[6.35rem] whitespace-nowrap rounded-xl !border-[#d88400] !bg-[#FE9A00] px-3 text-[13px] font-bold !text-slate-950 hover:!bg-[#ffac21] dark:!border-[#d88400] dark:!bg-[#FE9A00] dark:!text-slate-950 dark:hover:!bg-[#ffac21]"
-                                  style={{ backgroundColor: '#FE9A00', borderColor: '#d88400', color: '#020617' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddToCart(asset);
-                                  }}
-                                >
-                                  {t("card.addToCart")}
-                                </Button>
-                              )}
-                            </div>
+                                <ShoppingCart size={13} />
+                              </button>
+                            )}
                           </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
+                        </div>
+
+                        <div className="flex flex-1 flex-col p-3 text-left">
+                          <h5
+                            className="line-clamp-1 font-display text-[0.92rem] font-bold leading-5 text-slate-850 dark:text-white"
+                            title={asset.title}
+                          >
+                            {asset.title}
+                          </h5>
+                          
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {asset.author}
+                          </span>
+
+                          <div className="mt-2 text-xs font-bold text-slate-950 dark:text-amber-400">
+                            {asset.price === 0 ? (
+                              t("common.free", "FREE")
+                            ) : (
+                              `${t("common.from", "From")} ${formatCurrencyAmount(asset.price, numberLocale)}`
+                            )}
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
                 </div>
               </section>
             </div>
