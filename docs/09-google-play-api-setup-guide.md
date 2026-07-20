@@ -1,9 +1,9 @@
-# GodotLaunch — Chốt luồng "Push to Store" & cách lấy API Google Play
+# 09. GodotLaunch — Chốt luồng "Push to Store" & cách lấy API Google Play
 
-> Tài liệu bổ sung cho [google-play-publish-flow.md](google-play-publish-flow.md) (mô tả implementation/code).
+> Tài liệu bổ sung cho [08. Google Play Publish](08-google-play-publish-flow.md) (mô tả implementation/code).
 > File này trả lời 2 câu hỏi: **"luồng hiện tại chạy như thế nào"** và **"làm sao để lấy được API/credential thật để bật real mode"**.
 >
-> Lưu ý: [google-play-publish-flow.md](google-play-publish-flow.md) được viết ở một session trước và
+> Lưu ý: [08-google-play-publish-flow.md](08-google-play-publish-flow.md) được viết ở một session trước và
 > **chưa cập nhật** các thay đổi mới nhất (shortDescription/feature graphic bắt buộc, bước gán release
 > track, version number tự lấy, tách bảng Marketplace/Store trên AdminPage...). Coi file này là nguồn
 > đúng nhất về trạng thái hiện tại.

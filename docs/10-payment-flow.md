@@ -1,4 +1,4 @@
-# GodotLaunch Payment Flow
+# 10. GodotLaunch Payment Flow
 
 ## 1. Mục tiêu tài liệu
 

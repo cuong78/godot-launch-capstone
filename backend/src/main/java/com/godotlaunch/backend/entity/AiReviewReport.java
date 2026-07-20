@@ -34,6 +34,10 @@ public class AiReviewReport {
     @JoinColumn(name = "asset_id")
     private Asset asset;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_snapshot_id")
+    private SourceSnapshot sourceSnapshot;
+
     @Column(name = "code_quality_score")
     private Integer codeQualityScore;
 

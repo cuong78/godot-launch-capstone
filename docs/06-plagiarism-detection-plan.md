@@ -1,6 +1,6 @@
-# Plan: Plagiarism Detection (Module thứ 5 của AI Review)
+# 06. Plagiarism Detection (Module thứ 5 của AI Review)
 
-> Bối cảnh: [ai-review-plan.md](ai-review-plan.md) có 4 tiêu chí (chất lượng code, media
+> Bối cảnh: [05. AI Review](05-ai-review-plan.md) có 4 tiêu chí (chất lượng code, media
 > khớp game, NSFW, mô tả đúng sự thật) — cả 4 đều là kiểm tra **nội tại** (game này có
 > tự nhất quán không), KHÔNG có bước nào so sánh với sản phẩm KHÁC trong hệ thống.
 > → **Không phát hiện được đạo văn/đạo nhái**, chỉ dựng lại được bằng chứng SAU KHI
@@ -9,7 +9,7 @@
 > Module này bổ sung khả năng **chủ động phát hiện** giống nhau giữa 2 sản phẩm,
 > chạy ngay lúc submit — không chờ ai report.
 >
-> Vị trí trong luồng: nối tiếp bước "AI review" trong [flow.md](flow.md) #2 (push game)
+> Vị trí trong luồng: nối tiếp bước "AI review" trong [00. Tổng quan nghiệp vụ](00-flow-overview.md) #2 (push game)
 > — chạy song song/sau 4 tiêu chí hiện có, cùng 1 lần submit.
 
 ---
@@ -49,13 +49,13 @@ Không so sánh code dạng text thô (dễ né bằng đổi tên biến/format
 ```
 Code mới submit
   → sample thông minh (cây thư mục + file chính, TÁI DÙNG cách sample của
-    ai-review-plan.md mục 4.1 — không gửi cả repo)
+    05-ai-review-plan.md mục 6.1 — không gửi cả repo)
   → CodeBERT (hoặc tương đương) → vector embedding
   → so cosine similarity với TOÀN BỘ embedding đã lưu trong kho
   → top-N kết quả giống nhất → nếu vượt ngưỡng → flag
 ```
 
-Đây chính là việc `ai-review-plan.md` mục 4.1 đã ghi chú "Embedding (optional, giai đoạn sau): CodeBERT embedding → lưu pgvector → phục vụ similarity" — module này **hiện thực hóa** phần optional đó.
+Đây chính là phần mở rộng P3 trong `05-ai-review-plan.md`: CodeBERT embedding → lưu pgvector → phục vụ similarity. Module này hiện thực hóa nhánh chống đạo nhái đó.
 
 **Với Asset (giai đoạn 2)**: tái dùng CLIP embedding đã có sẵn cho media-match (tiêu chí 2 của AI review) — so ảnh/model mới với toàn bộ ảnh đã lưu, cùng cơ chế vector similarity.
 
@@ -69,7 +69,7 @@ Không dùng 1 ngưỡng nhị phân duy nhất (giống/không giống) — dù
 | 70% – 90% | Đáng ngờ — có thể trùng do dùng chung template/plugin Godot phổ biến (false positive dễ xảy ra) | Flag `review`, admin xem cụ thể phần nào giống, tự quyết định |
 | > 90% | Rất đáng ngờ — gần như chắc chắn copy | Flag `reject` đề xuất, đính kèm bằng chứng (game nào bị nghi giống, % giống) cho admin xem — **admin vẫn quyết định cuối**, không auto-reject |
 
-Ngưỡng cụ thể (70/90) là điểm khởi đầu — cần tinh chỉnh dựa trên dữ liệu thật sau khi chạy thử (giống tinh thần mục 7 "Giai đoạn AI-2" của `ai-review-plan.md`: "Tinh chỉnh ngưỡng dựa data thật").
+Ngưỡng cụ thể (70/90) là điểm khởi đầu — cần tinh chỉnh dựa trên dữ liệu thật sau khi chạy thử, theo kế hoạch chất lượng ở mục 14 của `05-ai-review-plan.md`.
 
 **Xử lý false positive quan trọng**: nhiều game Godot dùng chung boilerplate (player controller mẫu, plugin phổ biến từ Asset Library chính thức của Godot) → sẽ luôn có % giống nền nhất định. Threshold 70% ở vùng "review" (không tự reject) chính là để admin lọc trường hợp này, tránh chặn oan.
 
@@ -154,9 +154,9 @@ public enum PlagiarismSeverity {
 Developer submit game
   → clone → virus scan → SẠCH
   → snapshot (SourceSnapshot) + ghi SourceCommit
-  → AI REVIEW (4 tiêu chí hiện có, ai-review-plan.md)
+  → AI REVIEW (4 tiêu chí hiện có, 05-ai-review-plan.md)
   → PLAGIARISM CHECK (module này):
-      1. Sample code (tái dùng cách sample mục 4.1 ai-review-plan.md)
+      1. Sample code (tái dùng cách sample mục 6.1 trong 05-ai-review-plan.md)
       2. CodeBERT embedding → lưu CodeEmbedding
       3. Query top-N similarity trong pgvector (toàn bộ CodeEmbedding đã có)
       4. Với mỗi kết quả > 70% → tạo PlagiarismFlag
@@ -207,7 +207,7 @@ Nguyên tắc giữ nguyên như AI review chính: **AI chỉ đề xuất, khô
 | Có sẵn | Dùng cho |
 |---|---|
 | pgvector + pattern `FaceEmbedding` | Mẫu thiết kế bảng embedding + ivfflat index cho `CodeEmbedding` |
-| Cách sample code (`ai-review-plan.md` mục 4.1) | Input cho bước tính embedding — không gửi cả repo |
+| Cách sample code (`05-ai-review-plan.md` mục 6.1) | Input cho bước tính embedding — không gửi cả repo |
 | CLIP pipeline (media-match) | Tái dùng cho Plagiarism giai đoạn 2 (so ảnh/asset) |
 | `python-face-service` (đã mở rộng cho AI review) | Thêm endpoint `/ai/plagiarism-check` vào cùng service |
 | Admin dashboard AI report | Mở rộng hiện thêm Plagiarism flags cạnh 4 tiêu chí hiện có |

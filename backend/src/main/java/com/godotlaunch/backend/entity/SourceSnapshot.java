@@ -34,6 +34,9 @@ public class SourceSnapshot {
     @Column(name = "bundle_hash", length = 64, nullable = false)
     private String bundleHash;
 
+    @Column(name = "commit_sha", length = 40)
+    private String commitSha;
+
     @Column(name = "is_godot_project", nullable = false)
     private boolean isGodotProject = false;
 

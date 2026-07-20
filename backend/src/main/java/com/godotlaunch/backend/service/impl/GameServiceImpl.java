@@ -208,7 +208,7 @@ public class GameServiceImpl implements GameService {
                     .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
             gameToSave.setStatus(GameStatus.rejected);
             gameRepository.save(gameToSave);
-            saveSnapshotForGame(gameToSave, result);
+            saveSnapshotForGame(gameToSave, result, false);
             auditLogService.publish(
                     creator.getId(), ActorRole.developer, AuditAction.security_alert,
                     AuditTarget.game, gameId, null, null,
@@ -232,7 +232,8 @@ public class GameServiceImpl implements GameService {
         gameToSave.setStatus(GameStatus.pending);
         gameRepository.save(gameToSave);
 
-        saveSnapshotForGame(gameToSave, result);
+        SourceSnapshot sourceSnapshot = saveSnapshotForGame(gameToSave, result, true);
+        UUID snapshotId = sourceSnapshot.getId();
 
         auditLogService.publish(
                 creator.getId(), ActorRole.developer, AuditAction.game_submitted,
@@ -244,11 +245,11 @@ public class GameServiceImpl implements GameService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    aiReviewService.reviewGameAsync(gameId);
+                    aiReviewService.reviewGameSnapshotAsync(gameId, snapshotId);
                 }
             });
         } else {
-            aiReviewService.reviewGameAsync(gameId);
+            aiReviewService.reviewGameSnapshotAsync(gameId, snapshotId);
         }
     }
 
@@ -267,45 +268,54 @@ public class GameServiceImpl implements GameService {
         return gitHubRepoService.getBotUsername();
     }
 
-    /** Lưu snapshot bất biến cho game (commit SHA + hash). */
-    private void saveSnapshotForGame(Game game, SourceProcessResult result) {
-        try {
-            SourceSnapshot snap = new SourceSnapshot();
-            snap.setGame(game);
-            snap.setBundleHash(result.getBundleHash());
-            snap.setGodotProject(result.isGodotProject());
-            snap.setVirusClean(result.isClean());
-            snap.setVirusScanned(result.isScanned());
-            snap.setSecretsFound(toJson(result.getSecrets()));
-            // Upload source bundle (zip) lên storage cho AI đọc lại + admin/người mua tải
-            String bundleUrl = uploadSourceBundle(result, "games/" + game.getId());
-            snap.setBundleUrl(bundleUrl);
-            sourceSnapshotRepository.save(snap);
+    /**
+     * Tạo snapshot trước để lấy UUID, rồi lưu bundle vào path bất biến chứa UUID đó.
+     * AI luôn nhận chính snapshot này thay vì clone lại đầu branch GitHub.
+     */
+    private SourceSnapshot saveSnapshotForGame(
+            Game game, SourceProcessResult result, boolean requireBundle) {
+        SourceSnapshot snap = new SourceSnapshot();
+        snap.setGame(game);
+        snap.setCommitSha(result.getCommitSha());
+        snap.setBundleHash(result.getBundleHash());
+        snap.setGodotProject(result.isGodotProject());
+        snap.setVirusClean(result.isClean());
+        snap.setVirusScanned(result.isScanned());
+        snap.setSecretsFound(toJson(result.getSecrets()));
 
-            // Cập nhật hoặc nâng cấp GameVersion
-            VersionUtils.updateGameVersionFile(game, bundleUrl, gameVersionRepository);
-        } catch (Exception e) {
-            log.warn("Không lưu được source snapshot cho game {}: {}", game.getId(), e.getMessage());
+        // Flush để UUID tồn tại trước khi tạo object key của bundle.
+        snap = sourceSnapshotRepository.saveAndFlush(snap);
+        String bundleUrl = uploadSourceBundle(result, game.getId(), snap.getId());
+        if (requireBundle && (bundleUrl == null || bundleUrl.isBlank())) {
+            throw new AppException(ErrorCode.SOURCE_PROCESSING_FAILED);
         }
+
+        snap.setBundleUrl(bundleUrl);
+        SourceSnapshot savedSnapshot = sourceSnapshotRepository.save(snap);
+
+        if (bundleUrl != null && !bundleUrl.isBlank()) {
+            VersionUtils.updateGameVersionFile(game, bundleUrl, gameVersionRepository);
+        }
+        return savedSnapshot;
     }
 
     /**
      * Upload source bundle (base64 zip từ Python) lên storage qua StorageRouter(source_bundle).
      * @return URL bundle, hoặc null nếu không có bundle / upload lỗi.
      */
-    private String uploadSourceBundle(SourceProcessResult result, String prefix) {
+    private String uploadSourceBundle(SourceProcessResult result, UUID gameId, UUID snapshotId) {
         if (result.getBundleBase64() == null || result.getBundleBase64().isBlank()) {
             return null;
         }
         try {
             byte[] zipBytes = java.util.Base64.getDecoder().decode(result.getBundleBase64());
-            String objectKey = prefix + "/source-bundle.zip";
+            String objectKey = "games/" + gameId + "/snapshots/" + snapshotId + "/source-bundle.zip";
             var file = new com.godotlaunch.backend.util.ByteArrayMultipartFile(
                     zipBytes, "file", "source-bundle.zip", "application/zip");
             return seaweedFsService.uploadWithKey(file, objectKey);
         } catch (Exception e) {
-            log.warn("Không upload được source bundle (prefix={}): {}", prefix, e.getMessage());
-            return null;
+            log.warn("Không upload được source bundle cho snapshot {}: {}", snapshotId, e.getMessage());
+            throw new AppException(ErrorCode.SOURCE_PROCESSING_FAILED);
         }
     }
 

@@ -85,18 +85,21 @@ alt Không phải Godot project
 end
 
 GameSvc -> GameSvc: game.githubVerifiedAt = now\ngame.status = pending
-GameSvc -> SnapRepo: save(SourceSnapshot)\n(bundle zip + hash + virusClean)
+GameSvc -> SnapRepo: saveAndFlush(SourceSnapshot)\n(commitSha + hash + virusClean)
+SnapRepo --> GameSvc: snapshotId
+GameSvc -> Storage: uploadWithKey(bundle,\n"games/{gameId}/snapshots/{snapshotId}/source-bundle.zip")
+GameSvc -> SnapRepo: save(bundleUrl)
 
 note right of GameSvc #FFDDDD
   **Lưu lại TẤT CẢ commit** (yêu cầu 2.1) — không chỉ snapshot
   1 lần. Ghi mỗi commit trong lịch sử repo (chỉ commitSha +
   timestamp, rẻ) — dùng để dựng timeline khi có Dispute sau này
-  (xem docs/plagiarism-detection-plan.md).
+  (xem docs/06-plagiarism-detection-plan.md).
 end note
 GameSvc -> CommitRepo: save(SourceCommit) cho từng commit\ntrong lịch sử repo
 
-GameSvc -> AiSvc: reviewGameAsync(gameId)\n(sau khi transaction commit)
-note right: AI review: code quality, media match,\nNSFW, description match (ai-review-plan.md)
+GameSvc -> AiSvc: reviewGameSnapshotAsync(gameId, snapshotId)\n(sau khi transaction commit)
+note right: AI tải đúng bundle của snapshot, xác minh hash,\nrồi review code/media (05-ai-review-plan.md)
 
 GameSvc --> FE: Game.status = pending
 FE --> Dev: Đã nộp — chờ admin đánh giá

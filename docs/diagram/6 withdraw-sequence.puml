@@ -117,7 +117,7 @@ loop Polling định kỳ (cronjob) cho tới khi có KẾT QUẢ CUỐI
   alt remoteStatus = THÀNH CÔNG (tiền đã vào tài khoản Dev)
     note over Sync, TxnRepo #DDFFDD
       **Bước 4 — CHỈ TỚI ĐÂY ví Platform mới thực sự bị trừ**
-      (yêu cầu flow.md #6: "ví admin sẽ bị trừ tiền"). Trừ dựa
+      (yêu cầu docs/00-flow-overview.md #6: "ví admin sẽ bị trừ tiền"). Trừ dựa
       trên xác nhận PayOS thật, không trừ sớm hơn.
     end note
     Sync -> WalletRepo: findByUserIdWithLock(platform.systemUserId)

@@ -8,11 +8,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface SourceSnapshotRepository extends JpaRepository<SourceSnapshot, UUID> {
     List<SourceSnapshot> findByGameIdOrderByCreatedAtDesc(UUID gameId);
+    Optional<SourceSnapshot> findFirstByGameIdOrderByCreatedAtDesc(UUID gameId);
 
     // Tra cứu khi tranh chấp: ai từng submit cùng bundle hash
     List<SourceSnapshot> findByBundleHash(String bundleHash);

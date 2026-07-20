@@ -1,4 +1,4 @@
-# JWT Session Pattern — Revocable Token + httpOnly Cookie
+# 01. JWT Session Pattern — Revocable Token + httpOnly Cookie
 
 GodotLaunch dùng pattern nâng cao kết hợp 3 kỹ thuật: **sessionSecret trong JWT**, **SHA-256 hash lưu DB**, và **httpOnly cookie double-store**.
 

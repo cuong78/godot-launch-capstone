@@ -1,4 +1,4 @@
-# GitHub OAuth — Setup Guide
+# 02. GitHub OAuth — Setup Guide
 
 GitHub OAuth trong GodotLaunch dùng cho 2 mục đích:
 1. **Đăng nhập** — user login bằng tài khoản GitHub

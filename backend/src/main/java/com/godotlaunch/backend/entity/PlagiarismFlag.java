@@ -13,7 +13,7 @@ import java.util.UUID;
 /**
  * Kết quả phát hiện 2 game giống nhau bất thường (similarity > ngưỡng review).
  * AI chỉ đề xuất — admin luôn xem bằng chứng và quyết định cuối, không
- * auto-reject (xem docs/plagiarism-detection-plan.md mục 1.3).
+ * auto-reject (xem docs/06-plagiarism-detection-plan.md mục 1.3).
  */
 @Entity
 @Table(name = "plagiarism_flags")

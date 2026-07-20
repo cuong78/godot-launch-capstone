@@ -1,3 +1,27 @@
+# 00. Tổng quan luồng nghiệp vụ
+
+## Bản đồ tài liệu theo thứ tự flow
+
+| Thứ tự | Tài liệu | Phạm vi |
+|---:|---|---|
+| 00 | Tài liệu hiện tại | Tổng quan yêu cầu nghiệp vụ |
+| 01 | [JWT Session](01-jwt-session-pattern.md) | Phiên đăng nhập và revoke token |
+| 02 | [GitHub OAuth](02-github-oauth.md) | Liên kết GitHub và quyền truy cập repository |
+| 03 | [Face Verify & KYC](03-face-kyc-security.md) | Điều kiện danh tính để trở thành developer |
+| 04 | [Source Publishing](04-source-publishing-plan.md) | Submit Game bằng repo, scan và snapshot |
+| 05 | [AI Review](05-ai-review-plan.md) | Đánh giá code, media, text, tags và NSFW |
+| 06 | [Plagiarism Detection](06-plagiarism-detection-plan.md) | So sánh source giữa các Game |
+| 07 | [Live Preview](07-live-preview-plan.md) | Web demo cho Game |
+| 08 | [Google Play Publish](08-google-play-publish-flow.md) | Hợp đồng và phát hành store |
+| 09 | [Google Play API Setup](09-google-play-api-setup-guide.md) | Cấu hình credential Google Play |
+| 10 | [Payment Flow](10-payment-flow.md) | Nạp tiền, thanh toán và download |
+| 11 | [Payout Flow](11-payout-flow.md) | Developer rút tiền và admin payout |
+| 90 | [Redis](90-redis.md) | Hạ tầng cache homepage, không thuộc business flow |
+
+Các sequence diagram trong `docs/diagram/` giữ số thứ tự nghiệp vụ gốc từ 1 đến 6.
+
+## Yêu cầu nghiệp vụ gốc
+
 1. Become developer 
 Mục đích: nếu chưa link github trước thì phải link , nếu đã rồi thì phải tới bước quét faceid, kyc  (hoàng)
 

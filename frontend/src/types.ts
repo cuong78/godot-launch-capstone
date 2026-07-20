@@ -197,7 +197,10 @@ export interface AiReviewFlag {
 export interface AiReviewReport {
   id: string;
   gameId?: string | null;
+  assetId?: string | null;
   marketplaceItemId?: string | null;
+  sourceSnapshotId?: string | null;
+  commitSha?: string | null;
   codeQualityScore?: number | null;
   mediaMatchScore?: number | null;
   descriptionMatchScore?: number | null;
