@@ -18,6 +18,8 @@ public class AiReviewReportResponse {
     private UUID id;
     private UUID gameId;
     private UUID assetId;
+    private UUID sourceSnapshotId;
+    private String commitSha;
 
     private Integer codeQualityScore;
     private Integer mediaMatchScore;

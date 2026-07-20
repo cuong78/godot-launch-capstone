@@ -12,6 +12,9 @@ public interface AiReviewService {
     /** Kích hoạt AI review cho game (async, không chặn luồng submit). */
     void reviewGameAsync(UUID gameId);
 
+    /** Review đúng source snapshot vừa tạo, không đọc lại đầu branch GitHub. */
+    void reviewGameSnapshotAsync(UUID gameId, UUID snapshotId);
+
     /** Kích hoạt AI review cho marketplace item (async). */
     void reviewAssetAsync(UUID itemId);
 }

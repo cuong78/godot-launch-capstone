@@ -38,17 +38,19 @@ AI Review không thay thế:
 
 Quy ước request tới Python:
 
-- `contentType = code`: clone repository và chạy toàn bộ module.
-- `contentType = asset`: không clone repository, bỏ qua code analyzer.
+- `contentType = code`: tải bundle của đúng `SourceSnapshot`, xác minh `bundleHash` và chạy toàn bộ module.
+- `contentType = asset`: không có source snapshot, bỏ qua code analyzer.
 
 ## 3. Kiến trúc đang chạy
 
 ```text
 Spring Boot
   |
+  | snapshotId + bundleUrl + bundleHash + commitSha
   | POST /ai/review
   v
 python-face-service :8001
+  |-- tải ZIP bất biến từ SeaweedFS và xác minh hash
   |-- FrameExtractor: cắt frame video bằng FFmpeg
   |-- CodeAnalyzer: rule-based + DeepSeek
   |-- TextAnalyzer: từ nhạy cảm + tag match + DeepSeek
@@ -101,23 +103,24 @@ Redis hiện không tham gia AI Review. Redis chỉ cache homepage.
    - Game -> pending;
    - lưu SourceSnapshot;
    - commit transaction.
-9. Sau commit, gọi reviewGameAsync(gameId).
-10. AI Review clone repo lần nữa, đọc metadata/media và chạy các module.
-11. Lưu AiReviewReport.
-12. Admin xem report và tự quyết định.
+9. Bundle được lưu tại `games/{gameId}/snapshots/{snapshotId}/source-bundle.zip`.
+10. Sau commit, gọi `reviewGameSnapshotAsync(gameId, snapshotId)`.
+11. Python tải bundle của snapshot, giải nén an toàn, tính lại hash rồi chạy các module.
+12. Lưu `AiReviewReport.sourceSnapshotId = snapshot.id`.
+13. Admin xem report và tự quyết định.
 ```
 
 ### Lưu ý về source
 
-`SourceSnapshot.bundleUrl` hiện chưa được dùng làm input cho AI Review. Python nhận `repoUrl`, token và branch rồi clone repository lần thứ hai.
+Repository chỉ được clone một lần ở `/source/process`. Kết quả sạch được đóng thành ZIP và gắn với một row `SourceSnapshot` gồm `commitSha`, `bundleHash` và `bundleUrl`. AI không nhận GitHub token và không clone lại repository.
 
-Hệ quả:
+Mỗi lần submit tạo một UUID snapshot và một object key riêng:
 
-- Tốn thêm network và thời gian clone.
-- Repository có thể thay đổi giữa `/source/process` và `/ai/review`.
-- Report chưa liên kết chính xác với một snapshot/commit cụ thể.
+```text
+games/{gameId}/snapshots/{snapshotId}/source-bundle.zip
+```
 
-Hướng hoàn thiện: report cần tham chiếu `source_snapshot_id`, hoặc AI phân tích trực tiếp bundle bất biến đã tạo ở bước source processing.
+Python tải đúng URL này, chặn path traversal/symlink/zip bomb và tính lại canonical hash từ đường dẫn + SHA-256 nội dung từng file. Chỉ khi hash khớp `SourceSnapshot.bundleHash` thì source mới được phân tích. Vì report giữ FK `source_snapshot_id`, admin luôn truy ngược được báo cáo đã chấm commit và bundle nào.
 
 ## 5. Luồng Asset hiện tại
 
@@ -256,6 +259,7 @@ Các score `null` bị bỏ khỏi phép tổng hợp. Recommendation vẫn ch�
 ```text
 Game  1 -------- N AiReviewReport
 Asset 1 -------- N AiReviewReport
+SourceSnapshot 1 -------- N AiReviewReport
 ```
 
 Một Game hoặc Asset có nhiều report để giữ lịch sử re-submit/re-run. Mỗi report phải thuộc đúng một target.
@@ -264,14 +268,14 @@ Trường chính:
 
 | Nhóm | Trường |
 |---|---|
-| Target | `game`, `asset` |
+| Target | `game`, `asset`, `sourceSnapshot` (chỉ áp dụng cho Game) |
 | Score | `codeQualityScore`, `mediaMatchScore`, `descriptionMatchScore`, `tagsMatchScore` |
 | Policy | `nsfwFlag`, `overallRecommendation` |
 | Pricing | `suggestedPrice`, `suggestedRevenueSplit`, `pricingRationale` |
 | Evidence/debug | `flags`, `rawOutput` |
 | History | `createdAt` |
 
-Constraint hiện tại trong V1 chỉ yêu cầu `game_id IS NOT NULL OR asset_id IS NOT NULL`, nên vẫn cho phép cả hai cùng có giá trị. Cần đổi thành XOR:
+Migration V7 đổi constraint target thành XOR để một report chỉ thuộc Game hoặc Asset:
 
 ```sql
 CHECK (
@@ -284,8 +288,9 @@ CHECK (
 
 | Entity | Vai trò |
 |---|---|
-| `Game` | Target code review; cung cấp repo, branch, title, description, category, tags, thumbnail |
+| `Game` | Target code review; cung cấp title, description, category, tags và thumbnail |
 | `Asset` | Target media-only review; cung cấp title, description, category, tags, thumbnail |
+| `SourceSnapshot` | Cung cấp exact source input qua `bundleUrl`, `bundleHash`, `commitSha` |
 | `Media` | Screenshot, video, thumbnail hoặc asset image cho CLIP/NSFW/OCR |
 | `Category` | Context text cho CLIP và analyzer |
 | `Tag` | Context text và input tính `tagsMatchScore` |
@@ -294,7 +299,7 @@ CHECK (
 
 | Entity | Trạng thái tích hợp |
 |---|---|
-| `SourceSnapshot` | Đã dùng trước AI để lưu bundle/hash/virus result; AI chưa tham chiếu trực tiếp |
+| `SourceSnapshot` | AI phân tích bundle trực tiếp; `AiReviewReport.sourceSnapshot` giữ FK tới snapshot |
 | `AuditLog` | Đã ghi event `ai_report_generated` sau khi lưu report |
 | `SourceCommit` | Entity/schema đã có nhưng submit flow chưa lưu commit history |
 | `CodeEmbedding` | Entity/schema đã có nhưng chưa có pipeline tạo embedding |
@@ -316,9 +321,10 @@ Request chính:
 ```json
 {
   "contentType": "code",
-  "repoUrl": "https://github.com/owner/repo",
-  "token": "private-repo-token-if-needed",
-  "branch": "main",
+  "snapshotId": "4de1d76f-8f14-4dc2-9cf6-129abf58018b",
+  "bundleUrl": "http://seaweedfs-filer:8888/godotlaunch/games/{gameId}/snapshots/{snapshotId}/source-bundle.zip",
+  "bundleHash": "canonical-sha256-hash",
+  "commitSha": "git-commit-sha",
   "title": "Example Game",
   "description": "...",
   "category": "Adventure",
@@ -417,8 +423,9 @@ FFmpeg phải tồn tại trong image Python. CLIP và NSFW model được lazy-
 
 ### Lưu ý bảo mật
 
-- Private repo token được Java gửi sang Python để clone; chỉ dùng trên internal network.
-- Không log token hoặc request body chứa token.
+- GitHub token chỉ dùng trong source-processing để clone lần đầu; AI Review không nhận token.
+- `bundleUrl` do backend lấy từ `SourceSnapshot`, không nhận trực tiếp từ client bên ngoài.
+- Python giới hạn kích thước download, số file, kích thước giải nén và chặn Zip Slip/symlink.
 - Chỉ gửi code sample tới DeepSeek, không gửi toàn bộ repository.
 - Cần công bố rõ việc một phần source sample được gửi tới dịch vụ AI bên ngoài.
 - Media URL phải đủ quyền truy cập từ container Python nhưng không nên public vĩnh viễn.
@@ -440,7 +447,10 @@ FFmpeg phải tồn tại trong image Python. CLIP và NSFW model được lazy-
 | Admin latest/history/re-run API | Đã có |
 | Admin report card | Đã có |
 | AI job status/queue | Chưa có |
-| Report gắn với exact SourceSnapshot | Chưa có |
+| Clone GitHub đúng một lần cho mỗi submit | Đã có |
+| Bundle path chứa Game ID và Snapshot ID | Đã có |
+| Python tải bundle và xác minh `bundleHash` | Đã có |
+| Report gắn với exact SourceSnapshot | Đã có |
 | Evidence image preview | Chưa có |
 | Plagiarism runtime pipeline | Chưa có |
 | Web demo screenshot đưa vào CLIP | Chưa có |
@@ -452,8 +462,6 @@ FFmpeg phải tồn tại trong image Python. CLIP và NSFW model được lazy-
 - Chỉ trigger Asset AI sau khi virus scan sạch.
 - Thêm hành động `Submit for review` sau khi file và media upload hoàn tất.
 - Không chạy AI khi Asset đã `removed/rejected` hoặc virus scan chưa thành công.
-- Thêm XOR constraint cho target của `ai_review_reports`.
-- Gắn report với `source_snapshot_id` để bảo đảm AI chấm đúng source bất biến.
 
 ### P1 — vận hành ổn định
 

@@ -104,9 +104,10 @@ class SourceProcessResponse(BaseModel):
 class AiReviewRequest(BaseModel):
     # Loại nội dung: 'code' (game/marketplace source từ repo) | 'asset' (chỉ media)
     contentType: str = "code"
-    repoUrl: Optional[str] = None       # với code: clone để analyze (bỏ qua nếu asset)
-    token: Optional[str] = None
-    branch: Optional[str] = None
+    snapshotId: Optional[str] = None    # exact SourceSnapshot của game
+    bundleUrl: Optional[str] = None     # immutable ZIP đã scan và lưu trên storage
+    bundleHash: Optional[str] = None    # canonical hash để kiểm tra bundle không bị đổi
+    commitSha: Optional[str] = None     # commit đã tạo snapshot (traceability)
     title: str = ""
     description: str = ""
     category: Optional[str] = None
@@ -343,7 +344,7 @@ def _url_to_b64(url: str) -> Optional[str]:
 def ai_review(req: AiReviewRequest):
     """
     Orchestrator AI review (multimodal): tạo report ĐỀ XUẤT cho admin.
-      - CODE: clone repo → rule-based + DeepSeek (chất lượng + mô tả đối chiếu code)
+      - CODE: tải exact SourceSnapshot bundle → verify hash → rule-based + DeepSeek
       - MEDIA (cả code & asset): cắt frame video + screenshots → CLIP match + NSFW
     AI KHÔNG quyết định cuối — admin xem điểm + flags + bằng chứng rồi quyết định.
     Mọi module fail-soft: lỗi 1 phần → vẫn trả các phần còn lại.
@@ -372,11 +373,18 @@ def ai_review(req: AiReviewRequest):
     raw["imageCount"] = len(images_b64)
 
     # ── 2. Code analyzer (chỉ CODE từ repo) ──
-    if req.contentType == "code" and req.repoUrl:
+    if req.contentType == "code" and req.bundleUrl:
         tmp_dir = None
         try:
-            cloned = source_service.clone_repo(req.repoUrl, req.token, req.branch)
-            tmp_dir = cloned["tmpDir"]
+            extracted = source_service.download_and_extract_bundle(req.bundleUrl, req.bundleHash)
+            tmp_dir = extracted["tmpDir"]
+            raw["sourceSnapshot"] = {
+                "snapshotId": req.snapshotId,
+                "commitSha": req.commitSha,
+                "bundleHash": extracted["bundleHash"],
+                "fileCount": extracted["fileCount"],
+                "verified": True,
+            }
             code_res = code_analyzer.analyze(tmp_dir, req.title, req.description)
             raw["code"] = code_res
             code_quality = code_res.get("codeQualityScore")
@@ -406,8 +414,14 @@ def ai_review(req: AiReviewRequest):
                 raw["deepseekSkipped"] = ds.get("reason")
         except Exception as e:
             raw["codeError"] = str(e)[:200]
+            flags.append({"type": "source_bundle_error", "severity": "high",
+                          "detail": f"Không thể xác minh/phân tích source snapshot: {str(e)[:160]}"})
         finally:
             source_service.cleanup(tmp_dir)
+    elif req.contentType == "code":
+        raw["codeError"] = "Source snapshot bundle URL is required"
+        flags.append({"type": "source_bundle_missing", "severity": "high",
+                      "detail": "Game AI review không nhận được source snapshot bundle."})
 
     # ── 2a. Text analyzer (Kiểm duyệt ngôn từ nhạy cảm trong Tên và Mô tả) ──
     try:

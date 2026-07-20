@@ -7,6 +7,7 @@ import com.godotlaunch.backend.entity.AiReviewReport;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
+import com.godotlaunch.backend.entity.SourceSnapshot;
 import com.godotlaunch.backend.entity.enums.ActorRole;
 import com.godotlaunch.backend.entity.enums.AiRecommendation;
 import com.godotlaunch.backend.entity.enums.AuditAction;
@@ -15,10 +16,9 @@ import com.godotlaunch.backend.repository.AiReviewReportRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.MediaRepository;
+import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.service.AiReviewService;
 import com.godotlaunch.backend.service.AuditLogService;
-import com.godotlaunch.backend.service.GitHubRepoService;
-import com.godotlaunch.backend.service.SeaweedFsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -30,7 +30,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * AI review async — sau snapshot sạch, gọi Python /ai/review rồi lưu ai_review_reports.
+ * AI review async — sau snapshot sạch, gửi đúng immutable bundle của snapshot sang
+ * Python /ai/review rồi lưu ai_review_reports liên kết với snapshot đó.
  * Fail-soft toàn bộ: lỗi AI KHÔNG ảnh hưởng trạng thái submit (AI chỉ là đề xuất phụ trợ).
  */
 @Service
@@ -43,23 +44,49 @@ public class AiReviewServiceImpl implements AiReviewService {
     private final GameRepository gameRepository;
     private final AssetRepository assetRepository;
     private final MediaRepository mediaRepository;
-    private final GitHubRepoService gitHubRepoService;
+    private final SourceSnapshotRepository sourceSnapshotRepository;
     private final AuditLogService auditLogService;
-    private final SeaweedFsService seaweedFsService;
     private final ObjectMapper objectMapper;
 
     @Override
     @Async
     @Transactional
     public void reviewGameAsync(UUID gameId) {
+        SourceSnapshot latestSnapshot = sourceSnapshotRepository
+                .findFirstByGameIdOrderByCreatedAtDesc(gameId)
+                .orElse(null);
+        if (latestSnapshot == null) {
+            log.warn("AI review: game {} chưa có source snapshot", gameId);
+            return;
+        }
+        reviewGameSnapshot(gameId, latestSnapshot.getId());
+    }
+
+    @Override
+    @Async
+    @Transactional
+    public void reviewGameSnapshotAsync(UUID gameId, UUID snapshotId) {
+        reviewGameSnapshot(gameId, snapshotId);
+    }
+
+    private void reviewGameSnapshot(UUID gameId, UUID snapshotId) {
         Game game = gameRepository.findById(gameId).orElse(null);
         if (game == null) {
             log.warn("AI review: không tìm thấy game {}", gameId);
             return;
         }
+        SourceSnapshot snapshot = sourceSnapshotRepository.findById(snapshotId).orElse(null);
+        if (snapshot == null || snapshot.getGame() == null
+                || !gameId.equals(snapshot.getGame().getId())) {
+            log.warn("AI review: snapshot {} không thuộc game {}", snapshotId, gameId);
+            return;
+        }
+        if (snapshot.getBundleUrl() == null || snapshot.getBundleUrl().isBlank()) {
+            log.warn("AI review: snapshot {} không có source bundle", snapshotId);
+            return;
+        }
         try {
             String category = game.getCategory() != null ? game.getCategory().getName() : null;
-            String token = safeCloneToken(game.getGithubRepoUrl());
             String videoUrl = getPresignedGetUrl(firstGameMediaUrl(gameId, "video"));
             List<String> screenshots = gameMediaUrls(gameId,
                     "screenshot", "thumbnail", "image").stream()
@@ -77,7 +104,8 @@ public class AiReviewServiceImpl implements AiReviewService {
                     game.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList();
 
             AiReviewResult result = aiReviewClient.review(
-                    "code", game.getGithubRepoUrl(), token, game.getGithubBranch(),
+                    "code", snapshot.getId(), snapshot.getBundleUrl(), snapshot.getBundleHash(),
+                    snapshot.getCommitSha(),
                     game.getTitle(), game.getDescription(), category,
                     videoUrl, screenshots, tags);
 
@@ -85,6 +113,7 @@ public class AiReviewServiceImpl implements AiReviewService {
 
             AiReviewReport report = new AiReviewReport();
             report.setGame(game);
+            report.setSourceSnapshot(snapshot);
             fill(report, result);
             aiReviewReportRepository.save(report);
 
@@ -93,9 +122,11 @@ public class AiReviewServiceImpl implements AiReviewService {
                     AuditTarget.game, gameId, null, result.getOverallRecommendation(),
                     "AI review game '" + game.getTitle() + "' → đề xuất: "
                             + result.getOverallRecommendation(), null);
-            log.info("AI review xong cho game {} → {}", gameId, result.getOverallRecommendation());
+            log.info("AI review xong cho game {}, snapshot {} → {}",
+                    gameId, snapshotId, result.getOverallRecommendation());
         } catch (Exception e) {
-            log.error("AI review game {} lỗi (bỏ qua, không chặn submit): {}", gameId, e.getMessage());
+            log.error("AI review game {}, snapshot {} lỗi (bỏ qua, không chặn submit): {}",
+                    gameId, snapshotId, e.getMessage());
         }
     }
 
@@ -128,7 +159,7 @@ public class AiReviewServiceImpl implements AiReviewService {
                     item.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList();
 
             AiReviewResult result = aiReviewClient.review(
-                    "asset", null, null, null,
+                    "asset", null, null, null, null,
                     item.getTitle(), item.getDescription(), category,
                     videoUrl, screenshots, tags);
 
@@ -152,23 +183,6 @@ public class AiReviewServiceImpl implements AiReviewService {
 
     private String getPresignedGetUrl(String rawUrl) {
         return rawUrl;
-    }
-
-    private String extractObjectKeyFromUrl(String url) {
-        if (url == null) return null;
-
-        // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
-        String seaweedMarker = "/godotlaunch/";
-        int seaweedIndex = url.indexOf(seaweedMarker);
-        if (seaweedIndex != -1) {
-            return url.substring(seaweedIndex + seaweedMarker.length());
-        }
-
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-            return null;
-        }
-
-        return url;
     }
 
     // ── helpers ─────────────────────────────────────────────────
@@ -195,16 +209,6 @@ public class AiReviewServiceImpl implements AiReviewService {
             return AiRecommendation.valueOf(s.trim().toLowerCase());
         } catch (IllegalArgumentException e) {
             return AiRecommendation.review;
-        }
-    }
-
-    /** Token clone — null nếu repo public hoặc lỗi (fail-soft, public repo vẫn review được). */
-    private String safeCloneToken(String repoUrl) {
-        if (repoUrl == null || repoUrl.isBlank()) return null;
-        try {
-            return gitHubRepoService.getCloneToken(repoUrl);
-        } catch (Exception e) {
-            return null;
         }
     }
 

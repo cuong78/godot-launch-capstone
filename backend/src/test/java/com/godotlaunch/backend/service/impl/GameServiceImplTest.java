@@ -5,10 +5,12 @@ import com.godotlaunch.backend.config.SourceProcessingClient;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.CreateGameRequest;
 import com.godotlaunch.backend.dto.response.GameResponse;
+import com.godotlaunch.backend.dto.response.SourceProcessResult;
 import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.GameVersion;
 import com.godotlaunch.backend.entity.Role;
+import com.godotlaunch.backend.entity.SourceSnapshot;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.PublishingType;
@@ -33,9 +35,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
+import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -134,6 +139,52 @@ class GameServiceImplTest {
 
         assertEquals(ErrorCode.ACCESS_DENIED, exception.getErrorCode());
         verify(gameRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("submitGameRepo_ShouldStoreAndReviewExactSnapshotBundle")
+    void submitGameRepo_ShouldStoreAndReviewExactSnapshotBundle() {
+        UUID snapshotId = UUID.randomUUID();
+        String repoUrl = "https://github.com/example/snapshot-game";
+        String branch = "main";
+        String objectKey = "games/" + gameId + "/snapshots/" + snapshotId
+                + "/source-bundle.zip";
+        String bundleUrl = "http://seaweedfs-filer:8888/godotlaunch/" + objectKey;
+
+        SourceProcessResult processResult = new SourceProcessResult();
+        processResult.setClean(true);
+        processResult.setScanned(true);
+        processResult.setGodotProject(true);
+        processResult.setCommitSha("0123456789012345678901234567890123456789");
+        processResult.setBundleHash("a".repeat(64));
+        processResult.setBundleBase64(Base64.getEncoder().encodeToString("zip".getBytes()));
+        processResult.setSecrets(List.of());
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(gitHubRepoService.checkAccess(repoUrl))
+                .thenReturn(GitHubRepoService.RepoAccess.PUBLIC);
+        when(sourceProcessingClient.process(repoUrl, null, branch)).thenReturn(processResult);
+        when(sourceSnapshotRepository.saveAndFlush(any(SourceSnapshot.class))).thenAnswer(invocation -> {
+            SourceSnapshot snapshot = invocation.getArgument(0);
+            snapshot.setId(snapshotId);
+            return snapshot;
+        });
+        when(sourceSnapshotRepository.save(any(SourceSnapshot.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(seaweedFsService.uploadWithKey(any(), eq(objectKey))).thenReturn(bundleUrl);
+        when(gameVersionRepository.findByGame_IdOrderByReleasedAtDesc(gameId))
+                .thenReturn(Collections.emptyList());
+
+        gameService.submitGameRepo(gameId, repoUrl, branch, devUser.getEmail());
+
+        verify(seaweedFsService).uploadWithKey(any(), eq(objectKey));
+        verify(aiReviewService).reviewGameSnapshotAsync(gameId, snapshotId);
+
+        ArgumentCaptor<SourceSnapshot> snapshotCaptor = ArgumentCaptor.forClass(SourceSnapshot.class);
+        verify(sourceSnapshotRepository).save(snapshotCaptor.capture());
+        assertThat(snapshotCaptor.getValue().getCommitSha()).isEqualTo(processResult.getCommitSha());
+        assertThat(snapshotCaptor.getValue().getBundleUrl()).isEqualTo(bundleUrl);
     }
 
     @Test

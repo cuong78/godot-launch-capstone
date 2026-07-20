@@ -90,6 +90,8 @@ public class AdminAiReviewController {
                 .id(r.getId())
                 .gameId(r.getGame() != null ? r.getGame().getId() : null)
                 .assetId(r.getAsset() != null ? r.getAsset().getId() : null)
+                .sourceSnapshotId(r.getSourceSnapshot() != null ? r.getSourceSnapshot().getId() : null)
+                .commitSha(r.getSourceSnapshot() != null ? r.getSourceSnapshot().getCommitSha() : null)
                 .codeQualityScore(r.getCodeQualityScore())
                 .mediaMatchScore(r.getMediaMatchScore())
                 .descriptionMatchScore(r.getDescriptionMatchScore())
