@@ -3,7 +3,7 @@ package com.godotlaunch.backend.controller;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.TagResponse;
 import com.godotlaunch.backend.entity.Tag;
-import com.godotlaunch.backend.repository.TagRepository;
+import com.godotlaunch.backend.service.TagService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,32 +24,34 @@ import static org.mockito.Mockito.*;
 class TagControllerTest {
 
     @Mock
-    private TagRepository tagRepository;
+    private TagService tagService;
 
     @InjectMocks
     private TagController tagController;
 
-    private Tag tag1;
-    private Tag tag2;
+    private TagResponse tag1;
+    private TagResponse tag2;
 
     @BeforeEach
     void setUp() {
-        tag1 = new Tag();
-        tag1.setId(UUID.randomUUID());
-        tag1.setName("2D");
-        tag1.setSlug("2d");
+        tag1 = TagResponse.builder()
+                .id(UUID.randomUUID())
+                .name("2D")
+                .slug("2d")
+                .build();
 
-        tag2 = new Tag();
-        tag2.setId(UUID.randomUUID());
-        tag2.setName("Physics");
-        tag2.setSlug("physics");
+        tag2 = TagResponse.builder()
+                .id(UUID.randomUUID())
+                .name("Physics")
+                .slug("physics")
+                .build();
     }
 
     @Test
     @DisplayName("shouldGetAllTags_SortedByNameAsc")
     void shouldGetAllTags_SortedByNameAsc() {
         // Arrange
-        when(tagRepository.findAllByOrderByNameAsc()).thenReturn(List.of(tag1, tag2));
+        when(tagService.getAll()).thenReturn(List.of(tag1, tag2));
 
         // Act
         ResponseEntity<ApiResponse<List<TagResponse>>> response = tagController.getAllTags();
@@ -59,6 +61,6 @@ class TagControllerTest {
         assertThat(response.getBody().getData()).hasSize(2);
         assertThat(response.getBody().getData().get(0).getName()).isEqualTo("2D");
         assertThat(response.getBody().getData().get(1).getName()).isEqualTo("Physics");
-        verify(tagRepository, times(1)).findAllByOrderByNameAsc();
+        verify(tagService, times(1)).getAll();
     }
 }

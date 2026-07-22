@@ -79,7 +79,7 @@ web_demo,  // Godot export "Web" (.html/.js/.wasm/.pck) — Live Preview chơi t
 Developer export Web (Godot) → nén .zip (index.html/.js/.wasm/.pck)
   → upload qua endpoint riêng, FileType.web_demo
   → backend: virus scan (tái dùng ClamAV, pattern giống SourceSnapshot)
-             → giải nén ra 1 thư mục public trên storage (SeaweedFS/S3)
+             → giải nén ra 1 thư mục public trên storage (SeaweedFS)
              → lưu path tới index.html vào Game.webDemoUrl
 ```
 
@@ -154,7 +154,7 @@ Không cần module AI mới — tái dùng pipeline CLIP media-match đã thi�
 
 | Có sẵn | Dùng cho |
 |---|---|
-| StorageRouter + FileType | Thêm `web_demo`, upload/serve qua adapter có sẵn (S3/SeaweedFS) |
+| StorageRouter + FileType | Thêm `web_demo`, upload/serve qua adapter có sẵn (SeaweedFS) |
 | ClamAV (đã có, dùng cho source scan) | Virus scan zip trước khi giải nén |
 | `AiReviewReport.mediaMatchScore` + CLIP pipeline | Đối chiếu demo ↔ mô tả game (giai đoạn sau, mục 5) |
 | Pattern `SourceSnapshot` (virusClean/virusScanned) | Mẫu cho luồng scan Web demo zip |

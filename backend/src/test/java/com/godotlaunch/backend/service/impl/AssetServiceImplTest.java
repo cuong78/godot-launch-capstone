@@ -119,6 +119,119 @@ class AssetServiceImplTest {
     }
 
     @Test
+    void createAsset_UTCID01_SuccessWithMinimalFields() {
+        CreateAssetRequest request = new CreateAssetRequest();
+        request.setTitle("Asset Pack");
+        request.setPrice(BigDecimal.TEN);
+
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> {
+            Asset toSave = invocation.getArgument(0);
+            toSave.setId(asset.getId());
+            return toSave;
+        });
+
+        UUID createdId = assetService.createAsset(request, developerUser.getEmail());
+
+        assertEquals(asset.getId(), createdId);
+        verify(assetRepository).save(any(Asset.class));
+    }
+
+    @Test
+    void createAsset_UTCID02_SuccessWithAllFields() {
+        CreateAssetRequest request = new CreateAssetRequest();
+        request.setTitle("Custom Asset Pack");
+        request.setPrice(BigDecimal.ONE);
+        UUID categoryId = UUID.randomUUID();
+        request.setCategoryId(categoryId);
+        request.setFileUrl("http://seaweedfs/custom.zip");
+        UUID tagId = UUID.randomUUID();
+        request.setTagIds(java.util.List.of(tagId));
+
+        com.godotlaunch.backend.entity.Category category = new com.godotlaunch.backend.entity.Category();
+        category.setId(categoryId);
+        category.setName("3D Models");
+
+        com.godotlaunch.backend.entity.Tag tag = new com.godotlaunch.backend.entity.Tag();
+        tag.setId(tagId);
+        tag.setName("Godot");
+
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(tagRepository.findByIdIn(request.getTagIds())).thenReturn(java.util.List.of(tag));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> {
+            Asset toSave = invocation.getArgument(0);
+            toSave.setId(asset.getId());
+            return toSave;
+        });
+
+        UUID createdId = assetService.createAsset(request, developerUser.getEmail());
+
+        assertEquals(asset.getId(), createdId);
+        verify(assetRepository).save(any(Asset.class));
+    }
+
+    @Test
+    void createAsset_UTCID03_UserNotFound() {
+        CreateAssetRequest request = new CreateAssetRequest();
+        request.setTitle("Asset Pack");
+        request.setPrice(BigDecimal.ZERO);
+
+        when(userRepository.findWithRoleByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> assetService.createAsset(request, "nonexistent@example.com")
+        );
+
+        assertEquals(ErrorCode.USER_NOT_FOUND, exception.getErrorCode());
+        verify(assetRepository, never()).save(any(Asset.class));
+    }
+
+    @Test
+    void createAsset_UTCID05_FaceVerificationRequired() {
+        CreateAssetRequest request = new CreateAssetRequest();
+        request.setTitle("Asset Pack");
+        request.setPrice(BigDecimal.ZERO);
+
+        User unverifiedDev = new User();
+        unverifiedDev.setId(UUID.randomUUID());
+        unverifiedDev.setEmail("unverified@godotlaunch.dev");
+        unverifiedDev.setRole(developerUser.getRole());
+        unverifiedDev.setFaceVerified(false);
+
+        when(userRepository.findWithRoleByEmail(unverifiedDev.getEmail())).thenReturn(Optional.of(unverifiedDev));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> assetService.createAsset(request, unverifiedDev.getEmail())
+        );
+
+        assertEquals(ErrorCode.FACE_VERIFY_REQUIRED, exception.getErrorCode());
+        verify(assetRepository, never()).save(any(Asset.class));
+    }
+
+    @Test
+    void createAsset_UTCID06_CategoryNotFound() {
+        CreateAssetRequest request = new CreateAssetRequest();
+        request.setTitle("Asset Pack");
+        request.setPrice(BigDecimal.ZERO);
+        UUID invalidCategoryId = UUID.randomUUID();
+        request.setCategoryId(invalidCategoryId);
+
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(categoryRepository.findById(invalidCategoryId)).thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> assetService.createAsset(request, developerUser.getEmail())
+        );
+
+        assertEquals(ErrorCode.CATEGORY_NOT_FOUND, exception.getErrorCode());
+        verify(assetRepository, never()).save(any(Asset.class));
+    }
+
+    @Test
     void createAsset_ShouldRejectAdminRequester() {
         CreateAssetRequest request = new CreateAssetRequest();
         request.setTitle("Asset Pack");

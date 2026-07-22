@@ -46,7 +46,7 @@ Place these blocks around the central GodotLaunch Platform:
 3. Admin
 4. GitHub
 5. PayOS
-6. AWS S3 / SeaweedFS
+6. SeaweedFS
 7. Python AI / Identity Service
 8. Google Services
 9. Email / SMTP Provider
@@ -63,7 +63,7 @@ Place these blocks around the central GodotLaunch Platform:
 | Admin | Moderation, payout, contract, storage, users, dispute | Moderation decision, contract terms/signature, withdrawal decision/sync request, dispute resolution, storage routing/settings | Pending queues, AI reports, audit logs, payment/withdrawal details, user/storage/platform data |
 | GitHub | OAuth, repo verification, source clone | OAuth profile/token response, repo ownership metadata, bot access status, source repository content | OAuth request, repo metadata request, bot invitation request, source repository request |
 | PayOS | Marketplace payment, payout | Payment webhook, payment status, payout status, payout balance | Checkout request, payment cancellation/status request, payout creation request, payout status query |
-| AWS S3 / SeaweedFS | File storage | Stored file URL, file stream, delete result | File objects: media, source bundle, avatar, contract PDF, receipt, CCCD image |
+| SeaweedFS | File storage | Stored file URL, file stream, delete result | File objects: media, source bundle, avatar, contract PDF, receipt, CCCD image |
 | Python AI / Identity Service | Source processing, AI review, face verify, OCR | Source scan result, source snapshot, AI report, face duplicate result, OCR extracted data | Repository processing payload, media/code review payload, face image payload, OCR image payload |
 | Google Services | Google OAuth, reCAPTCHA, Vision OCR | Google token validation result, reCAPTCHA verification result, OCR text result if using Vision | Google login token verification request, reCAPTCHA siteverify request, Vision OCR request |
 | Email / SMTP Provider | OTP, reset password, status email | Delivery status/error if available | Signup OTP, password reset OTP, game/asset status notification |
@@ -108,7 +108,7 @@ Source processing and AI review request
 Python AI / Identity Service -> GodotLaunch Platform:
 Virus scan result, source snapshot, AI report
 
-GodotLaunch Platform -> AWS S3 / SeaweedFS:
+GodotLaunch Platform -> SeaweedFS:
 Source bundle and media files
 
 GodotLaunch Platform -> Admin:
@@ -121,7 +121,7 @@ Pending game and AI review report
 Developer -> GodotLaunch Platform:
 Asset metadata, asset file, media
 
-GodotLaunch Platform -> AWS S3 / SeaweedFS:
+GodotLaunch Platform -> SeaweedFS:
 Asset file and media files
 
 GodotLaunch Platform -> Python AI / Identity Service:
@@ -190,7 +190,7 @@ Face image payload, face registration payload, OCR image payload
 Python AI / Identity Service -> GodotLaunch Platform:
 Duplicate result, OCR result
 
-GodotLaunch Platform -> AWS S3 / SeaweedFS:
+GodotLaunch Platform -> SeaweedFS:
 CCCD image files, contract PDF
 
 GodotLaunch Platform -> Developer / Admin:
@@ -213,7 +213,7 @@ Feed update, notification, realtime community update
 Admin -> GodotLaunch Platform:
 Storage account/bucket/routing config, commission settings, moderation actions
 
-GodotLaunch Platform -> AWS S3 / SeaweedFS:
+GodotLaunch Platform -> SeaweedFS:
 Configured file objects for routed storage
 
 GodotLaunch Platform -> Admin:
@@ -245,7 +245,7 @@ Recommended layout:
                            |
 Developer          GodotLaunch Platform          PayOS
                            |
-Customer / Buyer      AWS S3 / SeaweedFS      Google Services
+Customer / Buyer      SeaweedFS               Google Services
                            |
 Admin             Python AI / Identity Service Email / SMTP Provider
                            |
@@ -254,7 +254,7 @@ Admin             Python AI / Identity Service Email / SMTP Provider
 
 Better visual placement:
 - Left side: Developer, Customer / Buyer, Admin
-- Right side: GitHub, PayOS, AWS S3 / SeaweedFS
+- Right side: GitHub, PayOS, SeaweedFS
 - Bottom side: Python AI / Identity Service, Google Services, Email / SMTP Provider
 - Optional dashed block: Google Play / App Store
 

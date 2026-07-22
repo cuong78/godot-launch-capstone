@@ -194,4 +194,53 @@ class OrderServiceImplTest {
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BAD_REQUEST);
     }
+
+    @Test
+    @DisplayName("Should throw USER_NOT_FOUND when buyer does not exist")
+    void shouldThrowException_WhenBuyerNotFound() {
+        when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.buy("nonexistent@example.com", targetId, OrderType.asset_purchase))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("Should throw MARKETPLACE_ITEM_NOT_FOUND when asset does not exist")
+    void shouldThrowException_WhenAssetNotFound() {
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(buyer));
+        when(assetRepository.findById(targetId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.buy("buyer@example.com", targetId, OrderType.asset_purchase))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("Should throw BAD_REQUEST when asset is not active")
+    void shouldThrowException_WhenAssetNotActive() {
+        mockAsset.setStatus(ItemStatus.pending);
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(buyer));
+        when(assetRepository.findById(targetId)).thenReturn(Optional.of(mockAsset));
+
+        assertThatThrownBy(() -> orderService.buy("buyer@example.com", targetId, OrderType.asset_purchase))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("Should throw BAD_REQUEST when asset is already purchased")
+    void shouldThrowException_WhenAssetAlreadyPurchased() {
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(buyer));
+        when(assetRepository.findById(targetId)).thenReturn(Optional.of(mockAsset));
+        when(orderRepository.existsByBuyerIdAndAssetId(buyer.getId(), targetId)).thenReturn(true);
+
+        assertThatThrownBy(() -> orderService.buy("buyer@example.com", targetId, OrderType.asset_purchase))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BAD_REQUEST);
+    }
 }

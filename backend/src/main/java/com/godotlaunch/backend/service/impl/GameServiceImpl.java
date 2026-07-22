@@ -714,7 +714,7 @@ public class GameServiceImpl implements GameService {
 
         game.setStatus(GameStatus.rejected);
 
-        // Xóa các tệp ZIP, Thumbnail và tất cả Screenshots/Videos trên S3 để giải phóng dung lượng khi bị từ chối
+        // Xóa các tệp ZIP, Thumbnail và tất cả Screenshots/Videos trên SeaweedFS để giải phóng dung lượng khi bị từ chối
         try {
             String zipKey = "games/" + gameId.toString() + "/game.zip";
             seaweedFsService.deleteObject(zipKey);
