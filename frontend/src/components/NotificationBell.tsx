@@ -48,10 +48,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     
     // 2. Perform redirect navigation
     if (notif.targetId) {
-      // Set selected post and navigate to community detail screen
       setSelectedAssetId(notif.targetId);
-      setSelectedPost(null); // Force self-heal details query
-      setCurrentScreen('community-detail');
+      setCurrentScreen('detail');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };

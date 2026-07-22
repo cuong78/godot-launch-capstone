@@ -381,18 +381,6 @@ export function Header({
             </button>
           </div>
 
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              className={navGroupButtonClassName(
-                currentScreen === "community",
-                false,
-              )}
-              onClick={() => handleNavigate("community")}
-            >
-              {t("community")}
-            </button>
-          </div>
         </nav>
 
         {/* Utility actions: language, cart, notifications, and account */}
@@ -670,12 +658,6 @@ export function Header({
           className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "dashboard" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
         >
           {t("dashboard")}
-        </button>
-        <button
-          onClick={() => setCurrentScreen("community")}
-          className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "community" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
-        >
-          {t("community")}
         </button>
       </div>
 
