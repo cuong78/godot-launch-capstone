@@ -37,11 +37,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class WithdrawalRequestServiceImplTest {
@@ -318,5 +322,229 @@ class WithdrawalRequestServiceImplTest {
 
         assertEquals(ErrorCode.ACCESS_DENIED, exception.getErrorCode());
         verify(withdrawalRequestRepository, never()).save(any(WithdrawalRequest.class));
+    }
+
+    @Test
+    void getDeveloperSalesStats_ShouldReturnStats_WhenDeveloper() {
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.countByWalletIdAndType(wallet.getId(), com.godotlaunch.backend.entity.enums.TxnType.revenue_share)).thenReturn(10L);
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("1000.00"));
+
+        com.godotlaunch.backend.dto.response.DeveloperSalesStatsResponse response = withdrawalRequestService.getDeveloperSalesStats(developerUser.getEmail());
+
+        assertEquals(developerUser.getId(), response.getDeveloperId());
+        assertEquals(10L, response.getTotalUnitsSold());
+        assertEquals(new BigDecimal("1000.00"), response.getTotalRevenue());
+    }
+
+    @Test
+    void getDeveloperWithdrawalDetail_ShouldReturnDetail_WhenOwner() {
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(withdrawalRequestRepository.findById(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+        when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
+
+        WithdrawalDetailResponse response = withdrawalRequestService.getDeveloperWithdrawalDetail(withdrawal.getId(), developerUser.getEmail());
+
+        assertEquals(withdrawal.getId(), response.getId());
+        assertEquals(WithdrawalStatus.pending, response.getStatus());
+    }
+
+    @Test
+    void getDeveloperWithdrawalDetail_ShouldThrowException_WhenNotOwner() {
+        when(userRepository.findByEmail(otherDeveloper().getEmail())).thenReturn(Optional.of(otherDeveloper()));
+        when(withdrawalRequestRepository.findById(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+
+        assertThrows(AppException.class, () ->
+                withdrawalRequestService.getDeveloperWithdrawalDetail(withdrawal.getId(), otherDeveloper().getEmail())
+        );
+    }
+
+    private User otherDeveloper() {
+        User dev = new User();
+        dev.setId(UUID.randomUUID());
+        dev.setEmail("otherdev@example.com");
+        Role role = new Role();
+        role.setName("developer");
+        dev.setRole(role);
+        return dev;
+    }
+
+    @Test
+    void rejectWithdrawal_ShouldSetRejectedAndLogAudit_WhenPending() {
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+        when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(withdrawalRequestRepository.save(any(WithdrawalRequest.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        WithdrawalDetailResponse response = withdrawalRequestService.rejectWithdrawal(
+                withdrawal.getId(),
+                new com.godotlaunch.backend.dto.request.RejectWithdrawalRequest("Not eligible"),
+                adminUser.getEmail()
+        );
+
+        assertEquals(WithdrawalStatus.rejected, response.getStatus());
+        verify(auditLogService).publishAuto(
+                eq(com.godotlaunch.backend.entity.enums.AuditAction.withdrawal_rejected),
+                eq(com.godotlaunch.backend.entity.enums.AuditTarget.withdrawal_request),
+                eq(withdrawal.getId()),
+                any(),
+                any(),
+                anyString()
+        );
+    }
+
+    @Test
+    void rejectWithdrawal_ShouldThrowException_WhenNotPending() {
+        withdrawal.setStatus(WithdrawalStatus.approved);
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+
+        assertThrows(AppException.class, () ->
+                withdrawalRequestService.rejectWithdrawal(
+                        withdrawal.getId(),
+                        new com.godotlaunch.backend.dto.request.RejectWithdrawalRequest("Reason"),
+                        adminUser.getEmail()
+                )
+        );
+    }
+
+    @Test
+    void createDeveloperWithdrawal_ShouldSucceed_WhenValid() {
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(walletRepository.findByUserIdWithLock(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
+        when(withdrawalRequestRepository.save(any(WithdrawalRequest.class))).thenAnswer(inv -> {
+            WithdrawalRequest w = inv.getArgument(0);
+            if (w.getId() == null) {
+                w.setId(UUID.randomUUID());
+            }
+            return w;
+        });
+
+        CreateWithdrawalRequest request = new CreateWithdrawalRequest(
+                new BigDecimal("50000"),
+                "MB Bank",
+                "0123456789",
+                "Dev User",
+                "remark note"
+        );
+
+        WithdrawalDetailResponse response = withdrawalRequestService.createDeveloperWithdrawal(request, developerUser.getEmail());
+
+        assertEquals(WithdrawalStatus.pending, response.getStatus());
+        assertEquals(new BigDecimal("50000"), response.getAmount());
+    }
+
+    @Test
+    void createDeveloperWithdrawal_ShouldThrowException_WhenInsufficientBalance() {
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(walletRepository.findByUserIdWithLock(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("150000"));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
+
+        CreateWithdrawalRequest request = new CreateWithdrawalRequest(
+                new BigDecimal("200000"),
+                "MB Bank",
+                "0123456789",
+                "Dev User",
+                "remark note"
+        );
+
+        assertThrows(AppException.class, () ->
+                withdrawalRequestService.createDeveloperWithdrawal(request, developerUser.getEmail())
+        );
+    }
+
+    @Test
+    void getDeveloperWithdrawals_ShouldReturnList() {
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(withdrawalRequestRepository.findByUserIdOrderByCreatedAtDesc(developerUser.getId()))
+                .thenReturn(java.util.List.of(withdrawal));
+
+        java.util.List<com.godotlaunch.backend.dto.response.WithdrawalResponse> list = 
+                withdrawalRequestService.getDeveloperWithdrawals(developerUser.getEmail());
+
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).getId()).isEqualTo(withdrawal.getId());
+    }
+
+    @Test
+    void getAdminWithdrawals_ShouldReturnList() {
+        when(withdrawalRequestRepository.findAllByOrderByCreatedAtDesc())
+                .thenReturn(java.util.List.of(withdrawal));
+
+        java.util.List<com.godotlaunch.backend.dto.response.WithdrawalResponse> list = 
+                withdrawalRequestService.getAdminWithdrawals();
+
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).getId()).isEqualTo(withdrawal.getId());
+    }
+
+    @Test
+    void getAdminWithdrawalDetail_ShouldReturnDetail() {
+        when(withdrawalRequestRepository.findById(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+        when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
+
+        WithdrawalDetailResponse response = withdrawalRequestService.getAdminWithdrawalDetail(withdrawal.getId());
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(withdrawal.getId());
+    }
+
+    @Test
+    void markWithdrawalProcessing_ShouldSetStatus() {
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+        when(withdrawalRequestRepository.save(any(WithdrawalRequest.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
+
+        WithdrawalDetailResponse response = withdrawalRequestService.markWithdrawalProcessing(withdrawal.getId(), adminUser.getEmail());
+
+        assertThat(response.getStatus()).isEqualTo(WithdrawalStatus.processing);
+    }
+
+    @Test
+    void markWithdrawalProcessing_ShouldThrowException_WhenNotPending() {
+        withdrawal.setStatus(WithdrawalStatus.approved);
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+
+        assertThrows(AppException.class, () ->
+                withdrawalRequestService.markWithdrawalProcessing(withdrawal.getId(), adminUser.getEmail())
+        );
+    }
+
+    @Test
+    void rejectWithdrawal_ShouldThrowException_WhenRemarkEmpty() {
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
+
+        assertThrows(AppException.class, () ->
+                withdrawalRequestService.rejectWithdrawal(withdrawal.getId(), new com.godotlaunch.backend.dto.request.RejectWithdrawalRequest(""), adminUser.getEmail())
+        );
+    }
+
+    @Test
+    void syncWithdrawalStatus_ShouldSucceed() {
+        com.godotlaunch.backend.service.WithdrawalStatusSynchronizer sync = mock(com.godotlaunch.backend.service.WithdrawalStatusSynchronizer.class);
+        ReflectionTestUtils.setField(withdrawalRequestService, "withdrawalStatusSynchronizer", sync);
+
+        when(sync.synchronize(withdrawal.getId(), adminUser.getEmail())).thenReturn(withdrawal);
+        when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
+
+        WithdrawalDetailResponse response = withdrawalRequestService.syncWithdrawalStatus(withdrawal.getId(), adminUser.getEmail());
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(withdrawal.getId());
     }
 }

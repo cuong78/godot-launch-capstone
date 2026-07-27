@@ -196,4 +196,96 @@ class AssetControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(assetService, times(1)).uploadItemFile(assetId, file, sellerEmail);
     }
+
+    @Test
+    @DisplayName("shouldGetUploadUrl_WhenValidDeveloper")
+    void shouldGetUploadUrl_WhenValidDeveloper() {
+        // Arrange
+        when(principal.getName()).thenReturn(sellerEmail);
+        when(assetService.getPresignedUploadUrl(assetId, "application/zip", sellerEmail)).thenReturn("http://presigned-url");
+
+        // Act
+        ResponseEntity<ApiResponse<Map<String, String>>> response = assetController.getUploadUrl(assetId, "application/zip", principal);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getData().get("uploadUrl")).isEqualTo("http://presigned-url");
+    }
+
+    @Test
+    @DisplayName("shouldUploadItemMedia_WhenFileProvided")
+    void shouldUploadItemMedia_WhenFileProvided() {
+        // Arrange
+        MockMultipartFile file = new MockMultipartFile("file", "image.png", "image/png", "image data".getBytes());
+        when(principal.getName()).thenReturn(sellerEmail);
+        when(assetService.uploadItemMedia(assetId, "image", file, sellerEmail)).thenReturn("media-key");
+
+        // Act
+        ResponseEntity<ApiResponse<Map<String, String>>> response = assetController.uploadItemMedia(assetId, file, "image", principal);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getData().get("objectKey")).isEqualTo("media-key");
+    }
+
+    @Test
+    @DisplayName("shouldDeleteAssetMedia_WhenMediaUrlProvided")
+    void shouldDeleteAssetMedia_WhenMediaUrlProvided() {
+        // Arrange
+        when(principal.getName()).thenReturn(sellerEmail);
+        doNothing().when(assetService).deleteAssetMedia(assetId, "http://media-url", sellerEmail);
+
+        // Act
+        ResponseEntity<ApiResponse<Map<String, String>>> response = assetController.deleteAssetMedia(assetId, "http://media-url", principal);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(assetService, times(1)).deleteAssetMedia(assetId, "http://media-url", sellerEmail);
+    }
+
+    @Test
+    @DisplayName("shouldConfirmUploadComplete_WhenCalled")
+    void shouldConfirmUploadComplete_WhenCalled() {
+        // Arrange
+        when(principal.getName()).thenReturn(sellerEmail);
+        doNothing().when(assetService).confirmUploadComplete(assetId, "thumbnail", sellerEmail);
+
+        // Act
+        ResponseEntity<ApiResponse<Map<String, String>>> response = assetController.confirmUploadComplete(assetId, "thumbnail", principal);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(assetService, times(1)).confirmUploadComplete(assetId, "thumbnail", sellerEmail);
+    }
+
+    @Test
+    @DisplayName("shouldUploadMarketplaceMedia_WhenFileProvided")
+    void shouldUploadMarketplaceMedia_WhenFileProvided() {
+        // Arrange
+        MockMultipartFile file = new MockMultipartFile("file", "image.png", "image/png", "image data".getBytes());
+        when(principal.getName()).thenReturn(sellerEmail);
+        when(assetService.uploadAssetMediaProxy(assetId, "image", file, sellerEmail)).thenReturn("media-key");
+
+        // Act
+        ResponseEntity<ApiResponse<Map<String, String>>> response = assetController.uploadMarketplaceMedia(assetId, file, "image", principal);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getData().get("objectKey")).isEqualTo("media-key");
+    }
+
+    @Test
+    @DisplayName("shouldDeleteMarketplaceMediaItem_WhenMediaUrlProvided")
+    void shouldDeleteMarketplaceMediaItem_WhenMediaUrlProvided() {
+        // Arrange
+        when(principal.getName()).thenReturn(sellerEmail);
+        doNothing().when(assetService).deleteAssetMediaByUrl(assetId, "http://media-url", sellerEmail);
+
+        // Act
+        ResponseEntity<ApiResponse<Map<String, String>>> response = assetController.deleteMarketplaceMediaItem(assetId, "http://media-url", principal);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(assetService, times(1)).deleteAssetMediaByUrl(assetId, "http://media-url", sellerEmail);
+    }
 }

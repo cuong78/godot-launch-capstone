@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.UUID;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -88,5 +89,65 @@ class TagServiceImplTest {
                 .isEqualTo(ErrorCode.TAG_ALREADY_EXISTS);
 
         verify(tagRepository, never()).save(any(Tag.class));
+    }
+    @Test
+    void getAll_ShouldReturnSortedList() {
+        when(tagRepository.findAllByOrderByNameAsc()).thenReturn(java.util.List.of(tag));
+
+        java.util.List<TagResponse> responses = tagService.getAll();
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getName()).isEqualTo("Godot Engine");
+    }
+
+    @Test
+    void search_ShouldReturnMatchedList() {
+        when(tagRepository.search(eq("godot"), any())).thenReturn(java.util.List.of(tag));
+
+        java.util.List<TagResponse> responses = tagService.search("godot", 5);
+
+        assertThat(responses).hasSize(1);
+    }
+
+    @Test
+    void update_ShouldModifyAndSave_WhenValid() {
+        when(tagRepository.findById(tagId)).thenReturn(Optional.of(tag));
+        when(tagRepository.findByName("Godot Engine")).thenReturn(Optional.empty());
+        when(tagRepository.findBySlug("godot-engine")).thenReturn(Optional.empty());
+        when(tagRepository.save(any(Tag.class))).thenReturn(tag);
+
+        TagResponse response = tagService.update(tagId, request);
+
+        assertThat(response).isNotNull();
+        verify(tagRepository).save(any(Tag.class));
+    }
+
+    @Test
+    void update_ShouldThrowException_WhenTagNotFound() {
+        when(tagRepository.findById(tagId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> tagService.update(tagId, request))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.TAG_NOT_FOUND);
+    }
+
+    @Test
+    void delete_ShouldRemove_WhenTagExists() {
+        when(tagRepository.existsById(tagId)).thenReturn(true);
+
+        tagService.delete(tagId);
+
+        verify(tagRepository).deleteById(tagId);
+    }
+
+    @Test
+    void delete_ShouldThrowException_WhenTagNotFound() {
+        when(tagRepository.existsById(tagId)).thenReturn(false);
+
+        assertThatThrownBy(() -> tagService.delete(tagId))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.TAG_NOT_FOUND);
     }
 }

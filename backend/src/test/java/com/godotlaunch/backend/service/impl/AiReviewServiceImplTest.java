@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class AiReviewServiceImplTest {
@@ -82,5 +83,176 @@ class AiReviewServiceImplTest {
         verify(aiReviewReportRepository).save(reportCaptor.capture());
         assertThat(reportCaptor.getValue().getGame()).isSameAs(game);
         assertThat(reportCaptor.getValue().getSourceSnapshot()).isSameAs(snapshot);
+    }
+
+    @Test
+    void reviewGameAsync_ShouldReturn_WhenNoSnapshot() {
+        UUID gameId = UUID.randomUUID();
+        when(sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(gameId)).thenReturn(Optional.empty());
+
+        service.reviewGameAsync(gameId);
+
+        verify(gameRepository, never()).findById(any());
+    }
+
+    @Test
+    void reviewGameSnapshotAsync_ShouldReturn_WhenGameNotFound() {
+        UUID gameId = UUID.randomUUID();
+        UUID snapshotId = UUID.randomUUID();
+        when(gameRepository.findById(gameId)).thenReturn(Optional.empty());
+
+        service.reviewGameSnapshotAsync(gameId, snapshotId);
+
+        verify(sourceSnapshotRepository, never()).findById(any());
+    }
+
+    @Test
+    void reviewGameSnapshotAsync_ShouldReturn_WhenSnapshotNotMatchGame() {
+        UUID gameId = UUID.randomUUID();
+        UUID snapshotId = UUID.randomUUID();
+        Game game = new Game();
+        game.setId(gameId);
+
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.empty());
+
+        service.reviewGameSnapshotAsync(gameId, snapshotId);
+
+        verify(aiReviewClient, never()).review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void reviewGameSnapshotAsync_ShouldReturn_WhenNoBundleUrl() {
+        UUID gameId = UUID.randomUUID();
+        UUID snapshotId = UUID.randomUUID();
+        Game game = new Game();
+        game.setId(gameId);
+        SourceSnapshot snapshot = new SourceSnapshot();
+        snapshot.setGame(game);
+        snapshot.setBundleUrl(null);
+
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.of(snapshot));
+
+        service.reviewGameSnapshotAsync(gameId, snapshotId);
+
+        verify(aiReviewClient, never()).review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void reviewAssetAsync_ShouldReturn_WhenAssetNotFound() {
+        UUID itemId = UUID.randomUUID();
+        when(assetRepository.findById(itemId)).thenReturn(Optional.empty());
+
+        service.reviewAssetAsync(itemId);
+
+        verify(aiReviewClient, never()).review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void reviewAssetAsync_ShouldSucceed() {
+        UUID itemId = UUID.randomUUID();
+        User seller = new User();
+        seller.setId(UUID.randomUUID());
+
+        com.godotlaunch.backend.entity.Asset item = new com.godotlaunch.backend.entity.Asset();
+        item.setId(itemId);
+        item.setTitle("Asset Item");
+        item.setSeller(seller);
+        item.setThumbnailUrl("http://thumbnail.png");
+
+        AiReviewResult result = new AiReviewResult();
+        result.setOverallRecommendation("approve");
+
+        when(assetRepository.findById(itemId)).thenReturn(Optional.of(item));
+        when(mediaRepository.findByAsset_IdAndMediaType(eq(itemId), any())).thenReturn(List.of());
+        when(aiReviewClient.review(
+                eq("asset"), any(), any(), any(), any(),
+                eq(item.getTitle()), any(), any(), any(), any(), any()))
+                .thenReturn(result);
+
+        service.reviewAssetAsync(itemId);
+
+        verify(aiReviewReportRepository).save(any(AiReviewReport.class));
+    }
+
+    @Test
+    void reviewGameSnapshotAsync_ShouldLogAndIgnoreException_WhenClientThrowsException() {
+        UUID gameId = UUID.randomUUID();
+        UUID snapshotId = UUID.randomUUID();
+        User creator = new User();
+        creator.setId(UUID.randomUUID());
+
+        Game game = new Game();
+        game.setId(gameId);
+        game.setTitle("Snapshot Game");
+        game.setCreator(creator);
+
+        SourceSnapshot snapshot = new SourceSnapshot();
+        snapshot.setId(snapshotId);
+        snapshot.setGame(game);
+        snapshot.setBundleUrl("http://bundle.zip");
+
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.of(snapshot));
+        when(mediaRepository.findByGame_IdAndMediaType(eq(gameId), any())).thenReturn(List.of());
+        when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("AI client error"));
+
+        // Should not throw exception
+        service.reviewGameSnapshotAsync(gameId, snapshotId);
+
+        verify(aiReviewReportRepository, never()).save(any());
+    }
+
+    @Test
+    void reviewAssetAsync_ShouldLogAndIgnoreException_WhenClientThrowsException() {
+        UUID itemId = UUID.randomUUID();
+        User seller = new User();
+        seller.setId(UUID.randomUUID());
+
+        com.godotlaunch.backend.entity.Asset item = new com.godotlaunch.backend.entity.Asset();
+        item.setId(itemId);
+        item.setTitle("Asset Item");
+        item.setSeller(seller);
+
+        when(assetRepository.findById(itemId)).thenReturn(Optional.of(item));
+        when(mediaRepository.findByAsset_IdAndMediaType(eq(itemId), any())).thenReturn(List.of());
+        when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("AI client error"));
+
+        // Should not throw exception
+        service.reviewAssetAsync(itemId);
+
+        verify(aiReviewReportRepository, never()).save(any());
+    }
+
+    @Test
+    void reviewGameAsync_ShouldSucceed_WhenLatestSnapshotExists() {
+        UUID gameId = UUID.randomUUID();
+        UUID snapshotId = UUID.randomUUID();
+        User creator = new User();
+        creator.setId(UUID.randomUUID());
+
+        Game game = new Game();
+        game.setId(gameId);
+        game.setTitle("Snapshot Game");
+        game.setCreator(creator);
+
+        SourceSnapshot snapshot = new SourceSnapshot();
+        snapshot.setId(snapshotId);
+        snapshot.setGame(game);
+        snapshot.setBundleUrl("http://bundle.zip");
+
+        when(sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(gameId)).thenReturn(Optional.of(snapshot));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.of(snapshot));
+        when(mediaRepository.findByGame_IdAndMediaType(eq(gameId), any())).thenReturn(List.of());
+        when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new AiReviewResult());
+
+        service.reviewGameAsync(gameId);
+
+        verify(aiReviewReportRepository).save(any(AiReviewReport.class));
     }
 }

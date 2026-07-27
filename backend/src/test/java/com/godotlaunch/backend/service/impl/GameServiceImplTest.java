@@ -181,6 +181,17 @@ class GameServiceImplTest {
 
         verify(seaweedFsService).uploadWithKey(any(), eq(objectKey));
         verify(aiReviewService).reviewGameSnapshotAsync(gameId, snapshotId);
+        verify(auditLogService, times(1)).publish(
+                eq(devUser.getId()),
+                eq(com.godotlaunch.backend.entity.enums.ActorRole.developer),
+                eq(com.godotlaunch.backend.entity.enums.AuditAction.game_submitted),
+                eq(com.godotlaunch.backend.entity.enums.AuditTarget.game),
+                eq(gameId),
+                eq(GameStatus.draft.name()),
+                eq(GameStatus.pending.name()),
+                anyString(),
+                isNull()
+        );
 
         ArgumentCaptor<SourceSnapshot> snapshotCaptor = ArgumentCaptor.forClass(SourceSnapshot.class);
         verify(sourceSnapshotRepository).save(snapshotCaptor.capture());
@@ -232,6 +243,14 @@ class GameServiceImplTest {
         assertThat(game.getStatus()).isEqualTo(GameStatus.published);
         verify(emailService, times(1)).sendGameStatusNotification(
                 eq("dev@godotlaunch.dev"), eq("Godot Platformer"), contains("APPROVED"), anyString());
+        verify(auditLogService, times(1)).publishAuto(
+                eq(com.godotlaunch.backend.entity.enums.AuditAction.game_published),
+                eq(com.godotlaunch.backend.entity.enums.AuditTarget.game),
+                eq(gameId),
+                eq(GameStatus.pending.name()),
+                eq(GameStatus.published.name()),
+                anyString()
+        );
     }
 
     @Test
@@ -244,6 +263,14 @@ class GameServiceImplTest {
         assertThat(game.getStatus()).isEqualTo(GameStatus.rejected);
         verify(emailService, times(1)).sendGameStatusNotification(
                 eq("dev@godotlaunch.dev"), eq("Godot Platformer"), eq("REJECTED"), eq("Policy violation"));
+        verify(auditLogService, times(1)).publishAuto(
+                eq(com.godotlaunch.backend.entity.enums.AuditAction.game_rejected),
+                eq(com.godotlaunch.backend.entity.enums.AuditTarget.game),
+                eq(gameId),
+                eq(GameStatus.pending.name()),
+                eq(GameStatus.rejected.name()),
+                anyString()
+        );
     }
 
     @Test
@@ -312,6 +339,14 @@ class GameServiceImplTest {
 
         assertThat(response).isNotNull();
         assertThat(game.getTitle()).isEqualTo("New Title");
+        verify(auditLogService, times(1)).publishAuto(
+                eq(com.godotlaunch.backend.entity.enums.AuditAction.game_updated),
+                eq(com.godotlaunch.backend.entity.enums.AuditTarget.game),
+                eq(gameId),
+                isNull(),
+                isNull(),
+                anyString()
+        );
     }
 
     @Test
@@ -339,6 +374,14 @@ class GameServiceImplTest {
         assertThat(response).isNotNull();
         assertThat(game.getTitle()).isEqualTo("Updated Complete Title");
         assertThat(game.getCategory()).isEqualTo(category);
+        verify(auditLogService, times(1)).publishAuto(
+                eq(com.godotlaunch.backend.entity.enums.AuditAction.game_updated),
+                eq(com.godotlaunch.backend.entity.enums.AuditTarget.game),
+                eq(gameId),
+                isNull(),
+                isNull(),
+                anyString()
+        );
     }
 
     @Test
@@ -519,5 +562,279 @@ class GameServiceImplTest {
 
         assertThat(responses).isNotEmpty();
         assertThat(responses.get(0).getStatus()).isEqualTo(GameStatus.pending.name());
+    }
+
+    @Test
+    void updateGame_ShouldModifyFieldsAndSave_WhenValid() {
+        UpdateGameRequest request = new UpdateGameRequest();
+        request.setTitle("New Title");
+        request.setDescription("New Desc");
+        request.setPriceProposed(new java.math.BigDecimal("99.99"));
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(gameRepository.save(any(Game.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        GameResponse response = gameService.updateGame(gameId, request, devUser.getEmail());
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTitle()).isEqualTo("New Title");
+    }
+
+    @Test
+    void updateGame_ShouldThrowException_WhenCategoryNotFound() {
+        UUID catId = UUID.randomUUID();
+        UpdateGameRequest request = new UpdateGameRequest();
+        request.setCategoryId(catId);
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(categoryRepository.findById(catId)).thenReturn(Optional.empty());
+
+        assertThrows(AppException.class, () ->
+                gameService.updateGame(gameId, request, devUser.getEmail())
+        );
+    }
+
+    @Test
+    void clearGameMedia_ShouldDeleteMediaRecordsAndFiles() {
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId)).thenReturn(List.of());
+
+        gameService.clearGameMedia(gameId, "video", devUser.getEmail());
+
+        verify(mediaRepository).findByGame_IdOrderByCreatedAtDesc(gameId);
+    }
+
+    @Test
+    void acceptBotInvitation_ShouldCallGitHubRepoService() {
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gitHubRepoService.acceptBotInvitation("http://github.com/repo")).thenReturn(true);
+
+        boolean result = gameService.acceptBotInvitation("http://github.com/repo", devUser.getEmail());
+
+        assertThat(result).isTrue();
+        verify(gitHubRepoService).acceptBotInvitation("http://github.com/repo");
+    }
+
+    @Test
+    void getBotUsername_ShouldReturnString() {
+        when(gitHubRepoService.getBotUsername()).thenReturn("godot-bot");
+
+        String bot = gameService.getBotUsername();
+
+        assertThat(bot).isEqualTo("godot-bot");
+        verify(gitHubRepoService).getBotUsername();
+    }
+
+    @Test
+    void submitGameRepo_ShouldSuccess_WhenCleanGodotProject() {
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        doNothing().when(gitHubRepoService).verifyOwnership(devUser, "http://github.com/repo");
+        when(gitHubRepoService.checkAccess("http://github.com/repo")).thenReturn(com.godotlaunch.backend.service.GitHubRepoService.RepoAccess.PUBLIC);
+        when(gitHubRepoService.getCloneToken("http://github.com/repo")).thenReturn(null);
+
+        SourceProcessResult processRes = new SourceProcessResult();
+        processRes.setClean(true);
+        processRes.setScanned(true);
+        processRes.setGodotProject(true);
+        processRes.setCommitSha("sha123");
+        processRes.setBundleHash("hash123");
+        processRes.setBundleBase64(Base64.getEncoder().encodeToString("dummy-zip".getBytes()));
+        when(sourceProcessingClient.process(eq("http://github.com/repo"), any(), eq("main"))).thenReturn(processRes);
+
+        when(sourceSnapshotRepository.saveAndFlush(any(SourceSnapshot.class))).thenAnswer(i -> {
+            SourceSnapshot s = i.getArgument(0);
+            s.setId(UUID.randomUUID());
+            return s;
+        });
+        when(sourceSnapshotRepository.save(any(SourceSnapshot.class))).thenAnswer(i -> i.getArgument(0));
+        when(seaweedFsService.uploadWithKey(any(), anyString())).thenReturn("http://seaweed/bundle.zip");
+
+        gameService.submitGameRepo(gameId, "http://github.com/repo", "main", devUser.getEmail());
+
+        verify(gameRepository).save(any(Game.class));
+        verify(sourceSnapshotRepository, times(1)).saveAndFlush(any(SourceSnapshot.class));
+        verify(sourceSnapshotRepository, times(1)).save(any(SourceSnapshot.class));
+    }
+
+    @Test
+    void submitGameRepo_ShouldThrowException_WhenMalwareDetected() {
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        doNothing().when(gitHubRepoService).verifyOwnership(devUser, "http://github.com/repo");
+        when(gitHubRepoService.checkAccess("http://github.com/repo")).thenReturn(com.godotlaunch.backend.service.GitHubRepoService.RepoAccess.PUBLIC);
+        when(gitHubRepoService.getCloneToken("http://github.com/repo")).thenReturn(null);
+
+        SourceProcessResult processRes = new SourceProcessResult();
+        processRes.setClean(false);
+        processRes.setScanned(true);
+        processRes.setGodotProject(true);
+        processRes.setCommitSha("sha123");
+        processRes.setBundleHash("hash123");
+        when(sourceProcessingClient.process(eq("http://github.com/repo"), any(), eq("main"))).thenReturn(processRes);
+
+        when(sourceSnapshotRepository.saveAndFlush(any(SourceSnapshot.class))).thenAnswer(i -> {
+            SourceSnapshot s = i.getArgument(0);
+            s.setId(UUID.randomUUID());
+            return s;
+        });
+
+        assertThrows(AppException.class, () ->
+                gameService.submitGameRepo(gameId, "http://github.com/repo", "main", devUser.getEmail())
+        );
+    }
+
+    @Test
+    void submitGameRepo_ShouldThrowException_WhenNotGodotProject() {
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        doNothing().when(gitHubRepoService).verifyOwnership(devUser, "http://github.com/repo");
+        when(gitHubRepoService.checkAccess("http://github.com/repo")).thenReturn(com.godotlaunch.backend.service.GitHubRepoService.RepoAccess.PUBLIC);
+        when(gitHubRepoService.getCloneToken("http://github.com/repo")).thenReturn(null);
+
+        SourceProcessResult processRes = new SourceProcessResult();
+        processRes.setClean(true);
+        processRes.setScanned(true);
+        processRes.setGodotProject(false);
+        processRes.setCommitSha("sha123");
+        processRes.setBundleHash("hash123");
+        when(sourceProcessingClient.process(eq("http://github.com/repo"), any(), eq("main"))).thenReturn(processRes);
+
+        assertThrows(AppException.class, () ->
+                gameService.submitGameRepo(gameId, "http://github.com/repo", "main", devUser.getEmail())
+        );
+    }
+
+    @Test
+    void uploadWebDemo_ShouldSuccess_WhenValidZip() throws Exception {
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
+            zos.putNextEntry(new java.util.zip.ZipEntry("index.html"));
+            zos.write("<html></html>".getBytes());
+            zos.closeEntry();
+
+            zos.putNextEntry(new java.util.zip.ZipEntry("game.js"));
+            zos.write("console.log()".getBytes());
+            zos.closeEntry();
+
+            zos.putNextEntry(new java.util.zip.ZipEntry("game.wasm"));
+            zos.write(new byte[]{0, 97, 115, 109});
+            zos.closeEntry();
+
+            zos.putNextEntry(new java.util.zip.ZipEntry("game.pck"));
+            zos.write(new byte[]{1, 2, 3});
+            zos.closeEntry();
+        }
+        byte[] zipBytes = baos.toByteArray();
+
+        org.springframework.web.multipart.MultipartFile mockFile = mock(org.springframework.web.multipart.MultipartFile.class);
+        when(mockFile.getInputStream()).thenAnswer(inv -> new java.io.ByteArrayInputStream(zipBytes));
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(clamAVService.scanStream(any())).thenReturn(true);
+        when(seaweedFsService.getFileUrl(any())).thenReturn("http://seaweed/game/web_demo/uuid/index.html");
+
+        gameService.uploadWebDemo(gameId, mockFile, devUser.getEmail());
+
+        verify(gameRepository).save(any(Game.class));
+    }
+
+    @Test
+    void streamWebDemoFile_ShouldSetHeadersAndStreamFile() throws Exception {
+        UUID gameId = UUID.randomUUID();
+        when(gameRepository.existsById(gameId)).thenReturn(true);
+        byte[] mockBytes = "file-content".getBytes();
+        when(seaweedFsService.getObjectStream(anyString())).thenReturn(new java.io.ByteArrayInputStream(mockBytes));
+
+        jakarta.servlet.http.HttpServletResponse mockResponse = mock(jakarta.servlet.http.HttpServletResponse.class);
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        when(mockResponse.getOutputStream()).thenReturn(new jakarta.servlet.ServletOutputStream() {
+            @Override
+            public boolean isReady() { return true; }
+            @Override
+            public void setWriteListener(jakarta.servlet.WriteListener writeListener) {}
+            @Override
+            public void write(int b) { baos.write(b); }
+        });
+
+        gameService.streamWebDemoFile(gameId, "version123/index.html", mockResponse);
+
+        verify(mockResponse).setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+        verify(mockResponse).setHeader("Cross-Origin-Opener-Policy", "same-origin");
+        verify(mockResponse).setContentType("text/html");
+        assertThat(baos.toByteArray()).isEqualTo(mockBytes);
+    }
+
+    @Test
+    void getPresignedUploadUrl_ShouldReturnUrl_ForVariousFileTypes() {
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(seaweedFsService.generatePresignedUploadUrl(anyString(), anyString())).thenReturn("http://presigned-url");
+
+        String urlThumbnail = gameService.getPresignedUploadUrl(gameId, "thumbnail", "image/png", devUser.getEmail());
+        String urlScreenshot = gameService.getPresignedUploadUrl(gameId, "screenshot", "image/png", devUser.getEmail());
+        String urlVideo = gameService.getPresignedUploadUrl(gameId, "video", "video/mp4", devUser.getEmail());
+        String urlZip = gameService.getPresignedUploadUrl(gameId, "zip", "application/zip", devUser.getEmail());
+
+        assertThat(urlThumbnail).isEqualTo("http://presigned-url");
+        assertThat(urlScreenshot).isEqualTo("http://presigned-url");
+        assertThat(urlVideo).isEqualTo("http://presigned-url");
+        assertThat(urlZip).isEqualTo("http://presigned-url");
+    }
+
+    @Test
+    void confirmUploadComplete_ShouldHandleThumbnailAndMedia() {
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(seaweedFsService.getFileUrl("new-key")).thenReturn("http://seaweed/new-key");
+
+        // Thumbnail
+        gameService.confirmUploadComplete(gameId, "thumbnail", "new-key", devUser.getEmail());
+        verify(gameRepository, times(1)).save(any(Game.class));
+
+        // Screenshot
+        gameService.confirmUploadComplete(gameId, "screenshot", "new-key", devUser.getEmail());
+        verify(mediaRepository, times(1)).save(any(com.godotlaunch.backend.entity.Media.class));
+
+        // Other/zip
+        gameService.confirmUploadComplete(gameId, "zip", "new-key", devUser.getEmail());
+        verify(asyncVirusScanService).scanAndProcessGame(eq(gameId), eq("new-key"));
+    }
+
+    @Test
+    void uploadGameMedia_ShouldHandleThumbnailAndVideo() throws Exception {
+        org.springframework.web.multipart.MultipartFile mockFile = mock(org.springframework.web.multipart.MultipartFile.class);
+        when(mockFile.getSize()).thenReturn(100L);
+        when(mockFile.getOriginalFilename()).thenReturn("test.png");
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(seaweedFsService.uploadWithKey(any(), anyString())).thenReturn("http://seaweed/uploaded-key");
+
+        // Thumbnail
+        String key = gameService.uploadGameMedia(gameId, "thumbnail", mockFile, devUser.getEmail());
+        assertThat(key).startsWith("games/");
+        verify(gameRepository).save(any(Game.class));
+    }
+
+    @Test
+    void deleteGameMediaByUrl_ShouldDeleteMediaRecordAndStorageObject() {
+        com.godotlaunch.backend.entity.Media m = new com.godotlaunch.backend.entity.Media();
+        m.setId(UUID.randomUUID());
+        m.setMediaType("image");
+        m.setMediaUrl("http://seaweed/godotlaunch/games/123/screenshots/key1.png");
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId)).thenReturn(List.of(m));
+
+        gameService.deleteGameMediaByUrl(gameId, "http://seaweed/godotlaunch/games/123/screenshots/key1.png", devUser.getEmail());
+
+        verify(mediaRepository).delete(m);
+        verify(seaweedFsService).deleteObject("games/123/screenshots/key1.png");
     }
 }
