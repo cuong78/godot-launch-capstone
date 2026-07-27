@@ -1,213 +1,409 @@
-# 06. Plagiarism Detection (Module thứ 5 của AI Review)
+# 06. AI Review và Plagiarism Detection
 
-> Bối cảnh: [05. AI Review](05-ai-review-plan.md) có 4 tiêu chí (chất lượng code, media
-> khớp game, NSFW, mô tả đúng sự thật) — cả 4 đều là kiểm tra **nội tại** (game này có
-> tự nhất quán không), KHÔNG có bước nào so sánh với sản phẩm KHÁC trong hệ thống.
-> → **Không phát hiện được đạo văn/đạo nhái**, chỉ dựng lại được bằng chứng SAU KHI
-> đã có người tố cáo (qua `SourceCommit` + `Dispute`).
->
-> Module này bổ sung khả năng **chủ động phát hiện** giống nhau giữa 2 sản phẩm,
-> chạy ngay lúc submit — không chờ ai report.
->
-> Vị trí trong luồng: nối tiếp bước "AI review" trong [00. Tổng quan nghiệp vụ](00-flow-overview.md) #2 (push game)
-> — chạy song song/sau 4 tiêu chí hiện có, cùng 1 lần submit.
+> Tài liệu này mô tả luồng tổng thể khi developer submit source Game, từ GitHub
+> đến khi admin quyết định. AI Review và Plagiarism Detection dùng chung đúng
+> một `SourceSnapshot` bất biến, nhưng lưu kết quả ở các bảng khác nhau.
 
----
+## 1. Mục tiêu và trạng thái triển khai
 
-## 0. Phân biệt với những gì ĐÃ CÓ (tránh làm trùng)
+AI Review trả lời câu hỏi nội tại: source, media, mô tả, category và tag của
+chính Game có nhất quán hay không. Plagiarism Detection trả lời câu hỏi liên sản
+phẩm: snapshot mới có giống bất thường với snapshot của Game khác hay không.
 
-| Đã có | Vai trò | Có phát hiện đạo văn không |
+Hai module được gộp vào cùng luồng submit, không gộp vào cùng entity:
+
+| Thành phần | Vai trò | Trạng thái |
 |---|---|---|
-| `AiReviewReport` (4 tiêu chí) | Game này có tự nhất quán, sạch, đúng mô tả không | Không — không so với sản phẩm khác |
-| `SourceCommit` + `Dispute` | Dựng lại timeline SAU KHI có người tố cáo | Không tự động — chỉ chạy khi **đã có** Dispute, và chỉ đối chiếu context nội tại (code có khớp mô tả tại thời điểm đó không), không so 2 game với nhau |
-| **Module này (mới)** | **Chủ động** so sánh sản phẩm mới nộp với **toàn bộ kho đã có**, chạy lúc submit | **Có** — đây là mục đích chính |
+| `SourceSnapshot` | Bản source ZIP bất biến của một lần submit | Đã triển khai |
+| `AiReviewReport` | Kết quả đánh giá nội tại một snapshot | Đã triển khai |
+| `CodeEmbedding` | Vector code của đúng một snapshot và model/version | Đã triển khai |
+| `PlagiarismFlag` | Kết quả so sánh hai embedding/snapshot | Đã triển khai |
+| Trạng thái theo snapshot | Phân biệt pending/running/completed/failed | Đã triển khai bằng migration V11 |
+| Admin review | Xem report/flag và quyết định cuối | Đã triển khai |
 
-Module này không thay thế 2 cái trên — nó là lớp phòng ngừa **trước khi** cần tới Dispute. Nếu phát hiện giống nhau bất thường ngay lúc submit, admin có thể chặn sớm, không cần chờ nạn nhân tự phát hiện và report.
+Nguyên tắc bắt buộc:
 
----
+- GitHub repository chỉ được clone một lần trong mỗi lần submit.
+- Virus scan phải sạch trước khi chạy AI và plagiarism.
+- AI và plagiarism tải lại đúng `SourceSnapshot.bundleUrl`, không clone GitHub lần hai.
+- `bundleHash` phải được xác minh sau khi tải ZIP.
+- AI/plagiarism chỉ đề xuất; admin là người approve/reject cuối cùng.
 
-## 1. Ba câu hỏi cần trả lời rõ (theo đúng yêu cầu review)
+## 2. Mermaid sequence diagram tổng thể
 
-### 1.1 Phạm vi check (scope)
+Đoạn Mermaid dưới đây có thể render trực tiếp trên GitHub.
 
-**Đối tượng so sánh**: game/asset mới submit ↔ **toàn bộ** game/asset đã tồn tại trong hệ thống (không giới hạn theo category, vì đạo nhái có thể đổi tên/đổi thể loại để né).
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Developer
+    participant FE as Frontend
+    participant BE as Spring Boot
+    participant GH as GitHub
+    participant PY as Python AI Service
+    participant FS as SeaweedFS
+    participant DB as PostgreSQL + pgvector
+    actor Admin
 
-**Loại nội dung được đưa vào scope**:
-| Loại | Vào scope? | Vì sao |
-|---|---|---|
-| Source code (`.gd`, `.cs`, cấu trúc scene) | Có | Trọng tâm — đạo nhái code là rủi ro pháp lý lớn nhất |
-| Asset media (ảnh, model, audio marketplace) | Có (giai đoạn 2) | Asset cũng bị đạo nhái (copy model 3D, texture) |
-| Mô tả/text | Không (giai đoạn 1) | Rủi ro thấp hơn, mô tả trùng không chứng minh được đạo code |
-| Game đã bị `rejected`/gỡ khỏi hệ thống | Có, vẫn giữ trong scope so sánh | Đạo nhái có thể re-submit sau khi bản gốc bị gỡ |
+    Developer->>FE: Tạo Game draft
+    FE->>BE: Lưu Game
+    BE->>DB: INSERT Game(status=draft)
 
-**Thời điểm chạy**: lúc submit (cùng lúc với 4 tiêu chí AI review hiện có) — **không** chạy lại định kỳ cho toàn bộ kho (tốn kém, không cần thiết vì mỗi game chỉ submit vài lần).
+    Developer->>FE: Submit repoUrl + branch
+    FE->>BE: POST /games/{gameId}/submit-repo
+    BE->>GH: Xác minh owner và quyền truy cập
+    GH-->>BE: Repository access hợp lệ
 
-### 1.2 Nội dung check (so sánh cái gì, bằng cách nào)
+    BE->>PY: POST /source/process(repoUrl, token, branch)
+    PY->>GH: Clone repository đúng một lần
+    GH-->>PY: Source tại commitSha
+    PY->>PY: Virus scan + Godot check + secret scan
+    PY->>PY: Tạo ZIP + bundleHash
+    PY-->>BE: SourceProcessResult + bundleBase64
 
-Không so sánh code dạng text thô (dễ né bằng đổi tên biến/format lại) — dùng **embedding vector** để bắt được sự tương đồng về cấu trúc/logic, giống hệt pattern đã dùng cho `FaceEmbedding` (128-dim, pgvector, ivfflat index):
+    alt Có malware hoặc không phải Godot project
+        BE->>DB: Cập nhật Game rejected khi phù hợp
+        BE-->>FE: Trả lỗi submit
+    else Source hợp lệ và sạch
+        BE->>DB: INSERT SourceSnapshot metadata
+        DB-->>BE: snapshotId
+        BE->>FS: Upload source-bundle.zip
+        FS-->>BE: bundleUrl
+        BE->>DB: UPDATE SourceSnapshot.bundleUrl
+        BE->>DB: UPDATE Game.status = pending
 
-```
-Code mới submit
-  → sample thông minh (cây thư mục + file chính, TÁI DÙNG cách sample của
-    05-ai-review-plan.md mục 6.1 — không gửi cả repo)
-  → CodeBERT (hoặc tương đương) → vector embedding
-  → so cosine similarity với TOÀN BỘ embedding đã lưu trong kho
-  → top-N kết quả giống nhất → nếu vượt ngưỡng → flag
-```
+        par AI Review nội tại - đã triển khai
+            BE->>PY: /ai/review(snapshotId, bundleUrl, bundleHash)
+            PY->>FS: Tải source-bundle.zip
+            FS-->>PY: Immutable ZIP
+            PY->>PY: Xác minh hash và phân tích code/media/text
+            PY-->>BE: Scores + recommendation + flags
+            BE->>DB: INSERT AiReviewReport(gameId, snapshotId)
+        and Plagiarism Detection - đã triển khai
+            BE->>PY: /ai/code-embedding(snapshotId, bundleUrl, bundleHash)
+            PY->>FS: Tải cùng source-bundle.zip
+            FS-->>PY: Immutable ZIP
+            PY->>PY: Xác minh hash + sample code + sinh embedding
+            PY-->>BE: Embedding + modelName + modelVersion
+            BE->>DB: INSERT CodeEmbedding(gameId, snapshotId, vector)
+            BE->>DB: pgvector top-N, loại chính Game hiện tại
+            DB-->>BE: Các embedding tương đồng
+            loop Mỗi kết quả >= reviewThreshold
+                BE->>DB: INSERT PlagiarismFlag với hai Game, Snapshot và Embedding
+            end
+        end
 
-Đây chính là phần mở rộng P3 trong `05-ai-review-plan.md`: CodeBERT embedding → lưu pgvector → phục vụ similarity. Module này hiện thực hóa nhánh chống đạo nhái đó.
+        Admin->>BE: Mở Game pending
+        BE->>DB: Đọc Game + Snapshot + AI report + plagiarism flags
+        DB-->>BE: Toàn bộ bằng chứng kiểm duyệt
+        BE-->>Admin: Hiển thị report, similarity và Game đối chiếu
 
-**Với Asset (giai đoạn 2)**: tái dùng CLIP embedding đã có sẵn cho media-match (tiêu chí 2 của AI review) — so ảnh/model mới với toàn bộ ảnh đã lưu, cùng cơ chế vector similarity.
-
-### 1.3 Ngưỡng vi phạm (threshold)
-
-Không dùng 1 ngưỡng nhị phân duy nhất (giống/không giống) — dùng **3 vùng**, giống cách `AiRecommendation` đã phân approve/review/reject:
-
-| Similarity score | Ý nghĩa | Hành động |
-|---|---|---|
-| < 70% | Không đáng ngờ | Không flag, submit tiếp tục bình thường |
-| 70% – 90% | Đáng ngờ — có thể trùng do dùng chung template/plugin Godot phổ biến (false positive dễ xảy ra) | Flag `review`, admin xem cụ thể phần nào giống, tự quyết định |
-| > 90% | Rất đáng ngờ — gần như chắc chắn copy | Flag `reject` đề xuất, đính kèm bằng chứng (game nào bị nghi giống, % giống) cho admin xem — **admin vẫn quyết định cuối**, không auto-reject |
-
-Ngưỡng cụ thể (70/90) là điểm khởi đầu — cần tinh chỉnh dựa trên dữ liệu thật sau khi chạy thử, theo kế hoạch chất lượng ở mục 14 của `05-ai-review-plan.md`.
-
-**Xử lý false positive quan trọng**: nhiều game Godot dùng chung boilerplate (player controller mẫu, plugin phổ biến từ Asset Library chính thức của Godot) → sẽ luôn có % giống nền nhất định. Threshold 70% ở vùng "review" (không tự reject) chính là để admin lọc trường hợp này, tránh chặn oan.
-
----
-
-## 2. Entity (thiết kế — CHƯA implement)
-
-### `CodeEmbedding` — vector đại diện cho 1 lần submit
-
-```java
-@Entity
-@Table(name = "code_embeddings")
-public class CodeEmbedding {
-
-    @Id
-    private UUID id;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "game_id", nullable = false)
-    private Game game;
-
-    // Vector CodeBERT (hoặc model tương đương) — chiều cụ thể tùy model chọn
-    // (giống FaceEmbedding: tách bảng riêng vì cần index ivfflat chuyên cho
-    // cosine similarity, không gộp vào Game).
-    @Column(name = "embedding", columnDefinition = "vector(768)")
-    private PGvector embedding;
-
-    @Column(name = "created_at", insertable = false, updatable = false)
-    private Instant createdAt;
-}
-```
-
-Không unique theo `game_id` (khác `FaceEmbedding`) — 1 game có thể re-submit nhiều lần (nhiều version), mỗi lần submit là 1 embedding mới để so sánh, giữ lại lịch sử.
-
-### `PlagiarismFlag` — kết quả phát hiện giống nhau
-
-```java
-@Entity
-@Table(name = "plagiarism_flags")
-public class PlagiarismFlag {
-
-    @Id
-    private UUID id;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "game_id", nullable = false)
-    private Game game;              // game MỚI submit, bị nghi ngờ
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "matched_game_id", nullable = false)
-    private Game matchedGame;       // game ĐÃ CÓ, giống với game trên
-
-    @Column(name = "similarity_score", nullable = false)
-    private Float similarityScore;  // 0.0 - 1.0, cosine similarity
-
-    @Enumerated(EnumType.STRING)
-    private PlagiarismSeverity severity;   // review | reject (theo ngưỡng mục 1.3)
-
-    @Column(name = "reviewed_by_admin", nullable = false)
-    private boolean reviewedByAdmin = false;
-
-    @Column(name = "created_at", insertable = false, updatable = false)
-    private Instant createdAt;
-}
+        alt Admin approve
+            Admin->>BE: Approve Game
+            BE->>DB: UPDATE Game approved/published
+        else Admin reject
+            Admin->>BE: Reject Game + lý do
+            BE->>DB: UPDATE Game rejected
+        end
+    end
 ```
 
-Tách riêng khỏi `AiReviewReport.flags` (JSONB tự do hiện có) vì đây là quan hệ **game↔game** có cấu trúc rõ (2 FK), cần query được ("game nào từng bị nghi giống game X") — JSONB tự do không làm được việc này hiệu quả.
+Trong nhánh `par`, hai module độc lập nhưng phải nhận cùng `snapshotId`:
 
-### Enum `PlagiarismSeverity`
-```java
-public enum PlagiarismSeverity {
-    review,   // 70-90%
-    reject    // >90%
-}
+```text
+AiReviewReport.source_snapshot_id
+    = CodeEmbedding.source_snapshot_id
+    = SourceSnapshot.id của lần submit
 ```
 
----
+## 3. Mermaid data lineage và entity relationship
 
-## 3. Luồng tích hợp (thiết kế — CHƯA implement)
+```mermaid
+flowchart LR
+    G[Game]
+    S[SourceSnapshot<br/>commitSha<br/>bundleHash<br/>bundleUrl]
+    A[AiReviewReport<br/>đánh giá nội tại]
+    E1[CodeEmbedding mới<br/>snapshot + model/version]
+    E2[CodeEmbedding đối chiếu<br/>snapshot + model/version]
+    F[PlagiarismFlag<br/>similarity + thresholds<br/>hai phía so sánh]
+    MG[Matched Game]
+    MS[Matched SourceSnapshot]
+    ADMIN[Admin decision]
 
+    G -->|mỗi lần submit tạo mới| S
+    S -->|cùng bundle bất biến| A
+    S -->|sinh vector| E1
+    MG --> MS
+    MS --> E2
+    E1 -->|cosine similarity| F
+    E2 -->|cosine similarity| F
+    A --> ADMIN
+    F --> ADMIN
+    G --> ADMIN
 ```
-Developer submit game
-  → clone → virus scan → SẠCH
-  → snapshot (SourceSnapshot) + ghi SourceCommit
-  → AI REVIEW (4 tiêu chí hiện có, 05-ai-review-plan.md)
-  → PLAGIARISM CHECK (module này):
-      1. Sample code (tái dùng cách sample mục 6.1 trong 05-ai-review-plan.md)
-      2. CodeBERT embedding → lưu CodeEmbedding
-      3. Query top-N similarity trong pgvector (toàn bộ CodeEmbedding đã có)
-      4. Với mỗi kết quả > 70% → tạo PlagiarismFlag
-  → ADMIN dashboard: hiện AI report (4 tiêu chí) + Plagiarism flags (nếu có)
-      → admin xem % giống + game bị nghi giống + tự quyết định
-      → admin APPROVE / REJECT / yêu cầu giải trình     ← QUYẾT ĐỊNH CUỐI
+
+```mermaid
+erDiagram
+    GAME ||--o{ SOURCE_SNAPSHOT : has
+    GAME ||--o{ AI_REVIEW_REPORT : receives
+    SOURCE_SNAPSHOT ||--o{ AI_REVIEW_REPORT : analyzed_by
+    GAME ||--o{ CODE_EMBEDDING : owns
+    SOURCE_SNAPSHOT ||--o{ CODE_EMBEDDING : produces
+    GAME ||--o{ PLAGIARISM_FLAG : submitted_side
+    GAME ||--o{ PLAGIARISM_FLAG : matched_side
+    SOURCE_SNAPSHOT ||--o{ PLAGIARISM_FLAG : submitted_snapshot
+    SOURCE_SNAPSHOT ||--o{ PLAGIARISM_FLAG : matched_snapshot
+    CODE_EMBEDDING ||--o{ PLAGIARISM_FLAG : submitted_vector
+    CODE_EMBEDDING ||--o{ PLAGIARISM_FLAG : matched_vector
+
+    GAME {
+        uuid id PK
+        string status
+        string github_repo_url
+        string github_branch
+    }
+
+    SOURCE_SNAPSHOT {
+        uuid id PK
+        uuid game_id FK
+        string commit_sha
+        string bundle_hash
+        text bundle_url
+        boolean virus_clean
+        boolean virus_scanned
+        boolean is_godot_project
+        jsonb secrets_found
+        string ai_review_status
+        string plagiarism_status
+        text ai_review_error
+        text plagiarism_error
+    }
+
+    AI_REVIEW_REPORT {
+        uuid id PK
+        uuid game_id FK
+        uuid source_snapshot_id FK
+        int code_quality_score
+        int media_match_score
+        int description_match_score
+        string overall_recommendation
+        jsonb flags
+    }
+
+    CODE_EMBEDDING {
+        uuid id PK
+        uuid game_id FK
+        uuid source_snapshot_id FK
+        vector embedding
+        string model_name
+        string model_version
+        timestamp created_at
+    }
+
+    PLAGIARISM_FLAG {
+        uuid id PK
+        uuid game_id FK
+        uuid matched_game_id FK
+        uuid source_snapshot_id FK
+        uuid matched_source_snapshot_id FK
+        uuid code_embedding_id FK
+        uuid matched_code_embedding_id FK
+        float similarity_score
+        string model_name
+        string model_version
+        float review_threshold
+        float reject_threshold
+        string severity
+        boolean reviewed_by_admin
+    }
 ```
 
-Nguyên tắc giữ nguyên như AI review chính: **AI chỉ đề xuất, không tự động reject**. Kể cả similarity 99%, vẫn chỉ là flag cho admin xem — có thể 2 game hợp pháp dùng chung 1 template được cấp phép (asset store chính thức của Godot).
+## 4. Luồng chi tiết theo entity
 
----
+| Bước | Xử lý | Entity đọc | Entity ghi |
+|---:|---|---|---|
+| 1 | Developer tạo draft | `User` | `Game` |
+| 2 | Submit GitHub repo + branch | `Game`, `User` | Chưa ghi entity AI |
+| 3 | Xác minh ownership/access | `Game`, `User` | Không |
+| 4 | Python clone repository đúng một lần | Không | Không |
+| 5 | Virus/Godot/secret scan | Không | Chuẩn bị snapshot |
+| 6 | Tính `commitSha`, `bundleHash`, tạo ZIP | Không | Chuẩn bị snapshot |
+| 7 | Lưu metadata snapshot để lấy UUID | `Game` | `SourceSnapshot` |
+| 8 | Upload ZIP theo snapshotId | `SourceSnapshot` | `SourceSnapshot.bundleUrl` |
+| 9 | Source sạch và bundle đã lưu | `Game` | `Game.status = pending` |
+| 10A | AI tải và xác minh bundle | `Game`, `SourceSnapshot`, `Media`, `Category`, `Tag` | Không |
+| 11A | AI phân tích nội tại | Dữ liệu bước 10A | Không |
+| 12A | Lưu report | `Game`, `SourceSnapshot` | `AiReviewReport` |
+| 10B | Plagiarism tải và xác minh cùng bundle | `Game`, `SourceSnapshot` | Không |
+| 11B | Sample code và sinh vector | `SourceSnapshot` | `CodeEmbedding` |
+| 12B | Query top-N cosine similarity | `CodeEmbedding` | Không |
+| 13B | Kết quả vượt ngưỡng review | Hai phía Game/Snapshot/Embedding | `PlagiarismFlag` |
+| 14 | Admin mở trang kiểm duyệt | Tất cả entity trên | Không |
+| 15 | Admin quyết định | `Game`, report và flags | `Game`, `PlagiarismFlag.reviewedByAdmin` |
 
-## 4. Tasks tổng hợp
+## 5. Trách nhiệm của từng entity
 
-### Giai đoạn 1 (code, ưu tiên — theo đúng bài toán hội đồng hỏi)
-- [ ] Chọn model embedding code (CodeBERT hoặc tương đương nhẹ hơn, cân nhắc chi phí self-host)
-- [ ] Entity `CodeEmbedding` + `PlagiarismFlag` + enum `PlagiarismSeverity`
-- [ ] Migration tạo 2 bảng + index `ivfflat` cho `code_embeddings.embedding`
-- [ ] Endpoint `/ai/plagiarism-check` (python service) — nhận code sample, trả embedding + top-N similarity
-- [ ] Backend: gọi endpoint sau AI review, lưu `PlagiarismFlag` nếu vượt ngưỡng 70%
-- [ ] Admin dashboard: hiện danh sách flag (game bị nghi giống + % + xem 2 code side-by-side)
+### `SourceSnapshot`
 
-### Giai đoạn 2 (mở rộng sang Asset)
-- [ ] Tái dùng CLIP embedding đã có (media-match) để so ảnh/model asset mới với kho ảnh đã có
-- [ ] `PlagiarismFlag` mở rộng nhận `asset_id` thay vì chỉ `game_id` (hoặc tách entity riêng nếu cấu trúc khác nhau nhiều)
+Một bản chụp source bất biến cho một lần submit:
 
-### Giai đoạn 3 (tinh chỉnh)
-- [ ] Tinh chỉnh ngưỡng 70/90 dựa dữ liệu thật
-- [ ] Xử lý false positive: nhận diện boilerplate/plugin phổ biến của Godot (whitelist các template chính thức) để không flag nhầm
-- [ ] Cân nhắc so sánh cả với source bên ngoài hệ thống (GitHub public) — phạm vi lớn hơn, chi phí cao hơn, để sau
+- `commitSha`: commit Git chính xác đã clone.
+- `bundleHash`: SHA-256 canonical từ path và hash của từng file.
+- `bundleUrl`: vị trí ZIP trên storage:
 
----
+```text
+games/{gameId}/snapshots/{snapshotId}/source-bundle.zip
+```
 
-## 5. Rủi ro & lưu ý
+- Kết quả virus, Godot project và secret scan.
 
-| Rủi ro | Giảm thiểu |
+Mỗi lần re-submit tạo snapshot mới; không cập nhật nội dung snapshot cũ.
+
+### `AiReviewReport`
+
+Lưu đánh giá nội tại và tham chiếu trực tiếp snapshot đã phân tích:
+
+```text
+AiReviewReport -> Game
+AiReviewReport -> SourceSnapshot
+```
+
+Không dùng JSON `flags` của report để lưu plagiarism vì plagiarism là quan hệ
+có cấu trúc giữa hai Game/snapshot.
+
+### `CodeEmbedding`
+
+Lưu vector code của một snapshot:
+
+```text
+CodeEmbedding
+  -> Game
+  -> SourceSnapshot
+  -> modelName + modelVersion
+  -> vector(768)
+```
+
+Ràng buộc unique:
+
+```text
+(source_snapshot_id, model_name, model_version)
+```
+
+Một snapshot có thể được tính lại bằng model mới, nhưng không được tạo trùng
+embedding của cùng model/version.
+
+### `PlagiarismFlag`
+
+Lưu đầy đủ hai phía của phép so sánh:
+
+| Phía mới submit | Phía được đối chiếu |
 |---|---|
-| False positive: nhiều game dùng chung boilerplate Godot phổ biến | Ngưỡng "review" (70-90%) không tự reject — admin xem lý do giống nhau trước khi quyết định |
-| Né bằng cách đổi tên biến/format code | Dùng embedding (CodeBERT) thay vì so text thô — bắt được tương đồng cấu trúc/logic, không chỉ ký tự |
-| Chi phí tính embedding cho TOÀN BỘ kho mỗi lần submit mới | Chỉ tính embedding 1 lần lúc submit, lưu lại — so sánh là truy vấn vector (nhanh, không tính lại) |
-| Kho càng lớn, query similarity càng chậm | ivfflat index (đã dùng cho FaceEmbedding) tối ưu approximate nearest neighbor — chấp nhận được ở quy mô capstone |
-| Đạo nhái từ NGOÀI hệ thống (GitHub public, không phải từ GodotLaunch) | Ngoài phạm vi giai đoạn 1 — chỉ so trong nội bộ kho GodotLaunch trước |
+| `game_id` | `matched_game_id` |
+| `source_snapshot_id` | `matched_source_snapshot_id` |
+| `code_embedding_id` | `matched_code_embedding_id` |
 
----
+Ngoài ra lưu:
 
-## 6. Những gì ĐÃ CÓ (tái sử dụng)
+- `similarityScore`: cosine similarity từ `0.0` đến `1.0`.
+- `modelName`, `modelVersion`: model thực sự đã dùng cho cả hai vector.
+- `reviewThreshold`, `rejectThreshold`: ngưỡng tại đúng thời điểm chạy.
+- `severity`: `review` hoặc `reject`.
+- `reviewedByAdmin`: admin đã xử lý flag hay chưa.
 
-| Có sẵn | Dùng cho |
-|---|---|
-| pgvector + pattern `FaceEmbedding` | Mẫu thiết kế bảng embedding + ivfflat index cho `CodeEmbedding` |
-| Cách sample code (`05-ai-review-plan.md` mục 6.1) | Input cho bước tính embedding — không gửi cả repo |
-| CLIP pipeline (media-match) | Tái dùng cho Plagiarism giai đoạn 2 (so ảnh/asset) |
-| `python-face-service` (đã mở rộng cho AI review) | Thêm endpoint `/ai/plagiarism-check` vào cùng service |
-| Admin dashboard AI report | Mở rộng hiện thêm Plagiarism flags cạnh 4 tiêu chí hiện có |
+Composite foreign key của migration V10 bảo đảm hai chuỗi sau không bị ghép chéo:
+
+```text
+Game mới -> Snapshot mới -> Embedding mới
+Game cũ  -> Snapshot cũ  -> Embedding cũ
+```
+
+## 6. Quy tắc so sánh và threshold
+
+Khi query pgvector phải loại:
+
+- Chính embedding vừa tạo.
+- Embedding thuộc cùng `game_id`, tránh Game bị đánh dấu là đạo nhái chính phiên bản trước của nó.
+- Embedding sinh bởi model/version khác, vì vector từ hai model khác nhau không
+  nằm trong cùng không gian và không thể so cosine trực tiếp.
+
+Ngưỡng khởi đầu:
+
+| Similarity | Kết quả |
+|---:|---|
+| `< 0.70` | Không tạo flag |
+| `>= 0.70` và `< 0.90` | Tạo flag `review` |
+| `>= 0.90` | Tạo flag `reject` đề xuất |
+
+Không tự động reject Game, kể cả similarity rất cao. Admin cần xem khả năng hai
+Game cùng sử dụng template/plugin được cấp phép.
+
+## 7. Trạng thái xử lý và điều kiện để admin review
+
+Admin UI đọc trực tiếp trạng thái bền vững của snapshot:
+
+```text
+SourceSnapshot.aiReviewStatus
+SourceSnapshot.plagiarismStatus
+```
+
+Mỗi trạng thái nhận một trong bốn giá trị:
+
+```text
+pending -> running -> completed
+                   -> failed
+```
+
+Các trường lỗi và thời gian hoàn tất:
+
+```text
+aiReviewError
+aiReviewCompletedAt
+plagiarismError
+plagiarismCompletedAt
+```
+
+Do đó `plagiarismStatus = completed` và danh sách flag rỗng có nghĩa rõ ràng là
+đã kiểm tra thành công nhưng không có kết quả vượt ngưỡng. Trạng thái
+`completed` chỉ được ghi sau khi transaction lưu embedding/flags đã commit.
+
+## 8. Phạm vi và kế hoạch triển khai
+
+### Giai đoạn 1: source code Game
+
+- [x] `SourceSnapshot` bất biến và bundle path theo snapshot UUID.
+- [x] `AiReviewReport.sourceSnapshot`.
+- [x] `CodeEmbedding` gắn Game, SourceSnapshot và model/version.
+- [x] `PlagiarismFlag` giữ hai Game, snapshot, embedding và threshold.
+- [x] Migration V10 với constraint/index phục vụ audit.
+- [x] CodeBERT lazy-load; lưu revision Hugging Face thực tế trả về từ model.
+- [x] Trạng thái AI/plagiarism bền vững trên từng `SourceSnapshot`.
+- [x] Python endpoint `/ai/code-embedding` tải bundle và xác minh hash.
+- [x] Backend orchestration chạy sau khi transaction snapshot commit.
+- [x] Repository pgvector top-N, loại cùng Game và model/version khác.
+- [x] Admin overview API, polling trạng thái và UI xem plagiarism flags.
+
+### Giai đoạn 2: asset/media
+
+- [ ] Thiết kế embedding riêng phù hợp ảnh, model 3D và audio.
+- [ ] Không tái sử dụng trực tiếp schema Game hiện tại nếu quan hệ Asset khác đáng kể.
+- [ ] Chỉ chạy sau virus scan sạch và sau khi developer hoàn tất media/submit review.
+
+### Giai đoạn 3: chất lượng
+
+- [ ] Tinh chỉnh ngưỡng theo dữ liệu thật.
+- [ ] Whitelist boilerplate và plugin Godot phổ biến.
+- [ ] Lưu bằng chứng đoạn/file giống nhau để admin xem side-by-side.
+- [ ] Theo dõi false positive và model drift theo version.
+
+## 9. Quan hệ với `SourceCommit` và Dispute
+
+`SourceCommit` không thay thế `SourceSnapshot` hoặc plagiarism:
+
+- `SourceSnapshot`: bằng chứng source bất biến tại lần submit.
+- `CodeEmbedding`/`PlagiarismFlag`: phát hiện chủ động giữa nhiều sản phẩm.
+- `SourceCommit`: timeline Git nhẹ để hỗ trợ điều tra khi có dispute.
+- `Dispute`: quy trình xử lý khiếu nại sau khi phát sinh tranh chấp.
+
+Luồng submit không nên phụ thuộc vào `SourceCommit` nếu phần thu thập lịch sử
+commit chưa được triển khai. Tài liệu/diagram chỉ được đánh dấu bước này là đang
+chạy khi backend thực sự ghi `SourceCommit`.

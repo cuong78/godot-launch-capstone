@@ -79,6 +79,7 @@ public class GameServiceImpl implements GameService {
     private final GitHubRepoService gitHubRepoService;
     private final SourceProcessingClient sourceProcessingClient;
     private final SourceSnapshotRepository sourceSnapshotRepository;
+    private final com.godotlaunch.backend.repository.PlagiarismFlagRepository plagiarismFlagRepository;
     private final ObjectMapper objectMapper;
     private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
 
@@ -700,6 +701,7 @@ public class GameServiceImpl implements GameService {
                     "Game '" + game.getTitle() + "' approved by administrator (contract pending)."
             );
         }
+        markLatestPlagiarismFlagsReviewed(gameId);
     }
 
     @Override
@@ -742,6 +744,7 @@ public class GameServiceImpl implements GameService {
         }
 
         gameRepository.save(game);
+        markLatestPlagiarismFlagsReviewed(gameId);
 
         emailService.sendGameStatusNotification(
                 game.getCreator().getEmail(),
@@ -775,6 +778,11 @@ public class GameServiceImpl implements GameService {
         }
         
         return url;
+    }
+
+    private void markLatestPlagiarismFlagsReviewed(UUID gameId) {
+        sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(gameId)
+                .ifPresent(snapshot -> plagiarismFlagRepository.markReviewedBySnapshotId(snapshot.getId()));
     }
 
     @Override

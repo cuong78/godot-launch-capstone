@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   Bot, ShieldAlert, CheckCircle2, AlertTriangle, XCircle, RefreshCw,
-  Code2, ImageIcon, FileText, Eye, DollarSign, Percent, Tags,
+  Code2, ImageIcon, FileText, Eye, DollarSign, Percent, Tags, Search, Clock3,
 } from 'lucide-react';
 import { aiReviewApi } from '../../api/aiReviewApi';
-import { AiReviewReport, AiRecommendation } from '../../types';
+import {
+  AiReviewReport, AiRecommendation, GameReviewOverview, PlagiarismFlag,
+  ReviewProcessStatus,
+} from '../../types';
 
 interface Props {
   gameId?: string;
@@ -17,29 +20,35 @@ interface Props {
  */
 const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
   const [report, setReport] = useState<AiReviewReport | null>(null);
+  const [overview, setOverview] = useState<GameReviewOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [triggering, setTriggering] = useState(false);
   const [triggerSuccessMsg, setTriggerSuccessMsg] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = gameId
-        ? await aiReviewApi.getLatestForGame(gameId)
-        : itemId
-          ? await aiReviewApi.getLatestForItem(itemId)
-          : null;
+        ? await aiReviewApi.getGameOverview(gameId)
+        : itemId ? await aiReviewApi.getLatestForItem(itemId) : null;
       if (res && res.success) {
-        setReport(res.data);
+        if (gameId) {
+          const gameOverview = res.data as GameReviewOverview;
+          setOverview(gameOverview);
+          setReport(gameOverview.report || null);
+        } else {
+          setOverview(null);
+          setReport(res.data as AiReviewReport | null);
+        }
       } else {
         setError(res?.message || 'Không tải được báo cáo AI');
       }
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || 'Lỗi tải báo cáo AI');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -53,10 +62,21 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
           ? await aiReviewApi.triggerItemReview(itemId)
           : null;
       if (res && res.success) {
-        setTriggerSuccessMsg('Đang chạy AI Review trong nền. Hãy đợi khoảng 15 giây rồi bấm nút Tải lại ở trên.');
+        setTriggerSuccessMsg(gameId
+          ? 'Đã đưa AI Review và kiểm tra tương đồng source vào hàng xử lý.'
+          : 'Đã đưa AI Review vào hàng xử lý.');
+        if (gameId) {
+          setOverview((current) => current ? {
+            ...current,
+            aiReviewStatus: 'running',
+            plagiarismStatus: current.plagiarismStatus === 'completed' ? 'completed' : 'pending',
+            aiReviewError: null,
+            plagiarismError: null,
+          } : current);
+        }
         setTimeout(() => {
-          load();
-        }, 15000);
+          void load(true);
+        }, 1200);
       } else {
         setError(res?.message || 'Không thể kích hoạt AI Review');
       }
@@ -68,9 +88,21 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
   };
 
   useEffect(() => {
-    if (gameId || itemId) load();
+    if (gameId || itemId) void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, itemId]);
+
+  useEffect(() => {
+    if (!gameId || !overview) return;
+    const processing = overview.aiReviewStatus === 'running'
+      || overview.plagiarismStatus === 'running'
+      || Boolean(triggerSuccessMsg && (
+        overview.aiReviewStatus === 'pending' || overview.plagiarismStatus === 'pending'));
+    if (!processing) return;
+    const timer = window.setInterval(() => void load(true), 4000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, overview?.aiReviewStatus, overview?.plagiarismStatus, triggerSuccessMsg]);
 
   return (
     <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-950/10 p-4 space-y-3">
@@ -90,7 +122,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
             </button>
           )}
           <button
-            onClick={load}
+            onClick={() => void load()}
             className="p-1 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer"
             title="Tải lại"
           >
@@ -98,6 +130,10 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
           </button>
         </div>
       </div>
+
+      {gameId && overview?.sourceSnapshotId && (
+        <ReviewPipelineStatus overview={overview} />
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-slate-500 text-xs py-3">
@@ -225,6 +261,13 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
           </p>
         </>
       )}
+
+      {gameId && overview?.sourceSnapshotId && (
+        <PlagiarismPanel
+          status={overview.plagiarismStatus}
+          flags={overview.plagiarismFlags || []}
+        />
+      )}
     </div>
   );
 };
@@ -276,6 +319,92 @@ const NsfwChip: React.FC<{ flag: boolean }> = ({ flag }) => (
       {flag ? 'Phát hiện' : 'An toàn'}
     </div>
   </div>
+);
+
+const ReviewPipelineStatus: React.FC<{ overview: GameReviewOverview }> = ({ overview }) => (
+  <div className="rounded-lg border border-slate-200/70 dark:border-slate-800 bg-white/50 dark:bg-slate-950/30 p-3 space-y-2">
+    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+      <StatusBadge label="AI Review" status={overview.aiReviewStatus} />
+      <StatusBadge label="Đối chiếu source" status={overview.plagiarismStatus} />
+      {overview.commitSha && (
+        <span className="ml-auto font-mono text-[10px] text-slate-500" title={overview.commitSha}>
+          commit {overview.commitSha.slice(0, 8)}
+        </span>
+      )}
+    </div>
+    {overview.aiReviewError && (
+      <p className="text-[11px] text-rose-500 break-words">AI Review: {overview.aiReviewError}</p>
+    )}
+    {overview.plagiarismError && (
+      <p className="text-[11px] text-rose-500 break-words">Đối chiếu source: {overview.plagiarismError}</p>
+    )}
+  </div>
+);
+
+const StatusBadge: React.FC<{ label: string; status?: ReviewProcessStatus | null }> = ({ label, status }) => {
+  const normalized = status || 'pending';
+  const styles: Record<ReviewProcessStatus, string> = {
+    pending: 'border-slate-400/30 bg-slate-500/10 text-slate-500',
+    running: 'border-sky-500/30 bg-sky-500/10 text-sky-500',
+    completed: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500',
+    failed: 'border-rose-500/30 bg-rose-500/10 text-rose-500',
+  };
+  const labels: Record<ReviewProcessStatus, string> = {
+    pending: 'Chờ xử lý', running: 'Đang chạy', completed: 'Hoàn tất', failed: 'Thất bại',
+  };
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-semibold ${styles[normalized]}`}>
+      {normalized === 'running' ? <RefreshCw size={10} className="animate-spin" /> : <Clock3 size={10} />}
+      {label}: {labels[normalized]}
+    </span>
+  );
+};
+
+const PlagiarismPanel: React.FC<{
+  status?: ReviewProcessStatus | null;
+  flags: PlagiarismFlag[];
+}> = ({ status, flags }) => (
+  <section className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3 space-y-2.5">
+    <div className="flex items-center justify-between gap-2">
+      <h5 className="flex items-center gap-1.5 text-[10px] uppercase font-mono font-bold tracking-wider text-cyan-600 dark:text-cyan-400">
+        <Search size={13} /> Đối chiếu source
+      </h5>
+      {status === 'completed' && (
+        <span className="text-[10px] text-slate-500">{flags.length} kết quả vượt ngưỡng</span>
+      )}
+    </div>
+
+    {status === 'completed' && flags.length === 0 && (
+      <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 size={13} /> Không phát hiện source tương đồng vượt ngưỡng.
+      </div>
+    )}
+
+    {flags.map((flag) => (
+      <article
+        key={flag.id}
+        className={`rounded-lg border p-3 ${flag.severity === 'reject'
+          ? 'border-rose-500/25 bg-rose-500/5'
+          : 'border-amber-500/25 bg-amber-500/5'}`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{flag.matchedGameTitle}</p>
+            <p className="font-mono text-[9px] text-slate-500">
+              snapshot {flag.matchedSourceSnapshotId.slice(0, 8)}
+              {flag.matchedCommitSha ? ` · commit ${flag.matchedCommitSha.slice(0, 8)}` : ''}
+            </p>
+          </div>
+          <span className={`text-sm font-bold ${flag.severity === 'reject' ? 'text-rose-500' : 'text-amber-500'}`}>
+            {(flag.similarityScore * 100).toFixed(1)}%
+          </span>
+        </div>
+        <p className="mt-2 text-[9px] font-mono text-slate-500 break-all">
+          {flag.modelName} · {flag.modelVersion}
+        </p>
+      </article>
+    ))}
+  </section>
 );
 
 function severityClass(sev: string): string {

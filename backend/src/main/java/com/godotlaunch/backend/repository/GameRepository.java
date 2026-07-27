@@ -10,10 +10,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.EntityGraph;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface GameRepository extends JpaRepository<Game, UUID> {
+    @EntityGraph(attributePaths = {"creator", "category", "tags"})
+    @Query("SELECT DISTINCT g FROM Game g WHERE g.id = :gameId")
+    Optional<Game> findForAiReviewById(@Param("gameId") UUID gameId);
+
     List<Game> findByStatus(GameStatus status);
     List<Game> findAllByOrderByCreatedAtDesc();
     List<Game> findByStatusOrderByCreatedAtDesc(GameStatus status);

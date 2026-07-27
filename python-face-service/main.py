@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from face_service import extract_embedding
 from db import (
@@ -20,6 +20,7 @@ import clip_service
 import nsfw_service
 import code_analyzer
 import text_analyzer
+import code_embedding_service
 import base64 as _b64
 import requests as _requests
 
@@ -95,9 +96,9 @@ class SourceProcessResponse(BaseModel):
     isGodotProject: bool              # project.godot ở root VÀ có .gd/.tscn
     hasProjectGodot: bool = False     # có project.godot ở root
     hasGodotSource: bool = False      # có file .gd/.tscn
-    infected: list = []
-    secrets: list = []
-    fileHashes: dict = {}
+    infected: list = Field(default_factory=list)
+    secrets: list = Field(default_factory=list)
+    fileHashes: dict = Field(default_factory=dict)
     bundleBase64: Optional[str] = None  # zip source (base64) — backend upload storage
 
 
@@ -112,9 +113,9 @@ class AiReviewRequest(BaseModel):
     description: str = ""
     category: Optional[str] = None
     videoUrl: Optional[str] = None      # video intro → cắt frame
-    screenshotUrls: list[str] = []      # ảnh đã upload (URL) → tải về quét
+    screenshotUrls: list[str] = Field(default_factory=list)  # ảnh đã upload (URL) → tải về quét
     frameCount: int = 8
-    tags: list[str] = []                # danh sách tags được chọn bởi developer
+    tags: list[str] = Field(default_factory=list)  # danh sách tags được chọn bởi developer
 
 
 class AiReviewResponse(BaseModel):
@@ -128,8 +129,23 @@ class AiReviewResponse(BaseModel):
     suggestedPrice: Optional[float] = None
     suggestedRevenueSplit: Optional[int] = None
     pricingRationale: Optional[str] = None
-    flags: list = []                         # [{type, severity, detail, evidenceIndex?}]
-    raw: dict = {}                           # output thô từng module (debug/admin)
+    flags: list = Field(default_factory=list)  # [{type, severity, detail, evidenceIndex?}]
+    raw: dict = Field(default_factory=dict)    # output thô từng module (debug/admin)
+
+
+class CodeEmbeddingRequest(BaseModel):
+    snapshotId: str
+    bundleUrl: str
+    bundleHash: str
+
+
+class CodeEmbeddingResponse(BaseModel):
+    embedding: list[float]
+    modelName: str
+    modelVersion: str
+    dimensions: int
+    sampledFiles: int
+    sampledChunks: int
 
 
 @app.get("/health")
@@ -500,6 +516,26 @@ def ai_review(req: AiReviewRequest):
         flags=flags,
         raw=raw,
     )
+
+
+@app.post("/ai/code-embedding", response_model=CodeEmbeddingResponse)
+def create_code_embedding(req: CodeEmbeddingRequest):
+    """Create a reproducible vector from the exact verified SourceSnapshot bundle."""
+    tmp_dir = None
+    try:
+        extracted = source_service.download_and_extract_bundle(req.bundleUrl, req.bundleHash)
+        tmp_dir = extracted["tmpDir"]
+        result = code_embedding_service.embed_directory(tmp_dir)
+        return CodeEmbeddingResponse(**result)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Không thể tạo code embedding cho snapshot {req.snapshotId}: {str(error)[:200]}",
+        ) from error
+    finally:
+        source_service.cleanup(tmp_dir)
 
 
 def _recommend(code_q, media, desc, nsfw_flag, flags) -> str:
