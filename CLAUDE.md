@@ -86,53 +86,49 @@ go-dot-launch-capstone-fptu/
 ---
 
 ## 4. Storage System (V14 — Dynamic)
-
-Admin configure storage qua UI, không hardcode credentials:
-
-```
-storage_accounts  → provider (aws_s3 | seaweedfs) + config (AES-256 encrypted JSON)
-storage_buckets   → thuộc account, có name + region/publicUrl
-storage_routing   → file_type (PK) → bucket_id (mỗi loại file assign 1 bucket)
-```
-
-**FileType enum:** `avatar`, `thumbnail`, `pdf_contract`, `game_zip`, `source_code_zip`, `screenshot`, `video`, `asset`
-
-**Upload flow:**
-```java
-storageRouter.upload(FileType.avatar, file, "avatars")
-→ query storage_routing → decrypt config → build adapter → upload
-```
-
-**Adapters:**
-- `AwsS3Adapter` — config: `{bucket, region, accessKey, secretKey}`
-- `SeaweedFsAdapter` — config: `{masterUrl, publicBaseUrl}` — upload 2 bước: POST `/dir/assign` → PUT fid
-
-**Cache:** StorageRouter cache adapter 60s trong memory. Sau khi admin thay routing → `clearCache()` được gọi tự động.
-
-**Lưu ý:** GameService, MarketplaceItemService vẫn dùng `AwsS3Service` trực tiếp vì cần presigned URL (tính năng chỉ có S3).
-
----
-
-## 5. Authentication
-
-- JWT Bearer token — `Authorization: Bearer <token>`
-- Google OAuth: POST `/api/auth/google` với Google ID token
-- GitHub OAuth: POST `/api/auth/github` với auth code
-- Admin endpoints: `@PreAuthorize("hasRole('admin')")`
-- `EncryptionUtils`: AES-256 ECB — dùng encrypt GitHub token, storage config, bank account
-
-**Env vars cần thiết:**
-```
-DB_URL, DB_USERNAME, DB_PASSWORD
-AWS_S3_BUCKET, AWS_S3_REGION, AWS_ACCESS_KEY, AWS_SECRET_KEY
-MAIL_USERNAME, MAIL_PASSWORD
-ENCRYPTION_KEY
-GOOGLE_CLIENT_ID
-GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
-FRONTEND_URL
-```
-
----
+ 
+ Admin configure storage qua UI, không hardcode credentials:
+ 
+ ```
+ storage_accounts  → provider (seaweedfs) + config (AES-256 encrypted JSON)
+ storage_buckets   → thuộc account, có name + publicUrl
+ storage_routing   → file_type (PK) → bucket_id (mỗi loại file assign 1 bucket)
+ ```
+ 
+ **FileType enum:** `avatar`, `thumbnail`, `pdf_contract`, `game_zip`, `source_code_zip`, `screenshot`, `video`, `asset`
+ 
+ **Upload flow:**
+ ```java
+ storageRouter.upload(FileType.avatar, file, "avatars")
+ → query storage_routing → decrypt config → build adapter → upload
+ ```
+ 
+ **Adapters:**
+ - `SeaweedFsAdapter` — config: `{masterUrl, publicBaseUrl}` — upload 2 bước: POST `/dir/assign` → PUT fid
+ 
+ **Cache:** StorageRouter cache adapter 60s trong memory. Sau khi admin thay routing → `clearCache()` được gọi tự động.
+ 
+ ---
+ 
+ ## 5. Authentication
+ 
+ - JWT Bearer token — `Authorization: Bearer <token>`
+ - Google OAuth: POST `/api/auth/google` với Google ID token
+ - GitHub OAuth: POST `/api/auth/github` với auth code
+ - Admin endpoints: `@PreAuthorize("hasRole('admin')")`
+ - `EncryptionUtils`: AES-256 ECB — dùng encrypt GitHub token, storage config, bank account
+ 
+ **Env vars cần thiết:**
+ ```
+ DB_URL, DB_USERNAME, DB_PASSWORD
+ MAIL_USERNAME, MAIL_PASSWORD
+ ENCRYPTION_KEY
+ GOOGLE_CLIENT_ID
+ GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+ FRONTEND_URL
+ ```
+ 
+ ---
 
 ## 6. Frontend — quy tắc quan trọng
 

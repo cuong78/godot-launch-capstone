@@ -16,7 +16,7 @@ import java.time.Duration;
 
 /**
  * Service to handle file storage operations using SeaweedFS Filer HTTP API.
- * Replaces the old AwsS3Service.
+ * Replaces any previous storage implementation.
  */
 @Service
 public class SeaweedFsService {

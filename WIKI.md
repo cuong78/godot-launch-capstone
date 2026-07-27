@@ -25,9 +25,9 @@
 ```
 [React SPA]  <--HTTP/WS-->  [Spring Boot API]  <--JDBC-->  [PostgreSQL 16]
                                     |
-                           [Storage Router]
-                           /              \
-                     [AWS S3]        [SeaweedFS]
+                            [Storage Service]
+                                    |
+                               [SeaweedFS]
                            \              /
                      [EncryptionUtils AES-256]
                      (credentials encrypted in DB)
@@ -54,7 +54,7 @@
 **users — trường quan trọng:**
 - `github_id`, `github_username`, `github_token_enc` — bắt buộc có GitHub để bán source code
 - `status`: active / inactive / banned
-- `avatar_url`: URL từ storage provider (S3 hoặc SeaweedFS)
+- `avatar_url`: URL từ storage provider (SeaweedFS)
 
 #### Nhóm Game
 | Bảng | Mô tả |
@@ -100,8 +100,8 @@
 #### Nhóm Storage (V14)
 | Bảng | Mô tả |
 |---|---|
-| `storage_accounts` | AWS S3 hoặc SeaweedFS account — `config` encrypted JSON |
-| `storage_buckets` | Bucket thuộc account — `region` (S3) hoặc `public_url` (SeaweedFS) |
+| `storage_accounts` | SeaweedFS account — `config` encrypted JSON |
+| `storage_buckets` | Bucket thuộc account — `public_url` (SeaweedFS) |
 | `storage_routing` | `file_type` (PK) → `bucket_id` — 1 loại file chỉ assign 1 bucket |
 
 ---
@@ -110,7 +110,7 @@
 
 ### Tại sao cần dynamic storage?
 
-Ban đầu AWS S3 hardcode trong `application.yaml`. Yêu cầu: admin tự add/switch provider để tối ưu chi phí (SeaweedFS free, self-hosted), không cần redeploy app.
+Yêu cầu: admin tự add/switch provider để tối ưu chi phí (SeaweedFS free, self-hosted), không cần redeploy app.
 
 ### Kiến trúc Storage Router
 
@@ -126,16 +126,11 @@ StorageBucket --> StorageAccount
 decrypt config (AES-256)
     |
 build adapter (cache 60s)
-    /              \
-AwsS3Adapter   SeaweedFsAdapter
+        |
+SeaweedFsAdapter
 ```
 
 ### Config JSON theo provider
-
-**AWS S3:**
-```json
-{ "bucket": "my-bucket", "region": "ap-southeast-1", "accessKey": "AKI...", "secretKey": "..." }
-```
 
 **SeaweedFS:**
 ```json
@@ -190,7 +185,7 @@ Filter: JwtAuthenticationFilter --> SecurityContext
 ### EncryptionUtils
 AES-256 ECB với key từ `app.security.encryption-key` env var. Dùng cho:
 - `users.github_token_enc` — GitHub OAuth access token
-- `storage_accounts.config` — Credentials S3/SeaweedFS
+- `storage_accounts.config` — Credentials SeaweedFS
 - `withdrawal_requests.bank_account` — Số tài khoản ngân hàng
 
 ### Role-based access
@@ -402,15 +397,13 @@ DELETE FROM flyway_schema_history WHERE version = '14';
 |---|---|
 | `DB_URL` | JDBC URL PostgreSQL |
 | `DB_USERNAME` / `DB_PASSWORD` | DB credentials |
-| `AWS_S3_BUCKET`, `AWS_S3_REGION` | S3 config (legacy, dùng cho presigned URLs) |
-| `AWS_ACCESS_KEY`, `AWS_SECRET_KEY` | AWS credentials (legacy) |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | Gmail SMTP |
 | `ENCRYPTION_KEY` | AES-256 key (32 chars) |
 | `GOOGLE_CLIENT_ID` | Google OAuth |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub OAuth |
 | `FRONTEND_URL` | CORS origin |
 
-> Sau V14, credentials S3 trong env vars vẫn cần cho GameService/MarketplaceService presigned URLs.
+
 
 ---
 
@@ -428,16 +421,7 @@ DELETE FROM flyway_schema_history WHERE version = 'X';
 ### Schema validation: missing column
 DB còn schema cũ. Tạo migration mới ALTER TABLE, hoặc drop & recreate qua Flyway.
 
-### S3 image không render (403)
-Nguyên nhân: ACL disabled trên bucket. **Fix:** Thêm Bucket Policy:
-```json
-{
-  "Effect": "Allow", "Principal": "*",
-  "Action": "s3:GetObject",
-  "Resource": "arn:aws:s3:::BUCKET/avatars/*"
-}
-```
-**KHÔNG dùng** `ObjectCannedACL.PUBLIC_READ` khi ACL disabled.
+
 
 ### StorageRouter: "No storage routing configured"
 Admin chưa tạo Account → Bucket → Routing. Vào AdminPage → Storage tab.
