@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Github, ScanFace, FileText, Sparkles, Loader2, CreditCard, ClipboardCheck, ArrowLeft, ArrowRight, LogOut, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { FaceVerifyModal } from '../components/FaceVerifyModal';
@@ -34,6 +35,7 @@ const BANK_OPTIONS = [
 
 export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = ({ setCurrentScreen }) => {
   const { currentUser, updateUser } = useAuth();
+  const { t } = useTranslation(['developer']);
   
   // Trạng thái các bước xác minh
   const [githubLinked, setGithubLinked] = useState(false);
@@ -107,7 +109,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
       if (githubRes.status === 'rejected') {
         const err = githubRes.reason;
-        setError(err?.response?.data?.message || err?.message || 'Không thể tải trạng thái xác minh.');
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            t('onboarding.errors.loadStatus'),
+        );
       }
     } finally {
       setIsLoadingStatus(false);
@@ -122,7 +128,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
         setAgreementContent(res.data.content);
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Không thể tải nội dung thỏa thuận.');
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          t('onboarding.errors.loadAgreement'),
+      );
     } finally {
       setIsLoadingAgreement(false);
     }
@@ -142,10 +152,14 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
       if (res.success && res.data?.accepted) {
         setAgreementAccepted(true);
       } else {
-        setError(res.message || 'Không thể ghi nhận đồng ý thỏa thuận.');
+        setError(res.message || t('onboarding.errors.acceptAgreement'));
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Lỗi khi ghi nhận đồng ý thỏa thuận.');
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          t('onboarding.errors.acceptAgreementFailed'),
+      );
     } finally {
       setIsAcceptingAgreement(false);
     }
@@ -190,18 +204,22 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
         localStorage.setItem('github_link_pending', 'true');
         window.location.href = res.data.redirectUrl;
       } else {
-        setError(res.message || 'Không thể bắt đầu liên kết GitHub.');
+        setError(res.message || t('onboarding.errors.startGithubLink'));
         setIsLinkingGithub(false);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Không thể bắt đầu liên kết GitHub.');
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          t('onboarding.errors.startGithubLink'),
+      );
       setIsLinkingGithub(false);
     }
   };
 
   const handleSavePayout = async () => {
     if (!bankName.trim() || !bankAccount.trim() || !bankAccountHolder.trim()) {
-      setError('Vui lòng điền đầy đủ thông tin tài khoản ngân hàng.');
+      setError(t('onboarding.errors.bankInfoRequired'));
       return;
     }
     setIsSavingPayout(true);
@@ -217,10 +235,14 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
         setPayoutSaved(true);
         updateUser(res.data);
       } else {
-        setError(res.message || 'Không thể lưu thông tin payout.');
+        setError(res.message || t('onboarding.errors.savePayout'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Lỗi khi lưu thông tin payout.');
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          t('onboarding.errors.savePayoutFailed'),
+      );
     } finally {
       setIsSavingPayout(false);
     }
@@ -233,11 +255,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
   // Cấu hình các bước để render progress bar
   const stepConfigs = [
-    { id: 1, name: 'Agreement', done: agreementAccepted, label: 'Thoả thuận' },
-    { id: 2, name: 'GitHub', done: githubLinked, label: 'GitHub' },
-    { id: 3, name: 'FaceID', done: faceVerified, label: 'Xác thực mặt' },
-    { id: 4, name: 'KYC', done: kycVerified, label: 'Giấy tờ KYC' },
-    { id: 5, name: 'Payout', done: payoutSaved, label: 'Payout Setup' },
+    { id: 1, name: 'Agreement', done: agreementAccepted, label: t('onboarding.steps.agreement') },
+    { id: 2, name: 'GitHub', done: githubLinked, label: t('onboarding.steps.github') },
+    { id: 3, name: 'FaceID', done: faceVerified, label: t('onboarding.steps.faceId') },
+    { id: 4, name: 'KYC', done: kycVerified, label: t('onboarding.steps.kyc') },
+    { id: 5, name: 'Payout', done: payoutSaved, label: t('onboarding.steps.payout') },
   ];
 
   // Kiểm tra điều kiện có thể click "Next"
@@ -256,7 +278,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-3 bg-[#0c0c0e] text-slate-400">
         <Loader2 size={36} className="animate-spin text-amber-500" />
-        <p className="text-sm font-semibold tracking-wide">Đang tải trạng thái onboarding...</p>
+        <p className="text-sm font-semibold tracking-wide">{t('onboarding.loadingStatus')}</p>
       </div>
     );
   }
@@ -341,13 +363,13 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                 <Sparkles size={40} />
               </div>
               <h2 className="mt-6 font-display text-2xl font-black tracking-tight text-white">
-                Chúc mừng, bạn đã là Developer!
+                {t('onboarding.complete.title')}
               </h2>
               <p className="mt-3 max-w-md text-sm text-slate-400">
-                Bạn đã hoàn tất tất cả các khâu xác minh danh tính và thiết lập thanh toán. Bây giờ bạn có thể tự do đăng bán game và assets trên GodotLaunch.
+                {t('onboarding.complete.description')}
               </p>
               <Button variant="primary" size="lg" className="mt-8 bg-lime-500 hover:bg-lime-400 text-black font-bold" onClick={() => setCurrentScreen('dashboard')}>
-                Đi tới Dashboard
+                {t('onboarding.complete.cta')}
               </Button>
             </div>
           ) : (
@@ -357,15 +379,15 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               {activeStep === 1 && (
                 <div className="space-y-5">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Bước 1</span>
-                    <h2 className="text-2xl font-black text-white">Thỏa Thuận Phân Phối</h2>
-                    <p className="text-sm text-slate-400">Vui lòng đọc kĩ và xác nhận các điều khoản phân phối trên Marketplace.</p>
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 1 })}</span>
+                    <h2 className="text-2xl font-black text-white">{t('onboarding.agreement.title')}</h2>
+                    <p className="text-sm text-slate-400">{t('onboarding.agreement.description')}</p>
                   </div>
 
                   <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
                     {isLoadingAgreement ? (
                       <div className="flex items-center justify-center gap-2 py-8 text-slate-400 text-xs">
-                        <Loader2 size={16} className="animate-spin" /> Đang tải nội dung thỏa thuận...
+                        <Loader2 size={16} className="animate-spin" /> {t('onboarding.agreement.loading')}
                       </div>
                     ) : (
                       <div className="max-h-56 overflow-y-auto pr-2 text-xs leading-relaxed text-slate-400 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
@@ -391,10 +413,10 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                       className="mt-0.5 h-4 w-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
                     />
                     <div className="text-xs text-slate-300">
-                      Tôi đồng ý với các điều khoản phân phối trên Marketplace của GodotLaunch. Tôi cam đoan chịu trách nhiệm pháp lý đối với toàn bộ nội dung mà mình đăng tải.
+                      {t('onboarding.agreement.checkbox')}
                       {isAcceptingAgreement && (
                         <span className="ml-2 inline-flex items-center gap-1 text-amber-500">
-                          <Loader2 size={12} className="animate-spin" /> Đang ghi nhận...
+                          <Loader2 size={12} className="animate-spin" /> {t('onboarding.agreement.saving')}
                         </span>
                       )}
                     </div>
@@ -406,16 +428,16 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               {activeStep === 2 && (
                 <div className="space-y-6 text-center py-6">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Bước 2</span>
-                    <h2 className="text-2xl font-black text-white">Liên Kết GitHub</h2>
-                    <p className="text-sm text-slate-400">Đồng bộ kho mã nguồn của bạn để quản lý và cấp quyền phân phối source code tự động.</p>
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 2 })}</span>
+                    <h2 className="text-2xl font-black text-white">{t('onboarding.github.title')}</h2>
+                    <p className="text-sm text-slate-400">{t('onboarding.github.description')}</p>
                   </div>
 
                   {githubLinked ? (
                     <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
                       <CheckCircle2 className="w-12 h-12 text-lime-500" />
-                      <div className="text-sm font-semibold text-lime-400">Đã liên kết GitHub thành công</div>
-                      <div className="text-xs text-slate-400">Bạn đã sẵn sàng để tích hợp kho code của mình lên hệ thống.</div>
+                      <div className="text-sm font-semibold text-lime-400">{t('onboarding.github.linkedTitle')}</div>
+                      <div className="text-xs text-slate-400">{t('onboarding.github.linkedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
@@ -425,7 +447,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                         </div>
                       </div>
                       <p className="text-xs text-slate-400 px-4">
-                        Chúng tôi sẽ yêu cầu quyền truy cập cơ bản để kiểm tra mã nguồn trò chơi của bạn khi bạn tạo các build đăng bán.
+                        {t('onboarding.github.permissionHint')}
                       </p>
                       <Button
                         variant="primary"
@@ -435,11 +457,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                       >
                         {isLinkingGithub ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" /> Đang chuyển hướng...
+                            <Loader2 className="w-4 h-4 animate-spin" /> {t('onboarding.github.redirecting')}
                           </>
                         ) : (
                           <>
-                            <Github size={18} /> Liên kết tài khoản GitHub
+                            <Github size={18} /> {t('onboarding.github.action')}
                           </>
                         )}
                       </Button>
@@ -452,16 +474,16 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               {activeStep === 3 && (
                 <div className="space-y-6 text-center py-6">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Bước 3</span>
-                    <h2 className="text-2xl font-black text-white">Xác Thực Khuôn Mặt (FaceID)</h2>
-                    <p className="text-sm text-slate-400">Xác thực trắc sinh học một lần duy nhất để chống nạn nhân bản tài khoản hàng loạt.</p>
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 3 })}</span>
+                    <h2 className="text-2xl font-black text-white">{t('onboarding.face.title')}</h2>
+                    <p className="text-sm text-slate-400">{t('onboarding.face.description')}</p>
                   </div>
 
                   {faceVerified ? (
                     <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
                       <CheckCircle2 className="w-12 h-12 text-lime-500" />
-                      <div className="text-sm font-semibold text-lime-400">Xác thực FaceID thành công</div>
-                      <div className="text-xs text-slate-400">Dữ liệu sinh trắc học đã được mã hóa an toàn ở lớp cơ sở dữ liệu vector.</div>
+                      <div className="text-sm font-semibold text-lime-400">{t('onboarding.face.verifiedTitle')}</div>
+                      <div className="text-xs text-slate-400">{t('onboarding.face.verifiedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
@@ -471,14 +493,14 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                         </div>
                       </div>
                       <p className="text-xs text-slate-400 px-4">
-                        Chúng tôi quét khuôn mặt của bạn để đối chiếu xem bạn có sử dụng nhiều tài khoản trái phép để thao túng đánh giá hay không.
+                        {t('onboarding.face.hint')}
                       </p>
                       <Button
                         variant="primary"
                         className="bg-amber-500 hover:bg-amber-400 text-black font-bold flex items-center justify-center gap-2 mx-auto"
                         onClick={() => setShowFaceModal(true)}
                       >
-                        <ScanFace size={18} /> Bắt đầu quét khuôn mặt
+                        <ScanFace size={18} /> {t('onboarding.face.action')}
                       </Button>
                     </div>
                   )}
@@ -489,16 +511,16 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               {activeStep === 4 && (
                 <div className="space-y-6 text-center py-6">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Bước 4</span>
-                    <h2 className="text-2xl font-black text-white">Xác Minh Danh Tính (KYC)</h2>
-                    <p className="text-sm text-slate-400">Tải lên tài liệu tùy thân để nhận diện pháp lý khi phát sinh doanh thu lớn.</p>
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 4 })}</span>
+                    <h2 className="text-2xl font-black text-white">{t('onboarding.kyc.title')}</h2>
+                    <p className="text-sm text-slate-400">{t('onboarding.kyc.description')}</p>
                   </div>
 
                   {kycVerified ? (
                     <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
                       <CheckCircle2 className="w-12 h-12 text-lime-500" />
-                      <div className="text-sm font-semibold text-lime-400">Xác minh danh tính KYC thành công</div>
-                      <div className="text-xs text-slate-400">Họ tên và số giấy tờ của bạn đã được đối soát chính xác với cơ sở dữ liệu.</div>
+                      <div className="text-sm font-semibold text-lime-400">{t('onboarding.kyc.verifiedTitle')}</div>
+                      <div className="text-xs text-slate-400">{t('onboarding.kyc.verifiedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
@@ -508,14 +530,14 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                         </div>
                       </div>
                       <p className="text-xs text-slate-400 px-4">
-                        Vui lòng tải lên ảnh chụp mặt trước và mặt sau của CCCD hoặc Hộ chiếu. Hệ thống sẽ tự động quét thông tin OCR của bạn.
+                        {t('onboarding.kyc.hint')}
                       </p>
                       <Button
                         variant="primary"
                         className="bg-amber-500 hover:bg-amber-400 text-black font-bold flex items-center justify-center gap-2 mx-auto"
                         onClick={() => setShowKycModal(true)}
                       >
-                        <FileText size={18} /> Bắt đầu tải lên giấy tờ
+                        <FileText size={18} /> {t('onboarding.kyc.action')}
                       </Button>
                     </div>
                   )}
@@ -526,20 +548,20 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               {activeStep === 5 && (
                 <div className="space-y-5">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Bước 5</span>
-                    <h2 className="text-2xl font-black text-white">Thiết Lập Tài Khoản Payout</h2>
-                    <p className="text-sm text-slate-400">Thông tin ngân hàng này sẽ được lưu để tự động điền khi bạn yêu cầu rút tiền bán hàng sau này.</p>
+                    <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 5 })}</span>
+                    <h2 className="text-2xl font-black text-white">{t('onboarding.payout.title')}</h2>
+                    <p className="text-sm text-slate-400">{t('onboarding.payout.description')}</p>
                   </div>
 
                   <div className="space-y-4 max-w-xl mx-auto rounded-2xl border border-white/5 bg-[#0a0a0c] p-6">
                     <div>
-                      <label className="text-white/50 text-xs mb-1 block">Tên Ngân Hàng *</label>
+                      <label className="text-white/50 text-xs mb-1 block">{t('onboarding.payout.bankName')}</label>
                       <select
                         value={bankName}
                         onChange={(e) => setBankName(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/60"
                       >
-                        <option value="" disabled className="bg-[#0c0c0e] text-slate-400">-- Chọn Ngân Hàng --</option>
+                        <option value="" disabled className="bg-[#0c0c0e] text-slate-400">{t('onboarding.payout.bankPlaceholder')}</option>
                         {BANK_OPTIONS.map((bank) => (
                           <option key={bank} value={bank} className="bg-[#0c0c0e] text-white">{bank}</option>
                         ))}
@@ -547,23 +569,23 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                     </div>
 
                     <div>
-                      <label className="text-white/50 text-xs mb-1 block">Số Tài Khoản *</label>
+                      <label className="text-white/50 text-xs mb-1 block">{t('onboarding.payout.bankAccount')}</label>
                       <input
                         type="text"
                         value={bankAccount}
                         onChange={(e) => setBankAccount(e.target.value)}
-                        placeholder="Ví dụ: 19034567890123"
+                        placeholder={t('onboarding.payout.bankAccountPlaceholder')}
                         className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/60"
                       />
                     </div>
 
                     <div>
-                      <label className="text-white/50 text-xs mb-1 block">Tên Chủ Tài Khoản (Viết hoa không dấu) *</label>
+                      <label className="text-white/50 text-xs mb-1 block">{t('onboarding.payout.bankHolder')}</label>
                       <input
                         type="text"
                         value={bankAccountHolder}
                         onChange={(e) => setBankAccountHolder(e.target.value.toUpperCase())}
-                        placeholder="Ví dụ: NGUYEN VAN A"
+                        placeholder={t('onboarding.payout.bankHolderPlaceholder')}
                         className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/60"
                       />
                     </div>
@@ -571,7 +593,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                     {payoutSaved ? (
                       <div className="rounded-xl border border-lime-900/50 bg-lime-950/20 px-4 py-3 text-xs text-lime-400 font-semibold flex items-center gap-2 animate-fade-in">
                         <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        <span>Thông tin thanh toán đã được thiết lập thành công.</span>
+                        <span>{t('onboarding.payout.saved')}</span>
                       </div>
                     ) : (
                       <Button
@@ -582,11 +604,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                       >
                         {isSavingPayout ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" /> Đang lưu...
+                            <Loader2 className="w-4 h-4 animate-spin" /> {t('onboarding.payout.saving')}
                           </>
                         ) : (
                           <>
-                            <CreditCard size={18} /> Lưu thông tin Payout
+                            <CreditCard size={18} /> {t('onboarding.payout.action')}
                           </>
                         )}
                       </Button>
@@ -605,7 +627,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               onClick={() => setCurrentScreen('explore')}
               className="px-4 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-2 text-sm font-semibold"
             >
-              <LogOut size={16} /> Thoát
+              <LogOut size={16} /> {t('onboarding.actions.exit')}
             </button>
 
             <div className="flex gap-3">
@@ -614,7 +636,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                 onClick={() => setActiveStep((prev) => Math.max(1, prev - 1))}
                 className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-semibold"
               >
-                <ArrowLeft size={16} /> Quay lại
+                <ArrowLeft size={16} /> {t('onboarding.actions.back')}
               </button>
 
               <button
@@ -622,7 +644,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                 onClick={() => setActiveStep((prev) => Math.min(5, prev + 1))}
                 className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-extrabold shadow-lg shadow-amber-500/10"
               >
-                Tiếp tục <ArrowRight size={16} />
+                {t('onboarding.actions.continue')} <ArrowRight size={16} />
               </button>
             </div>
           </div>
@@ -639,8 +661,8 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
             setActiveStep(4);
           }}
           onClose={() => setShowFaceModal(false)}
-          description="Xác thực sinh trắc học khuôn mặt là điều kiện bắt buộc giúp bảo vệ quyền sở hữu và uy tín phân phối trên GodotLaunch."
-          successMessage="Tuyệt vời! Tiếp tục sang bước kế tiếp..."
+          description={t('onboarding.faceModalDescription')}
+          successMessage={t('onboarding.faceModalSuccess')}
         />
       )}
 
@@ -652,8 +674,8 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
             setActiveStep(5);
           }}
           onClose={() => setShowKycModal(false)}
-          subtitle="Xác minh danh tính Tier 2"
-          successDescription="Thông tin tài liệu đã ghi nhận thành công..."
+          subtitle={t('onboarding.kycModalSubtitle')}
+          successDescription={t('onboarding.kycModalSuccess')}
         />
       )}
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { userApi } from '../api/userApi';
 import { authApi } from '../api/authApi';
@@ -38,6 +39,7 @@ interface ProfilePageProps {
 
 export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
   const { currentUser, updateUser } = useAuth();
+  const { t } = useTranslation(['profile']);
 
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState(currentUser?.fullName || '');
@@ -78,10 +80,10 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
   useEffect(() => {
     const linked = searchParams.get("linked");
     if (linked === "true") {
-      setStatusMessage({ type: 'success', text: 'GitHub linked successfully! Please complete Face Verification & KYC to become a Developer.' });
+      setStatusMessage({ type: 'success', text: t('messages.githubLinked') });
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   const handleLinkGitHub = async () => {
     try {
@@ -90,18 +92,18 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
         localStorage.setItem("github_link_pending", "true");
         window.location.href = res.data.redirectUrl;
       } else {
-        setStatusMessage({ type: 'error', text: 'Failed to initiate GitHub linking.' });
+        setStatusMessage({ type: 'error', text: t('errors.initiateGithubLink') });
       }
     } catch (err: any) {
       setStatusMessage({ 
         type: 'error', 
-        text: err.response?.data?.message || err.message || 'Failed to initiate GitHub linking.' 
+        text: err.response?.data?.message || err.message || t('errors.initiateGithubLink')
       });
     }
   };
 
   const handleUnlinkGitHub = async () => {
-    if (!window.confirm("Are you sure you want to unlink your GitHub account? Your role will return to Customer.")) return;
+    if (!window.confirm(t('confirm.unlinkGithub'))) return;
     setIsUnlinking(true);
     setStatusMessage(null);
     try {
@@ -110,15 +112,15 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
         tokenStorage.setToken(res.data.token);
         localStorage.setItem("accessToken", res.data.token);
         updateUser(res.data.user);
-        setStatusMessage({ type: 'success', text: 'GitHub account unlinked successfully. Your role is now Customer.' });
+        setStatusMessage({ type: 'success', text: t('messages.githubUnlinked') });
         setGithubStatus({ linked: false, githubUsername: null, githubLinkedAt: null });
       } else {
-        setStatusMessage({ type: 'error', text: res.message || 'Failed to unlink GitHub.' });
+        setStatusMessage({ type: 'error', text: res.message || t('errors.unlinkGithub') });
       }
     } catch (err: any) {
       setStatusMessage({ 
         type: 'error', 
-        text: err.response?.data?.message || err.message || 'Failed to unlink GitHub.' 
+        text: err.response?.data?.message || err.message || t('errors.unlinkGithub')
       });
     } finally {
       setIsUnlinking(false);
@@ -131,8 +133,8 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
         <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 mb-4 animate-bounce">
           <AlertCircle size={32} />
         </div>
-        <h2 className="text-2xl font-display font-bold text-slate-800 dark:text-white mb-2">Access Denied</h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-sm">Please log in to view and manage your profile settings.</p>
+        <h2 className="text-2xl font-display font-bold text-slate-800 dark:text-white mb-2">{t('accessDenied.title')}</h2>
+        <p className="text-slate-500 dark:text-slate-400 max-w-sm">{t('accessDenied.description')}</p>
       </div>
     );
   }
@@ -143,11 +145,11 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
 
     // Basic client validation
     if (!file.type.startsWith('image/')) {
-      setStatusMessage({ type: 'error', text: 'Please select a valid image file.' });
+      setStatusMessage({ type: 'error', text: t('errors.validImageFile') });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setStatusMessage({ type: 'error', text: 'Image file size must be less than 5MB.' });
+      setStatusMessage({ type: 'error', text: t('errors.imageTooLarge') });
       return;
     }
 
@@ -157,14 +159,14 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
       const res = await authApi.uploadAvatar(file);
       if (res.success && res.data) {
         setAvatarUrl(res.data);
-        setStatusMessage({ type: 'success', text: 'Avatar uploaded and updated!' });
+        setStatusMessage({ type: 'success', text: t('messages.avatarUploaded') });
       } else {
-        setStatusMessage({ type: 'error', text: res.message || 'Failed to upload avatar.' });
+        setStatusMessage({ type: 'error', text: res.message || t('errors.uploadAvatar') });
       }
     } catch (err: any) {
       setStatusMessage({ 
         type: 'error', 
-        text: err.response?.data?.message || err.message || 'Failed to upload avatar.' 
+        text: err.response?.data?.message || err.message || t('errors.uploadAvatar')
       });
     } finally {
       setIsUploading(false);
@@ -176,12 +178,12 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
     setStatusMessage(null);
 
     if (password && password !== confirmPassword) {
-      setStatusMessage({ type: 'error', text: 'Passwords do not match.' });
+      setStatusMessage({ type: 'error', text: t('errors.passwordMismatch') });
       return;
     }
 
     if (password && password.length < 6) {
-      setStatusMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+      setStatusMessage({ type: 'error', text: t('errors.passwordMinLength') });
       return;
     }
 
@@ -198,17 +200,17 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
       const res = await userApi.updateProfile(payload);
       if (res.success && res.data) {
         updateUser(res.data);
-        setStatusMessage({ type: 'success', text: 'Profile updated successfully!' });
+        setStatusMessage({ type: 'success', text: t('messages.profileUpdated') });
         setIsEditing(false);
         setPassword('');
         setConfirmPassword('');
       } else {
-        setStatusMessage({ type: 'error', text: res.message || 'Failed to update profile.' });
+        setStatusMessage({ type: 'error', text: res.message || t('errors.updateProfile') });
       }
     } catch (err: any) {
       setStatusMessage({ 
         type: 'error', 
-        text: err.response?.data?.message || err.message || 'Failed to update profile.' 
+        text: err.response?.data?.message || err.message || t('errors.updateProfile')
       });
     } finally {
       setIsSaving(false);
@@ -224,9 +226,9 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
         </div>
         <div>
           <h1 className="text-3xl font-display font-extrabold tracking-tight bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 bg-clip-text text-transparent">
-            My Profile
+            {t('header.title')}
           </h1>
-          <p className="text-xs font-mono text-slate-400 tracking-wider">SECURE DEVELOPER MATRIX NODE</p>
+          <p className="text-xs font-mono text-slate-400 tracking-wider">{t('header.subtitle')}</p>
         </div>
       </div>
 
@@ -264,7 +266,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
           </div>
 
           <h2 className="text-xl font-display font-bold text-slate-800 dark:text-white truncate w-full">
-            {currentUser.fullName || 'No Name Set'}
+            {currentUser.fullName || t('sidebar.noNameSet')}
           </h2>
           <p className="text-xs font-mono text-slate-400 truncate w-full mb-4">
             {currentUser.email}
@@ -272,13 +274,13 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
 
           <div className="w-full flex flex-col gap-2">
             <div className="flex items-center justify-between px-3 py-2 bg-slate-800/40 border border-slate-700/30 rounded-lg text-xs">
-              <span className="text-slate-450 flex items-center gap-1.5"><ShieldCheck size={14} /> Node Role</span>
+              <span className="text-slate-450 flex items-center gap-1.5"><ShieldCheck size={14} /> {t('sidebar.nodeRole')}</span>
               <span className="font-bold text-amber-400 capitalize font-mono bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
                 {currentUser.role || 'customer'}
               </span>
             </div>
             <div className="flex items-center justify-between px-3 py-2 bg-slate-800/40 border border-slate-700/30 rounded-lg text-xs">
-              <span className="text-slate-450 flex items-center gap-1.5"><Mail size={14} /> Account Status</span>
+              <span className="text-slate-450 flex items-center gap-1.5"><Mail size={14} /> {t('sidebar.accountStatus')}</span>
               <span className="font-bold text-emerald-400 capitalize font-mono bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
                 {currentUser.status || 'active'}
               </span>
@@ -292,7 +294,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                 className="w-full border-amber-500/30 hover:border-amber-400 hover:bg-amber-400/10 text-amber-500 dark:text-amber-400 transition-all font-semibold"
                 onClick={() => setIsEditing(true)}
               >
-                Edit Profile Settings
+                {t('sidebar.editProfileSettings')}
               </Button>
             ) : (
               <Button
@@ -306,7 +308,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                   setConfirmPassword('');
                 }}
               >
-                Cancel Changes
+                {t('sidebar.cancelChanges')}
               </Button>
             )}
           </div>
@@ -319,18 +321,18 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
             /* View Profile details mode */
             <div className="space-y-6">
               <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white border-b border-slate-700/30 pb-3 flex items-center gap-2">
-                <UserIcon size={18} className="text-amber-400" /> Account Node Data
+                <UserIcon size={18} className="text-amber-400" /> {t('view.accountNodeData')}
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">Full Developer Name</label>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">{t('view.fullDeveloperName')}</label>
                   <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-800/25 border border-slate-700/20 rounded-xl px-4 py-3">
-                    {currentUser.fullName || <span className="text-slate-500 italic">Not specified</span>}
+                    {currentUser.fullName || <span className="text-slate-500 italic">{t('view.notSpecified')}</span>}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">Registered Email Node</label>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">{t('view.registeredEmailNode')}</label>
                   <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-800/25 border border-slate-700/20 rounded-xl px-4 py-3 flex items-center gap-2">
                     <Mail size={16} className="text-slate-400 shrink-0" />
                     {currentUser.email}
@@ -340,34 +342,36 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
 
               <div className="pt-4 border-t border-slate-700/30">
                 <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-amber-400" /> Permissions & Credentials
+                  <ShieldCheck size={18} className="text-amber-400" /> {t('view.permissionsCredentials')}
                 </h3>
                 <p className="text-sm text-slate-400 leading-relaxed mb-4">
-                  Your account node belongs to the <span className="text-amber-400 font-bold font-mono bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">{currentUser.role || 'customer'}</span> group. 
+                  {t('view.rolePrefix')}{' '}
+                  <span className="text-amber-400 font-bold font-mono bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">{currentUser.role || 'customer'}</span>{' '}
+                  {t('view.roleSuffix')}{' '}
                   {currentUser.role === 'admin' 
-                    ? ' You have full administrator capabilities across database resources.'
+                    ? t('view.roleAdmin')
                     : currentUser.role === 'developer' 
-                    ? ' You possess code publisher tokens to list packages, upload games, and configure payouts.'
-                    : ' You are authorized to access explore catalogs, chat in community channels, and buy products.'}
+                    ? t('view.roleDeveloper')
+                    : t('view.roleCustomer')}
                 </p>
 
                 {/* GitHub Linking / Developer Upgrade Section */}
                 <div className="mt-6 pt-6 border-t border-slate-700/30">
                   <h4 className="text-sm font-display font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-                    <Globe size={16} className="text-amber-400" /> GitHub Account Link
+                    <Globe size={16} className="text-amber-400" /> {t('github.title')}
                   </h4>
                   {githubStatus?.linked ? (
                     <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="text-left">
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 mb-1">
-                          Connected
+                          {t('github.connected')}
                         </span>
                         <p className="text-sm text-slate-350 font-semibold">
-                          Linked GitHub: <span className="text-white font-mono">@{githubStatus.githubUsername}</span>
+                          {t('github.linkedGithub')} <span className="text-white font-mono">@{githubStatus.githubUsername}</span>
                         </p>
                         {githubStatus.githubLinkedAt && (
                           <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                            Linked at: {new Date(githubStatus.githubLinkedAt).toLocaleString()}
+                            {t('github.linkedAt')} {new Date(githubStatus.githubLinkedAt).toLocaleString()}
                           </p>
                         )}
                       </div>
@@ -379,7 +383,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                           onClick={handleUnlinkGitHub}
                           disabled={isUnlinking}
                         >
-                          {isUnlinking ? 'Unlinking...' : 'Unlink GitHub'}
+                          {isUnlinking ? t('github.unlinking') : t('github.unlink')}
                         </Button>
                       )}
                       {currentUser.role === 'customer' && setCurrentScreen && (
@@ -391,7 +395,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                         >
-                          Hoàn tất xác thực & KYC
+                          {t('github.completeVerification')}
                         </Button>
                       )}
                     </div>
@@ -399,8 +403,8 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                     <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/30 text-left">
                       <p className="text-xs text-slate-400 leading-relaxed mb-3">
                         {currentUser.role === 'customer' 
-                          ? `Link your GitHub account to upgrade to a Developer role. This allows you to publish games, list templates, and share source code packages. Note: the email on your GitHub profile must match your registered email (${currentUser.email}).`
-                          : 'No GitHub account is currently linked to this profile.'}
+                          ? t('github.customerPrompt', { email: currentUser.email })
+                          : t('github.notLinked')}
                       </p>
                       {currentUser.role === 'customer' && (
                         <Button 
@@ -409,7 +413,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                           onClick={handleLinkGitHub}
                           disabled={loadingGithubStatus}
                         >
-                          Link GitHub & Become Developer
+                          {t('github.linkAndBecomeDeveloper')}
                         </Button>
                       )}
                     </div>
@@ -421,26 +425,26 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
             /* Edit profile details form */
             <form onSubmit={handleSaveProfile} className="space-y-6">
               <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white border-b border-slate-700/30 pb-3 flex items-center gap-2">
-                <UserIcon size={18} className="text-amber-400" /> Edit Node Identity
+                <UserIcon size={18} className="text-amber-400" /> {t('edit.title')}
               </h3>
 
               <div className="space-y-4">
                 {/* Full name input */}
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">Full Developer Name</label>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">{t('edit.fullDeveloperName')}</label>
                   <input
                     type="text"
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Enter your name"
+                    placeholder={t('edit.enterYourName')}
                     className="w-full px-4 py-3 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-sm text-slate-800 dark:text-slate-200 transition-all placeholder-slate-500"
                   />
                 </div>
 
                 {/* Avatar Picker layout */}
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">Choose Avatar Image</label>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">{t('edit.chooseAvatarImage')}</label>
                   
                   {/* Selector tab switch controls */}
                   <div className="flex gap-1.5 bg-slate-850 p-1 rounded-lg border border-slate-800/80 mb-4 max-w-sm">
@@ -453,7 +457,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      <Grid size={13} /> Presets
+                      <Grid size={13} /> {t('edit.tabs.presets')}
                     </button>
                     <button
                       type="button"
@@ -464,7 +468,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      {isUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Local Upload
+                      {isUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} {t('edit.tabs.localUpload')}
                     </button>
                     <button
                       type="button"
@@ -475,7 +479,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      <Globe size={13} /> URL Link
+                      <Globe size={13} /> {t('edit.tabs.urlLink')}
                     </button>
                   </div>
 
@@ -495,7 +499,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                               boxShadow: isSelected ? '0 0 10px rgba(251, 191, 36, 0.4)' : 'none'
                             }}
                           >
-                            <img referrerPolicy="no-referrer" src={preset} alt={`Preset ${index + 1}`} className="w-full h-full object-cover" />
+                            <img referrerPolicy="no-referrer" src={preset} alt={t('edit.presetAlt', { index: index + 1 })} className="w-full h-full object-cover" />
                             {isSelected && (
                               <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                                 <Check className="text-amber-400" size={14} />
@@ -523,9 +527,9 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-slate-350">
-                            {isUploading ? 'Uploading to secure node storage...' : 'Click to select or drag and drop image'}
+                            {isUploading ? t('edit.uploadingToSecureStorage') : t('edit.clickOrDragDrop')}
                           </p>
-                          <p className="text-[10px] text-slate-500 mt-1">PNG, JPG, or WEBP up to 5MB</p>
+                          <p className="text-[10px] text-slate-500 mt-1">{t('edit.uploadHint')}</p>
                         </div>
                       </div>
                     </div>
@@ -537,7 +541,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                         type="url"
                         value={customUrl}
                         onChange={(e) => setCustomUrl(e.target.value)}
-                        placeholder="Paste image network URL here..."
+                        placeholder={t('edit.urlPlaceholder')}
                         className="flex-1 px-4 py-2 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all"
                       />
                       <Button
@@ -548,11 +552,11 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                           if (customUrl) {
                             setAvatarUrl(customUrl);
                             setCustomUrl('');
-                            setStatusMessage({ type: 'success', text: 'Avatar URL set!' });
+                            setStatusMessage({ type: 'success', text: t('messages.avatarUrlSet') });
                           }
                         }}
                       >
-                        Apply
+                        {t('edit.apply')}
                       </Button>
                     </div>
                   )}
@@ -561,27 +565,27 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                 {/* Password modification fields */}
                 <div className="pt-6 border-t border-slate-700/30 space-y-4">
                   <h4 className="text-sm font-display font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <Lock size={15} className="text-amber-400" /> Change Password (Optional)
+                    <Lock size={15} className="text-amber-400" /> {t('edit.changePassword')}
                   </h4>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] font-mono text-slate-400 uppercase mb-1.5">New Password</label>
+                      <label className="block text-[11px] font-mono text-slate-400 uppercase mb-1.5">{t('edit.newPassword')}</label>
                       <input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Min 6 characters"
+                        placeholder={t('edit.newPasswordPlaceholder')}
                         className="w-full px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all placeholder-slate-600"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-mono text-slate-400 uppercase mb-1.5">Confirm New Password</label>
+                      <label className="block text-[11px] font-mono text-slate-400 uppercase mb-1.5">{t('edit.confirmNewPassword')}</label>
                       <input
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repeat new password"
+                        placeholder={t('edit.confirmNewPasswordPlaceholder')}
                         className="w-full px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all placeholder-slate-600"
                       />
                     </div>
@@ -603,7 +607,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                   }}
                   disabled={isSaving}
                 >
-                  Cancel
+                  {t('edit.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -611,7 +615,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                   disabled={isSaving || isUploading}
                   icon={isSaving ? <Loader2 className="animate-spin" size={14} /> : undefined}
                 >
-                  {isSaving ? 'Saving Node Data...' : 'Save Settings'}
+                  {isSaving ? t('edit.savingNodeData') : t('edit.saveSettings')}
                 </Button>
               </div>
             </form>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { TrendingUp, Sparkles, Check } from 'lucide-react';
 import { Button } from '../components/Button';
 
@@ -7,16 +8,18 @@ interface PathPageProps {
 }
 
 export const PathPage: React.FC<PathPageProps> = ({ setCurrentScreen }) => {
+  const { t } = useTranslation(['path']);
+
   return (
     <div className="space-y-8 animate-fade-in py-4">
       
       <div className="text-center max-w-xl mx-auto space-y-3">
         <span className="bg-sky-500/15 text-sky-500 text-xs uppercase font-bold py-1 px-3 rounded-full border border-sky-500/20 font-mono">
-          CHOOSE DEV PROGRAM
+          {t('hero.badge')}
         </span>
-        <h1 className="font-display font-bold text-3xl text-slate-900 dark:text-white">Shape Game Pipelines</h1>
+        <h1 className="font-display font-bold text-3xl text-slate-900 dark:text-white">{t('hero.title')}</h1>
         <p className="text-sm text-slate-500 leading-relaxed">
-          Whether listing customized templates to generate revenue or applying for our exclusive developer grants sandbox, we help fund your creative horizons.
+          {t('hero.description')}
         </p>
       </div>
 
@@ -30,13 +33,13 @@ export const PathPage: React.FC<PathPageProps> = ({ setCurrentScreen }) => {
               <TrendingUp size={20} />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest font-mono">RECURRING COMMERCE</span>
+              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest font-mono">{t('marketplace.badge')}</span>
               <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white pt-1">
-                Sell on Creator Marketplace
+                {t('marketplace.title')}
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-350 leading-relaxed">
-              Retain 95% of revenues on commercial sales! Build passive software earnings with script nodes, game template structures, custom shaders and environment assets.
+              {t('marketplace.description')}
             </p>
 
             <ul className="space-y-2.5 pt-2 text-xs text-slate-500 dark:text-slate-400">
@@ -44,19 +47,19 @@ export const PathPage: React.FC<PathPageProps> = ({ setCurrentScreen }) => {
                 <div className="w-4 h-4 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center flex-none">
                   <Check size={10} />
                 </div>
-                User-friendly global delivery pipeline
+                {t('marketplace.benefitDelivery')}
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center flex-none">
                   <Check size={10} />
                 </div>
-                Full ownership of source files
+                {t('marketplace.benefitOwnership')}
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-emerald-505/10 text-emerald-500 rounded-full flex items-center justify-center flex-none">
                   <Check size={10} />
                 </div>
-                Integrated user reviews and bug ticket tools
+                {t('marketplace.benefitReviews')}
               </li>
             </ul>
           </div>
@@ -67,7 +70,7 @@ export const PathPage: React.FC<PathPageProps> = ({ setCurrentScreen }) => {
             size="md"
             onClick={() => setCurrentScreen('upload')}
           >
-            Start Listing Packages
+            {t('marketplace.cta')}
           </Button>
         </div>
 
@@ -79,13 +82,13 @@ export const PathPage: React.FC<PathPageProps> = ({ setCurrentScreen }) => {
               <Sparkles size={20} />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-sky-500 uppercase tracking-widest font-mono">FINANCIAL SPONSORSHIP</span>
+              <span className="text-[10px] font-bold text-sky-500 uppercase tracking-widest font-mono">{t('grant.badge')}</span>
               <h2 className="font-display font-bold text-xl text-slate-900 dark:text-white pt-1">
-                Acquisition Grant Program
+                {t('grant.title')}
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-355 leading-relaxed">
-              Have an excellent, fully polished open source asset? Apply for our direct developer buyout grant and receive immediate payouts ranging between $500 - $5,000!
+              {t('grant.description')}
             </p>
 
             <ul className="space-y-2.5 pt-2 text-xs text-slate-500 dark:text-slate-400">
@@ -93,28 +96,28 @@ export const PathPage: React.FC<PathPageProps> = ({ setCurrentScreen }) => {
                 <div className="w-4 h-4 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center flex-none">
                   <Check size={10} />
                 </div>
-                Transparent evaluation with fast response
+                {t('grant.benefitEvaluation')}
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center flex-none">
                   <Check size={10} />
                 </div>
-                Immediate flat bank transfer payouts
+                {t('grant.benefitPayout')}
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center flex-none">
                   <Check size={10} />
                 </div>
-                Keep author credits & promo highlights
+                {t('grant.benefitCredits')}
               </li>
             </ul>
           </div>
 
           <button
-            onClick={() => alert('Grant Application Program simulated! We have registered your temporary developer identity. An expert from our funding group will review past projects.')}
+            onClick={() => alert(t('grant.alert'))}
             className="w-full py-3 px-4 bg-transparent border border-sky-500 hover:bg-sky-500 text-sky-500 hover:text-white font-display text-xs font-bold rounded-lg transition-studio text-center cursor-pointer"
           >
-            Submit Current Active Profile
+            {t('grant.cta')}
           </button>
         </div>
 

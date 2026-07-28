@@ -3,6 +3,7 @@ import {
   Bot, ShieldAlert, CheckCircle2, AlertTriangle, XCircle, RefreshCw,
   Code2, ImageIcon, FileText, Eye, DollarSign, Percent, Tags,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { aiReviewApi } from '../../api/aiReviewApi';
 import { AiReviewReport, AiRecommendation } from '../../types';
 
@@ -16,6 +17,7 @@ interface Props {
  * rồi tự quyết định duyệt/từ chối — AI KHÔNG phán quyết.
  */
 const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
+  const { t } = useTranslation(['admin']);
   const [report, setReport] = useState<AiReviewReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,10 +36,10 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
       if (res && res.success) {
         setReport(res.data);
       } else {
-        setError(res?.message || 'Không tải được báo cáo AI');
+        setError(res?.message || t('aiReviewCard.errors.loadFailed'));
       }
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Lỗi tải báo cáo AI');
+      setError(e?.response?.data?.message || e?.message || t('aiReviewCard.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -53,15 +55,15 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
           ? await aiReviewApi.triggerItemReview(itemId)
           : null;
       if (res && res.success) {
-        setTriggerSuccessMsg('Đang chạy AI Review trong nền. Hãy đợi khoảng 15 giây rồi bấm nút Tải lại ở trên.');
+        setTriggerSuccessMsg(t('aiReviewCard.trigger.success'));
         setTimeout(() => {
           load();
         }, 15000);
       } else {
-        setError(res?.message || 'Không thể kích hoạt AI Review');
+        setError(res?.message || t('aiReviewCard.errors.triggerFailed'));
       }
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Lỗi kích hoạt AI Review');
+      setError(e?.response?.data?.message || e?.message || t('aiReviewCard.errors.triggerFailed'));
     } finally {
       setTriggering(false);
     }
@@ -76,7 +78,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
     <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-950/10 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-[11px] uppercase font-mono tracking-wider text-indigo-500 font-bold flex items-center gap-1.5">
-          <Bot size={14} /> AI Review — đề xuất (admin quyết định cuối)
+          <Bot size={14} /> {t('aiReviewCard.title')}
         </h4>
         <div className="flex items-center gap-2">
           {report && (
@@ -84,15 +86,15 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
               onClick={handleTrigger}
               disabled={triggering}
               className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 cursor-pointer flex items-center gap-1"
-              title="Chạy lại phân tích AI"
+              title={t('aiReviewCard.trigger.rerunTitle')}
             >
-              {triggering ? <RefreshCw className="animate-spin" size={10} /> : <Bot size={10} />} Re-run AI
+              {triggering ? <RefreshCw className="animate-spin" size={10} /> : <Bot size={10} />} {t('aiReviewCard.trigger.rerun')}
             </button>
           )}
           <button
             onClick={load}
             className="p-1 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer"
-            title="Tải lại"
+            title={t('aiReviewCard.refresh')}
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -101,14 +103,14 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
 
       {loading ? (
         <div className="flex items-center gap-2 text-slate-500 text-xs py-3">
-          <RefreshCw className="animate-spin" size={14} /> Đang tải báo cáo AI...
+          <RefreshCw className="animate-spin" size={14} /> {t('aiReviewCard.loading')}
         </div>
       ) : error ? (
         <div className="text-xs text-rose-500 font-medium py-2">{error}</div>
       ) : !report ? (
         <div className="text-xs text-slate-500 dark:text-slate-400 py-2 space-y-3">
           <p>
-            Chưa có báo cáo AI cho mục này (AI review chạy nền sau khi submit).
+            {t('aiReviewCard.empty')}
           </p>
           {triggerSuccessMsg ? (
             <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs border border-emerald-500/20 font-medium">
@@ -122,11 +124,11 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
             >
               {triggering ? (
                 <>
-                  <RefreshCw className="animate-spin" size={12} /> Đang yêu cầu...
+                  <RefreshCw className="animate-spin" size={12} /> {t('aiReviewCard.trigger.requesting')}
                 </>
               ) : (
                 <>
-                  <Bot size={14} /> Chạy AI Review Ngay
+                  <Bot size={14} /> {t('aiReviewCard.trigger.runNow')}
                 </>
               )}
             </button>
@@ -143,10 +145,10 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
 
           {/* Điểm từng tiêu chí */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            <ScoreChip label="Chất lượng code" icon={<Code2 size={12} />} value={report.codeQualityScore} />
-            <ScoreChip label="Media khớp" icon={<ImageIcon size={12} />} value={report.mediaMatchScore} />
-            <ScoreChip label="Mô tả đúng" icon={<FileText size={12} />} value={report.descriptionMatchScore} />
-            <ScoreChip label="Tags phù hợp" icon={<Tags size={12} />} value={report.tagsMatchScore} />
+            <ScoreChip label={t('aiReviewCard.scores.codeQuality')} icon={<Code2 size={12} />} value={report.codeQualityScore} />
+            <ScoreChip label={t('aiReviewCard.scores.mediaMatch')} icon={<ImageIcon size={12} />} value={report.mediaMatchScore} />
+            <ScoreChip label={t('aiReviewCard.scores.descriptionMatch')} icon={<FileText size={12} />} value={report.descriptionMatchScore} />
+            <ScoreChip label={t('aiReviewCard.scores.tagsMatch')} icon={<Tags size={12} />} value={report.tagsMatchScore} />
             <NsfwChip flag={report.nsfwFlag} />
           </div>
 
@@ -154,18 +156,18 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
           {(report.suggestedPrice != null || report.suggestedRevenueSplit != null) && (
             <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-2.5 space-y-1.5">
               <span className="text-[10px] uppercase font-mono tracking-wider text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
-                <DollarSign size={12} /> Khuyến nghị giá (AI đề xuất)
+                <DollarSign size={12} /> {t('aiReviewCard.pricing.title')}
               </span>
               <div className="flex flex-wrap items-center gap-3">
                 {report.suggestedPrice != null && (
                   <span className="inline-flex items-center gap-1 text-sm font-display font-bold text-amber-600 dark:text-amber-400">
                     <DollarSign size={14} />
-                    {report.suggestedPrice === 0 ? 'Miễn phí' : `$${report.suggestedPrice}`}
+                    {report.suggestedPrice === 0 ? t('aiReviewCard.pricing.free') : `$${report.suggestedPrice}`}
                   </span>
                 )}
                 {report.suggestedRevenueSplit != null && (
                   <span className="inline-flex items-center gap-1 text-xs font-mono text-slate-600 dark:text-slate-300">
-                    <Percent size={12} /> Chia DT cho dev: {report.suggestedRevenueSplit}%
+                    <Percent size={12} /> {t('aiReviewCard.pricing.revenueSplit', { percent: report.suggestedRevenueSplit })}
                   </span>
                 )}
               </div>
@@ -181,7 +183,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
           {report.flags && report.flags.length > 0 ? (
             <div className="space-y-1.5">
               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                Cảnh báo ({report.flags.length})
+                {t('aiReviewCard.flags.title', { count: report.flags.length })}
               </span>
               {report.flags.map((f, i) => (
                 <div
@@ -193,7 +195,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
                     <span className="font-bold font-mono">{f.type}</span>
                     {typeof f.evidenceIndex === 'number' && (
                       <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-mono opacity-80">
-                        <Eye size={9} /> ảnh #{f.evidenceIndex}
+                        <Eye size={9} /> {t('aiReviewCard.flags.evidenceImage', { index: f.evidenceIndex })}
                       </span>
                     )}
                     <p className="opacity-90 break-words">{f.detail}</p>
@@ -203,7 +205,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-              <CheckCircle2 size={13} /> Không có cảnh báo nào
+              <CheckCircle2 size={13} /> {t('aiReviewCard.flags.none')}
             </div>
           )}
 
@@ -213,7 +215,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
             if (summary) {
               return (
                 <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-slate-200/60 dark:border-slate-800/60">
-                  <span className="font-bold">Tóm tắt AI: </span>{summary}
+                  <span className="font-bold">{t('aiReviewCard.summaryLabel')} </span>{summary}
                 </div>
               );
             }
@@ -221,7 +223,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
           })()}
 
           <p className="text-[9px] text-slate-400 dark:text-slate-500 italic">
-            * AI chỉ đưa đề xuất — quyết định duyệt/từ chối thuộc về admin.
+            {t('aiReviewCard.footerNote')}
           </p>
         </>
       )}
@@ -232,17 +234,18 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
 // ── sub components ──────────────────────────────────────────────
 
 const RecommendationBadge: React.FC<{ value: AiRecommendation; nsfw: boolean }> = ({ value }) => {
+  const { t } = useTranslation(['admin']);
   const map: Record<AiRecommendation, { label: string; cls: string; icon: React.ReactNode }> = {
     approve: {
-      label: 'ĐỀ XUẤT: DUYỆT', icon: <CheckCircle2 size={14} />,
+      label: t('aiReviewCard.recommendation.approve'), icon: <CheckCircle2 size={14} />,
       cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
     },
     review: {
-      label: 'ĐỀ XUẤT: CẦN XEM KỸ', icon: <AlertTriangle size={14} />,
+      label: t('aiReviewCard.recommendation.review'), icon: <AlertTriangle size={14} />,
       cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
     },
     reject: {
-      label: 'ĐỀ XUẤT: TỪ CHỐI', icon: <XCircle size={14} />,
+      label: t('aiReviewCard.recommendation.reject'), icon: <XCircle size={14} />,
       cls: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30',
     },
   };
@@ -267,16 +270,20 @@ const ScoreChip: React.FC<{ label: string; icon: React.ReactNode; value?: number
   );
 };
 
-const NsfwChip: React.FC<{ flag: boolean }> = ({ flag }) => (
-  <div className={`p-2 rounded-lg border ${flag ? 'bg-rose-500/10 border-rose-500/30' : 'bg-white/60 dark:bg-slate-950/30 border-slate-200/60 dark:border-slate-800/60'}`}>
-    <div className="flex items-center gap-1 text-[9px] uppercase font-mono text-slate-500 font-bold">
-      <ShieldAlert size={12} /> NSFW
+const NsfwChip: React.FC<{ flag: boolean }> = ({ flag }) => {
+  const { t } = useTranslation(['admin']);
+
+  return (
+    <div className={`p-2 rounded-lg border ${flag ? 'bg-rose-500/10 border-rose-500/30' : 'bg-white/60 dark:bg-slate-950/30 border-slate-200/60 dark:border-slate-800/60'}`}>
+      <div className="flex items-center gap-1 text-[9px] uppercase font-mono text-slate-500 font-bold">
+        <ShieldAlert size={12} /> {t('aiReviewCard.scores.nsfw')}
+      </div>
+      <div className={`text-sm font-display font-bold ${flag ? 'text-rose-500' : 'text-emerald-500'}`}>
+        {flag ? t('aiReviewCard.nsfw.detected') : t('aiReviewCard.nsfw.safe')}
+      </div>
     </div>
-    <div className={`text-sm font-display font-bold ${flag ? 'text-rose-500' : 'text-emerald-500'}`}>
-      {flag ? 'Phát hiện' : 'An toàn'}
-    </div>
-  </div>
-);
+  );
+};
 
 function severityClass(sev: string): string {
   if (sev === 'high') return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25';

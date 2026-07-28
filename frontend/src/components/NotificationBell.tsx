@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bell, Check, MessageSquare, Heart, Share2, CornerDownRight, ShieldAlert } from 'lucide-react';
 import { useWebSocket } from '../context/WebSocketContext';
 import { NotificationResponse } from '../types';
@@ -11,21 +12,45 @@ interface NotificationBellProps {
   setSelectedAuthor: (author: any) => void;
 }
 
+const resolveLocale = (language?: string | null) => {
+  const normalized = language?.toLowerCase().split('-')[0];
+  if (normalized === 'en') return 'en-US';
+  if (normalized === 'ja') return 'ja-JP';
+  return 'vi-VN';
+};
+
 export const NotificationBell: React.FC<NotificationBellProps> = ({
   setCurrentScreen,
   setSelectedAssetId,
   setSelectedPost,
   setSelectedAuthor
 }) => {
+  const { t, i18n } = useTranslation(['common']);
   const {
     notifications,
     unreadNotificationsCount,
     markNotificationAsRead,
     markAllNotificationsAsRead
   } = useWebSocket();
-  
+
+  const locale = resolveLocale(i18n.resolvedLanguage || i18n.language);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const formatNotificationTimestamp = (value: string) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat(locale, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(parsed);
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -75,6 +100,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative flex items-center justify-center rounded-xl border border-slate-700/30 bg-slate-800/40 p-2 text-slate-300 transition-all hover:bg-slate-800/60 hover:text-white active:scale-95"
+        aria-label={t('notifications_open')}
+        title={t('notifications_open')}
       >
         <Bell size={18} className={unreadNotificationsCount > 0 ? "animate-swing-slow" : ""} />
         {unreadNotificationsCount > 0 && (
@@ -90,13 +117,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
           
           {/* Header */}
           <div className="p-3.5 border-b border-slate-200/40 dark:border-slate-800/40 flex items-center justify-between bg-slate-800/5">
-            <span className="text-sm font-display font-bold text-slate-800 dark:text-white uppercase tracking-wide">Notifications</span>
+            <span className="text-sm font-display font-bold text-slate-800 dark:text-white uppercase tracking-wide">{t('notifications_title')}</span>
             {unreadNotificationsCount > 0 && (
               <button
                 onClick={markAllNotificationsAsRead}
                 className="flex items-center gap-1 text-xs font-semibold text-amber-500 transition-colors hover:text-amber-400"
               >
-                <Check size={11} /> Mark all read
+                <Check size={11} /> {t('notifications_mark_all_read')}
               </button>
             )}
           </div>
@@ -139,7 +166,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                         {getIcon(notif.type)}
                       </span>
                       <span className="text-xs text-slate-400 font-mono">
-                        {new Date(notif.createdAt).toLocaleDateString()} {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatNotificationTimestamp(notif.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -148,7 +175,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
             ) : (
               <div className="py-10 text-center flex flex-col items-center justify-center gap-2 text-slate-450 dark:text-slate-500">
                 <Bell size={24} className="stroke-[1.5]" />
-                <p className="text-sm italic">Your notifications logs are clean.</p>
+                <p className="text-sm italic">{t('notifications_empty')}</p>
               </div>
             )}
           </div>

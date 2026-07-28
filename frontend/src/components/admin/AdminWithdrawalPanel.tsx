@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../Button";
 import {
   ChevronLeft,
@@ -18,8 +19,12 @@ import {
   WithdrawalStatusNotice,
 } from "./AdminWithdrawalDetailModal";
 
-const formatMoney = (value?: number, currency = "VND") => {
-  if (value == null) return "N/A";
+const formatMoney = (
+  value: number | undefined,
+  currency = "VND",
+  fallback = "N/A",
+) => {
+  if (value == null) return fallback;
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency,
@@ -27,10 +32,10 @@ const formatMoney = (value?: number, currency = "VND") => {
   }).format(value);
 };
 
-const formatTimestamp = (value?: string | null) => {
-  if (!value) return "N/A";
+const formatTimestamp = (value: string | null | undefined, fallback = "N/A") => {
+  if (!value) return fallback;
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "N/A";
+  if (Number.isNaN(parsed.getTime())) return fallback;
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "2-digit",
@@ -40,41 +45,41 @@ const formatTimestamp = (value?: string | null) => {
   }).format(parsed);
 };
 
-const getStatusMeta = (status: WithdrawalStatus) => {
+const getStatusMeta = (status: WithdrawalStatus, t: (key: string) => string) => {
   switch (status) {
     case "pending":
       return {
-        label: "Pending",
+        label: t("status.withdrawal.pending"),
         className: "bg-amber-100 text-amber-700 border border-amber-200",
       };
     case "approved":
       return {
-        label: "Approved / Waiting Payout",
+        label: t("status.withdrawal.approved"),
         className: "bg-violet-100 text-violet-700 border border-violet-200",
       };
     case "processing":
       return {
-        label: "Payout Processing",
+        label: t("status.withdrawal.processing"),
         className: "bg-sky-100 text-sky-700 border border-sky-200",
       };
     case "completed":
       return {
-        label: "Completed",
+        label: t("status.withdrawal.completed"),
         className: "bg-emerald-100 text-emerald-700 border border-emerald-200",
       };
     case "failed":
       return {
-        label: "Payout Failed",
+        label: t("status.withdrawal.failed"),
         className: "bg-rose-100 text-rose-700 border border-rose-200",
       };
     case "rejected":
       return {
-        label: "Rejected",
+        label: t("status.withdrawal.rejected"),
         className: "bg-rose-100 text-rose-700 border border-rose-200",
       };
     case "cancelled":
       return {
-        label: "Cancelled",
+        label: t("status.withdrawal.cancelled"),
         className: "bg-slate-100 text-slate-700 border border-slate-200",
       };
     default:
@@ -125,6 +130,7 @@ interface AdminWithdrawalPanelProps {
 export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
   onRefreshStateChange,
 }) => {
+  const { t } = useTranslation(["admin"]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
   const [selectedWithdrawal, setSelectedWithdrawal] =
     useState<WithdrawalDetailResponse | null>(null);
@@ -177,18 +183,18 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
       if (response.success && response.data) {
         setWithdrawals(response.data);
       } else {
-        setError(response.message || "Không thể tải danh sách rút tiền.");
+        setError(response.message || t("withdrawal.loadListError"));
       }
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Không thể tải danh sách rút tiền.",
+          t("withdrawal.loadListError"),
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadWithdrawals();
@@ -286,14 +292,14 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         setIsModalOpen(true);
       } else {
         setDetailError(
-          response.message || "Không thể tải chi tiết yêu cầu rút tiền.",
+          response.message || t("withdrawal.loadDetailError"),
         );
       }
     } catch (err: any) {
       setDetailError(
         err.response?.data?.message ||
           err.message ||
-          "Không thể tải chi tiết yêu cầu rút tiền.",
+          t("withdrawal.loadDetailError"),
       );
     } finally {
       setIsBusy(false);
@@ -306,9 +312,10 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
     const currentBalance = formatMoney(
       Number(balance?.balance ?? 0),
       balance?.currency || selectedWithdrawal?.currency || "VND",
+      t("withdrawal.na"),
     );
 
-    return `Số dư hiện tại là ${currentBalance}. Bạn cần nộp tiền vào ví để thực hiện giao dịch.`;
+    return t("withdrawal.insufficientMessage", { balance: currentBalance });
   };
 
   const closeModal = useCallback(() => {
@@ -338,7 +345,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
       updateWithdrawalInList(detail);
       setPanelStatusFlash({
         tone: "success",
-        message: "Tiền đã về tài khoản người dùng",
+        message: t("withdrawal.successBalanceArrived"),
       });
       closeModal();
       void loadWithdrawals();
@@ -388,9 +395,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         phase: "failed",
         remainingMs: 0,
         totalMs: PAYOUT_PROGRESS_TOTAL_MS,
-        message:
-          detail.remark ||
-          "PayOS đã phản hồi payout thất bại hoặc bị từ chối. Tiền chưa về tài khoản ngân hàng của developer.",
+        message: detail.remark || t("withdrawal.payoutFailedMessage"),
       });
       return;
     }
@@ -421,7 +426,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
             phase: "timeout",
             remainingMs: 0,
             message:
-              "Đã chờ đủ 30 giây nhưng PayOS vẫn chưa xác nhận chuyển tiền thành công. Vui lòng kiểm tra lại giao dịch hoặc số dư payout wallet.",
+              t("withdrawal.timeoutMessage"),
           };
         }
 
@@ -477,7 +482,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
                   remainingMs: 0,
                   message:
                     nextDetail.remark ||
-                    "PayOS đã phản hồi payout thất bại hoặc bị từ chối. Tiền chưa về tài khoản ngân hàng của developer.",
+                    t("withdrawal.payoutFailedMessage"),
                 }
               : current,
           );
@@ -521,7 +526,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
             tone: "warning",
             message:
               payoutProgress.message ||
-              "PayOS đã phản hồi payout thất bại. Vui lòng kiểm tra lại yêu cầu rút tiền.",
+              t("withdrawal.warningFailedFlash"),
           });
         }
 
@@ -530,7 +535,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
             tone: "warning",
             message:
               payoutProgress.message ||
-              "Đã chờ 30 giây nhưng chưa có xác nhận thành công từ PayOS. Vui lòng kiểm tra lại payout queue.",
+              t("withdrawal.warningTimeoutFlash"),
           });
         }
 
@@ -562,7 +567,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         Number(latestPayoutBalance.balance) < Number(selectedWithdrawal.amount)
       ) {
         setStatusNotice({
-          title: "Số dư ví admin không đủ",
+          title: t("withdrawal.insufficientTitle"),
           message: buildInsufficientPayoutMessage(latestPayoutBalance),
           tone: "warning",
         });
@@ -580,10 +585,10 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
 
         const successText =
           nextDetail?.status === "completed"
-            ? "PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất."
+            ? t("withdrawal.approveCompleted")
             : nextDetail?.status === "processing"
-              ? "Payout order đã được tạo. Hệ thống đang tự động theo dõi việc chuyển tiền."
-              : "Withdrawal đã được approve thành công.";
+              ? t("withdrawal.approveProcessing")
+              : t("withdrawal.approveSuccess");
 
         if (nextDetail) {
           updateWithdrawalInList(nextDetail);
@@ -595,14 +600,14 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         void loadWithdrawals();
         void loadAdminPayoutBalance();
       } else {
-        setDetailError(response.message || "Không thể approve withdrawal.");
+        setDetailError(response.message || t("withdrawal.approveError"));
       }
     } catch (err: any) {
       if (err.response?.data?.code === "INSUFFICIENT_PAYOUT_BALANCE") {
         const latestPayoutBalance =
           adminPayoutBalance ?? (await loadAdminPayoutBalance());
         setStatusNotice({
-          title: "Số dư ví admin không đủ",
+          title: t("withdrawal.insufficientTitle"),
           message: buildInsufficientPayoutMessage(latestPayoutBalance),
           tone: "warning",
         });
@@ -610,7 +615,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         setDetailError(
           err.response?.data?.message ||
             err.message ||
-            "Không thể approve withdrawal.",
+            t("withdrawal.approveError"),
         );
       }
     } finally {
@@ -621,7 +626,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
   const handleReject = async () => {
     if (!selectedWithdrawal) return;
     if (!rejectRemark.trim()) {
-      setDetailError("Vui lòng nhập lý do từ chối trước khi reject.");
+      setDetailError(t("withdrawal.rejectRequireReason"));
       return;
     }
 
@@ -632,15 +637,15 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         remark: rejectRemark.trim(),
       });
       if (response.success) {
-        await syncAfterAction(response.data, "Withdrawal đã được reject.");
+        await syncAfterAction(response.data, t("withdrawal.rejectSuccess"));
       } else {
-        setDetailError(response.message || "Không thể reject withdrawal.");
+        setDetailError(response.message || t("withdrawal.rejectError"));
       }
     } catch (err: any) {
       setDetailError(
         err.response?.data?.message ||
           err.message ||
-          "Không thể reject withdrawal.",
+          t("withdrawal.rejectError"),
       );
     } finally {
       setIsBusy(false);
@@ -655,7 +660,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
             type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search by developer, email, bank, or reference..."
+            placeholder={t("withdrawal.searchPlaceholder")}
             className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
           />
           <select
@@ -665,14 +670,14 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
             }
             className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
           >
-            <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved / Waiting Payout</option>
-            <option value="processing">Payout Processing</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Payout Failed</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all">{t("withdrawal.filterAll")}</option>
+            <option value="pending">{t("status.withdrawal.pending")}</option>
+            <option value="approved">{t("status.withdrawal.approved")}</option>
+            <option value="processing">{t("status.withdrawal.processing")}</option>
+            <option value="completed">{t("status.withdrawal.completed")}</option>
+            <option value="failed">{t("status.withdrawal.failed")}</option>
+            <option value="rejected">{t("status.withdrawal.rejected")}</option>
+            <option value="cancelled">{t("status.withdrawal.cancelled")}</option>
           </select>
         </div>
 
@@ -702,11 +707,11 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
           <table className="w-full border-collapse text-left">
             <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-950/30 dark:text-slate-400">
               <tr>
-                <th className="p-4">Developer</th>
-                <th className="p-4">Amount</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Created Date</th>
-                <th className="p-4">Actions</th>
+                <th className="p-4">{t("withdrawal.headers.developer")}</th>
+                <th className="p-4">{t("withdrawal.headers.amount")}</th>
+                <th className="p-4">{t("withdrawal.headers.status")}</th>
+                <th className="p-4">{t("withdrawal.headers.createdDate")}</th>
+                <th className="p-4">{t("withdrawal.headers.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm text-slate-700 dark:divide-slate-800 dark:text-slate-300">
@@ -716,7 +721,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
                     colSpan={5}
                     className="p-6 text-center text-slate-500 dark:text-slate-400"
                   >
-                    Đang tải withdrawal queue...
+                    {t("withdrawal.loadingQueue")}
                   </td>
                 </tr>
               ) : sortedWithdrawals.length === 0 ? (
@@ -725,12 +730,12 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
                     colSpan={5}
                     className="p-6 text-center text-slate-400 dark:text-slate-500"
                   >
-                    Không có yêu cầu rút tiền nào khớp bộ lọc hiện tại.
+                    {t("withdrawal.empty")}
                   </td>
                 </tr>
               ) : (
                 paginatedWithdrawals.map((withdrawal) => {
-                  const statusMeta = getStatusMeta(withdrawal.status);
+                  const statusMeta = getStatusMeta(withdrawal.status, t);
                   return (
                     <tr
                       key={withdrawal.id}
@@ -738,7 +743,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
                     >
                       <td className="p-4">
                         <div className="font-semibold text-slate-900 dark:text-white">
-                          {withdrawal.developerFullName || "Developer"}
+                          {withdrawal.developerFullName || t("withdrawal.defaultDeveloper")}
                         </div>
                         <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                           {withdrawal.developerEmail}
@@ -748,6 +753,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
                         {formatMoney(
                           Number(withdrawal.amount),
                           withdrawal.currency || "VND",
+                          t("withdrawal.na"),
                         )}
                       </td>
                       <td className="p-4">
@@ -758,7 +764,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
                         </span>
                       </td>
                       <td className="p-4 text-xs text-slate-500 dark:text-slate-400">
-                        {formatTimestamp(withdrawal.createdAt?.toString())}
+                        {formatTimestamp(withdrawal.createdAt?.toString(), t("withdrawal.na"))}
                       </td>
                       <td className="p-4">
                         <Button
@@ -768,7 +774,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
                           onClick={() => openDetail(withdrawal.id)}
                           disabled={isBusy}
                         >
-                          View
+                          {t("withdrawal.view")}
                         </Button>
                       </td>
                     </tr>
@@ -788,7 +794,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.08)] transition-studio disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-200 dark:shadow-none"
             >
               <ChevronLeft size={14} />
-              Previous
+              {t("withdrawal.previous")}
             </button>
             <button
               type="button"
@@ -798,7 +804,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
               disabled={currentPage >= totalPages - 1}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.08)] transition-studio disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-200 dark:shadow-none"
             >
-              Next
+              {t("withdrawal.next")}
               <ChevronRight size={14} />
             </button>
           </div>

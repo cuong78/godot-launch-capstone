@@ -65,6 +65,7 @@
     "resourceAsset": "RESOURCE ASSET",
     "game": "Game",
     "resource": "Resource",
+    "free": "Free",
     "currencyVnd": "VND",
     "projectDetails": "Opening advanced configuration options for project: {{projectName}}. Running on engine {{engine}}.",
     "loadingGames": "Loading games...",
@@ -124,10 +125,19 @@
     "signSuccess": "Contract signed successfully! The contract is complete and the game is now approved for publishing.",
     "signError": "Error performing contract signing",
     "signErrorMessage": "Error signing contract",
+    "rejectErrorMessage": "Error rejecting contract",
     "deleteConfirm": "Are you sure you want to remove this product from the Creator Marketplace?",
     "deleteSuccess": "Product successfully removed!",
     "deleteFail": "Failed to remove product",
     "deleteError": "Error removing product"
+  },
+  "errors": {
+    "loadGames": "Failed to load your games",
+    "fetchGames": "Failed to fetch your games",
+    "loadMarketplaceItems": "Failed to load your marketplace items",
+    "fetchMarketplaceItems": "Failed to fetch your marketplace items",
+    "loadSalesStatistics": "Failed to load sales statistics",
+    "fetchSalesStatistics": "Failed to fetch sales statistics"
   },
   "releaseSchedule": {
     "title": "Release Schedule Tracker",

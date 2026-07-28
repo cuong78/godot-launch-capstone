@@ -48,6 +48,88 @@ interface CategoryNode extends CategoryResponse {
   children: CategoryNode[];
 }
 
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  action: "filters.categories.action",
+  adventure: "filters.categories.adventure",
+  strategy: "filters.categories.strategy",
+  casual: "filters.categories.casual",
+  platformer: "filters.categories.platformer",
+  racing: "filters.categories.racing",
+  simulation: "filters.categories.simulation",
+  sports: "filters.categories.sports",
+  puzzle: "filters.categories.puzzle",
+  shooter: "filters.categories.shooter",
+  fighting: "filters.categories.fighting",
+  "action-adventure": "filters.categories.actionAdventure",
+  rpg: "filters.categories.rpg",
+  "city builder": "filters.categories.cityBuilder",
+  "city-builder": "filters.categories.cityBuilder",
+  "card game": "filters.categories.cardGame",
+  "card-game": "filters.categories.cardGame",
+  "2d assets": "filters.categories.twoDAssets",
+  "2d-assets": "filters.categories.twoDAssets",
+  "sprites & characters": "filters.categories.spritesCharacters",
+  "2d-sprites": "filters.categories.spritesCharacters",
+  "tilesets & environments": "filters.categories.tilesetsEnvironments",
+  "2d-tilesets": "filters.categories.tilesetsEnvironments",
+  "ui kits & icons": "filters.categories.uiKitsIcons",
+  "ui-kits": "filters.categories.uiKitsIcons",
+  "backgrounds & parallax": "filters.categories.backgroundsParallax",
+  "2d-backgrounds": "filters.categories.backgroundsParallax",
+  "3d assets": "filters.categories.threeDAssets",
+  "3d-assets": "filters.categories.threeDAssets",
+  "3d characters": "filters.categories.threeDCharacters",
+  "3d-characters": "filters.categories.threeDCharacters",
+  "3d props & objects": "filters.categories.threeDPropsObjects",
+  "3d-props": "filters.categories.threeDPropsObjects",
+  "3d environments & modular": "filters.categories.threeDEnvironmentsModular",
+  "3d-environments": "filters.categories.threeDEnvironmentsModular",
+  "3d vehicles": "filters.categories.threeDVehicles",
+  "3d-vehicles": "filters.categories.threeDVehicles",
+  "templates & source code": "filters.categories.templatesSourceCode",
+  templates: "filters.categories.templatesSourceCode",
+  "full game templates": "filters.categories.fullGameTemplates",
+  "game-templates": "filters.categories.fullGameTemplates",
+  "gameplay systems": "filters.categories.gameplaySystems",
+  "gameplay-systems": "filters.categories.gameplaySystems",
+  "multiplayer & network": "filters.categories.multiplayerNetwork",
+  "multiplayer-network": "filters.categories.multiplayerNetwork",
+  "plugins & add-ons": "filters.categories.pluginsAddons",
+  plugins: "filters.categories.pluginsAddons",
+  "editor helpers": "filters.categories.editorHelpers",
+  "editor-helpers": "filters.categories.editorHelpers",
+  "runtime scripts & nodes": "filters.categories.runtimeScriptsNodes",
+  "runtime-scripts": "filters.categories.runtimeScriptsNodes",
+  "integration tools": "filters.categories.integrationTools",
+  "integration-tools": "filters.categories.integrationTools",
+  "materials & shaders": "filters.categories.materialsShaders",
+  "materials-shaders": "filters.categories.materialsShaders",
+  "pbr materials": "filters.categories.pbrMaterials",
+  "pbr-materials": "filters.categories.pbrMaterials",
+  "godot shaders": "filters.categories.godotShaders",
+  "godot-shaders": "filters.categories.godotShaders",
+  "textures & patterns": "filters.categories.texturesPatterns",
+  "textures-patterns": "filters.categories.texturesPatterns",
+  "audio & music": "filters.categories.audioMusic",
+  "audio-music": "filters.categories.audioMusic",
+  "sound effects": "filters.categories.soundEffects",
+  sfx: "filters.categories.soundEffects",
+  "music tracks": "filters.categories.musicTracks",
+  "music-tracks": "filters.categories.musicTracks",
+  "ambient & background noise": "filters.categories.ambientBackgroundNoise",
+  "ambient-noise": "filters.categories.ambientBackgroundNoise",
+  "vfx & animations": "filters.categories.vfxAnimations",
+  "vfx-animations": "filters.categories.vfxAnimations",
+  "3d particle effects": "filters.categories.particleEffects3d",
+  "3d-vfx": "filters.categories.particleEffects3d",
+  "2d particle effects": "filters.categories.particleEffects2d",
+  "2d-vfx": "filters.categories.particleEffects2d",
+  "rigged animations": "filters.categories.riggedAnimations",
+  "rigged-animations": "filters.categories.riggedAnimations",
+};
+
+const normalizeCategoryValue = (value: string) => value.toLowerCase().trim();
+
 const CategoryTreeItem: React.FC<{
   node: CategoryNode;
   depth: number;
@@ -57,6 +139,8 @@ const CategoryTreeItem: React.FC<{
   toggleExpand: (id: string, e: React.MouseEvent) => void;
   getCategoryCount: (node: CategoryNode) => number;
   getCategoryIcon: (cat: CategoryResponse) => React.ReactNode;
+  getCategoryLabel: (category: Pick<CategoryResponse, "name" | "slug">) => string;
+  getToggleCategoryLabel: (categoryName: string, isExpanded: boolean) => string;
 }> = ({
   node,
   depth,
@@ -65,12 +149,15 @@ const CategoryTreeItem: React.FC<{
   expandedIds,
   toggleExpand,
   getCategoryCount,
-  getCategoryIcon
+  getCategoryIcon,
+  getCategoryLabel,
+  getToggleCategoryLabel,
 }) => {
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = expandedIds.includes(node.id);
   const isSelected = selectedCategories.includes(node.name);
   const count = getCategoryCount(node);
+  const categoryLabel = getCategoryLabel(node);
 
   return (
     <div className="space-y-1">
@@ -90,6 +177,8 @@ const CategoryTreeItem: React.FC<{
               type="button"
               onClick={(e) => toggleExpand(node.id, e)}
               className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors text-slate-400 hover:text-slate-655 dark:hover:text-slate-200"
+              aria-label={getToggleCategoryLabel(categoryLabel, isExpanded)}
+              title={getToggleCategoryLabel(categoryLabel, isExpanded)}
             >
               {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             </button>
@@ -101,7 +190,7 @@ const CategoryTreeItem: React.FC<{
           {getCategoryIcon(node)}
 
           {/* Category Name */}
-          <span className="truncate">{node.name}</span>
+          <span className="truncate">{categoryLabel}</span>
         </div>
 
         {/* Count Badge */}
@@ -126,6 +215,8 @@ const CategoryTreeItem: React.FC<{
               toggleExpand={toggleExpand}
               getCategoryCount={getCategoryCount}
               getCategoryIcon={getCategoryIcon}
+              getCategoryLabel={getCategoryLabel}
+              getToggleCategoryLabel={getToggleCategoryLabel}
             />
           ))}
         </div>
@@ -182,6 +273,28 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const [localSortOrder, setLocalSortOrder] = React.useState<string>("newest");
   const [tagSearchQuery, setTagSearchQuery] = React.useState<string>("");
 
+  const localSortOptions = React.useMemo(
+    () => [
+      { label: t("filters.sort.newest"), value: "newest" },
+      { label: t("filters.sort.oldest"), value: "oldest" },
+      { label: t("filters.sort.priceLow"), value: "price-low" },
+      { label: t("filters.sort.priceHigh"), value: "price-high" },
+      { label: t("filters.sort.alphabeticalAz"), value: "alphabetical-az" },
+      { label: t("filters.sort.alphabeticalZa"), value: "alphabetical-za" },
+    ],
+    [t],
+  );
+
+  const publishDateOptions = React.useMemo(
+    () => [
+      { label: t("filters.publishDate.options.allTime"), value: "all-time" },
+      { label: t("filters.publishDate.options.past24h"), value: "24h" },
+      { label: t("filters.publishDate.options.past7days"), value: "7days" },
+      { label: t("filters.publishDate.options.past30days"), value: "30days" },
+    ],
+    [t],
+  );
+
   React.useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -202,6 +315,87 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const targetItemType = catalogType === "game" ? "source_code" : "asset";
   const assetListings = filteredAssets.filter(
     (asset) => asset.itemType === targetItemType,
+  );
+  const allCategories = React.useMemo(
+    () => [...gameCategories, ...assetCategories],
+    [gameCategories, assetCategories],
+  );
+
+  const getCategoryLabel = React.useCallback(
+    (category: Pick<CategoryResponse, "name" | "slug"> | string) => {
+      const rawName = typeof category === "string" ? category : category.name;
+      const normalizedName = normalizeCategoryValue(rawName);
+      const resolvedCategory =
+        typeof category === "string"
+          ? allCategories.find((item) => {
+              const itemName = normalizeCategoryValue(item.name);
+              const itemSlug = normalizeCategoryValue(item.slug);
+
+              return itemName === normalizedName || itemSlug === normalizedName;
+            })
+          : category;
+      const normalizedSlug = normalizeCategoryValue(
+        resolvedCategory?.slug || rawName,
+      );
+      const exactLabelKey =
+        CATEGORY_LABEL_KEYS[normalizedSlug] || CATEGORY_LABEL_KEYS[normalizedName];
+
+      if (exactLabelKey) {
+        return t(exactLabelKey);
+      }
+
+      if (
+        normalizedSlug.includes("audio") ||
+        normalizedName.includes("audio") ||
+        normalizedName.includes("sound") ||
+        normalizedName.includes("sfx")
+      ) {
+        return t("filters.categories.audioSfx");
+      }
+
+      if (
+        normalizedSlug.includes("script") ||
+        normalizedSlug.includes("plugin") ||
+        normalizedName.includes("script") ||
+        normalizedName.includes("plugin")
+      ) {
+        return t("filters.categories.scriptsPlugins");
+      }
+
+      if (
+        normalizedSlug.includes("shader") ||
+        normalizedSlug.includes("vfx") ||
+        normalizedName.includes("shader") ||
+        normalizedName.includes("vfx")
+      ) {
+        return t("filters.categories.shadersVfx");
+      }
+
+      if (
+        normalizedSlug.includes("3d") ||
+        normalizedName.includes("3d")
+      ) {
+        return t("filters.categories.threeDModels");
+      }
+
+      if (
+        normalizedSlug.includes("2d") ||
+        normalizedName.includes("2d")
+      ) {
+        return t("filters.categories.twoDAssets");
+      }
+
+      return rawName;
+    },
+    [allCategories, t],
+  );
+
+  const getToggleCategoryLabel = React.useCallback(
+    (categoryName: string, isExpanded: boolean) =>
+      isExpanded
+        ? t("filters.categoryCollapse", { name: categoryName })
+        : t("filters.categoryExpand", { name: categoryName }),
+    [t],
   );
 
   // Extract all available tags dynamically from active categories/assets
@@ -348,15 +542,6 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     return result;
   }, [assetListings, selectedTags, minPriceInput, maxPriceInput, freeOnly, publishDateFilter, localSortOrder]);
 
-  const LOCAL_SORT_OPTIONS = [
-    { label: "Sắp xếp: Mới nhất", value: "newest" },
-    { label: "Sắp xếp: Cũ nhất", value: "oldest" },
-    { label: "Giá: Thấp đến Cao", value: "price-low" },
-    { label: "Giá: Cao đến Thấp", value: "price-high" },
-    { label: "Bảng chữ cái: A-Z", value: "alphabetical-az" },
-    { label: "Bảng chữ cái: Z-A", value: "alphabetical-za" },
-  ];
-
   const handleCatalogTypeChange = (type: "game" | "asset") => {
     setCatalogType(type);
     setSelectedCategories([]);
@@ -386,20 +571,24 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
   const getParentCategoryName = React.useCallback((categoryName: string): string => {
     if (!categoryName) return "";
-    const allCats = [...gameCategories, ...assetCategories];
-    const currentCat = allCats.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+    const currentCat = allCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
     if (!currentCat) return categoryName;
 
     let parent = currentCat;
     let iterations = 0;
     while (parent.parentId && iterations < 10) {
-      const nextParent = allCats.find(c => c.id === parent.parentId);
+      const nextParent = allCategories.find(c => c.id === parent.parentId);
       if (!nextParent) break;
       parent = nextParent;
       iterations++;
     }
-    return parent.name;
-  }, [gameCategories, assetCategories]);
+    return getCategoryLabel(parent);
+  }, [allCategories, getCategoryLabel]);
+
+  const marketplaceHeadingTitle =
+    catalogType === "game" ? t("page.catalogTitle") : t("page.assetTitle");
+  const marketplaceHeadingSubtitle =
+    catalogType === "game" ? t("page.catalogSubtitle") : t("page.assetSubtitle");
 
   const renderEmptyState = (title: string, description: string) => (
     <div className="rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/30">
@@ -462,6 +651,8 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   toggleExpand={toggleExpand}
                   getCategoryCount={getCategoryCount}
                   getCategoryIcon={getCategoryIcon}
+                  getCategoryLabel={getCategoryLabel}
+                  getToggleCategoryLabel={getToggleCategoryLabel}
                 />
               ))}
             </div>
@@ -483,7 +674,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                     selectedTags.length > 0 ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
                   }`}
                 >
-                  <span className="font-semibold">Tags</span>
+                  <span className="font-semibold">{t("filters.tagsLabel")}</span>
                   {selectedTags.length > 0 && (
                     <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-sky-500 text-white">
                       {selectedTags.length}
@@ -496,16 +687,17 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
                     <div className="absolute left-0 mt-1.5 z-40 w-64 p-3 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-2">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter by Tags</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("filters.tagsTitle")}</div>
                       
                       {/* Search tags input */}
                       <div className="relative">
                         <Search size={12} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
                         <input
                           type="text"
-                          placeholder="Search tags..."
+                          placeholder={t("filters.tagsSearchPlaceholder")}
                           value={tagSearchQuery}
                           onChange={(e) => setTagSearchQuery(e.target.value)}
+                          aria-label={t("filters.tagsSearchPlaceholder")}
                           className="w-full pl-7 pr-7 py-1.5 text-xs bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
                         />
                         {tagSearchQuery && (
@@ -513,6 +705,8 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                             type="button"
                             onClick={() => setTagSearchQuery("")}
                             className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs"
+                            aria-label={t("filters.tagsSearchClear")}
+                            title={t("filters.tagsSearchClear")}
                           >
                             &times;
                           </button>
@@ -521,7 +715,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
                       {/* Matching dynamic list of tags */}
                       {filteredTagsForDropdown.length === 0 ? (
-                        <div className="text-[11px] text-slate-500 py-1">No tags found</div>
+                        <div className="text-[11px] text-slate-500 py-1">{t("filters.tagsNoResults")}</div>
                       ) : (
                         <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
                           {filteredTagsForDropdown.map(tag => {
@@ -555,7 +749,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                           }}
                           className="text-[11px] font-bold text-slate-400 hover:text-sky-500 cursor-pointer transition-colors"
                         >
-                          Reset
+                          {t("filters.tagsReset")}
                         </button>
                       </div>
                     </div>
@@ -572,7 +766,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                     freeOnly || minPriceInput !== "" || maxPriceInput !== "" ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
                   }`}
                 >
-                  <span className="font-semibold">Price</span>
+                  <span className="font-semibold">{t("filters.priceDropdownLabel")}</span>
                   <ChevronDown size={14} className={`ml-2 text-slate-455 transition-transform duration-200 ${openDropdown === "price" ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -580,29 +774,31 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
                     <div className="absolute left-0 mt-1.5 z-40 w-64 p-4 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-3">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Price Range</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("filters.priceTitle")}</div>
                       
                       <div className="flex items-center gap-2">
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500">Min (₫)</label>
+                          <label className="text-[10px] text-slate-500">{t("filters.priceMinLabel")}</label>
                           <input
                             type="number"
-                            placeholder="Min"
+                            placeholder={t("filters.priceMinPlaceholder")}
                             value={minPriceInput}
                             disabled={freeOnly}
                             onChange={(e) => setMinPriceInput(e.target.value === "" ? "" : Number(e.target.value))}
+                            aria-label={t("filters.priceMinLabel")}
                             className="w-full text-xs p-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg outline-none focus:border-sky-500 disabled:opacity-50 text-slate-700 dark:text-slate-200"
                           />
                         </div>
                         <span className="text-slate-400 mt-4">-</span>
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500">Max (₫)</label>
+                          <label className="text-[10px] text-slate-500">{t("filters.priceMaxLabel")}</label>
                           <input
                             type="number"
-                            placeholder="Max"
+                            placeholder={t("filters.priceMaxPlaceholder")}
                             value={maxPriceInput}
                             disabled={freeOnly}
                             onChange={(e) => setMaxPriceInput(e.target.value === "" ? "" : Number(e.target.value))}
+                            aria-label={t("filters.priceMaxLabel")}
                             className="w-full text-xs p-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg outline-none focus:border-sky-500 disabled:opacity-50 text-slate-700 dark:text-slate-200"
                           />
                         </div>
@@ -615,7 +811,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                           onChange={(e) => setFreeOnly(e.target.checked)}
                           className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-800 accent-sky-500"
                         />
-                        <span>Free products only</span>
+                        <span>{t("filters.freeOnly")}</span>
                       </label>
                     </div>
                   </>
@@ -631,7 +827,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                     publishDateFilter !== "all-time" ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
                   }`}
                 >
-                  <span className="font-semibold">Publish Date</span>
+                  <span className="font-semibold">{t("filters.publishDateLabel")}</span>
                   <ChevronDown size={14} className={`ml-2 text-slate-455 transition-transform duration-200 ${openDropdown === "date" ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -639,12 +835,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
                     <ul className="absolute left-0 mt-1.5 z-40 w-44 p-1.5 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-0.5">
-                      {[
-                        { label: "Tất cả thời gian", value: "all-time" },
-                        { label: "24 giờ qua", value: "24h" },
-                        { label: "7 ngày qua", value: "7days" },
-                        { label: "30 ngày qua", value: "30days" },
-                      ].map((option) => (
+                      {publishDateOptions.map((option) => (
                         <li key={option.value}>
                           <button
                             type="button"
@@ -678,6 +869,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   placeholder={t("filters.searchPlaceholder")}
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
+                  aria-label={t("filters.searchLabel")}
                   className="w-full pl-8 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-sky-500 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 transition-all"
                 />
                 {searchText && (
@@ -685,6 +877,8 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                     type="button"
                     onClick={() => setSearchText("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-semibold cursor-pointer"
+                    aria-label={t("filters.searchClear")}
+                    title={t("filters.searchClear")}
                   >
                     &times;
                   </button>
@@ -698,7 +892,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   onClick={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
                   className="flex items-center justify-between text-xs min-w-[160px] sm:min-w-[180px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-350 dark:hover:border-slate-700 transition-colors focus:border-sky-500"
                 >
-                  <span className="truncate">{LOCAL_SORT_OPTIONS.find(o => o.value === localSortOrder)?.label || "Sắp xếp: Mới nhất"}</span>
+                  <span className="truncate">{localSortOptions.find(o => o.value === localSortOrder)?.label || t("filters.sort.newest")}</span>
                   <ChevronDown size={14} className={`ml-2 text-slate-455 transition-transform duration-200 ${openDropdown === "sort" ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -706,7 +900,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
                     <ul className="absolute right-0 mt-1.5 z-40 w-48 p-1.5 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-0.5">
-                      {LOCAL_SORT_OPTIONS.map((option) => (
+                      {localSortOptions.map((option) => (
                         <li key={option.value}>
                           <button
                             type="button"
@@ -737,31 +931,65 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 {selectedTags.map(tag => (
                   <span key={tag} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
                     <span>{tag}</span>
-                    <button type="button" onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs">&times;</button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs"
+                      aria-label={t("filters.active.removeTag", { name: tag })}
+                      title={t("filters.active.removeTag", { name: tag })}
+                    >
+                      &times;
+                    </button>
                   </span>
                 ))}
                 
                 {freeOnly && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
-                    <span>Miễn phí</span>
-                    <button type="button" onClick={() => setFreeOnly(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs">&times;</button>
+                    <span>{t("filters.active.freeOnly")}</span>
+                    <button
+                      type="button"
+                      onClick={() => setFreeOnly(false)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs"
+                      aria-label={t("filters.active.removeFreeOnly")}
+                      title={t("filters.active.removeFreeOnly")}
+                    >
+                      &times;
+                    </button>
                   </span>
                 )}
                 
                 {(minPriceInput !== "" || maxPriceInput !== "") && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
-                    <span>Giá: {minPriceInput !== "" ? `${minPriceInput.toLocaleString()}đ` : "0đ"} - {maxPriceInput !== "" ? `${maxPriceInput.toLocaleString()}đ` : "Không giới hạn"}</span>
-                    <button type="button" onClick={() => { setMinPriceInput(""); setMaxPriceInput(""); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs">&times;</button>
+                    <span>{t("filters.active.priceRange", {
+                      min: minPriceInput !== "" ? formatCurrencyAmount(Number(minPriceInput), numberLocale) : formatCurrencyAmount(0, numberLocale),
+                      max: maxPriceInput !== "" ? formatCurrencyAmount(Number(maxPriceInput), numberLocale) : t("filters.price.noLimit"),
+                    })}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setMinPriceInput(""); setMaxPriceInput(""); }}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs"
+                      aria-label={t("filters.active.removePriceRange")}
+                      title={t("filters.active.removePriceRange")}
+                    >
+                      &times;
+                    </button>
                   </span>
                 )}
                 
                 {publishDateFilter !== "all-time" && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in">
                     <span>
-                      {publishDateFilter === "24h" ? "Trong 24h qua" :
-                       publishDateFilter === "7days" ? "Trong 7 ngày qua" : "Trong 30 ngày qua"}
+                      {publishDateOptions.find((option) => option.value === publishDateFilter)?.label || t("filters.publishDate.options.allTime")}
                     </span>
-                    <button type="button" onClick={() => setPublishDateFilter("all-time")} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs">&times;</button>
+                    <button
+                      type="button"
+                      onClick={() => setPublishDateFilter("all-time")}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-100 cursor-pointer text-xs"
+                      aria-label={t("filters.active.removePublishDate")}
+                      title={t("filters.active.removePublishDate")}
+                    >
+                      &times;
+                    </button>
                   </span>
                 )}
                 
@@ -776,7 +1004,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   }}
                   className="text-[11px] font-bold text-sky-500 hover:text-sky-400 cursor-pointer ml-1.5 transition-colors select-none"
                 >
-                  Clear all
+                  {t("filters.active.clearAll")}
                 </button>
               </div>
             )}
@@ -809,10 +1037,10 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                     <div>
                       <h2 className="font-display text-[1.9rem] font-bold text-slate-850 dark:text-white flex items-center gap-2">
                         <Boxes size={22} className="text-sky-500" />{" "}
-                        {t("page.assetTitle")}
+                        {marketplaceHeadingTitle}
                       </h2>
                       <p className="mt-0.5 text-sm text-slate-550 dark:text-slate-400">
-                        {t("page.assetSubtitle")}
+                        {marketplaceHeadingSubtitle}
                       </p>
                     </div>
                   </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useFaceVerify } from "../context/FaceVerifyContext";
 import BotInviteModal from "../components/BotInviteModal";
 import { tagApi, TagResponse } from "../api/tagApi";
@@ -44,6 +45,14 @@ interface UploadStatus {
 
 const MAX_SELECTED_TAGS = 10;
 const TAG_RESULT_LIMIT = 12;
+const PLATFORM_OPTIONS = [
+  { value: "Windows", labelKey: "form.platform.windows" },
+  { value: "macOS", labelKey: "form.platform.macos" },
+  { value: "Linux", labelKey: "form.platform.linux" },
+  { value: "Web", labelKey: "form.platform.web" },
+  { value: "Android", labelKey: "form.platform.android" },
+  { value: "iOS", labelKey: "form.platform.ios" },
+] as const;
 
 function extractObjectKey(url: string): string {
   try {
@@ -68,6 +77,7 @@ const getFileKey = (file: File): string => {
 
 export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const { requireFaceVerify } = useFaceVerify();
+  const { t } = useTranslation(["upload"]);
 
   // Step State
   const [step, setStep] = useState<1 | 2>(1);
@@ -184,12 +194,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         const res = await tagApi.searchTags(tagQuery.trim(), TAG_RESULT_LIMIT);
         if (!ignoreResult) {
           setTagOptions(res.success && res.data ? res.data : []);
-          if (!res.success) setTagSearchError(res.message || "Unable to load tags.");
+          if (!res.success) {
+            setTagSearchError(res.message || t("errors.unableToLoadTags"));
+          }
         }
       } catch (err) {
         if (!ignoreResult) {
           setTagOptions([]);
-          setTagSearchError("Unable to load tags. Please try again.");
+          setTagSearchError(t("errors.unableToLoadTagsTryAgain"));
         }
         console.error("Failed to search tags:", err);
       } finally {
@@ -201,7 +213,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       ignoreResult = true;
       window.clearTimeout(timeoutId);
     };
-  }, [tagQuery]);
+  }, [tagQuery, t]);
 
   useEffect(() => {
     const closeTagPicker = (event: MouseEvent) => {
@@ -263,23 +275,17 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               const status = res.data.status;
               if (status === "removed" || status === "rejected") {
                 setScanStatus("infected");
-                setScanMessage(
-                  "Security Alert: Verification failed or virus detected. Upload cancelled.",
-                );
+                setScanMessage(t("scan.securityAlert"));
                 clearInterval(intervalId);
               } else if (status === "pending") {
                 if (attempts >= 3) {
                   setScanStatus("clean");
-                  setScanMessage(
-                    "Security scan passed successfully! Item is now pending admin review.",
-                  );
+                  setScanMessage(t("success.marketplacePending"));
                   clearInterval(intervalId);
                 }
               } else if (status === "active") {
                 setScanStatus("clean");
-                setScanMessage(
-                  "Security scan passed successfully! Item is active.",
-                );
+                setScanMessage(t("success.marketplaceActive"));
                 clearInterval(intervalId);
               }
             }
@@ -295,15 +301,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               const status = res.data.status;
               if (status === "pending") {
                 setScanStatus("clean");
-                setScanMessage(
-                  "Security scan passed successfully! Game is now pending review.",
-                );
+                setScanMessage(t("success.gamePending"));
                 clearInterval(intervalId);
               } else if (status === "rejected") {
                 setScanStatus("infected");
-                setScanMessage(
-                  "Security Alert: Verification failed or virus detected. Upload cancelled.",
-                );
+                setScanMessage(t("scan.securityAlert"));
                 clearInterval(intervalId);
               }
             }
@@ -316,7 +318,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [scanStatus, gameId, publishProgram]);
+  }, [scanStatus, gameId, publishProgram, t]);
 
   // Logic API tách riêng để có thể gọi lại sau khi face verify xong
   const submitDraft = async (priceNum: number) => {
@@ -334,7 +336,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       if (res.success && res.data?.itemId) {
         setGameId(res.data.itemId);
         setStep(2);
-      } else alert(res.message || "Failed to create marketplace item");
+      } else alert(res.message || t("errors.failedCreateMarketplaceItem"));
     } else {
       const res = await gameApi.createGameDraft({
         title,
@@ -347,7 +349,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       if (res.success && res.data?.gameId) {
         setGameId(res.data.gameId);
         setStep(2);
-      } else alert(res.message || "Failed to create game draft");
+      } else alert(res.message || t("errors.failedCreateGameDraft"));
     }
   };
 
@@ -355,13 +357,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const handleCreateDraft = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title) {
-      alert("Title is required");
+      alert(t("errors.titleRequired"));
       return;
     }
     const cleanPriceStr = price.replace(/\s/g, "");
     const priceNum = parseFloat(cleanPriceStr || "0");
     if (isNaN(priceNum) || priceNum < 0) {
-      alert("Price must be a valid positive number");
+      alert(t("errors.invalidPrice"));
       return;
     }
 
@@ -377,7 +379,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       alert(
         err.response?.data?.message ||
           err.message ||
-          "Failed to initialize draft",
+          t("errors.failedInitializeDraft"),
       );
     }
   };
@@ -424,7 +426,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           },
         );
         if (!res.success) {
-          throw new Error(res.message || "Upload failed");
+          throw new Error(res.message || t("errors.uploadFailed"));
         }
       } else if (fileType === "game") {
         // Game.zip: PUT trực tiếp (file lớn, không qua backend)
@@ -434,7 +436,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           file.type,
         );
         if (!urlRes.success || !urlRes.data?.uploadUrl) {
-          throw new Error(urlRes.message || "Failed to get upload URL");
+          throw new Error(urlRes.message || t("errors.failedGetUploadUrl"));
         }
         const uploadUrl = urlRes.data.uploadUrl;
 
@@ -469,7 +471,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               },
             );
         if (!res.success) {
-          throw new Error(res.message || "Upload failed");
+          throw new Error(res.message || t("errors.uploadFailed"));
         }
 
         // Lưu objectKey của screenshot để xóa lẻ trên server sau này
@@ -488,8 +490,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setScanStatus("scanning");
         setScanMessage(
           publishProgram === "marketplace"
-            ? "Marketplace package uploaded. Scanning files for Malware and checking integrity..."
-            : "Game package uploaded. Scanning files for Malware and checking integrity (Zip Slip / Zip Bomb)...",
+            ? t("scan.marketplacePackageUploaded")
+            : t("scan.gamePackageUploaded"),
         );
       }
     } catch (err: any) {
@@ -498,7 +500,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       setUploadError(
         err.response?.data?.message ||
           err.message ||
-          `Upload failed for ${fileType}`,
+          t("errors.uploadFailedForType", { fileType }),
       );
     }
   };
@@ -507,7 +509,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     if (e.target.files && gameId) {
       const filesArr = Array.from(e.target.files);
       if (screenshots.length + filesArr.length > 5) {
-        alert("Maximum 5 screenshots allowed.");
+        alert(t("errors.maximumScreenshots"));
         return;
       }
       setScreenshots((prev) => [...prev, ...filesArr]);
@@ -547,13 +549,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const handleSubmitRepo = async () => {
     if (!gameId) return;
     if (!gameRepoUrl.trim()) {
-      setUploadError("Please enter your GitHub repository link.");
+      setUploadError(t("errors.enterRepositoryLink"));
       return;
     }
     setRepoSubmitting(true);
     setUploadError(null);
     setScanStatus("scanning");
-    setScanMessage("Verifying repo, cloning and scanning source code security...");
+    setScanMessage(t("scan.repoVerifying"));
     try {
       const res = await gameApi.submitGameRepo(
         gameId,
@@ -564,10 +566,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setRepoSubmitted(true);
         setUploadStatus((prev) => ({ ...prev, game: "completed" }));
         setScanStatus("clean");
-        setScanMessage("Repo verified and clean. Awaiting approval.");
+        setScanMessage(t("success.repoAwaitingApproval"));
       } else {
         setScanStatus("failed");
-        setUploadError(res.message || "Failed to submit repository.");
+        setUploadError(res.message || t("errors.failedSubmitRepository"));
       }
     } catch (err: any) {
       // Repo private mà bot chưa có quyền → hiện hướng dẫn mời bot
@@ -583,7 +585,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       } else {
         setScanStatus("failed");
         setUploadError(
-          err.response?.data?.message || err.message || "Failed to submit repository.",
+          err.response?.data?.message ||
+            err.message ||
+            t("errors.failedSubmitRepository"),
         );
       }
     } finally {
@@ -604,12 +608,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       } else {
         setUploadError(
           res.message ||
-            "Invitation not found. Please ensure you have invited the bot to your repository.",
+            t("errors.invitationNotFound"),
         );
       }
     } catch (err: any) {
       setUploadError(
-        err.response?.data?.message || "Could not connect. Please try again later.",
+        err.response?.data?.message || t("errors.couldNotConnect"),
       );
     } finally {
       setBotChecking(false);
@@ -639,7 +643,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           );
         }
       } catch (err: any) {
-        setUploadError(err.response?.data?.message || "Failed to upload image.");
+        setUploadError(err.response?.data?.message || t("errors.failedUploadImage"));
         setAssetImages((prev) => prev.filter((_, i) => i !== idx));
       }
     }
@@ -677,11 +681,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setUploadStatus((prev) => ({ ...prev, [statusKey]: "completed" }));
       } else {
         setUploadStatus((prev) => ({ ...prev, [statusKey]: "failed" }));
-        setUploadError(res.message || "Upload failed.");
+        setUploadError(res.message || t("errors.uploadFailed"));
       }
     } catch (err: any) {
       setUploadStatus((prev) => ({ ...prev, [statusKey]: "failed" }));
-      setUploadError(err.response?.data?.message || "Upload failed.");
+      setUploadError(err.response?.data?.message || t("errors.uploadFailed"));
     }
   };
 
@@ -720,22 +724,22 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           <h1 className="font-display font-bold text-2xl text-slate-800 dark:text-white">
             {step === 1
               ? publishProgram === "marketplace"
-                ? "Publish Marketplace Item"
-                : "Publish Your Game Draft"
+                ? t("page.title.marketplace.step1")
+                : t("page.title.game.step1")
               : publishProgram === "marketplace"
-                ? "Upload Marketplace Project File"
-                : "Upload Assets & Media"}
+                ? t("page.title.marketplace.step2")
+                : t("page.title.game.step2")}
           </h1>
           <p className="text-xs text-slate-500">
             {step === 1
-              ? "Provide basic listing information, categories, and settings"
+              ? t("page.description.step1")
               : publishProgram === "marketplace"
-                ? "Securely upload marketplace project source package"
-                : "Securely upload game source package, screenshots, thumbnails, and demo clips"}
+                ? t("page.description.marketplace.step2")
+                : t("page.description.game.step2")}
           </p>
         </div>
         <span className="text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-amber-500 px-3 py-1.5 rounded-lg">
-          Step {step} of 2
+          {t("page.stepCounter", { step })}
         </span>
       </div>
 
@@ -775,10 +779,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       : "text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  Standalone Asset Pack
+                  {t("program.marketplace.title")}
                 </span>
                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
-                  Publish standalone assets for game development such as 2D/3D characters, audio, effects, plugins (Direct ZIP download).
+                  {t("program.marketplace.description")}
                 </span>
               </div>
               {publishProgram === "marketplace" && (
@@ -815,10 +819,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       : "text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  Game Project & Source Code
+                  {t("program.game.title")}
                 </span>
                 <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
-                  List game project source code on the Marketplace, or submit a game for store publishing partnership (GitHub Repo link required).
+                  {t("program.game.description")}
                 </span>
               </div>
               {publishProgram === "game" && (
@@ -831,13 +835,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             <Input
               label={
                 publishProgram === "game"
-                  ? "Game Title"
-                  : "Asset Title"
+                  ? t("form.gameTitle")
+                  : t("form.assetTitle")
               }
               placeholder={
                 publishProgram === "game"
-                  ? "e.g. Neon Horizon Racer 3D"
-                  : "e.g. Fantasy Knight Sprite Sheet"
+                  ? t("form.gameTitlePlaceholder")
+                  : t("form.assetTitlePlaceholder")
               }
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -845,9 +849,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             />
 
             <Input
-              label="Proposed Price (VND)"
+              label={t("form.priceLabel")}
               prefix="VND"
-              placeholder="e.g. 50,000 (Set 0 for Free)"
+              placeholder={t("form.pricePlaceholder")}
               type="text"
               value={price}
               onChange={(e) => handlePriceChange(e.target.value)}
@@ -858,11 +862,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                {publishProgram === "game" ? "Game Category" : "Category"}
+                {publishProgram === "game"
+                  ? t("form.gameCategory")
+                  : t("form.category")}
               </label>
               {isLoadingCategories ? (
                 <div className="text-xs text-slate-500 animate-pulse py-2.5">
-                  Fetching categories...
+                  {t("form.fetchingCategories")}
                 </div>
               ) : (
                 <select
@@ -892,9 +898,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   htmlFor="tag-search"
                   className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200"
                 >
-                  Tags
+                  {t("form.tags")}
                   <span className="ml-1 text-xs font-normal text-slate-500">
-                    key descriptors
+                    {t("form.tagsHint")}
                   </span>
                 </label>
                 <span
@@ -920,7 +926,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                         type="button"
                         onClick={() => toggleTag(tag)}
                         className="rounded-full p-0.5 transition-colors hover:bg-amber-500/20"
-                        aria-label={`Remove ${tag.name}`}
+                        aria-label={t("form.removeTagAria", { name: tag.name })}
                       >
                         <X size={12} />
                       </button>
@@ -943,7 +949,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     setIsTagDropdownOpen(true);
                   }}
                   onFocus={() => setIsTagDropdownOpen(true)}
-                  placeholder="Search tags by name..."
+                  placeholder={t("form.searchTagsPlaceholder")}
                   autoComplete="off"
                   className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-800 outline-none transition-studio placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
                   aria-expanded={isTagDropdownOpen}
@@ -966,7 +972,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     <p className="px-3 py-3 text-xs text-red-500">{tagSearchError}</p>
                   ) : !isLoadingTags && tagOptions.length === 0 ? (
                     <p className="px-3 py-3 text-xs text-slate-500">
-                      No matching tags found.
+                      {t("form.noMatchingTags")}
                     </p>
                   ) : (
                     tagOptions.map((tag) => {
@@ -1000,8 +1006,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
               <p className="text-[11px] text-slate-500">
                 {selectedTags.length >= MAX_SELECTED_TAGS
-                  ? "Maximum 10 tags reached. Remove one to select another."
-                  : "Search and select up to 10 relevant tags."}
+                  ? t("form.maxTagsReached")
+                  : t("form.selectUpToTags")}
               </p>
             </div>
 
@@ -1009,10 +1015,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               <div className="flex flex-col gap-2 md:col-span-2">
                 <div>
                   <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                    Publishing Destination
+                    {t("form.publishingDestination")}
                   </label>
                   <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    Chọn cách bạn muốn phân phối game sau khi được duyệt.
+                    {t("form.publishingDestinationHint")}
                   </p>
                 </div>
 
@@ -1040,7 +1046,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-2">
                           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Marketplace
+                            {t("form.marketplaceDestination")}
                           </span>
                           {publishingType === "marketplace_listing" && (
                             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950">
@@ -1049,7 +1055,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                           )}
                         </span>
                         <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
-                          Bán source code trực tiếp, tự quản lý sản phẩm và không cần ký hợp đồng.
+                          {t("form.marketplaceDestinationDescription")}
                         </span>
                       </span>
                     </span>
@@ -1082,7 +1088,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-2">
                           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                            Mobile Store
+                            {t("form.mobileStoreDestination")}
                           </span>
                           {publishingType !== "marketplace_listing" && (
                             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950">
@@ -1091,7 +1097,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                           )}
                         </span>
                         <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
-                          Nền tảng hỗ trợ phát hành lên Google Play hoặc App Store theo hợp đồng.
+                          {t("form.mobileStoreDestinationDescription")}
                         </span>
                       </span>
                     </span>
@@ -1101,24 +1107,24 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 {publishingType !== "marketplace_listing" && (
                   <div className="flex flex-col gap-1.5 mt-2">
                     <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                      Hình thức hợp đồng
+                      {t("form.contractModel")}
                     </label>
                     <select
                       value={publishingType}
                       onChange={(e) => setPublishingType(e.target.value as any)}
                       className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
                     >
-                      <option value="full_acquisition" title="Bán đứt: Bạn chuyển nhượng toàn bộ quyền sở hữu game cho nền tảng, nhận một khoản tiền một lần, không còn quyền lợi doanh thu về sau.">
-                        Full Acquisition (Bán đứt - nhận trọn một lần, chuyển toàn bộ quyền cho nền tảng)
+                      <option value="full_acquisition">
+                        {t("form.fullAcquisitionOption")}
                       </option>
-                      <option value="co_publishing" title="Co-Publishing: Bạn vẫn giữ quyền sở hữu, nền tảng xuất bản hộ và chia % doanh thu liên tục theo hợp đồng.">
-                        Co-Publishing (% chia doanh thu liên tục, bạn vẫn giữ quyền sở hữu)
+                      <option value="co_publishing">
+                        {t("form.coPublishingOption")}
                       </option>
                     </select>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       {publishingType === "full_acquisition"
-                        ? "Bán đứt: nhận tiền một lần, chuyển toàn bộ quyền sở hữu cho nền tảng."
-                        : "Co-Publishing: giữ quyền sở hữu, chia % doanh thu liên tục với nền tảng theo hợp đồng."}
+                        ? t("form.fullAcquisitionHint")
+                        : t("form.coPublishingHint")}
                     </p>
                   </div>
                 )}
@@ -1128,37 +1134,37 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
           <div className="border-t border-slate-150 dark:border-slate-800 pt-6 space-y-6">
             <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-              <ShieldCheck size={16} className="text-amber-500" /> Specifications
+              <ShieldCheck size={16} className="text-amber-500" /> {t("form.specifications")}
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
-                label="Version"
-                placeholder="e.g. 1.0.0"
+                label={t("form.version")}
+                placeholder={t("form.versionPlaceholder")}
                 value={publishProgram === "game" ? "1.0.0" : version}
                 onChange={(e) => publishProgram !== "game" && setVersion(e.target.value)}
                 disabled={publishProgram === "game"}
-                helperText={publishProgram === "game" ? "Initial game version defaults to 1.0.0" : undefined}
+                helperText={publishProgram === "game" ? t("form.versionHelper") : undefined}
               />
             </div>
 
             {publishProgram === "marketplace" && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                  Supported Platforms
+                  {t("form.supportedPlatforms")}
                 </label>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {["Windows", "macOS", "Linux", "Web", "Android", "iOS"].map((platform) => {
-                    const active = supportedPlatforms.includes(platform);
+                  {PLATFORM_OPTIONS.map((platform) => {
+                    const active = supportedPlatforms.includes(platform.value);
                     return (
                       <button
-                        key={platform}
+                        key={platform.value}
                         type="button"
                         onClick={() => {
                           setSupportedPlatforms((prev) =>
-                            prev.includes(platform)
-                              ? prev.filter((p) => p !== platform)
-                              : [...prev, platform]
+                            prev.includes(platform.value)
+                              ? prev.filter((p) => p !== platform.value)
+                              : [...prev, platform.value]
                           );
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
@@ -1167,7 +1173,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                             : "bg-white dark:bg-slate-900 border-slate-350 dark:border-slate-855 text-slate-650 dark:text-slate-300 hover:border-amber-400"
                         }`}
                       >
-                        {platform}
+                        {t(platform.labelKey)}
                       </button>
                     );
                   })}
@@ -1177,11 +1183,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           </div>
 
           <TextArea
-            label="Description & Features"
+            label={t("form.descriptionLabel")}
             placeholder={
               publishProgram === "marketplace"
-                ? "Outline project requirements, deploy instructions, key assets included..."
-                : "Outline Godot version requirements, how to deploy, key mechanics, and feature lists..."
+                ? t("form.marketplaceDescriptionPlaceholder")
+                : t("form.gameDescriptionPlaceholder")
             }
             rows={5}
             value={description}
@@ -1196,8 +1202,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               icon={<ArrowRight size={16} />}
             >
               {publishProgram === "marketplace"
-                ? "Initialize Marketplace Item"
-                : "Initialize Game Draft"}
+                ? t("form.initializeMarketplaceItem")
+                : t("form.initializeGameDraft")}
             </Button>
           </div>
         </form>
@@ -1206,7 +1212,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           {/* File Selection Column */}
           <div className="lg:col-span-2 space-y-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 p-6 rounded-2xl shadow-md">
             <h2 className="font-display font-bold text-lg text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800">
-              Required Artifacts
+              {t("artifacts.title")}
             </h2>
 
             {uploadError && (
@@ -1219,7 +1225,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             {publishProgram === "marketplace" && (
               <div className="space-y-2.5">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <FileText size={16} className="text-amber-500" /> Marketplace Item ZIP (.zip) *
+                  <FileText size={16} className="text-amber-500" /> {t("artifacts.marketplaceZipLabel")}
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -1234,21 +1240,21 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     id="game-zip-input"
                   />
                   <label
-                    htmlFor="game-zip-input"
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
-                  >
-                    <Upload size={14} /> Select ZIP File
+                  htmlFor="game-zip-input"
+                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                >
+                    <Upload size={14} /> {t("artifacts.selectZipFile")}
                   </label>
                   <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
                     {gameFile
                       ? `${gameFile.name} (${(gameFile.size / (1024 * 1024)).toFixed(2)} MB)`
-                      : "No file selected (Max 50MB)"}
+                      : t("artifacts.noZipSelected")}
                   </span>
                 </div>
                 {uploadStatus["game"] === "uploading" && (
                   <div className="space-y-1.5 mt-1.5">
                     <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>Uploading...</span>
+                      <span>{t("status.uploading")}</span>
                       <span>{uploadProgress["game"]}%</span>
                     </div>
                     <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
@@ -1261,12 +1267,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 )}
                 {uploadStatus["game"] === "completed" && (
                   <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> Upload Complete
+                    <CheckCircle2 size={13} /> {t("status.uploadComplete")}
                   </span>
                 )}
                 {uploadStatus["game"] === "failed" && (
                   <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={13} /> Upload Failed
+                    <AlertTriangle size={13} /> {t("status.uploadFailed")}
                   </span>
                 )}
               </div>
@@ -1276,9 +1282,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             {publishProgram === "marketplace" && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Image size={16} className="text-amber-500" /> Preview Images{" "}
+                  <Image size={16} className="text-amber-500" /> {t("artifacts.previewImagesLabel")}{" "}
                   <span className="text-xs font-normal text-slate-500">
-                    (for buyers to preview the asset)
+                    {t("artifacts.previewImagesHint")}
                   </span>
                 </label>
                 <input
@@ -1293,7 +1299,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   htmlFor="asset-img-input"
                   className="inline-flex px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer items-center gap-1.5"
                 >
-                  <Upload size={14} /> Add Image
+                  <Upload size={14} /> {t("artifacts.addImage")}
                 </label>
                 {assetImages.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -1301,7 +1307,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       <div key={idx} className="relative">
                         <img
                           src={URL.createObjectURL(img.file)}
-                          alt="preview"
+                          alt={t("artifacts.previewImageAlt")}
                           className="w-20 h-20 object-cover rounded-lg border border-slate-300 dark:border-slate-800"
                         />
                         <button
@@ -1327,8 +1333,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             {(publishProgram === "game" || publishProgram === "marketplace") && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Image size={16} className="text-amber-500" /> Primary Cover
-                  Thumbnail *
+                  <Image size={16} className="text-amber-500" /> {t("artifacts.thumbnailLabel")}
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -1337,7 +1342,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     onChange={(e) => {
                       const file = e.target.files ? e.target.files[0] : null;
                       if (file && file.size > 10 * 1024 * 1024) {
-                        alert("Thumbnail image must be smaller than 10MB.");
+                        alert(t("errors.thumbnailTooLarge"));
                         e.target.value = "";
                         return;
                       }
@@ -1348,19 +1353,19 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     id="thumb-input"
                   />
                   <label
-                    htmlFor="thumb-input"
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
-                  >
-                    <Upload size={14} /> Select Thumbnail
+                  htmlFor="thumb-input"
+                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                >
+                    <Upload size={14} /> {t("artifacts.selectThumbnail")}
                   </label>
                   <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
-                    {thumbnailFile ? thumbnailFile.name : "No image chosen"}
+                    {thumbnailFile ? thumbnailFile.name : t("artifacts.noImageChosen")}
                   </span>
                 </div>
                 {uploadStatus["thumbnail"] === "uploading" && (
                   <div className="space-y-1.5 mt-1.5">
                     <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>Uploading...</span>
+                      <span>{t("status.uploading")}</span>
                       <span>{uploadProgress["thumbnail"]}%</span>
                     </div>
                     <div className="w-full bg-slate-155 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
@@ -1373,12 +1378,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 )}
                 {uploadStatus["thumbnail"] === "completed" && (
                   <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> Upload Complete
+                    <CheckCircle2 size={13} /> {t("status.uploadComplete")}
                   </span>
                 )}
                 {uploadStatus["thumbnail"] === "failed" && (
                   <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={13} /> Upload Failed
+                    <AlertTriangle size={13} /> {t("status.uploadFailed")}
                   </span>
                 )}
               </div>
@@ -1389,8 +1394,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Image size={16} className="text-amber-500" /> Screenshots
-                    (Optional, Max 5)
+                    <Image size={16} className="text-amber-500" /> {t("artifacts.screenshotsLabel")}
                   </span>
                   <span className="text-xs font-mono font-bold text-slate-500">
                     {screenshots.length} / 5
@@ -1415,7 +1419,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                         : "bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border-slate-250 dark:border-slate-800 text-slate-700 dark:text-slate-350"
                     }`}
                   >
-                    <Upload size={14} /> Add Screenshots
+                    <Upload size={14} /> {t("artifacts.addScreenshots")}
                   </label>
                 </div>
 
@@ -1435,7 +1439,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                             <div className="flex items-center gap-2 shrink-0">
                               {uploadStatus[key] === "completed" && (
                                 <span className="text-emerald-500 font-semibold flex items-center gap-1">
-                                  <CheckCircle2 size={12} /> Uploaded
+                                  <CheckCircle2 size={12} /> {t("artifacts.uploaded")}
                                 </span>
                               )}
                               {uploadStatus[key] === "uploading" && (
@@ -1449,7 +1453,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                               )}
                               {uploadStatus[key] === "failed" && (
                                 <span className="text-rose-500 font-semibold flex items-center gap-1">
-                                  <AlertTriangle size={12} /> Failed
+                                  <AlertTriangle size={12} /> {t("artifacts.failed")}
                                 </span>
                               )}
                               {uploadStatus[key] === "idle" && (
@@ -1459,11 +1463,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                                   }
                                   className="px-2 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 font-bold rounded text-[10px] transition-colors"
                                 >
-                                  Upload
+                                  {t("artifacts.upload")}
                                 </button>
                               )}
                               <button
                                 onClick={() => removeScreenshot(idx)}
+                                aria-label={t("artifacts.removeScreenshotAria", {
+                                  name: file.name,
+                                })}
                                 className="p-1 hover:bg-rose-500/10 hover:text-rose-500 text-slate-400 rounded transition-colors"
                               >
                                 <Trash2 size={13} />
@@ -1490,8 +1497,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             {publishProgram === "game" && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Video size={16} className="text-amber-500" /> Gameplay Video
-                  Trailer (Optional)
+                  <Video size={16} className="text-amber-500" /> {t("artifacts.videoLabel")}
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -1506,19 +1512,19 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     id="video-input"
                   />
                   <label
-                    htmlFor="video-input"
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
-                  >
-                    <Upload size={14} /> Select Video
+                  htmlFor="video-input"
+                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                >
+                    <Upload size={14} /> {t("artifacts.selectVideo")}
                   </label>
                   <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
-                    {videoFile ? videoFile.name : "No video chosen"}
+                    {videoFile ? videoFile.name : t("artifacts.noVideoChosen")}
                   </span>
                 </div>
                 {uploadStatus["video"] === "uploading" && (
                   <div className="space-y-1.5 mt-1.5">
                     <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>Uploading...</span>
+                      <span>{t("status.uploading")}</span>
                       <span>{uploadProgress["video"]}%</span>
                     </div>
                     <div className="w-full bg-slate-155 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
@@ -1531,12 +1537,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 )}
                 {uploadStatus["video"] === "completed" && (
                   <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> Upload Complete
+                    <CheckCircle2 size={13} /> {t("status.uploadComplete")}
                   </span>
                 )}
                 {uploadStatus["video"] === "failed" && (
                   <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={13} /> Upload Failed
+                    <AlertTriangle size={13} /> {t("status.uploadFailed")}
                   </span>
                 )}
               </div>
@@ -1546,10 +1552,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             {publishProgram === "game" && gameId && publishingType === "marketplace_listing" && (
               <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Upload size={16} className="text-amber-500" /> Web Demo ZIP (Optional)
+                  <Upload size={16} className="text-amber-500" /> {t("artifacts.webDemoLabel")}
                 </label>
                 <p className="text-xs text-slate-500">
-                  Upload an HTML5/WebAssembly build (.zip) so users can play the demo directly in their web browser.
+                  {t("artifacts.webDemoDescription")}
                 </p>
                 <div className="flex items-center gap-3">
                   <input
@@ -1566,21 +1572,21 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     id="web-demo-zip-input"
                   />
                   <label
-                    htmlFor="web-demo-zip-input"
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-255 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer flex items-center gap-1.5 transition-studio"
-                  >
-                    <Upload size={14} /> Select Demo ZIP
+                  htmlFor="web-demo-zip-input"
+                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-255 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer flex items-center gap-1.5 transition-studio"
+                >
+                    <Upload size={14} /> {t("artifacts.selectDemoZip")}
                   </label>
                   <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
                     {demoFile
                       ? `${demoFile.name} (${(demoFile.size / (1024 * 1024)).toFixed(2)} MB)`
-                      : "No file chosen (Recommended < 50MB)"}
+                      : t("artifacts.noDemoChosen")}
                   </span>
                 </div>
                 {demoUploadStatus === "uploading" && (
                   <div className="space-y-1.5 mt-1.5">
                     <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>Uploading demo...</span>
+                      <span>{t("artifacts.uploadingDemo")}</span>
                       <span>{demoUploadProgress}%</span>
                     </div>
                     <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
@@ -1593,12 +1599,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 )}
                 {demoUploadStatus === "completed" && (
                   <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> Web demo uploaded and verified!
+                    <CheckCircle2 size={13} /> {t("artifacts.webDemoUploaded")}
                   </span>
                 )}
                 {demoUploadStatus === "failed" && (
                   <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={13} /> Demo upload failed. Please verify ZIP structure.
+                    <AlertTriangle size={13} /> {t("artifacts.webDemoFailed")}
                   </span>
                 )}
               </div>
@@ -1608,22 +1614,22 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             {publishProgram === "game" && (
               <div className="space-y-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <FileText size={16} className="text-amber-500" /> GitHub Repository *
+                  <FileText size={16} className="text-amber-500" /> {t("artifacts.githubLabel")}
                 </label>
                 <p className="text-xs text-slate-500">
-                  The system will verify the repository belongs to your GitHub account, clone it, scan for security vulnerabilities, and take a commit snapshot.
+                  {t("artifacts.githubDescription")}
                 </p>
                 
                 {uploadStatus["thumbnail"] !== "completed" ? (
                   <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2 animate-fade-in">
                     <AlertTriangle size={15} />
-                    Vui lòng upload Primary Cover Thumbnail trước khi cấu hình & xác thực GitHub Repository của game.
+                    {t("artifacts.thumbnailRequiredBeforeRepo")}
                   </div>
                 ) : (
                   <>
                     <input
                       type="text"
-                      placeholder="https://github.com/username/my-godot-game"
+                      placeholder={t("artifacts.repoUrlPlaceholder")}
                       value={gameRepoUrl}
                       onChange={(e) => setGameRepoUrl(e.target.value)}
                       disabled={repoSubmitted}
@@ -1631,7 +1637,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     />
                     <input
                       type="text"
-                      placeholder="Branch (optional, default: main branch)"
+                      placeholder={t("artifacts.repoBranchPlaceholder")}
                       value={gameRepoBranch}
                       onChange={(e) => setGameRepoBranch(e.target.value)}
                       disabled={repoSubmitted}
@@ -1646,17 +1652,17 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       >
                         {repoSubmitting ? (
                           <>
-                            <RefreshCw size={14} className="animate-spin" /> Processing...
+                            <RefreshCw size={14} className="animate-spin" /> {t("artifacts.processing")}
                           </>
                         ) : (
                           <>
-                            <CheckCircle2 size={14} /> Verify & Submit Repo
+                            <CheckCircle2 size={14} /> {t("artifacts.verifySubmitRepo")}
                           </>
                         )}
                       </button>
                     ) : (
                       <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                        <CheckCircle2 size={13} /> Repo verified, cloned & scanned clean
+                        <CheckCircle2 size={13} /> {t("artifacts.repoVerified")}
                       </span>
                     )}
                   </>
@@ -1682,7 +1688,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   setScreenshotKeys({});
                 }}
               >
-                Back to Details
+                {t("status.backToDetails")}
               </Button>
 
               <Button
@@ -1699,13 +1705,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 onClick={() => {
                   alert(
                     publishProgram === "marketplace"
-                      ? "Marketplace item submission pipeline completed! Returning to dashboard."
-                      : "Game submission pipeline completed! Returning to dashboard.",
+                      ? t("success.marketplaceSubmissionCompleted")
+                      : t("success.gameSubmissionCompleted"),
                   );
                   setCurrentScreen("dashboard");
                 }}
               >
-                Finish Submission
+                {t("status.finishSubmission")}
               </Button>
             </div>
           </div>
@@ -1713,22 +1719,22 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           {/* Right Status / Scanning Telemetry panel */}
           <div className="space-y-4">
             <h3 className="font-display font-bold text-sm text-slate-400 dark:text-slate-500 pl-1 uppercase tracking-wider">
-              Verification Status
+              {t("status.verificationStatus")}
             </h3>
 
             <div className="bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm backdrop-blur-md">
               <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
                 <ShieldCheck size={18} className="text-amber-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  Security Telemetry
+                  {t("status.securityTelemetry")}
                 </span>
               </div>
 
               {scanStatus === "idle" && (
                 <p className="text-xs text-slate-500 leading-relaxed italic">
                   {publishProgram === "marketplace"
-                    ? "Upload your Marketplace Project ZIP package to initiate static safety scanner, uncompress bomb checks, and virus diagnostics."
-                    : "Upload your Game Source ZIP package to initiate automatic static plagiarism scan, uncompress bomb checks, and ClamAV sandbox virus diagnostics."}
+                    ? t("status.idleMarketplace")
+                    : t("status.idleGame")}
                 </p>
               )}
 
@@ -1736,7 +1742,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 <div className="space-y-3 py-1">
                   <div className="flex items-center gap-2 text-xs font-bold text-sky-500">
                     <RefreshCw className="animate-spin" size={14} />
-                    <span>Analyzing package contents...</span>
+                    <span>{t("status.analyzingPackage")}</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-normal bg-slate-50 dark:bg-slate-950/40 p-3 rounded-lg border border-slate-200/50 dark:border-slate-850">
                     {scanMessage}
@@ -1748,7 +1754,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 <div className="space-y-3 py-1">
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
                     <CheckCircle2 size={16} />
-                    <span>Scan Cleared & Safe</span>
+                    <span>{t("status.scanCleared")}</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-normal bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/20">
                     {scanMessage}
@@ -1760,7 +1766,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 <div className="space-y-3 py-1">
                   <div className="flex items-center gap-2 text-xs font-bold text-rose-500">
                     <AlertTriangle size={16} />
-                    <span>Security Threat Detected</span>
+                    <span>{t("status.securityThreat")}</span>
                   </div>
                   <p className="text-[11px] text-rose-500 leading-normal bg-rose-500/5 p-3 rounded-lg border border-rose-500/20">
                     {scanMessage}

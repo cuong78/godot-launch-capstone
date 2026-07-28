@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -45,8 +46,12 @@ interface AdminWithdrawalDetailModalProps {
   onDismissStatusNotice: () => void;
 }
 
-const formatMoney = (value?: number, currency = "VND") => {
-  if (value == null) return "N/A";
+const formatMoney = (
+  value: number | undefined,
+  currency = "VND",
+  fallback = "N/A",
+) => {
+  if (value == null) return fallback;
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency,
@@ -54,10 +59,10 @@ const formatMoney = (value?: number, currency = "VND") => {
   }).format(value);
 };
 
-const formatTimestamp = (value?: string | null) => {
-  if (!value) return "N/A";
+const formatTimestamp = (value: string | null | undefined, fallback = "N/A") => {
+  if (!value) return fallback;
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "N/A";
+  if (Number.isNaN(parsed.getTime())) return fallback;
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "2-digit",
@@ -67,41 +72,41 @@ const formatTimestamp = (value?: string | null) => {
   }).format(parsed);
 };
 
-const getStatusMeta = (status: WithdrawalStatus) => {
+const getStatusMeta = (status: WithdrawalStatus, t: (key: string) => string) => {
   switch (status) {
     case "pending":
       return {
-        label: "Pending",
+        label: t("status.withdrawal.pending"),
         className: "bg-amber-100 text-amber-700 border border-amber-200",
       };
     case "approved":
       return {
-        label: "Approved / Waiting Payout",
+        label: t("status.withdrawal.approved"),
         className: "bg-violet-100 text-violet-700 border border-violet-200",
       };
     case "processing":
       return {
-        label: "Payout Processing",
+        label: t("status.withdrawal.processing"),
         className: "bg-sky-100 text-sky-700 border border-sky-200",
       };
     case "completed":
       return {
-        label: "Completed",
+        label: t("status.withdrawal.completed"),
         className: "bg-emerald-100 text-emerald-700 border border-emerald-200",
       };
     case "failed":
       return {
-        label: "Payout Failed",
+        label: t("status.withdrawal.failed"),
         className: "bg-rose-100 text-rose-700 border border-rose-200",
       };
     case "rejected":
       return {
-        label: "Rejected",
+        label: t("status.withdrawal.rejected"),
         className: "bg-rose-100 text-rose-700 border border-rose-200",
       };
     case "cancelled":
       return {
-        label: "Cancelled",
+        label: t("status.withdrawal.cancelled"),
         className: "bg-slate-100 text-slate-700 border border-slate-200",
       };
     default:
@@ -152,7 +157,10 @@ const formatCountdown = (valueMs: number) => {
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 };
 
-const getPayoutProgressMeta = (progress: WithdrawalPayoutProgress) => {
+const getPayoutProgressMeta = (
+  progress: WithdrawalPayoutProgress,
+  t: (key: string) => string,
+) => {
   switch (progress.phase) {
     case "success":
       return {
@@ -160,10 +168,10 @@ const getPayoutProgressMeta = (progress: WithdrawalPayoutProgress) => {
         iconClassName: "bg-emerald-500/15 text-emerald-300",
         badgeClassName: "border border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
         barClassName: "bg-emerald-400",
-        title: "Chuyển tiền thành công",
+        title: t("status.withdrawal.completed"),
         message:
           progress.message
-          || "Tiền đã về tài khoản người dùng. Hệ thống sẽ tự động đóng Withdrawal Detail.",
+          || t("withdrawal.successBalanceArrived"),
       };
     case "failed":
       return {
@@ -171,10 +179,10 @@ const getPayoutProgressMeta = (progress: WithdrawalPayoutProgress) => {
         iconClassName: "bg-rose-500/15 text-rose-300",
         badgeClassName: "border border-rose-500/30 bg-rose-500/10 text-rose-200",
         barClassName: "bg-rose-400",
-        title: "Chuyển tiền thất bại",
+        title: t("status.withdrawal.failed"),
         message:
           progress.message
-          || "PayOS đã phản hồi payout chưa thành công. Vui lòng kiểm tra lại giao dịch trước khi thao tác tiếp.",
+          || t("withdrawal.payoutFailedMessage"),
       };
     case "timeout":
       return {
@@ -182,10 +190,10 @@ const getPayoutProgressMeta = (progress: WithdrawalPayoutProgress) => {
         iconClassName: "bg-amber-500/15 text-amber-300",
         badgeClassName: "border border-amber-500/30 bg-amber-500/10 text-amber-100",
         barClassName: "bg-amber-400",
-        title: "Chuyển tiền thất bại",
+        title: t("status.withdrawal.failed"),
         message:
           progress.message
-          || "Đã chờ 30 giây nhưng chưa thấy PayOS xác nhận hoàn tất. Hệ thống sẽ thoát khỏi trang chi tiết để bạn kiểm tra lại queue.",
+          || t("withdrawal.timeoutMessage"),
       };
     default:
       return {
@@ -193,10 +201,10 @@ const getPayoutProgressMeta = (progress: WithdrawalPayoutProgress) => {
         iconClassName: "bg-sky-500/15 text-sky-300",
         badgeClassName: "border border-sky-500/30 bg-sky-500/10 text-sky-100",
         barClassName: "bg-sky-400",
-        title: "Tiền đang được chuyển tới tài khoản của bạn",
+        title: t("status.withdrawal.processing"),
         message:
           progress.message
-          || "Hệ thống đang chờ PayOS xác nhận giao dịch. Khi tiền về tài khoản người dùng, màn hình này sẽ tự động đóng.",
+          || t("withdrawal.detail.processingDescription"),
       };
   }
 };
@@ -221,11 +229,12 @@ export const AdminWithdrawalDetailModal: React.FC<
   payoutProgress,
   onDismissStatusNotice,
 }) => {
+  const { t } = useTranslation(["admin"]);
   if (!isOpen || !withdrawal) {
     return null;
   }
 
-  const statusMeta = getStatusMeta(withdrawal.status);
+  const statusMeta = getStatusMeta(withdrawal.status, t);
   const canCreatePayout =
     withdrawal.status === "pending" ||
     (withdrawal.status === "approved" && !withdrawal.payosPayoutId);
@@ -235,13 +244,13 @@ export const AdminWithdrawalDetailModal: React.FC<
     withdrawal.status === "processing";
   const currency = withdrawal.currency || "VND";
   const noticeMeta = statusNotice ? getNoticeMeta(statusNotice.tone) : null;
-  const progressMeta = payoutProgress ? getPayoutProgressMeta(payoutProgress) : null;
+  const progressMeta = payoutProgress ? getPayoutProgressMeta(payoutProgress, t) : null;
   const adminPayoutCurrency = adminPayoutBalance?.currency || "VND";
   const adminPayoutDisplay = isLoadingAdminPayoutBalance
-    ? "Loading..."
+    ? t("common.loading")
     : adminPayoutBalance
-      ? formatMoney(Number(adminPayoutBalance.balance), adminPayoutCurrency)
-      : "N/A";
+      ? formatMoney(Number(adminPayoutBalance.balance), adminPayoutCurrency, t("withdrawal.na"))
+      : t("withdrawal.na");
   const payoutProgressPercent = payoutProgress
     ? Math.max(
       0,
@@ -258,7 +267,7 @@ export const AdminWithdrawalDetailModal: React.FC<
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white/95 px-6 py-5 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
           <div>
             <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-              Withdrawal Detail
+              {t("withdrawal.detail.title")}
             </p>
             <h3 className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
               {withdrawal.developerFullName || withdrawal.developerEmail}
@@ -276,7 +285,7 @@ export const AdminWithdrawalDetailModal: React.FC<
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
                 <Wallet2 size={14} className="text-amber-500" />
-                Số dư ví admin: {adminPayoutDisplay}
+                {t("withdrawal.detail.adminBalance", { amount: adminPayoutDisplay })}
               </span>
             </div>
           </div>
@@ -298,32 +307,32 @@ export const AdminWithdrawalDetailModal: React.FC<
                     <UserRound size={18} />
                   </div>
                   <h4 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                    Developer Information
+                    {t("withdrawal.detail.developerInfo")}
                   </h4>
                 </div>
                 <dl className="mt-4 space-y-3 text-sm">
                   <div>
                     <dt className="text-slate-500 dark:text-slate-400">
-                      Full Name
+                      {t("withdrawal.detail.fullName")}
                     </dt>
                     <dd className="font-semibold text-slate-900 dark:text-white">
-                      {withdrawal.developerFullName || "N/A"}
+                      {withdrawal.developerFullName || t("withdrawal.na")}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-slate-500 dark:text-slate-400">
-                      Email
+                      {t("withdrawal.detail.email")}
                     </dt>
                     <dd className="font-mono text-xs text-slate-700 dark:text-slate-300">
-                      {withdrawal.developerEmail || "N/A"}
+                      {withdrawal.developerEmail || t("withdrawal.na")}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-slate-500 dark:text-slate-400">
-                      Created
+                      {t("withdrawal.detail.created")}
                     </dt>
                     <dd className="font-medium text-slate-800 dark:text-slate-200">
-                      {formatTimestamp(withdrawal.createdAt)}
+                      {formatTimestamp(withdrawal.createdAt, t("withdrawal.na"))}
                     </dd>
                   </div>
                 </dl>
@@ -335,40 +344,40 @@ export const AdminWithdrawalDetailModal: React.FC<
                     <Wallet2 size={18} />
                   </div>
                   <h4 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                    Wallet Information
+                    {t("withdrawal.detail.walletInfo")}
                   </h4>
                 </div>
                 <dl className="mt-4 grid grid-cols-1 gap-3 text-sm">
                   <div>
                     <dt className="text-slate-500 dark:text-slate-400">
-                      Wallet Balance
+                      {t("withdrawal.detail.walletBalance")}
                     </dt>
                     <dd className="font-semibold text-slate-900 dark:text-white">
-                      {formatMoney(withdrawal.walletBalance, currency)}
+                      {formatMoney(withdrawal.walletBalance, currency, t("withdrawal.na"))}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-slate-500 dark:text-slate-400">
-                      Available Balance
+                      {t("withdrawal.detail.availableBalance")}
                     </dt>
                     <dd className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      {formatMoney(withdrawal.availableBalance, currency)}
+                      {formatMoney(withdrawal.availableBalance, currency, t("withdrawal.na"))}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-slate-500 dark:text-slate-400">
-                      Pending Withdrawal
+                      {t("withdrawal.detail.pendingWithdrawal")}
                     </dt>
                     <dd className="font-semibold text-sky-600 dark:text-sky-400">
-                      {formatMoney(withdrawal.pendingBalance, currency)}
+                      {formatMoney(withdrawal.pendingBalance, currency, t("withdrawal.na"))}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-slate-500 dark:text-slate-400">
-                      Total Revenue
+                      {t("withdrawal.detail.totalRevenue")}
                     </dt>
                     <dd className="font-semibold text-amber-600 dark:text-amber-400">
-                      {formatMoney(withdrawal.totalRevenue, currency)}
+                      {formatMoney(withdrawal.totalRevenue, currency, t("withdrawal.na"))}
                     </dd>
                   </div>
                 </dl>
@@ -380,14 +389,14 @@ export const AdminWithdrawalDetailModal: React.FC<
                 <div className="rounded-2xl bg-sky-500/15 p-3 text-sky-600 dark:text-sky-400">
                   <Landmark size={18} />
                 </div>
-                <h4 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                  Bank Information
-                </h4>
+                  <h4 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                  {t("withdrawal.detail.bankInfo")}
+                  </h4>
               </div>
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Bank Name
+                    {t("withdrawal.detail.bankName")}
                   </p>
                   <p className="mt-2 font-semibold text-slate-900 dark:text-white">
                     {withdrawal.bankName}
@@ -395,7 +404,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Account Holder
+                    {t("withdrawal.detail.accountHolder")}
                   </p>
                   <p className="mt-2 font-semibold text-slate-900 dark:text-white">
                     {withdrawal.accountHolder}
@@ -405,7 +414,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                        Account Number
+                        {t("withdrawal.detail.accountNumber")}
                       </p>
                       <p className="mt-2 font-mono text-sm text-slate-900 dark:text-white">
                         {withdrawal.bankAccount}
@@ -417,7 +426,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                       icon={<Copy size={14} />}
                       onClick={() => copyToClipboard(withdrawal.bankAccount)}
                     >
-                      Copy
+                      {t("withdrawal.copy")}
                     </Button>
                   </div>
                 </div>
@@ -425,10 +434,10 @@ export const AdminWithdrawalDetailModal: React.FC<
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                        Transfer Reference
+                        {t("withdrawal.detail.transferReference")}
                       </p>
                       <p className="mt-2 font-mono text-sm text-slate-900 dark:text-white">
-                        {withdrawal.transferReference || "N/A"}
+                        {withdrawal.transferReference || t("withdrawal.na")}
                       </p>
                     </div>
                     <Button
@@ -439,16 +448,16 @@ export const AdminWithdrawalDetailModal: React.FC<
                         copyToClipboard(withdrawal.transferReference)
                       }
                     >
-                      Copy
+                      {t("withdrawal.copy")}
                     </Button>
                   </div>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Withdrawal Amount
+                    {t("withdrawal.detail.withdrawalAmount")}
                   </p>
                   <p className="mt-2 font-display text-2xl font-bold text-amber-600 dark:text-amber-400">
-                    {formatMoney(withdrawal.amount, currency)}
+                    {formatMoney(withdrawal.amount, currency, t("withdrawal.na"))}
                   </p>
                 </div>
               </div>
@@ -461,43 +470,43 @@ export const AdminWithdrawalDetailModal: React.FC<
                 <div className="rounded-2xl bg-emerald-500/15 p-3 text-emerald-600 dark:text-emerald-400">
                   <BadgeCheck size={18} />
                 </div>
-                <h4 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                  Payout Tracking
-                </h4>
+                  <h4 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                  {t("withdrawal.detail.payoutTracking")}
+                  </h4>
               </div>
               <div className="mt-5 space-y-4">
                 <div className="rounded-3xl border border-slate-200/80 bg-slate-50 p-4 dark:border-slate-800/70 dark:bg-slate-900/60">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                        PayOS Payout ID
+                        {t("withdrawal.detail.payosPayoutId")}
                       </p>
                       <p className="mt-2 break-all font-mono text-xs text-slate-800 dark:text-slate-200">
-                        {withdrawal.payosPayoutId || "Chưa tạo payout order"}
+                        {withdrawal.payosPayoutId || t("withdrawal.detail.noPayoutOrder")}
                       </p>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                        PayOS Status
+                        {t("withdrawal.detail.payosStatus")}
                       </p>
                       <p className="mt-2 font-semibold text-slate-900 dark:text-white">
-                        {withdrawal.payosStatus || "Chưa có trạng thái"}
+                        {withdrawal.payosStatus || t("withdrawal.detail.noStatus")}
                       </p>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                        PayOS Created
+                        {t("withdrawal.detail.payosCreated")}
                       </p>
                       <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-                        {formatTimestamp(withdrawal.payosCreatedAt)}
+                        {formatTimestamp(withdrawal.payosCreatedAt, t("withdrawal.na"))}
                       </p>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                        Last Processed
+                        {t("withdrawal.detail.lastProcessed")}
                       </p>
                       <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-                        {formatTimestamp(withdrawal.processedAt)}
+                        {formatTimestamp(withdrawal.processedAt, t("withdrawal.na"))}
                       </p>
                     </div>
                   </div>
@@ -506,26 +515,24 @@ export const AdminWithdrawalDetailModal: React.FC<
                 <div className="grid grid-cols-1 gap-3">
                   <div className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800/70 dark:bg-slate-950/60">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      Step 1
+                      {t("withdrawal.detail.step1")}
                     </p>
                     <p className="mt-2 font-semibold text-slate-900 dark:text-white">
-                      Create payout order
+                      {t("withdrawal.detail.step1Title")}
                     </p>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Admin tạo lệnh chi từ kênh PayOS payout của nền tảng tới
-                      tài khoản ngân hàng developer.
+                      {t("withdrawal.detail.step1Description")}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800/70 dark:bg-slate-950/60">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      Step 2
+                      {t("withdrawal.detail.step2")}
                     </p>
                     <p className="mt-2 font-semibold text-slate-900 dark:text-white">
-                      Sync transfer result
+                      {t("withdrawal.detail.step2Title")}
                     </p>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Khi PayOS xác nhận chuyển tiền thành công, withdrawal sẽ
-                      tự chuyển sang completed.
+                      {t("withdrawal.detail.step2Description")}
                     </p>
                   </div>
                 </div>
@@ -534,7 +541,7 @@ export const AdminWithdrawalDetailModal: React.FC<
 
             <section className="rounded-3xl border border-slate-200/80 bg-white p-5 dark:border-slate-800/70 dark:bg-slate-950/70">
               <h4 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                Actions
+                {t("withdrawal.detail.actionsTitle")}
               </h4>
 
               {error && (
@@ -548,18 +555,18 @@ export const AdminWithdrawalDetailModal: React.FC<
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                        PayOS Payout ID
+                        {t("withdrawal.detail.payosPayoutId")}
                       </p>
                       <p className="mt-1 font-mono text-xs text-slate-800 dark:text-slate-200">
-                        {withdrawal.payosPayoutId || "N/A"}
+                        {withdrawal.payosPayoutId || t("withdrawal.na")}
                       </p>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                        PayOS Status
+                        {t("withdrawal.detail.payosStatus")}
                       </p>
                       <p className="mt-1 font-semibold text-slate-800 dark:text-slate-200">
-                        {withdrawal.payosStatus || "N/A"}
+                        {withdrawal.payosStatus || t("withdrawal.na")}
                       </p>
                     </div>
                   </div>
@@ -569,7 +576,7 @@ export const AdminWithdrawalDetailModal: React.FC<
               {canCreatePayout && (
                 <div className="mt-4">
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Approval Note
+                    {t("withdrawal.detail.approvalNote")}
                   </label>
                   <textarea
                     value={completionRemark}
@@ -578,7 +585,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                     }
                     rows={4}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none focus:border-amber-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-                    placeholder="Ghi chú nội bộ cho lần xử lý chuyển khoản này..."
+                    placeholder={t("withdrawal.detail.approvalPlaceholder")}
                   />
                 </div>
               )}
@@ -586,7 +593,7 @@ export const AdminWithdrawalDetailModal: React.FC<
               {canReject && (
                 <div className="mt-4">
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Reject Remark
+                    {t("withdrawal.detail.rejectRemark")}
                   </label>
                   <textarea
                     value={rejectRemark}
@@ -595,7 +602,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                     }
                     rows={4}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none focus:border-rose-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-                    placeholder="Nhập lý do từ chối nếu thông tin ngân hàng hoặc amount có vấn đề..."
+                    placeholder={t("withdrawal.detail.rejectPlaceholder")}
                   />
                 </div>
               )}
@@ -604,10 +611,10 @@ export const AdminWithdrawalDetailModal: React.FC<
                 <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800/70 dark:bg-slate-900/60 dark:text-slate-300">
                   <div className="flex items-center gap-2 text-slate-900 dark:text-white">
                     <AlertTriangle size={14} className="text-amber-500" />
-                    <span className="font-semibold">Stored Remark</span>
+                    <span className="font-semibold">{t("withdrawal.detail.storedRemark")}</span>
                   </div>
                   <p className="mt-2">
-                    {withdrawal.remark || "Không có ghi chú."}
+                    {withdrawal.remark || t("withdrawal.detail.noRemark")}
                   </p>
                 </div>
               )}
@@ -620,7 +627,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                     onClick={onApprove}
                     disabled={isBusy}
                   >
-                    Create Payout Order
+                    {t("withdrawal.detail.createPayoutOrder")}
                   </Button>
                 )}
                 {canReject && (
@@ -630,13 +637,12 @@ export const AdminWithdrawalDetailModal: React.FC<
                     onClick={onReject}
                     disabled={isBusy}
                   >
-                    Reject Request
+                    {t("withdrawal.detail.rejectRequest")}
                   </Button>
                 )}
                 {!canCreatePayout && !canReject && (
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    Withdrawal này đã ở trạng thái cuối và không thể chỉnh sửa
-                    thêm.
+                    {t("withdrawal.detail.finalStateReadonly")}
                   </span>
                 )}
               </div>
@@ -666,7 +672,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                   size="sm"
                   onClick={onDismissStatusNotice}
                 >
-                  Đã hiểu
+                  {t("withdrawal.understood")}
                 </Button>
               </div>
             </div>
@@ -684,7 +690,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                    Payout transfer status
+                    {t("withdrawal.detail.payoutTransferStatus")}
                   </p>
                   <h4 className="mt-2 font-display text-2xl font-bold text-white">
                     {progressMeta.title}
@@ -700,7 +706,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                   <span
                     className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${progressMeta.badgeClassName}`}
                   >
-                    {payoutProgress.phase === "processing" ? "Đang xử lý" : "Đã cập nhật"}
+                    {payoutProgress.phase === "processing" ? t("withdrawal.detail.processingBadge") : t("withdrawal.detail.updatedBadge")}
                   </span>
                   <span className="font-mono text-xl font-semibold text-white">
                     {formatCountdown(payoutProgress.remainingMs)}
@@ -716,8 +722,8 @@ export const AdminWithdrawalDetailModal: React.FC<
 
                 <p className="mt-4 text-xs leading-6 text-slate-400">
                   {payoutProgress.phase === "processing"
-                    ? "Hệ thống đang kiểm tra lại trạng thái payout định kỳ và sẽ tự thoát khi giao dịch hoàn tất."
-                    : "Trạng thái payout đã được cập nhật. Modal này sẽ tự động đóng trong giây lát."}
+                    ? t("withdrawal.detail.processingDescription")
+                    : t("withdrawal.detail.updatedDescription")}
                 </p>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowUpDown,
   CheckCircle2,
@@ -17,6 +18,22 @@ import { PaymentResponse } from '../../types';
 
 const PAYMENTS_PER_PAGE = 6;
 
+const resolveLocale = (language?: string | null) => {
+  if (!language) {
+    return 'vi-VN';
+  }
+
+  if (language.startsWith('ja')) {
+    return 'ja-JP';
+  }
+
+  if (language.startsWith('en')) {
+    return 'en-US';
+  }
+
+  return 'vi-VN';
+};
+
 type PaymentSortOption =
   | 'all'
   | 'PAID'
@@ -24,22 +41,20 @@ type PaymentSortOption =
   | 'CANCELLED'
   | 'EXPIRED';
 
-const formatMoney = (amount: number) =>
-  amount === 0
-    ? 'FREE'
-    : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+const formatMoney = (amount: number, locale: string) =>
+  new Intl.NumberFormat(locale, { style: 'currency', currency: 'VND' }).format(amount);
 
-const formatTimestamp = (value?: string | null) => {
+const formatTimestamp = (value: string | null | undefined, locale: string, emptyLabel: string) => {
   if (!value) {
-    return 'N/A';
+    return emptyLabel;
   }
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return 'N/A';
+    return emptyLabel;
   }
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     month: 'short',
     day: '2-digit',
     year: 'numeric',
@@ -102,6 +117,11 @@ interface AdminPaymentVerificationPanelProps {
 export const AdminPaymentVerificationPanel: React.FC<
   AdminPaymentVerificationPanelProps
 > = ({ onRefreshStateChange }) => {
+  const { t, i18n } = useTranslation(['admin']);
+  const locale = useMemo(
+    () => resolveLocale(i18n.resolvedLanguage || i18n.language || 'vi'),
+    [i18n.language, i18n.resolvedLanguage],
+  );
   const [payments, setPayments] = useState<PaymentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,14 +139,14 @@ export const AdminPaymentVerificationPanel: React.FC<
       if (res.success && res.data) {
         setPayments(res.data);
       } else {
-        setError(res.message || 'Failed to load payments');
+        setError(res.message || t('paymentVerification.loadError'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to load payments');
+      setError(err.response?.data?.message || err.message || t('paymentVerification.loadError'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void fetchPayments();
@@ -181,10 +201,10 @@ export const AdminPaymentVerificationPanel: React.FC<
         setSelectedPayment(res.data);
         setIsModalOpen(true);
       } else {
-        alert(res.message || 'Failed to load payment detail');
+        alert(res.message || t('paymentVerification.detailLoadError'));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to load payment detail');
+      alert(err.response?.data?.message || err.message || t('paymentVerification.detailLoadError'));
     }
   };
 
@@ -199,14 +219,25 @@ export const AdminPaymentVerificationPanel: React.FC<
       if (res.success && res.data) {
         setSelectedPayment(res.data);
       } else {
-        alert(res.message || 'Failed to refresh payment detail');
+        alert(res.message || t('paymentVerification.detailRefreshError'));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Failed to refresh payment detail');
+      alert(err.response?.data?.message || err.message || t('paymentVerification.detailRefreshError'));
     } finally {
       setIsRefreshingDetail(false);
     }
   };
+
+  const formatPaymentAmount = (amount: number) =>
+    amount === 0
+      ? t('paymentVerification.free')
+      : formatMoney(amount, locale);
+
+  const formatPaymentTimestamp = (value?: string | null) =>
+    formatTimestamp(value, locale, t('paymentVerification.na'));
+
+  const getPaymentStatusLabel = (status: PaymentResponse['paymentStatus']) =>
+    t(`paymentVerification.status.${status}`, { defaultValue: status });
 
   return (
     <>
@@ -221,7 +252,7 @@ export const AdminPaymentVerificationPanel: React.FC<
           <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-200/90 bg-white/95 px-4 py-2 text-sm shadow-[0_10px_24px_rgba(148,163,184,0.12)] backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:shadow-none">
             <span className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <ArrowUpDown size={14} />
-              Sort
+              {t('paymentVerification.sort')}
             </span>
             <select
               value={sortOption}
@@ -230,11 +261,11 @@ export const AdminPaymentVerificationPanel: React.FC<
               }
               className="bg-transparent text-sm font-semibold text-slate-700 outline-none dark:text-slate-200"
             >
-              <option value="all">All payments</option>
-              <option value="PAID">PAID</option>
-              <option value="PENDING">PENDING</option>
-              <option value="CANCELLED">CANCELLED</option>
-              <option value="EXPIRED">EXPIRED</option>
+              <option value="all">{t('paymentVerification.sortAll')}</option>
+              <option value="PAID">{getPaymentStatusLabel('PAID')}</option>
+              <option value="PENDING">{getPaymentStatusLabel('PENDING')}</option>
+              <option value="CANCELLED">{getPaymentStatusLabel('CANCELLED')}</option>
+              <option value="EXPIRED">{getPaymentStatusLabel('EXPIRED')}</option>
             </select>
           </div>
         </div>
@@ -244,25 +275,25 @@ export const AdminPaymentVerificationPanel: React.FC<
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-950/50">
                 <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500">
-                  <th className="p-4 font-semibold">Order</th>
-                  <th className="p-4 font-semibold">Buyer</th>
-                  <th className="p-4 font-semibold">Amount</th>
-                  <th className="p-4 font-semibold">Payment Status</th>
-                  <th className="p-4 font-semibold">Updated</th>
-                  <th className="p-4 font-semibold text-right">Action</th>
+                  <th className="p-4 font-semibold">{t('paymentVerification.headers.order')}</th>
+                  <th className="p-4 font-semibold">{t('paymentVerification.headers.buyer')}</th>
+                  <th className="p-4 font-semibold">{t('paymentVerification.headers.amount')}</th>
+                  <th className="p-4 font-semibold">{t('paymentVerification.headers.paymentStatus')}</th>
+                  <th className="p-4 font-semibold">{t('paymentVerification.headers.updated')}</th>
+                  <th className="p-4 font-semibold text-right">{t('paymentVerification.headers.action')}</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500">
-                      Loading payment sessions...
+                      {t('paymentVerification.loading')}
                     </td>
                   </tr>
                 ) : sortedPayments.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500">
-                      No payment sessions are available right now.
+                      {t('paymentVerification.empty')}
                     </td>
                   </tr>
                 ) : (
@@ -283,18 +314,18 @@ export const AdminPaymentVerificationPanel: React.FC<
                           <div className="font-semibold text-slate-800 dark:text-slate-200">{payment.buyerFullName}</div>
                           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{payment.buyerEmail}</div>
                         </td>
-                        <td className="p-4 font-semibold text-amber-500">{formatMoney(payment.amount)}</td>
+                        <td className="p-4 font-semibold text-amber-500">{formatPaymentAmount(payment.amount)}</td>
                         <td className="p-4">
                           <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${statusMeta.badgeClass}`}>
                             {statusMeta.icon}
-                            {payment.paymentStatus}
+                            {getPaymentStatusLabel(payment.paymentStatus)}
                           </span>
                         </td>
-                        <td className="p-4 text-xs text-slate-500 dark:text-slate-400">{formatTimestamp(payment.updatedAt)}</td>
+                        <td className="p-4 text-xs text-slate-500 dark:text-slate-400">{formatPaymentTimestamp(payment.updatedAt)}</td>
                         <td className="p-4">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="sm" icon={<Eye size={14} />} onClick={() => openPaymentDetail(payment.id)}>
-                              View
+                              {t('paymentVerification.view')}
                             </Button>
                           </div>
                         </td>
@@ -315,7 +346,7 @@ export const AdminPaymentVerificationPanel: React.FC<
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-studio disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-200"
               >
                 <ChevronLeft size={14} />
-                Previous
+                {t('paymentVerification.previous')}
               </button>
               <button
                 type="button"
@@ -325,7 +356,7 @@ export const AdminPaymentVerificationPanel: React.FC<
                 disabled={currentPage >= totalPages - 1}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-studio disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-200"
               >
-                Next
+                {t('paymentVerification.next')}
                 <ChevronRight size={14} />
               </button>
             </div>
@@ -338,9 +369,12 @@ export const AdminPaymentVerificationPanel: React.FC<
           <div className="w-full max-w-4xl rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
               <div>
-                <h3 className="font-display text-xl font-bold text-slate-850 dark:text-white">Payment Detail</h3>
+                <h3 className="font-display text-xl font-bold text-slate-850 dark:text-white">{t('paymentVerification.detailTitle')}</h3>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Order {(selectedPayment.orderId || selectedPayment.id).slice(0, 8).toUpperCase()} • {selectedPayment.marketplaceItemTitle}
+                  {t('paymentVerification.detailSubtitle', {
+                    order: (selectedPayment.orderId || selectedPayment.id).slice(0, 8).toUpperCase(),
+                    title: selectedPayment.marketplaceItemTitle,
+                  })}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -350,11 +384,12 @@ export const AdminPaymentVerificationPanel: React.FC<
                   icon={<RefreshCw size={14} className={isRefreshingDetail ? 'animate-spin' : ''} />}
                   onClick={refreshSelectedPayment}
                 >
-                  Refresh
+                  {t('paymentVerification.refresh')}
                 </Button>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
+                  aria-label={t('paymentVerification.close')}
                   className="rounded-lg p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-studio"
                 >
                   <X size={18} />
@@ -365,19 +400,19 @@ export const AdminPaymentVerificationPanel: React.FC<
             <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_0.95fr]">
               <div className="space-y-4">
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-950/50">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Payment Timeline</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('paymentVerification.timeline')}</p>
                   <div className="mt-4 space-y-3 text-sm">
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Created At</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatTimestamp(selectedPayment.createdAt)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.createdAt')}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatPaymentTimestamp(selectedPayment.createdAt)}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Updated At</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatTimestamp(selectedPayment.updatedAt)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.updatedAt')}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatPaymentTimestamp(selectedPayment.updatedAt)}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Paid At</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatTimestamp(selectedPayment.paidAt)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.paidAt')}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{formatPaymentTimestamp(selectedPayment.paidAt)}</span>
                     </div>
                   </div>
                 </div>
@@ -385,50 +420,50 @@ export const AdminPaymentVerificationPanel: React.FC<
 
               <div className="space-y-4">
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-950/50">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">Order Information</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('paymentVerification.orderInfo')}</p>
                   <div className="mt-4 space-y-3 text-sm">
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Buyer</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.headers.buyer')}</span>
                       <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.buyerFullName}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Email</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.email')}</span>
                       <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.buyerEmail}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Product</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.product')}</span>
                       <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.marketplaceItemTitle}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Amount</span>
-                      <span className="font-semibold text-amber-500 text-right">{formatMoney(selectedPayment.amount)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.headers.amount')}</span>
+                      <span className="font-semibold text-amber-500 text-right">{formatPaymentAmount(selectedPayment.amount)}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Payment Status</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.paymentStatus}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.headers.paymentStatus')}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{getPaymentStatusLabel(selectedPayment.paymentStatus)}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Reference</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.paymentReference || 'N/A'}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.reference')}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.paymentReference || t('paymentVerification.na')}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">PayOS Order Code</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.payosOrderCode ?? 'N/A'}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.payosOrderCode')}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right">{selectedPayment.payosOrderCode ?? t('paymentVerification.na')}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Payment Link ID</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right break-all">{selectedPayment.payosPaymentLinkId || 'N/A'}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.paymentLinkId')}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right break-all">{selectedPayment.payosPaymentLinkId || t('paymentVerification.na')}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-slate-500 dark:text-slate-400">Transaction ID</span>
-                      <span className="font-semibold text-slate-850 dark:text-white text-right break-all">{selectedPayment.payosTransactionId || 'Waiting webhook'}</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('paymentVerification.transactionId')}</span>
+                      <span className="font-semibold text-slate-850 dark:text-white text-right break-all">{selectedPayment.payosTransactionId || t('paymentVerification.waitingWebhook')}</span>
                     </div>
                   </div>
                 </div>
 
                 {selectedPayment.downloadUrl && selectedPayment.paymentStatus === 'PAID' && (
                   <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-slate-700 dark:text-slate-200">
-                    Download is unlocked for this payment because PayOS webhook confirmation has completed.
+                    {t('paymentVerification.downloadUnlocked')}
                   </div>
                 )}
               </div>

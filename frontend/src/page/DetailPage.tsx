@@ -231,7 +231,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   onClick={() => setActiveDetailTab("tech")}
                   className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-studio ${activeDetailTab === "tech" ? "border-amber-400 text-slate-800 dark:text-white" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
                 >
-                  {t("detail.tabs.playDemo", "Chơi thử")}
+                  {t("detail.tabs.playDemo")}
                 </button>
               )}
               {focusedAsset.documentation && (
@@ -283,16 +283,16 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                         sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
                         allow="autoplay; fullscreen; gamepad; cross-origin-isolated"
                         className="w-full h-full border-none"
-                        title={`${focusedAsset.title} Play Demo`}
+                        title={t("detail.demo.iframeTitle", { title: focusedAsset.title })}
                       />
                     </div>
                     <p className="text-[11px] text-slate-500 text-center font-mono">
-                      {t("detail.demo.tabNote", "Click inside the window to play. Supports keyboard and controller.")}
+                      {t("detail.demo.tabNote")}
                     </p>
                   </>
                 ) : (
                   <p className="text-xs text-slate-400">
-                    {t("detail.demo.noDemo", "Không có bản chơi thử cho sản phẩm này.")}
+                    {t("detail.demo.noDemo")}
                   </p>
                 )}
               </div>
@@ -388,7 +388,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             <div className="space-y-3.5 text-xs text-slate-655 dark:text-slate-400">
               <div>
                 <h3 className="font-display font-bold text-xs uppercase tracking-wider text-slate-400 mb-3.5">
-                  {t("detail.meta.detailsTitle", "Details")}
+                  {t("detail.meta.detailsTitle")}
                 </h3>
                 <div className="space-y-2 text-[11px] font-mono">
                   <div className="flex justify-between">
@@ -493,7 +493,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-xs">
           <div className="flex items-center justify-between">
             <h3 className="font-display font-bold text-[1.4rem] text-slate-850 dark:text-white flex items-center gap-1.5 hover:text-sky-500 cursor-pointer transition-colors group">
-              <span>More from {focusedAsset.author}</span>
+              <span>{t("detail.author.moreFrom", { author: focusedAsset.author })}</span>
               <ChevronRight size={22} className="text-slate-400 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all" />
             </h3>
             <div className="flex items-center gap-2">
@@ -531,7 +531,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   <p className="text-xs text-slate-500 dark:text-slate-455 font-medium">
                     {item.price === 0
                       ? t("common.free")
-                      : `${t("common.from", "From")} ${formatPrice(item.price)}`}
+                      : `${t("common.from")} ${formatPrice(item.price)}`}
                   </p>
                 </div>
               </div>
@@ -566,7 +566,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
               allow="autoplay; fullscreen; gamepad; cross-origin-isolated"
               className="w-full h-full border-none"
-              title={`${focusedAsset.title} Play Demo`}
+              title={t("detail.demo.iframeTitle", { title: focusedAsset.title })}
             />
           </div>
           <p className="text-xs text-slate-400 text-center font-mono mt-3">

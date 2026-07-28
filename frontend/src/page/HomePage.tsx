@@ -41,18 +41,42 @@ type HeroSlide = {
 
 const HERO_ROTATION_MS = 5500;
 
+const resolveNumberLocale = (language?: string | null) => {
+  const normalized = language?.toLowerCase().split('-')[0];
+  if (normalized === 'en') return 'en-US';
+  if (normalized === 'ja') return 'ja-JP';
+  return 'vi-VN';
+};
+
+const getHomepageSectionTitle = (
+  section: HomepageSection,
+  t: (key: string) => string,
+) => {
+  if (section.sectionType === 'RECENT_RELEASES') {
+    return t('home:sections.recentReleases');
+  }
+
+  if (section.sectionType === 'FREE_CONTENT') {
+    return t('home:sections.freeContent');
+  }
+
+  return section.title;
+};
+
 interface HomepageSectionRowProps {
   section: HomepageSection;
   openProduct: (product: HomepageProduct) => void;
   setCurrentScreen: (screen: any) => void;
   t: any;
+  numberLocale: string;
 }
 
 const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
   section,
   openProduct,
   setCurrentScreen,
-  t
+  t,
+  numberLocale,
 }) => {
   const [startIndex, setStartIndex] = React.useState(0);
   const itemsPerPage = 3;
@@ -81,7 +105,7 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
           onClick={() => setCurrentScreen('marketplace')}
           className="group flex items-center gap-2 text-2xl font-bold tracking-tight text-white sm:text-3xl hover:text-sky-400 transition-colors"
         >
-          <span>{section.title}</span>
+          <span>{getHomepageSectionTitle(section, t)}</span>
           <ChevronRight size={24} className="text-slate-400 group-hover:text-sky-400 transition-colors" />
         </button>
       </div>
@@ -99,7 +123,7 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
                   ? 'cursor-pointer hover:bg-white/20 hover:text-white opacity-100' 
                   : 'opacity-0 pointer-events-none'
               }`}
-              aria-label="Previous Page"
+              aria-label={t('home:sectionRow.previousPage')}
             >
               <ChevronLeft size={20} />
             </button>
@@ -114,7 +138,7 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
                   ? 'cursor-pointer hover:bg-white/20 hover:text-white opacity-100' 
                   : 'opacity-0 pointer-events-none'
               }`}
-              aria-label="Next Page"
+              aria-label={t('home:sectionRow.nextPage')}
             >
               <ChevronRight size={20} />
             </button>
@@ -132,17 +156,21 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
                     {product.thumbnailUrl ? (
                       <img src={product.thumbnailUrl} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-105" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-slate-500">No preview</div>
+                      <div className="flex h-full items-center justify-center text-xs text-slate-500">{t('home:sectionRow.noPreview')}</div>
                     )}
                     <span className="absolute top-2.5 left-2.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm border border-white/10">
-                      {product.itemType === 'GAME' ? 'Game' : 'Asset'}
+                      {product.itemType === 'GAME'
+                        ? t('home:sectionRow.badges.game')
+                        : t('home:sectionRow.badges.asset')}
                     </span>
                   </div>
                   <div className="space-y-1.5 p-4.5">
                     <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-white group-hover/product:text-sky-400 transition-colors">{product.title}</h3>
-                    <p className="truncate text-xs text-slate-400">{product.creatorName ?? product.categoryName ?? 'GodotLaunch'}</p>
+                    <p className="truncate text-xs text-slate-400">{product.creatorName ?? product.categoryName ?? t('home:sectionRow.creatorFallback')}</p>
                     <p className="pt-0.5 text-xs font-semibold text-slate-400">
-                      {!product.price ? t('marketplace:common.free', 'Miễn phí') : `${t('marketplace:common.from', 'From')} ₫${product.price.toLocaleString('en-US')}`}
+                      {!product.price
+                        ? t('marketplace:common.free')
+                        : `${t('marketplace:common.from')} ₫${product.price.toLocaleString(numberLocale)}`}
                     </p>
                   </div>
                 </button>
@@ -151,7 +179,7 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
           </>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-800 px-5 py-10 text-center text-sm text-slate-500">
-            Chưa có sản phẩm phù hợp trong section này.
+            {t('home:sectionRow.empty')}
           </div>
         )}
       </div>
@@ -168,6 +196,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   ownedProductIds
 }) => {
   const { t, i18n } = useTranslation(['home', 'marketplace']);
+  const numberLocale = resolveNumberLocale(i18n.resolvedLanguage || i18n.language);
   const animationDelayStyle = React.useCallback(
     (delayMs: number): React.CSSProperties => ({
       animationDelay: `${delayMs}ms`,
@@ -370,7 +399,9 @@ export const HomePage: React.FC<HomePageProps> = ({
               key={slide.id}
               role="button"
               tabIndex={index === activeHeroSlide ? 0 : -1}
-              aria-label={`${slide.titleLines.join(' ')} — open Browser Game`}
+              aria-label={t('home:hero.openMarketplaceAria', {
+                title: slide.titleLines.join(' '),
+              })}
               onClick={() => setCurrentScreen('marketplace')}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -443,7 +474,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <button
                   key={slide.id}
                   type="button"
-                  aria-label={`Hero slide ${index + 1}`}
+                  aria-label={t('home:hero.slideAria', { index: index + 1 })}
                   onClick={() => setActiveHeroSlide(index)}
                   className="inline-flex h-3 items-center justify-center rounded-full transition-all duration-300"
                 >
@@ -462,7 +493,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           <>
             <button
               type="button"
-              aria-label="Previous slide"
+              aria-label={t('home:hero.previousSlide')}
               onClick={() =>
                 setActiveHeroSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)
               }
@@ -472,7 +503,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </button>
             <button
               type="button"
-              aria-label="Next slide"
+              aria-label={t('home:hero.nextSlide')}
               onClick={() => setActiveHeroSlide((prev) => (prev + 1) % heroSlides.length)}
               className="pointer-events-none absolute right-3 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/12 bg-black/32 text-white opacity-0 backdrop-blur-md transition-all duration-300 hover:bg-white/16 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 sm:right-6"
             >
@@ -591,6 +622,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             openProduct={openProduct}
             setCurrentScreen={setCurrentScreen}
             t={t}
+            numberLocale={numberLocale}
           />
         ))}
       </div>

@@ -16,6 +16,10 @@ import viWallet from "../locales/vi/wallet.json";
 import viHome from "../locales/vi/home.json";
 import viDashboard from "../locales/vi/dashboard.json";
 import viDeveloper from "../locales/vi/developer.json";
+import viUpload from "../locales/vi/upload.json";
+import viProfile from "../locales/vi/profile.json";
+import viPath from "../locales/vi/path.json";
+import viShared from "../locales/vi/shared.json";
 
 import enCommon from "../locales/en/common.json";
 import enGame from "../locales/en/game.json";
@@ -27,6 +31,10 @@ import enWallet from "../locales/en/wallet.json";
 import enHome from "../locales/en/home.json";
 import enDashboard from "../locales/en/dashboard.json";
 import enDeveloper from "../locales/en/developer.json";
+import enUpload from "../locales/en/upload.json";
+import enProfile from "../locales/en/profile.json";
+import enPath from "../locales/en/path.json";
+import enShared from "../locales/en/shared.json";
 
 import jaCommon from "../locales/ja/common.json";
 import jaGame from "../locales/ja/game.json";
@@ -38,6 +46,10 @@ import jaWallet from "../locales/ja/wallet.json";
 import jaHome from "../locales/ja/home.json";
 import jaDashboard from "../locales/ja/dashboard.json";
 import jaDeveloper from "../locales/ja/developer.json";
+import jaUpload from "../locales/ja/upload.json";
+import jaProfile from "../locales/ja/profile.json";
+import jaPath from "../locales/ja/path.json";
+import jaShared from "../locales/ja/shared.json";
 
 export const LANGUAGE_OPTIONS = [
   { code: "vi", name: "Tiếng Việt", flag: flagVietnam },
@@ -70,6 +82,10 @@ const resources = {
     home: viHome,
     dashboard: viDashboard,
     developer: viDeveloper,
+    upload: viUpload,
+    profile: viProfile,
+    path: viPath,
+    shared: viShared,
   },
   en: {
     common: enCommon,
@@ -82,6 +98,10 @@ const resources = {
     home: enHome,
     dashboard: enDashboard,
     developer: enDeveloper,
+    upload: enUpload,
+    profile: enProfile,
+    path: enPath,
+    shared: enShared,
   },
   ja: {
     common: jaCommon,
@@ -94,6 +114,10 @@ const resources = {
     home: jaHome,
     dashboard: jaDashboard,
     developer: jaDeveloper,
+    upload: jaUpload,
+    profile: jaProfile,
+    path: jaPath,
+    shared: jaShared,
   },
 };
 
@@ -118,6 +142,10 @@ i18next
       "home",
       "dashboard",
       "developer",
+      "upload",
+      "profile",
+      "path",
+      "shared",
     ],
     interpolation: {
       escapeValue: false, // React already escapes values

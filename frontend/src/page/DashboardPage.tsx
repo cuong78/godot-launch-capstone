@@ -218,7 +218,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         setGamesError(
           response.message ||
             t("dashboard:table.errorGames", {
-              message: "Failed to load your games",
+              message: t("dashboard:errors.loadGames"),
             }),
         );
         return false;
@@ -228,7 +228,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         err.response?.data?.message ||
           err.message ||
           t("dashboard:table.errorGames", {
-            message: "Failed to fetch your games",
+            message: t("dashboard:errors.fetchGames"),
           }),
       );
       return false;
@@ -250,7 +250,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         setMarketplaceError(
           response.message ||
             t("dashboard:table.errorAssets", {
-              message: "Failed to load your marketplace items",
+              message: t("dashboard:errors.loadMarketplaceItems"),
             }),
         );
         return false;
@@ -260,7 +260,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         err.response?.data?.message ||
           err.message ||
           t("dashboard:table.errorAssets", {
-            message: "Failed to fetch your marketplace items",
+            message: t("dashboard:errors.fetchMarketplaceItems"),
           }),
       );
       return false;
@@ -318,14 +318,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         setSalesStats(response.data);
         return true;
       } else {
-        setSalesError(response.message || "Failed to load sales statistics");
+        setSalesError(
+          response.message || t("dashboard:errors.loadSalesStatistics"),
+        );
         return false;
       }
     } catch (err: any) {
       setSalesError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to fetch sales statistics",
+          t("dashboard:errors.fetchSalesStatistics"),
       );
       return false;
     } finally {
@@ -1438,7 +1440,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 message:
                   err.response?.data?.message ||
                   err.message ||
-                  "Error signing contract",
+                  t("dashboard:contracts.signErrorMessage"),
               };
             }
           }}
@@ -1455,7 +1457,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 message:
                   err.response?.data?.message ||
                   err.message ||
-                  "Error rejecting contract",
+                  t("dashboard:contracts.rejectErrorMessage"),
               };
             }
           }}

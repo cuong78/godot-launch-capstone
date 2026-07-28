@@ -53,5 +53,963 @@
       "assetListed": "Asset Listed",
       "assetSold": "Asset Sold"
     }
+  },
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel"
+  },
+  "roles": {
+    "admin": "Admin",
+    "developer": "Developer",
+    "customer": "Customer"
+  },
+  "status": {
+    "contract": {
+      "signed": "Signed",
+      "cancelled": "Cancelled / Awaiting Re-offer",
+      "expired": "Expired",
+      "pending": "Awaiting developer signature",
+      "notCreated": "Not created"
+    },
+    "user": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "suspended": "Suspended",
+      "banned": "Banned"
+    },
+    "asset": {
+      "active": "Active",
+      "rejected": "Rejected"
+    },
+    "withdrawal": {
+      "pending": "Pending",
+      "approved": "Approved / Waiting Payout",
+      "processing": "Payout Processing",
+      "completed": "Completed",
+      "failed": "Payout Failed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    }
+  },
+  "audit": {
+    "actionLabel": "Action",
+    "targetTypeLabel": "Target type",
+    "allActions": "All actions",
+    "allTargets": "All targets",
+    "filters": {
+      "actorIdLabel": "Actor ID (UUID)",
+      "actorIdPlaceholder": "Enter user ID...",
+      "targetIdLabel": "Target ID (UUID)",
+      "targetIdPlaceholder": "Enter target ID...",
+      "ipAddressLabel": "IP Address",
+      "ipAddressPlaceholder": "e.g. 127.0.0.1",
+      "clear": "Clear filters",
+      "search": "Search"
+    },
+    "headers": {
+      "timeAndIp": "Time & IP",
+      "actorInfo": "Actor Info",
+      "targetReference": "Target Reference",
+      "noteSummary": "Note / Summary"
+    },
+    "loading": "Loading audit logs...",
+    "loadError": "Error loading audit logs: {{error}}",
+    "viewPayloadDiff": "View JSON payload diff",
+    "ipValue": "IP: {{value}}",
+    "unknownValue": "Unknown",
+    "anonymousSystem": "Anonymous / System",
+    "actorIdPrefix": "ID:",
+    "referenceIdPrefix": "Ref ID:",
+    "unknownRole": "UNKNOWN",
+    "unknownAction": "Unknown action",
+    "unknownTarget": "Unknown target",
+    "targetTypeValue": "Type: {{value}}",
+    "noNotes": "No notes",
+    "oldValueLabel": "Old Value (Before)",
+    "newValueLabel": "New Value (After)",
+    "nullValue": "NULL",
+    "empty": "No audit logs match the selected filters.",
+    "pagination": {
+      "summary": "Page {{current}} of {{total}} ({{count}} logs)",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "actions": {
+      "user_registered": "User Registered",
+      "user_login_success": "Login Success",
+      "user_login_failed": "Login Failed",
+      "user_logged_out": "Logged Out",
+      "user_banned": "User Banned",
+      "user_unbanned": "User Unbanned",
+      "user_role_changed": "User Role Changed",
+      "game_submitted": "Game Submitted",
+      "game_approved": "Game Approved",
+      "game_rejected": "Game Rejected",
+      "game_published": "Game Published",
+      "game_updated": "Game Updated",
+      "contract_created": "Contract Created",
+      "contract_signed": "Contract Signed",
+      "contract_cancelled": "Contract Cancelled",
+      "security_alert": "Security Alert",
+      "post_created": "Post Created",
+      "comment_created": "Comment Created",
+      "reaction_created": "Reaction Created",
+      "chat_message_sent": "Chat Message Sent"
+    },
+    "targets": {
+      "user": "User",
+      "game": "Game",
+      "contract": "Contract",
+      "community_chat": "Community Post/Comment",
+      "chat_message": "Direct Message",
+      "ai_report": "AI Report",
+      "transaction": "Transaction",
+      "withdrawal": "Withdrawal"
+    }
+  },
+  "overview": {
+    "platformSnapshot": "Platform Snapshot",
+    "commissionRate": "Commission rate",
+    "announcementBanner": "Announcement banner",
+    "noActiveAnnouncementBanner": "No active announcement banner.",
+    "maintenanceMode": "Maintenance mode",
+    "maintenanceEnabled": "Enabled for platform protection.",
+    "maintenanceDisabled": "Disabled. Storefront flows remain open.",
+    "actionRequiredBadge": "Action required"
+  },
+  "overviewCards": {
+    "payoutWalletBalance": "Payout Wallet Balance",
+    "payoutWalletError": "Unable to load the PayOS payout account balance.",
+    "payoutWalletSynced": "Synced from the PayOS payout account.",
+    "payoutWalletLoading": "Loading payout wallet balance...",
+    "platformAccounts": "Platform Accounts",
+    "userCount": "{{count}} users",
+    "liveDirectory": "Live directory",
+    "moderationItemCount": "{{count}} items"
+  },
+  "finance": {
+    "platformWalletTitle": "Platform Wallet",
+    "platformWalletDescription": "Monitor the admin commission ledger and PayOS payout account without entering the creator wallet flow.",
+    "refreshWallet": "Refresh Wallet"
+  },
+  "financeWallet": {
+    "notConnected": "Not connected",
+    "errors": {
+      "loadPlatformWallet": "Failed to load platform wallet.",
+      "loadTransactions": "Failed to load wallet transactions."
+    },
+    "status": {
+      "unknown": "Unknown",
+      "active": "Active",
+      "enabled": "Enabled",
+      "pending": "Pending",
+      "processing": "Processing"
+    },
+    "cards": {
+      "platformLedger": {
+        "title": "Platform Ledger",
+        "description": "Internal wallet used for marketplace commission visibility and admin finance operations."
+      },
+      "payoutBalance": {
+        "title": "PayOS Payout Balance",
+        "description": "Synced from the payout account used for operational withdrawal processing."
+      },
+      "payoutAccount": {
+        "title": "Payout Account",
+        "description": "Banking identity used when admin processes payout operations for developers."
+      }
+    },
+    "ledger": {
+      "title": "Platform Transaction Ledger",
+      "description": "Review admin wallet movements and trace references before opening payment or withdrawal operations.",
+      "page": "Page {{current}} / {{total}}",
+      "headers": {
+        "type": "Type",
+        "amount": "Amount",
+        "reference": "Reference",
+        "created": "Created"
+      },
+      "loading": "Loading wallet transactions...",
+      "empty": "No admin wallet transactions are available right now.",
+      "footer": "Keep this view finance-only for admin operational review."
+    }
+  },
+  "settingsPanel": {
+    "saveSuccess": "System variables were updated successfully. Node servers are reloading...",
+    "loading": "Loading platform settings...",
+    "saving": "Saving platform configuration...",
+    "save": "Save platform configuration",
+    "commissionLabel": "Platform commission rate (%)",
+    "commissionHelper": "Percentage kept by the platform from each marketplace transaction",
+    "maintenanceStatusLabel": "System maintenance status",
+    "maintenanceToggleActive": "ACTIVE - Site Locked",
+    "maintenanceToggleInactive": "INACTIVE - Online",
+    "bannerLabel": "Site-Wide Alert Header Banner Text",
+    "bannerPlaceholder": "Leave blank to disable banner",
+    "bannerHelperText": "Banner text displayed at the top of all user screens",
+    "maintenanceWarningTitle": "Warning: Maintenance mode is active.",
+    "maintenanceWarningDescription": "This locks non-admin users out of performing checkouts, uploading files, or syncing repositories. Use with care."
+  },
+  "contract": {
+    "defaultBuyerRepresentative": "GodotLaunch management board",
+    "defaultBuyerPosition": "System Administration / Authorized Representative",
+    "defaultDisputeClause": "Any dispute arising out of or in connection with this contract shall first be resolved through friendly negotiations. If unresolved, it shall be referred to arbitration."
+  },
+  "alerts": {
+    "downloadFailed": "Unable to download the file. Please try again."
+  },
+  "errors": {
+    "loadGames": "Failed to load games",
+    "fetchModerationQueue": "Failed to fetch moderation queue",
+    "loadMarketplaceItems": "Failed to load marketplace items",
+    "fetchMarketplaceSubmissions": "Failed to fetch marketplace submissions",
+    "loadUsers": "Failed to load users",
+    "fetchUsers": "Failed to fetch users",
+    "loadAuditLogs": "Failed to load audit logs",
+    "fetchAuditLogs": "Failed to fetch audit logs",
+    "loadPayoutWalletBalance": "Failed to load payout wallet balance",
+    "loadPlatformSettings": "Failed to load platform settings",
+    "approveGame": "Failed to approve game",
+    "rejectionReasonRequired": "Please enter a rejection reason.",
+    "rejectGame": "Failed to reject game",
+    "rejectMarketplaceItem": "Failed to reject marketplace item",
+    "approveMarketplaceItem": "Failed to approve marketplace item",
+    "updateUser": "Failed to update user.",
+    "updatePlatformSettings": "Failed to update platform settings"
+  },
+  "actions": {
+    "approveGame": "Approve game",
+    "rejectGame": "Reject game",
+    "rejectAsset": "Reject asset",
+    "downloading": "Downloading...",
+    "downloadGamePackage": "Download Game Package (ZIP)",
+    "downloadAssetPackage": "Download Asset Package (ZIP)",
+    "noGamePackageUploaded": "No game ZIP file is available for download",
+    "noAssetPackageUploaded": "No file package uploaded for this asset"
+  },
+  "moderationPreview": {
+    "pendingModeration": "Pending Moderation",
+    "title": "Moderation Preview",
+    "queueCount": "{{count}} in queue",
+    "open": "Open",
+    "loading": "Loading moderation snapshot...",
+    "empty": "There are no pending game or asset submissions right now.",
+    "unknownCreator": "Unknown creator",
+    "unknownSeller": "Unknown seller",
+    "gameType": "Game",
+    "assetType": "Asset",
+    "newLabel": "New"
+  },
+  "overviewUsers": {
+    "title": "User Ops",
+    "open": "Open",
+    "loading": "Loading user directory...",
+    "empty": "No indexed accounts right now."
+  },
+  "moderationQueue": {
+    "title": "Game & Asset Moderation Queue",
+    "queueBadge": "Queue",
+    "tabs": {
+      "games": "Game Submissions",
+      "assets": "Asset Submissions"
+    },
+    "statusLabel": "Queue Status",
+    "filters": {
+      "pending": "Pending",
+      "approvedPublished": "Approved / Published",
+      "rejected": "Rejected",
+      "all": "All Submissions"
+    },
+    "headers": {
+      "assetDetails": "Asset Details",
+      "category": "Category",
+      "publishingType": "Publishing Type",
+      "proposedPrice": "Proposed Price",
+      "contractStatus": "Contract Status",
+      "decisions": "Decisions",
+      "itemType": "Item Type"
+    },
+    "actions": {
+      "hideDetails": "Hide Details",
+      "showDetails": "Show Details",
+      "quickView": "Quick View Content",
+      "approveAsset": "Approve Asset"
+    },
+    "status": {
+      "pendingReview": "Pending Review",
+      "approved": "Approved"
+    },
+    "decision": {
+      "rejected": "Rejected",
+      "live": "Live",
+      "approved": "Approved",
+      "waitingDevSignature": "Waiting for Dev Signature",
+      "liveGooglePlay": "Live on Google Play",
+      "waitingBuild": "Waiting for Build Upload",
+      "renegotiateContract": "Renegotiate Contract"
+    },
+    "price": {
+      "notSet": "Price not set",
+      "free": "Free"
+    },
+    "loadingGames": "Loading pending game submissions...",
+    "errorGames": "Error loading game submissions: {{error}}",
+    "emptyGames": "There are no game submissions to moderate right now.",
+    "loadingAssets": "Loading pending asset submissions...",
+    "errorAssets": "Error loading asset submissions: {{error}}",
+    "emptyAssets": "There are no asset submissions to moderate right now.",
+    "by": "by {{name}}",
+    "unassigned": "Unassigned",
+    "assetType": "RESOURCE ASSET",
+    "previousRejection": "The developer rejected the contract for this reason:",
+    "messages": {
+      "approveGameConfirm": "Are you sure you want to APPROVE and publish \"{{title}}\"?",
+      "approveGameSuccess": "Game \"{{title}}\" was approved and published successfully!",
+      "approveAssetConfirm": "Are you sure you want to APPROVE and activate marketplace item \"{{title}}\"?",
+      "approveAssetSuccess": "Marketplace item \"{{title}}\" was approved and activated successfully!",
+      "defaultRejectReason": "Violated store policies",
+      "rejectGameSuccess": "Game \"{{title}}\" was rejected. The creator has been notified.",
+      "rejectAssetSuccess": "Marketplace item \"{{title}}\" was rejected. The creator has been notified.",
+      "rejectItemFailed": "Failed to reject this item."
+    },
+    "detail": {
+      "thumbnail": "Thumbnail",
+      "noThumbnail": "No thumbnail",
+      "description": "Detailed Description",
+      "noDescription": "No detailed description was provided by the developer.",
+      "tags": "Tags",
+      "noTags": "No tags selected",
+      "githubRepository": "GitHub Repository",
+      "noRepository": "No repository",
+      "itemDescription": "Item Description",
+      "noItemDescription": "No description provided.",
+      "screenshots": "Screenshots",
+      "screenshotAlt": "Screenshot {{index}}",
+      "noScreenshots": "The developer did not upload any screenshots",
+      "noScreenshotsUploaded": "No screenshots uploaded",
+      "videoDemo": "Video Demo",
+      "noVideo": "The developer did not upload any gameplay video",
+      "noDemoVideo": "No demo video uploaded",
+      "refreshingMedia": "Refreshing latest media...",
+      "technicalCreatorDetails": "Technical & Creator Details",
+      "creatorName": "Creator Name",
+      "creatorEmail": "Creator Email",
+      "version": "Version",
+      "submittedOn": "Submitted On"
+    }
+  },
+  "modals": {
+    "rejectionTitle": "Rejection Reason",
+    "itemDetails": "Item Details",
+    "rejectionReasonLabel": "Reason for rejection *",
+    "rejectionReasonPlaceholder": "Please enter a detailed rejection reason...",
+    "rejecting": "Rejecting...",
+    "rejectSubmission": "Reject Submission"
+  },
+  "disputePanel": {
+    "loading": "Loading disputes...",
+    "empty": "There are no disputes right now.",
+    "deletedProduct": "(deleted product)",
+    "accuses": "accuses",
+    "resolveCta": "Resolve",
+    "resolvedBadge": "Resolved",
+    "resolveError": "Failed to resolve the dispute.",
+    "status": {
+      "open": "New",
+      "investigating": "Investigating",
+      "resolved_seller_fault": "Seller at fault",
+      "resolved_reporter_fault": "False report",
+      "resolved_inconclusive": "Inconclusive",
+      "cancelled": "Cancelled"
+    },
+    "resolution": {
+      "inconclusive": "Case 1: Not enough evidence → restore the product and do not penalize anyone",
+      "reporterFault": "Case 2: Reporter made a false claim → restore the product and penalize the reporter",
+      "sellerFault": "Case 3: Seller copied content → require refund within 5 days and ban the account"
+    },
+    "modal": {
+      "title": "Resolve dispute",
+      "evidenceRepoLabel": "Reporter evidence repository:",
+      "resolutionLabel": "Resolution",
+      "refundAmountLabel": "Refund amount required from the seller",
+      "resolutionNoteLabel": "Resolution note",
+      "banUser": "Ban the account (store FaceID + national ID in the blacklist and block re-registration)",
+      "submitting": "Processing...",
+      "submit": "Confirm resolution"
+    }
+  },
+  "aiReviewCard": {
+    "title": "AI Review — recommendation only (admin makes the final decision)",
+    "refresh": "Refresh",
+    "loading": "Loading AI report...",
+    "empty": "There is no AI report for this item yet (AI review runs in the background after submission).",
+    "summaryLabel": "AI summary:",
+    "footerNote": "* AI only provides a recommendation — the final approve/reject decision belongs to the admin.",
+    "errors": {
+      "loadFailed": "Unable to load the AI report",
+      "triggerFailed": "Unable to trigger AI Review"
+    },
+    "trigger": {
+      "rerunTitle": "Run AI analysis again",
+      "rerun": "Re-run AI",
+      "requesting": "Requesting...",
+      "runNow": "Run AI Review now",
+      "success": "AI Review is running in the background. Wait about 15 seconds, then press Refresh above."
+    },
+    "scores": {
+      "codeQuality": "Code quality",
+      "mediaMatch": "Media match",
+      "descriptionMatch": "Description match",
+      "tagsMatch": "Tag relevance",
+      "nsfw": "NSFW"
+    },
+    "pricing": {
+      "title": "Pricing recommendation (AI suggestion)",
+      "free": "Free",
+      "revenueSplit": "Revenue split for dev: {{percent}}%"
+    },
+    "flags": {
+      "title": "Warnings ({{count}})",
+      "evidenceImage": "image #{{index}}",
+      "none": "No warnings detected"
+    },
+    "recommendation": {
+      "approve": "RECOMMEND: APPROVE",
+      "review": "RECOMMEND: REVIEW CAREFULLY",
+      "reject": "RECOMMEND: REJECT"
+    },
+    "nsfw": {
+      "detected": "Detected",
+      "safe": "Safe"
+    }
+  },
+  "contractComposer": {
+    "badge": "Publishing contract",
+    "title": "Draft publishing contract",
+    "description": "Enter publishing terms for the game \"{{title}}\"",
+    "previousRejectionTitle": "Reason the developer refused to sign the contract:",
+    "partyATitle": "Party A: GodotLaunch management board",
+    "representativeLabel": "Party A representative:",
+    "positionLabel": "Position:",
+    "financialTermsTitle": "Financial terms",
+    "proposedPriceLabel": "Developer proposed price:",
+    "freePrice": "Free",
+    "revenueSplitLabel": "Developer revenue share (%)",
+    "revenueSplitHelper": "Example: 70 means the developer receives 70% and the platform receives 30% of publishing revenue",
+    "lumpSumLabel": "Full buyout amount (VND)",
+    "lumpSumPlaceholder": "Example: 100,000,000",
+    "negotiationHelper": "Price renegotiation is currently in progress",
+    "lumpSumHelper": "One-time payment to acquire full ownership rights for the game",
+    "legalTermsTitle": "Legal terms & additions",
+    "disputeResolutionLabel": "Dispute resolution clause:",
+    "signatureTitle": "Party A representative signature (Admin)",
+    "signatureHelp": "Admin must sign before sending the contract to the developer.",
+    "signaturePlaceholder": "Use your mouse to draw the Party A representative signature...",
+    "signatureRequired": "Please provide Party A's signature before sending the contract.",
+    "createSuccess": "The proposed contract was created successfully and sent to the Developer!",
+    "createError": "Failed to create the contract.",
+    "createRequestError": "Failed to send the contract creation request.",
+    "submit": "Send Offer & Create Contract"
+  },
+  "lightbox": {
+    "enlargedScreenshotAlt": "Enlarged screenshot"
+  },
+  "playDemo": {
+    "title": "{{title}} — Play Demo",
+    "sectionTitle": "Play Game Demo",
+    "launchButton": "Launch Demo (Fullscreen)",
+    "empty": "The developer has not uploaded a web demo yet",
+    "screenshotsTitle": "Screenshots"
+  },
+  "agreementPanel": {
+    "loadError": "Unable to load agreement versions.",
+    "emptyError": "Agreement content must not be empty.",
+    "saveError": "Unable to save agreement.",
+    "saveCatchError": "An error occurred while saving the agreement.",
+    "success": "New version saved and activated.",
+    "contentLabel": "Agreement content {{version}}",
+    "contentLabelNoVersion": "Agreement content",
+    "placeholder": "Agreement content... use {{commissionRate}} and {{revenueSharePercent}} to inject the active rates",
+    "helper": "Use {{commissionRate}} and {{revenueSharePercent}} in the content — the system replaces them with the current rates when rendering.",
+    "save": "Save (create new version)",
+    "history": "Version history",
+    "empty": "No versions yet.",
+    "active": "Active"
+  },
+  "bannerPanel": {
+    "loadError": "Unable to load banners.",
+    "uploadError": "Banner image upload failed.",
+    "missingImage": "Please upload an image or provide an image URL.",
+    "saveError": "Unable to save banner.",
+    "deleteError": "Unable to delete banner.",
+    "createSuccess": "Banner created successfully.",
+    "updateSuccess": "Banner updated successfully.",
+    "deleteSuccess": "Banner deleted successfully.",
+    "deleteConfirm": "Delete banner \"{{title}}\"?",
+    "title": "Storefront banners",
+    "description": "Banners are displayed by ascending order. Clicking a banner opens the Browser Game catalog.",
+    "refresh": "Refresh",
+    "edit": "Edit banner",
+    "add": "Add banner",
+    "cancelEdit": "Cancel edit",
+    "fieldTitle": "Title",
+    "fieldDescription": "Description",
+    "fieldImageUrl": "Image URL",
+    "fieldDisplayOrder": "Display order",
+    "titlePlaceholder": "Launch your next Godot adventure",
+    "descriptionPlaceholder": "Short copy shown over the banner image",
+    "imageUrlPlaceholder": "https://... or upload a file",
+    "uploadImage": "Upload banner image (max 10 MB)",
+    "saving": "Saving...",
+    "update": "Update banner",
+    "create": "Create banner",
+    "previewAlt": "Banner preview",
+    "previewLabel": "Preview",
+    "previewTitleFallback": "Banner title",
+    "previewDescriptionFallback": "Banner description",
+    "previewEmpty": "Upload an image to preview the banner.",
+    "empty": "No banners found. Create the first storefront banner above.",
+    "orderBadge": "Order {{order}}",
+    "editAria": "Edit {{title}}",
+    "deleteAria": "Delete {{title}}"
+  },
+  "contentPanel": {
+    "errors": {
+      "loadData": "Unable to load content management data.",
+      "saveCollection": "Unable to save collection.",
+      "deleteCollection": "Unable to delete the collection. It may still be used in Homepage Layout.",
+      "moveSection": "Unable to reorder the section.",
+      "deleteSection": "Unable to delete the section.",
+      "addShelf": "Unable to add the shelf.",
+      "saveTag": "Unable to save tag.",
+      "deleteTag": "Unable to delete the tag because it is used by a game, asset, or collection.",
+      "saveCategory": "Unable to save category.",
+      "deleteCategory": "Unable to delete the category because it has child categories or is used by a game, asset, or collection."
+    },
+    "tabs": {
+      "layout": "Homepage Layout",
+      "banners": "Banners",
+      "collections": "Collections",
+      "tags": "Tags",
+      "categories": "Categories"
+    },
+    "header": {
+      "title": "Storefront Content Management",
+      "description": "Control banners, system shelves, and collections from one place.",
+      "reloadAria": "Reload content data"
+    },
+    "search": {
+      "nameOrSlug": "Search by name or slug..."
+    },
+    "layout": {
+      "systemNotice": "Recent Releases and Free Content are system sections and always limited to 6 items. Admin can rename, reorder, and toggle them, but cannot delete them or change their rules.",
+      "sectionNameAria": "Section name",
+      "sectionTypes": {
+        "recentReleases": "Recent Releases",
+        "freeContent": "Free Content",
+        "collection": "Collection"
+      },
+      "systemBadge": "SYSTEM",
+      "collectionLabel": "Collection: {{slug}}",
+      "autoContent": "Automatic · maximum 6 items",
+      "visible": "Visible",
+      "deleteSectionAria": "Delete {{title}}",
+      "selectCollectionPlaceholder": "Choose a collection to add as a shelf",
+      "addShelf": "Add Shelf"
+    },
+    "collections": {
+      "title": "Content Collections",
+      "description": "Group games and assets by category or tag to create homepage shelves.",
+      "create": "Create Collection",
+      "emptyTitle": "No collections yet",
+      "emptyDescription": "Create your first collection to organize homepage content.",
+      "deleteConfirm": "Delete collection \"{{title}}\"? Remove its shelf from Homepage Layout before deleting.",
+      "statusActive": "ACTIVE",
+      "statusHidden": "HIDDEN",
+      "editAria": "Edit {{title}}",
+      "deleteAria": "Delete {{title}}",
+      "noFilters": "No filters selected - this collection will include all content.",
+      "metrics": {
+        "categories": "Categories",
+        "tags": "Tags",
+        "maxItems": "Max items"
+      }
+    },
+    "tags": {
+      "title": "Tag Management",
+      "description": "Tags used by products or collections cannot be deleted.",
+      "createTitle": "Create New Tag",
+      "editTitle": "Update Tag",
+      "editing": "Editing: {{name}}",
+      "namePlaceholder": "Tag name",
+      "slugPlaceholder": "slug",
+      "createButton": "Create Tag",
+      "updateButton": "Update",
+      "editAria": "Edit {{name}}",
+      "deleteAria": "Delete {{name}}",
+      "deleteConfirm": "Delete tag \"{{name}}\"?"
+    },
+    "categories": {
+      "title": "Category Hierarchy",
+      "description": "Categories are shown in a parent-child tree; choose a parent when creating or updating.",
+      "createTitle": "Create New Category",
+      "editTitle": "Update Category",
+      "editing": "Editing: {{name}}",
+      "fields": {
+        "name": "Category name",
+        "slug": "Slug",
+        "type": "Content type",
+        "parent": "Parent category",
+        "description": "Description"
+      },
+      "typeAssetOption": "Asset",
+      "typeGameOption": "Game",
+      "noParent": "None - root level",
+      "createButton": "Create Category",
+      "updateButton": "Update",
+      "deleteConfirm": "Delete category \"{{name}}\"? Categories with child categories or linked products cannot be deleted.",
+      "gameTitle": "Game Categories",
+      "assetTitle": "Asset Categories",
+      "count": "{{count}} categories",
+      "rootLabel": "Root category",
+      "editAria": "Edit {{name}}",
+      "deleteAria": "Delete {{name}}"
+    },
+    "modal": {
+      "badge": "Content collection",
+      "editTitle": "Edit Collection",
+      "createTitle": "Create New Collection",
+      "description": "Configure the information and product selection rules shown on the storefront.",
+      "basicInfo": "Basic Information",
+      "fields": {
+        "title": "Title",
+        "slug": "Slug",
+        "description": "Description",
+        "maxItems": "Maximum items"
+      },
+      "placeholders": {
+        "title": "Example: Stylized Picks",
+        "slug": "stylized-picks",
+        "description": "Describe the purpose and content of this collection..."
+      },
+      "maxItemsHint": "From 1 to 10 newest products.",
+      "activeTitle": "Show collection",
+      "activeDescription": "Allow this collection to be used in Homepage Layout.",
+      "tagsTitle": "Tags",
+      "tagsDescription": "Products must contain all selected tags.",
+      "categoriesTitle": "Categories",
+      "categoriesDescription": "Products must belong to one of the selected categories.",
+      "saveChanges": "Save Changes",
+      "createAction": "Create Collection"
+    },
+    "selectionPicker": {
+      "searchTags": "Search tags...",
+      "searchCategories": "Search categories...",
+      "selectedCount": "{{count}} selected",
+      "noResults": "No results found."
+    }
+  },
+  "paymentVerification": {
+    "free": "FREE",
+    "na": "N/A",
+    "loadError": "Failed to load payments",
+    "detailLoadError": "Failed to load payment detail",
+    "detailRefreshError": "Failed to refresh payment detail",
+    "sort": "Sort",
+    "sortAll": "All payments",
+    "headers": {
+      "order": "Order",
+      "buyer": "Buyer",
+      "amount": "Amount",
+      "paymentStatus": "Payment Status",
+      "updated": "Updated",
+      "action": "Action"
+    },
+    "loading": "Loading payment sessions...",
+    "empty": "No payment sessions are available right now.",
+    "view": "View",
+    "previous": "Previous",
+    "next": "Next",
+    "detailTitle": "Payment Detail",
+    "detailSubtitle": "Order {{order}} • {{title}}",
+    "close": "Close",
+    "refresh": "Refresh",
+    "timeline": "Payment Timeline",
+    "createdAt": "Created At",
+    "updatedAt": "Updated At",
+    "paidAt": "Paid At",
+    "orderInfo": "Order Information",
+    "email": "Email",
+    "product": "Product",
+    "reference": "Reference",
+    "payosOrderCode": "PayOS Order Code",
+    "paymentLinkId": "Payment Link ID",
+    "transactionId": "Transaction ID",
+    "waitingWebhook": "Waiting webhook",
+    "status": {
+      "PAID": "Paid",
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "FAILED": "Failed",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired"
+    },
+    "downloadUnlocked": "Download is unlocked for this payment because PayOS webhook confirmation has completed."
+  },
+  "externalPublish": {
+    "loadStatusError": "Unable to load Google Play status.",
+    "loadStatusCatchError": "An error occurred while loading Google Play status.",
+    "requiredError": "Please choose a build file, enter a short description, and choose a feature graphic.",
+    "uploadError": "Build upload failed.",
+    "uploadCatchError": "An error occurred while uploading the build.",
+    "title": "Push Google Play",
+    "reload": "Reload",
+    "statusLive": "Live on Google Play",
+    "statusSubmitted": "Waiting for Google Play review",
+    "statusRejected": "Rejected by Google Play",
+    "versionLabel": "Version: {{value}}",
+    "viewStore": "View on Google Play",
+    "uploadHelp": "Export the APK/AAB from Godot Editor, then upload it here to submit automatically to Google Play. The icon (from thumbnail) and screenshots are taken automatically from the game page — the game must already have a thumbnail and at least 2 screenshots before upload.",
+    "versionHint": "Version is taken automatically from the game (developer version editing is not supported yet).",
+    "shortDescriptionPlaceholder": "Google Play short description (max 80 characters)",
+    "changelogPlaceholder": "Changelog (optional)",
+    "chooseBuild": "Choose APK/AAB file",
+    "noBuildSelected": "No file selected",
+    "chooseFeatureGraphic": "Choose feature graphic (1024x500)",
+    "noFeatureGraphicSelected": "No image selected",
+    "uploading": "Uploading...",
+    "uploadSubmit": "Upload & Submit to Google Play"
+  },
+  "withdrawal": {
+    "na": "N/A",
+    "copy": "Copy",
+    "view": "View",
+    "previous": "Previous",
+    "next": "Next",
+    "understood": "Understood",
+    "defaultDeveloper": "Developer",
+    "loadListError": "Unable to load withdrawal requests.",
+    "loadDetailError": "Unable to load withdrawal request detail.",
+    "insufficientTitle": "Admin wallet balance is insufficient",
+    "insufficientMessage": "Current balance is {{balance}}. You need to top up the payout wallet before processing this transaction.",
+    "approveCompleted": "PayOS confirmed the payout successfully. The withdrawal is now completed.",
+    "approveProcessing": "The payout order has been created. The system is monitoring the transfer automatically.",
+    "approveSuccess": "The withdrawal has been approved successfully.",
+    "approveError": "Unable to approve the withdrawal.",
+    "rejectRequireReason": "Please enter a rejection reason before rejecting.",
+    "rejectSuccess": "The withdrawal has been rejected.",
+    "rejectError": "Unable to reject the withdrawal.",
+    "payoutFailedMessage": "PayOS reported that the payout failed or was rejected. The money has not reached the developer's bank account.",
+    "timeoutMessage": "The system waited 30 seconds but PayOS still did not confirm a successful transfer. Please recheck the transaction or payout wallet balance.",
+    "warningFailedFlash": "PayOS reported the payout failed. Please recheck the withdrawal request.",
+    "warningTimeoutFlash": "The system waited 30 seconds but has not received a success confirmation from PayOS. Please recheck the payout queue.",
+    "successBalanceArrived": "The money has reached the user's account",
+    "searchPlaceholder": "Search by developer, email, bank, or reference...",
+    "filterAll": "All statuses",
+    "headers": {
+      "developer": "Developer",
+      "amount": "Amount",
+      "status": "Status",
+      "createdDate": "Created Date",
+      "actions": "Actions"
+    },
+    "loadingQueue": "Loading withdrawal queue...",
+    "empty": "No withdrawal requests match the current filters.",
+    "detail": {
+      "title": "Withdrawal Detail",
+      "adminBalance": "Admin wallet balance: {{amount}}",
+      "developerInfo": "Developer Information",
+      "fullName": "Full Name",
+      "email": "Email",
+      "created": "Created",
+      "walletInfo": "Wallet Information",
+      "walletBalance": "Wallet Balance",
+      "availableBalance": "Available Balance",
+      "pendingWithdrawal": "Pending Withdrawal",
+      "totalRevenue": "Total Revenue",
+      "bankInfo": "Bank Information",
+      "bankName": "Bank Name",
+      "accountHolder": "Account Holder",
+      "accountNumber": "Account Number",
+      "transferReference": "Transfer Reference",
+      "withdrawalAmount": "Withdrawal Amount",
+      "payoutTracking": "Payout Tracking",
+      "payosPayoutId": "PayOS Payout ID",
+      "payosStatus": "PayOS Status",
+      "payosCreated": "PayOS Created",
+      "lastProcessed": "Last Processed",
+      "noPayoutOrder": "No payout order created yet",
+      "noStatus": "No status available yet",
+      "step1": "Step 1",
+      "step1Title": "Create payout order",
+      "step1Description": "Admin creates a payout order from the platform's PayOS payout channel to the developer's bank account.",
+      "step2": "Step 2",
+      "step2Title": "Sync transfer result",
+      "step2Description": "When PayOS confirms a successful transfer, the withdrawal will automatically move to completed.",
+      "actionsTitle": "Actions",
+      "approvalNote": "Approval Note",
+      "approvalPlaceholder": "Internal note for this payout handling...",
+      "rejectRemark": "Reject Remark",
+      "rejectPlaceholder": "Enter the rejection reason if the bank information or amount has an issue...",
+      "storedRemark": "Stored Remark",
+      "noRemark": "No remark available.",
+      "createPayoutOrder": "Create Payout Order",
+      "rejectRequest": "Reject Request",
+      "finalStateReadonly": "This withdrawal is already in a final state and cannot be modified further.",
+      "payoutTransferStatus": "Payout transfer status",
+      "processingBadge": "Processing",
+      "updatedBadge": "Updated",
+      "processingDescription": "The system is checking the payout status periodically and will close automatically once the transfer is complete.",
+      "updatedDescription": "The payout status has been updated. This modal will close automatically shortly."
+    }
+  },
+  "fileManagement": {
+    "publishing": {
+      "marketplaceListing": "Marketplace",
+      "fullAcquisition": "Store (Buyout)",
+      "coPublishing": "Store (Co-publishing)"
+    },
+    "categories": {
+      "game": "Game (Source & Media)",
+      "asset": "Asset (Marketplace)",
+      "contractPdf": "Contract (PDF)",
+      "kycImage": "Identity Verification Images (KYC)"
+    },
+    "errors": {
+      "loadGames": "Failed to load the game list.",
+      "loadAssets": "Failed to load the asset list.",
+      "loadFiles": "Failed to load the file list.",
+      "server": "Server connection error.",
+      "gameDetail": "Unable to load game details.",
+      "gameDetailCatch": "An error occurred while loading game details.",
+      "assetDetail": "Unable to load asset details.",
+      "assetDetailCatch": "An error occurred while loading asset details.",
+      "allowPopup": "Please allow popups in your browser to preview this file.",
+      "download": "File download failed.",
+      "delete": "File deletion failed.",
+      "deleteCatch": "An error occurred while deleting the file."
+    },
+    "pagination": {
+      "summary": "Page {{page}} of {{totalPages}} ({{totalElements}} items)"
+    },
+    "buttons": {
+      "copyUrl": "Copy URL",
+      "viewDirect": "Open preview",
+      "download": "Download",
+      "delete": "Delete file",
+      "refresh": "Refresh",
+      "search": "Search",
+      "backToGames": "Back to game list",
+      "backToAssets": "Back to asset list",
+      "confirmDelete": "Confirm delete"
+    },
+    "list": {
+      "noGames": "No games found.",
+      "gameFilesEmpty": "This game does not have any files in storage yet.",
+      "noAssets": "No assets found.",
+      "assetFilesEmpty": "This asset does not have any files in storage yet.",
+      "noCategoryFiles": "No files were found in this category.",
+      "by": "by {{name}}",
+      "fileCount": "{{count}} files"
+    },
+    "labels": {
+      "categoryMenu": "File Categories",
+      "totalCategorizedFiles": "Total categorized files",
+      "storageSystem": "Storage system",
+      "storageSubtitle": "SeaweedFS (Online · Storage optimized)",
+      "searchPlaceholder": "Search by file name, owner...",
+      "loadingDetail": "Loading details...",
+      "loadingList": "Loading list...",
+      "loadingFiles": "Loading file list...",
+      "errorPrefix": "An error occurred: {{error}}",
+      "storageBadge": "SeaweedFS",
+      "ownerId": "ID",
+      "headers": {
+        "preview": "Preview",
+        "fileName": "File name",
+        "category": "Category",
+        "storage": "Storage",
+        "owner": "Owner",
+        "uploadedAt": "Uploaded at",
+        "actions": "Actions"
+      }
+    },
+    "deleteModal": {
+      "title": "Confirm file deletion",
+      "description": "Are you sure you want to delete this file? This action will:",
+      "deletePhysicalPrefix": "Permanently remove the original file from",
+      "unlinkDb": "Unlink the file and set the related DB field to NULL (or remove the related row) for:",
+      "object": "Object:",
+      "fileName": "File name:",
+      "cancel": "Cancel"
+    }
+  },
+  "userPanel": {
+    "userNotFound": "User not found.",
+    "updateError": "Unable to update this user right now.",
+    "fullNameRequired": "Full name is required.",
+    "invalidEmail": "Please enter a valid email address.",
+    "banReasonRequired": "Ban reason is required.",
+    "title": "User Management",
+    "description": "Search accounts, inspect details, and manage roles or account access without deleting users.",
+    "refresh": "Refresh",
+    "searchUser": "Search User",
+    "searchPlaceholder": "Search by name or email...",
+    "roleFilter": "Role Filter",
+    "statusFilter": "Status Filter",
+    "matchingUsers": "{{count}} matching users",
+    "clearFilters": "Clear filters",
+    "loading": "Loading platform users...",
+    "loadError": "Error loading users: {{error}}",
+    "tryAgain": "Try Again",
+    "headers": {
+      "avatar": "Avatar",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "createdDate": "Created Date",
+      "actions": "Actions"
+    },
+    "empty": "No users match the current search and filters.",
+    "you": "You",
+    "archived": "Archived",
+    "view": "View",
+    "detailTitle": "User Detail",
+    "detailDescription": "Review account information and take administrative actions.",
+    "userInformation": "User Information",
+    "fullName": "Full Name",
+    "createdDate": "Created Date",
+    "userId": "User ID",
+    "actionsTitle": "Actions",
+    "editUser": "Edit User",
+    "editUserHint": "Update full name and email address.",
+    "changeRole": "Change Role",
+    "changeRoleHint": "Assign admin, developer, or customer access.",
+    "suspendUser": "Suspend User",
+    "suspendUserHint": "Temporarily block access without deleting the account.",
+    "activateUser": "Activate User",
+    "activateUserHint": "Restore access for suspended or banned accounts.",
+    "banUser": "Ban User",
+    "banUserHint": "Permanently block account access with a required reason.",
+    "editDialogTitle": "Edit User",
+    "editDialogDescription": "Update the user's primary identity details.",
+    "fullNamePlaceholder": "Enter full name",
+    "emailPlaceholder": "Enter email address",
+    "cancel": "Cancel",
+    "save": "Save",
+    "roleDialogTitle": "Change Role",
+    "roleDialogDescription": "Assign the appropriate role for this account.",
+    "suspendDialogTitle": "Suspend User",
+    "suspendDialogDescription": "Temporarily block account access while preserving account data.",
+    "suspendConfirm": "Are you sure you want to suspend this user?",
+    "confirm": "Confirm",
+    "banDialogTitle": "Ban User",
+    "banDialogDescription": "Ban this account and record the reason for the action.",
+    "banConfirm": "Confirm banning this user. A ban reason is required before continuing.",
+    "banReason": "Ban Reason",
+    "banReasonPlaceholder": "Describe why this account is being banned...",
+    "confirmBan": "Confirm Ban",
+    "filterAll": "All"
   }
 }

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Landmark,
   ReceiptText,
@@ -12,21 +13,26 @@ import {
   WalletResponse,
 } from "../../types";
 
-const resolveLocale = () => {
-  if (typeof navigator === "undefined" || !navigator.language) {
-    return "vi-VN";
+const resolveLocale = (language: string) => {
+  switch (language) {
+    case "en":
+      return "en-US";
+    case "ja":
+      return "ja-JP";
+    case "vi":
+    default:
+      return "vi-VN";
   }
-
-  return navigator.language;
 };
 
 const formatMoney = (
   value?: number | null,
   currency?: string | null,
   locale = "vi-VN",
+  fallback = "N/A",
 ) => {
   if (value == null) {
-    return "N/A";
+    return fallback;
   }
 
   return new Intl.NumberFormat(locale, {
@@ -36,14 +42,18 @@ const formatMoney = (
   }).format(value);
 };
 
-const formatTimestamp = (value?: string | null, locale = "vi-VN") => {
+const formatTimestamp = (
+  value?: string | null,
+  locale = "vi-VN",
+  fallback = "N/A",
+) => {
   if (!value) {
-    return "N/A";
+    return fallback;
   }
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return "N/A";
+    return fallback;
   }
 
   return new Intl.DateTimeFormat(locale, {
@@ -55,9 +65,9 @@ const formatTimestamp = (value?: string | null, locale = "vi-VN") => {
   }).format(parsed);
 };
 
-const formatTransactionType = (value?: string | null) => {
+const formatTransactionType = (value?: string | null, fallback = "N/A") => {
   if (!value) {
-    return "N/A";
+    return fallback;
   }
 
   return value
@@ -67,9 +77,9 @@ const formatTransactionType = (value?: string | null) => {
     .join(" ");
 };
 
-const maskAccountNumber = (value?: string | null) => {
+const maskAccountNumber = (value?: string | null, fallback = "Not connected") => {
   if (!value) {
-    return "Not connected";
+    return fallback;
   }
 
   const normalized = value.trim();
@@ -80,14 +90,26 @@ const maskAccountNumber = (value?: string | null) => {
   return `•••• ${normalized.slice(-4)}`;
 };
 
-const getPayoutStatusMeta = (status?: string | null) => {
+const getPayoutStatusMeta = (
+  status?: string | null,
+  labels?: {
+    active: string;
+    enabled: string;
+    pending: string;
+    processing: string;
+    unknown: string;
+  },
+) => {
   const normalized = status?.toLowerCase();
 
   if (normalized === "active" || normalized === "enabled") {
     return {
       badgeClass:
         "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400",
-      label: status,
+      label:
+        normalized === "enabled"
+          ? labels?.enabled || status || labels?.unknown || "Unknown"
+          : labels?.active || status || labels?.unknown || "Unknown",
     };
   }
 
@@ -95,14 +117,17 @@ const getPayoutStatusMeta = (status?: string | null) => {
     return {
       badgeClass:
         "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400",
-      label: status,
+      label:
+        normalized === "processing"
+          ? labels?.processing || status || labels?.unknown || "Unknown"
+          : labels?.pending || status || labels?.unknown || "Unknown",
     };
   }
 
   return {
     badgeClass:
       "border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300",
-    label: status || "Unknown",
+    label: status || labels?.unknown || "Unknown",
   };
 };
 
@@ -128,7 +153,8 @@ export const AdminFinanceWalletPanel: React.FC<
   onRefreshPayoutBalance,
   onRefreshStateChange,
 }) => {
-  const locale = resolveLocale();
+  const { t, i18n } = useTranslation(["admin"]);
+  const locale = resolveLocale(i18n.resolvedLanguage || i18n.language || "vi");
   const [walletInfo, setWalletInfo] = useState<WalletResponse | null>(null);
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [page, setPage] = useState(0);
@@ -147,7 +173,9 @@ export const AdminFinanceWalletPanel: React.FC<
     try {
       const response = await walletApi.getMyWallet();
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Failed to load platform wallet.");
+        throw new Error(
+          response.message || t("financeWallet.errors.loadPlatformWallet"),
+        );
       }
 
       setWalletInfo(response.data);
@@ -155,12 +183,12 @@ export const AdminFinanceWalletPanel: React.FC<
       setWalletError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to load platform wallet.",
+          t("financeWallet.errors.loadPlatformWallet"),
       );
     } finally {
       setIsLoadingWallet(false);
     }
-  }, []);
+  }, [t]);
 
   const loadTransactions = useCallback(async (targetPage = page) => {
     setIsLoadingTransactions(true);
@@ -169,7 +197,7 @@ export const AdminFinanceWalletPanel: React.FC<
       const response = await walletApi.getMyTransactions(targetPage, 10);
       if (!response.success || !response.data) {
         throw new Error(
-          response.message || "Failed to load wallet transactions.",
+          response.message || t("financeWallet.errors.loadTransactions"),
         );
       }
 
@@ -179,12 +207,12 @@ export const AdminFinanceWalletPanel: React.FC<
       setTransactionsError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to load wallet transactions.",
+          t("financeWallet.errors.loadTransactions"),
       );
     } finally {
       setIsLoadingTransactions(false);
     }
-  }, [page]);
+  }, [page, t]);
 
   useEffect(() => {
     void loadWalletInfo();
@@ -223,17 +251,33 @@ export const AdminFinanceWalletPanel: React.FC<
     onRefreshStateChange,
   ]);
 
-  const payoutStatusMeta = getPayoutStatusMeta(payoutBalance?.status);
+  const payoutStatusMeta = getPayoutStatusMeta(payoutBalance?.status, {
+    active: t("financeWallet.status.active"),
+    enabled: t("financeWallet.status.enabled"),
+    pending: t("financeWallet.status.pending"),
+    processing: t("financeWallet.status.processing"),
+    unknown: t("financeWallet.status.unknown"),
+  });
   const platformWalletBalance = walletInfo
-    ? formatMoney(walletInfo.balance, walletInfo.currency, locale)
+    ? formatMoney(
+        walletInfo.balance,
+        walletInfo.currency,
+        locale,
+        t("withdrawal.na"),
+      )
     : isLoadingWallet
-      ? "Loading..."
-      : "N/A";
+      ? t("common.loading")
+      : t("withdrawal.na");
   const payoutBalanceDisplay = isLoadingPayoutBalance
-    ? "Loading..."
+    ? t("common.loading")
     : payoutBalance
-      ? formatMoney(payoutBalance.balance, payoutBalance.currency, locale)
-      : "N/A";
+      ? formatMoney(
+          payoutBalance.balance,
+          payoutBalance.currency,
+          locale,
+          t("withdrawal.na"),
+        )
+      : t("withdrawal.na");
 
   return (
     <div className="space-y-5">
@@ -265,7 +309,7 @@ export const AdminFinanceWalletPanel: React.FC<
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-700/70 dark:text-emerald-300/70">
-                Platform Ledger
+                {t("financeWallet.cards.platformLedger.title")}
               </p>
               <p className="mt-2 font-display text-2xl font-bold text-slate-900 dark:text-white">
                 {platformWalletBalance}
@@ -273,8 +317,7 @@ export const AdminFinanceWalletPanel: React.FC<
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
-            Internal wallet used for marketplace commission and finance ops
-            visibility.
+            {t("financeWallet.cards.platformLedger.description")}
           </p>
         </div>
 
@@ -285,7 +328,7 @@ export const AdminFinanceWalletPanel: React.FC<
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-700/70 dark:text-sky-300/70">
-                PayOS Payout Balance
+                {t("financeWallet.cards.payoutBalance.title")}
               </p>
               <p className="mt-2 font-display text-2xl font-bold text-slate-900 dark:text-white">
                 {payoutBalanceDisplay}
@@ -293,7 +336,7 @@ export const AdminFinanceWalletPanel: React.FC<
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
-            Synced from the payout account used for operational withdrawals.
+            {t("financeWallet.cards.payoutBalance.description")}
           </p>
         </div>
 
@@ -305,7 +348,7 @@ export const AdminFinanceWalletPanel: React.FC<
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-700/70 dark:text-amber-300/70">
-                  Payout Account
+                  {t("financeWallet.cards.payoutAccount.title")}
                 </p>
                 <span
                   className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${payoutStatusMeta.badgeClass}`}
@@ -314,15 +357,17 @@ export const AdminFinanceWalletPanel: React.FC<
                 </span>
               </div>
               <p className="mt-2 text-base font-semibold text-slate-900 dark:text-white">
-                {payoutBalance?.accountName || "Not connected"}
+                {payoutBalance?.accountName || t("financeWallet.notConnected")}
               </p>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                {maskAccountNumber(payoutBalance?.accountNumber)}
-              </p>
+              {payoutBalance?.accountNumber && (
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  {maskAccountNumber(payoutBalance.accountNumber)}
+                </p>
+              )}
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
-            Banking identity used when admin processes store payout operations.
+            {t("financeWallet.cards.payoutAccount.description")}
           </p>
         </div>
       </div>
@@ -331,17 +376,19 @@ export const AdminFinanceWalletPanel: React.FC<
         <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 md:flex-row md:items-center md:justify-between dark:border-slate-800">
           <div>
             <h4 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
-              Platform Transaction Ledger
+              {t("financeWallet.ledger.title")}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Review admin wallet movements and trace references before opening
-              payment or withdrawal operations.
+              {t("financeWallet.ledger.description")}
             </p>
           </div>
 
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300">
             <ReceiptText size={12} />
-            Page {page + 1} / {Math.max(totalPages, 1)}
+            {t("financeWallet.ledger.page", {
+              current: page + 1,
+              total: Math.max(totalPages, 1),
+            })}
           </div>
         </div>
 
@@ -349,23 +396,31 @@ export const AdminFinanceWalletPanel: React.FC<
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
               <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500">
-                <th className="p-4 font-semibold">Type</th>
-                <th className="p-4 font-semibold">Amount</th>
-                <th className="p-4 font-semibold">Reference</th>
-                <th className="p-4 font-semibold">Created</th>
+                <th className="p-4 font-semibold">
+                  {t("financeWallet.ledger.headers.type")}
+                </th>
+                <th className="p-4 font-semibold">
+                  {t("financeWallet.ledger.headers.amount")}
+                </th>
+                <th className="p-4 font-semibold">
+                  {t("financeWallet.ledger.headers.reference")}
+                </th>
+                <th className="p-4 font-semibold">
+                  {t("financeWallet.ledger.headers.created")}
+                </th>
               </tr>
             </thead>
             <tbody>
               {isLoadingTransactions ? (
                 <tr>
                   <td colSpan={4} className="p-8 text-center text-slate-400">
-                    Loading wallet transactions...
+                    {t("financeWallet.ledger.loading")}
                   </td>
                 </tr>
               ) : transactions.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="p-8 text-center text-slate-400">
-                    No admin wallet transactions are available right now.
+                    {t("financeWallet.ledger.empty")}
                   </td>
                 </tr>
               ) : (
@@ -375,7 +430,7 @@ export const AdminFinanceWalletPanel: React.FC<
                     className="border-t border-slate-200/80 dark:border-slate-800/80"
                   >
                     <td className="p-4 font-semibold text-slate-800 dark:text-slate-200">
-                      {formatTransactionType(transaction.type)}
+                      {formatTransactionType(transaction.type, t("withdrawal.na"))}
                     </td>
                     <td
                       className={`p-4 font-semibold ${
@@ -388,13 +443,18 @@ export const AdminFinanceWalletPanel: React.FC<
                         Number(transaction.amount),
                         walletInfo?.currency,
                         locale,
+                        t("withdrawal.na"),
                       )}
                     </td>
                     <td className="p-4 font-mono text-xs text-slate-500 dark:text-slate-400">
                       {transaction.referenceId || "—"}
                     </td>
                     <td className="p-4 text-xs text-slate-500 dark:text-slate-400">
-                      {formatTimestamp(transaction.createdAt, locale)}
+                      {formatTimestamp(
+                        transaction.createdAt,
+                        locale,
+                        t("withdrawal.na"),
+                      )}
                     </td>
                   </tr>
                 ))
@@ -404,7 +464,7 @@ export const AdminFinanceWalletPanel: React.FC<
         </div>
 
         <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 md:flex-row md:items-center md:justify-between">
-          <span>Keep this view finance-only for admin operational review.</span>
+          <span>{t("financeWallet.ledger.footer")}</span>
 
           <div className="flex items-center gap-2">
             <button
@@ -413,7 +473,7 @@ export const AdminFinanceWalletPanel: React.FC<
               onClick={() => setPage((prev) => Math.max(0, prev - 1))}
               className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.08)] transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-transparent dark:text-slate-300 dark:shadow-none dark:hover:border-slate-500"
             >
-              Previous
+              {t("withdrawal.previous")}
             </button>
             <button
               type="button"
@@ -423,7 +483,7 @@ export const AdminFinanceWalletPanel: React.FC<
               }
               className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.08)] transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-transparent dark:text-slate-300 dark:shadow-none dark:hover:border-slate-500"
             >
-              Next
+              {t("withdrawal.next")}
             </button>
           </div>
         </div>

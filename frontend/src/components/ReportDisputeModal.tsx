@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { disputeApi } from '../api/disputeApi';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function ReportDisputeModal({ gameId, marketplaceItemId, productTitle, onClose, onSuccess }: Props) {
+  const { t } = useTranslation(['shared']);
   const [reason, setReason] = useState('');
   const [evidenceRepoUrl, setEvidenceRepoUrl] = useState('');
   const [evidenceNote, setEvidenceNote] = useState('');
@@ -22,7 +24,7 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
 
   const handleSubmit = async () => {
     if (!reason.trim()) {
-      setError('Vui lòng nhập lý do tố cáo.');
+      setError(t('reportDispute.errorReasonRequired'));
       return;
     }
     setSubmitting(true);
@@ -39,10 +41,10 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
         setDone(true);
         setTimeout(() => { onSuccess?.(); onClose(); }, 1800);
       } else {
-        setError(res.message || 'Gửi khiếu nại thất bại.');
+        setError(res.message || t('reportDispute.errorSubmitFailed'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Gửi khiếu nại thất bại.');
+      setError(err.response?.data?.message || err.message || t('reportDispute.errorSubmitFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -54,7 +56,7 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-rose-400" />
-            <h2 className="text-white font-semibold text-sm">Tố cáo vi phạm bản quyền</h2>
+            <h2 className="text-white font-semibold text-sm">{t('reportDispute.title')}</h2>
           </div>
           {!submitting && (
             <button onClick={onClose} className="text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
@@ -65,40 +67,39 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
           {done ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
               <CheckCircle2 className="w-12 h-12 text-emerald-400" />
-              <p className="text-white font-semibold">Đã gửi khiếu nại</p>
-              <p className="text-white/50 text-sm">Sản phẩm sẽ tạm gỡ chờ admin điều tra.</p>
+              <p className="text-white font-semibold">{t('reportDispute.doneTitle')}</p>
+              <p className="text-white/50 text-sm">{t('reportDispute.doneDescription')}</p>
             </div>
           ) : (
             <>
               <div className="bg-rose-400/10 border border-rose-400/20 rounded-xl px-4 py-3 text-xs text-rose-300">
-                Bạn đang tố cáo: <strong>{productTitle}</strong>. Nếu tố cáo sai sự thật nhiều lần,
-                tài khoản của bạn có thể bị cấm.
+                {t('reportDispute.reportingProduct')} <strong>{productTitle}</strong>. {t('reportDispute.falseReportWarning')}
               </div>
 
               <div>
-                <label className="text-white/60 text-xs mb-1 block">Lý do tố cáo *</label>
+                <label className="text-white/60 text-xs mb-1 block">{t('reportDispute.reasonLabel')}</label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
-                  placeholder="Mô tả vi phạm: source này là của tôi, bị bán trái phép..."
+                  placeholder={t('reportDispute.reasonPlaceholder')}
                   className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-rose-400/60 resize-none"
                 />
               </div>
 
               <div>
-                <label className="text-white/60 text-xs mb-1 block">Repo gốc của bạn (bằng chứng)</label>
+                <label className="text-white/60 text-xs mb-1 block">{t('reportDispute.repoLabel')}</label>
                 <input
                   type="text"
                   value={evidenceRepoUrl}
                   onChange={(e) => setEvidenceRepoUrl(e.target.value)}
-                  placeholder="https://github.com/ban/repo-goc"
+                  placeholder={t('reportDispute.repoPlaceholder')}
                   className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-rose-400/60"
                 />
               </div>
 
               <div>
-                <label className="text-white/60 text-xs mb-1 block">Ghi chú thêm</label>
+                <label className="text-white/60 text-xs mb-1 block">{t('reportDispute.noteLabel')}</label>
                 <textarea
                   value={evidenceNote}
                   onChange={(e) => setEvidenceNote(e.target.value)}
@@ -118,7 +119,7 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
                 disabled={submitting || !reason.trim()}
                 className="w-full bg-rose-500 hover:bg-rose-400 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
-                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi...</> : 'Gửi khiếu nại'}
+                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('reportDispute.submitting')}</> : t('reportDispute.submit')}
               </button>
             </>
           )}
