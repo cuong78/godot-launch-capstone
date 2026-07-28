@@ -689,7 +689,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                   {progressMeta.icon}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
                     {t("withdrawal.detail.payoutTransferStatus")}
                   </p>
                   <h4 className="mt-2 font-display text-2xl font-bold text-white">
@@ -720,7 +720,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                   />
                 </div>
 
-                <p className="mt-4 text-xs leading-6 text-slate-400">
+                <p className="mt-4 text-xs leading-6 text-slate-500 dark:text-slate-400">
                   {payoutProgress.phase === "processing"
                     ? t("withdrawal.detail.processingDescription")
                     : t("withdrawal.detail.updatedDescription")}

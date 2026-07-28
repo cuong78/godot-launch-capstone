@@ -276,7 +276,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
   if (isLoadingStatus) {
     return (
-      <div className="flex h-[70vh] flex-col items-center justify-center gap-3 bg-[#0c0c0e] text-slate-400">
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-3 bg-slate-100 text-slate-500 dark:bg-night-950 dark:text-slate-400">
         <Loader2 size={36} className="animate-spin text-amber-500" />
         <p className="text-sm font-semibold tracking-wide">{t('onboarding.loadingStatus')}</p>
       </div>
@@ -288,11 +288,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0c0e] py-10 px-4 text-white sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50/70 px-4 py-10 text-slate-950 dark:bg-night-950 dark:text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl animate-fade-in">
         
         {/* PROGRESS BAR (Giao diện giống FAB Unreal Engine) */}
-        <div className="relative mb-12 flex justify-between items-center rounded-2xl border border-white/5 bg-[#121214] p-6 shadow-2xl">
+        <div className="dark-depth-card relative mb-12 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white/88 p-6 shadow-[0_18px_48px_rgba(148,163,184,0.16)] dark:border-slate-700/60 dark:bg-night-850 dark:shadow-2xl">
           {stepConfigs.map((step, idx) => {
             const isCompleted = step.done;
             const isActive = activeStep === step.id;
@@ -302,7 +302,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               <React.Fragment key={step.id}>
                 {/* Dây nối */}
                 {idx > 0 && (
-                  <div className="relative flex-1 h-0.5 mx-2 bg-slate-800">
+                  <div className="relative mx-2 h-0.5 flex-1 bg-slate-200 dark:bg-slate-800">
                     <div
                       className={`absolute left-0 top-0 h-full transition-all duration-300 ${
                         isCompleted || (isActive && isPrevCompleted) ? 'bg-lime-500 w-full' : 'bg-slate-800 w-0'
@@ -326,7 +326,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                         ? 'bg-lime-500 text-[#0c0c0e]'
                         : isActive
                         ? 'bg-amber-500 text-[#0c0c0e] ring-4 ring-amber-500/20'
-                        : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'
+                        : 'bg-slate-200 text-slate-500 group-hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700'
                     }`}
                   >
                     {isCompleted ? <Check size={18} strokeWidth={3} /> : step.id}
@@ -337,7 +337,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                         ? 'text-lime-500'
                         : isActive
                         ? 'text-amber-500'
-                        : 'text-slate-500 group-hover:text-slate-400'
+                        : 'text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-400'
                     }`}
                   >
                     {step.label}
@@ -349,9 +349,9 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
         </div>
 
         {/* CONTAINER NỘI DUNG CHÍNH */}
-        <div className="relative min-h-[420px] rounded-3xl border border-white/5 bg-[#121214] p-8 shadow-3xl">
+        <div className="dark-depth-card relative min-h-[420px] rounded-3xl border border-slate-200/80 bg-white/92 p-8 shadow-[0_22px_60px_rgba(148,163,184,0.18)] dark:border-slate-700/60 dark:bg-night-850 dark:shadow-3xl">
           {error && (
-            <div className="mb-6 rounded-xl border border-rose-900/50 bg-rose-950/20 p-4 text-sm text-rose-400">
+            <div className="mb-6 rounded-xl border border-rose-300/50 bg-rose-50 p-4 text-sm text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
               {error}
             </div>
           )}
@@ -362,10 +362,10 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-lime-500/10 text-lime-500">
                 <Sparkles size={40} />
               </div>
-              <h2 className="mt-6 font-display text-2xl font-black tracking-tight text-white">
+              <h2 className="mt-6 font-display text-2xl font-black tracking-tight text-slate-950 dark:text-white">
                 {t('onboarding.complete.title')}
               </h2>
-              <p className="mt-3 max-w-md text-sm text-slate-400">
+              <p className="mt-3 max-w-md text-sm text-slate-600 dark:text-slate-400">
                 {t('onboarding.complete.description')}
               </p>
               <Button variant="primary" size="lg" className="mt-8 bg-lime-500 hover:bg-lime-400 text-black font-bold" onClick={() => setCurrentScreen('dashboard')}>
@@ -380,17 +380,17 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                 <div className="space-y-5">
                   <div className="space-y-1">
                     <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 1 })}</span>
-                    <h2 className="text-2xl font-black text-white">{t('onboarding.agreement.title')}</h2>
-                    <p className="text-sm text-slate-400">{t('onboarding.agreement.description')}</p>
+                    <h2 className="text-2xl font-black text-slate-950 dark:text-white">{t('onboarding.agreement.title')}</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{t('onboarding.agreement.description')}</p>
                   </div>
 
-                  <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-white/5 dark:bg-black/40">
                     {isLoadingAgreement ? (
-                      <div className="flex items-center justify-center gap-2 py-8 text-slate-400 text-xs">
+                      <div className="flex items-center justify-center gap-2 py-8 text-xs text-slate-500 dark:text-slate-400">
                         <Loader2 size={16} className="animate-spin" /> {t('onboarding.agreement.loading')}
                       </div>
                     ) : (
-                      <div className="max-h-56 overflow-y-auto pr-2 text-xs leading-relaxed text-slate-400 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                      <div className="max-h-56 overflow-y-auto pr-2 text-xs leading-relaxed text-slate-600 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:text-slate-400 dark:scrollbar-thumb-slate-800">
                         {agreementContent.split('\n\n').map((para, i) => (
                           <p key={i} className="mb-3">{para}</p>
                         ))}
@@ -398,7 +398,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                     )}
                   </div>
 
-                  <label className="flex items-start gap-3 rounded-xl border border-white/5 bg-slate-900/30 p-4 cursor-pointer hover:bg-slate-900/50 transition">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white/90 p-4 transition hover:bg-slate-50 dark:border-white/5 dark:bg-slate-900/30 dark:hover:bg-slate-900/50">
                     <input
                       type="checkbox"
                       checked={agreementAccepted}
@@ -410,9 +410,9 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                           setAgreementAccepted(false);
                         }
                       }}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 bg-white text-amber-500 focus:ring-amber-500 dark:border-slate-700 dark:bg-slate-800"
                     />
-                    <div className="text-xs text-slate-300">
+                    <div className="text-xs text-slate-600 dark:text-slate-300">
                       {t('onboarding.agreement.checkbox')}
                       {isAcceptingAgreement && (
                         <span className="ml-2 inline-flex items-center gap-1 text-amber-500">
@@ -429,24 +429,24 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                 <div className="space-y-6 text-center py-6">
                   <div className="space-y-1">
                     <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 2 })}</span>
-                    <h2 className="text-2xl font-black text-white">{t('onboarding.github.title')}</h2>
-                    <p className="text-sm text-slate-400">{t('onboarding.github.description')}</p>
+                    <h2 className="text-2xl font-black text-slate-950 dark:text-white">{t('onboarding.github.title')}</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{t('onboarding.github.description')}</p>
                   </div>
 
                   {githubLinked ? (
                     <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
                       <CheckCircle2 className="w-12 h-12 text-lime-500" />
                       <div className="text-sm font-semibold text-lime-400">{t('onboarding.github.linkedTitle')}</div>
-                      <div className="text-xs text-slate-400">{t('onboarding.github.linkedDescription')}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400">{t('onboarding.github.linkedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
                       <div className="flex justify-center">
-                        <div className="rounded-full bg-slate-900 p-6 border border-white/5">
-                          <Github className="w-16 h-16 text-white" />
+                        <div className="rounded-full border border-slate-200 bg-slate-100 p-6 dark:border-white/5 dark:bg-slate-900">
+                          <Github className="w-16 h-16 text-slate-900 dark:text-white" />
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400 px-4">
+                      <p className="px-4 text-xs text-slate-600 dark:text-slate-400">
                         {t('onboarding.github.permissionHint')}
                       </p>
                       <Button
@@ -475,24 +475,24 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                 <div className="space-y-6 text-center py-6">
                   <div className="space-y-1">
                     <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 3 })}</span>
-                    <h2 className="text-2xl font-black text-white">{t('onboarding.face.title')}</h2>
-                    <p className="text-sm text-slate-400">{t('onboarding.face.description')}</p>
+                    <h2 className="text-2xl font-black text-slate-950 dark:text-white">{t('onboarding.face.title')}</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{t('onboarding.face.description')}</p>
                   </div>
 
                   {faceVerified ? (
                     <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
                       <CheckCircle2 className="w-12 h-12 text-lime-500" />
                       <div className="text-sm font-semibold text-lime-400">{t('onboarding.face.verifiedTitle')}</div>
-                      <div className="text-xs text-slate-400">{t('onboarding.face.verifiedDescription')}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400">{t('onboarding.face.verifiedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
                       <div className="flex justify-center">
-                        <div className="rounded-full bg-slate-900 p-6 border border-white/5">
+                        <div className="rounded-full border border-slate-200 bg-slate-100 p-6 dark:border-white/5 dark:bg-slate-900">
                           <ScanFace className="w-16 h-16 text-amber-500" />
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400 px-4">
+                      <p className="px-4 text-xs text-slate-600 dark:text-slate-400">
                         {t('onboarding.face.hint')}
                       </p>
                       <Button
@@ -512,24 +512,24 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                 <div className="space-y-6 text-center py-6">
                   <div className="space-y-1">
                     <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 4 })}</span>
-                    <h2 className="text-2xl font-black text-white">{t('onboarding.kyc.title')}</h2>
-                    <p className="text-sm text-slate-400">{t('onboarding.kyc.description')}</p>
+                    <h2 className="text-2xl font-black text-slate-950 dark:text-white">{t('onboarding.kyc.title')}</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{t('onboarding.kyc.description')}</p>
                   </div>
 
                   {kycVerified ? (
                     <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
                       <CheckCircle2 className="w-12 h-12 text-lime-500" />
                       <div className="text-sm font-semibold text-lime-400">{t('onboarding.kyc.verifiedTitle')}</div>
-                      <div className="text-xs text-slate-400">{t('onboarding.kyc.verifiedDescription')}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400">{t('onboarding.kyc.verifiedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
                       <div className="flex justify-center">
-                        <div className="rounded-full bg-slate-900 p-6 border border-white/5">
+                        <div className="rounded-full border border-slate-200 bg-slate-100 p-6 dark:border-white/5 dark:bg-slate-900">
                           <FileText className="w-16 h-16 text-amber-500" />
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400 px-4">
+                      <p className="px-4 text-xs text-slate-600 dark:text-slate-400">
                         {t('onboarding.kyc.hint')}
                       </p>
                       <Button
@@ -549,44 +549,44 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                 <div className="space-y-5">
                   <div className="space-y-1">
                     <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">{t('onboarding.stepLabel', { step: 5 })}</span>
-                    <h2 className="text-2xl font-black text-white">{t('onboarding.payout.title')}</h2>
-                    <p className="text-sm text-slate-400">{t('onboarding.payout.description')}</p>
+                    <h2 className="text-2xl font-black text-slate-950 dark:text-white">{t('onboarding.payout.title')}</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{t('onboarding.payout.description')}</p>
                   </div>
 
-                  <div className="space-y-4 max-w-xl mx-auto rounded-2xl border border-white/5 bg-[#0a0a0c] p-6">
+                  <div className="dark-depth-inset mx-auto max-w-xl space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-6 dark:border-slate-700/55 dark:bg-night-950/70">
                     <div>
-                      <label className="text-white/50 text-xs mb-1 block">{t('onboarding.payout.bankName')}</label>
+                      <label className="mb-1 block text-xs text-slate-500 dark:text-white/50">{t('onboarding.payout.bankName')}</label>
                       <select
                         value={bankName}
                         onChange={(e) => setBankName(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/60"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                       >
-                        <option value="" disabled className="bg-[#0c0c0e] text-slate-400">{t('onboarding.payout.bankPlaceholder')}</option>
+                        <option value="" disabled className="bg-white text-slate-400 dark:bg-night-950 dark:text-slate-400">{t('onboarding.payout.bankPlaceholder')}</option>
                         {BANK_OPTIONS.map((bank) => (
-                          <option key={bank} value={bank} className="bg-[#0c0c0e] text-white">{bank}</option>
+                          <option key={bank} value={bank} className="bg-white text-slate-900 dark:bg-night-950 dark:text-white">{bank}</option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="text-white/50 text-xs mb-1 block">{t('onboarding.payout.bankAccount')}</label>
+                      <label className="mb-1 block text-xs text-slate-500 dark:text-white/50">{t('onboarding.payout.bankAccount')}</label>
                       <input
                         type="text"
                         value={bankAccount}
                         onChange={(e) => setBankAccount(e.target.value)}
                         placeholder={t('onboarding.payout.bankAccountPlaceholder')}
-                        className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/60"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                       />
                     </div>
 
                     <div>
-                      <label className="text-white/50 text-xs mb-1 block">{t('onboarding.payout.bankHolder')}</label>
+                      <label className="mb-1 block text-xs text-slate-500 dark:text-white/50">{t('onboarding.payout.bankHolder')}</label>
                       <input
                         type="text"
                         value={bankAccountHolder}
                         onChange={(e) => setBankAccountHolder(e.target.value.toUpperCase())}
                         placeholder={t('onboarding.payout.bankHolderPlaceholder')}
-                        className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/60"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                       />
                     </div>
 
@@ -622,10 +622,10 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
         {/* BOTTOM NAVIGATION BAR */}
         {!allDone && (
-          <div className="mt-8 flex justify-between items-center rounded-2xl border border-white/5 bg-[#121214] p-5 shadow-2xl animate-fade-in">
+          <div className="dark-depth-card mt-8 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white/88 p-5 shadow-[0_18px_48px_rgba(148,163,184,0.14)] animate-fade-in dark:border-slate-700/60 dark:bg-night-850 dark:shadow-2xl">
             <button
               onClick={() => setCurrentScreen('explore')}
-              className="px-4 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center gap-2 text-sm font-semibold"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
             >
               <LogOut size={16} /> {t('onboarding.actions.exit')}
             </button>
@@ -634,7 +634,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               <button
                 disabled={activeStep === 1}
                 onClick={() => setActiveStep((prev) => Math.max(1, prev - 1))}
-                className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-semibold"
+                className="flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
               >
                 <ArrowLeft size={16} /> {t('onboarding.actions.back')}
               </button>

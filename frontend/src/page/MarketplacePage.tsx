@@ -607,20 +607,20 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
       {/* Split Screen search layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Dynamic Left sidebar selectors */}
-        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 space-y-5 flex-none max-h-fit self-start">
+        <div className="launch-surface max-h-fit flex-none self-start space-y-5 rounded-2xl border border-slate-200 bg-white p-4 dark:border-night-700/60 dark:bg-night-850/82 dark:shadow-[0_18px_46px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.025)]">
 
           {/* Hierarchical Categories tree view filter */}
           <div className="space-y-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
               {t("filters.categoryLabel")}
             </label>
-            <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-slate-50 p-1 dark:bg-slate-950">
+            <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-slate-50 p-1 dark:bg-night-950/85">
               <button
                 type="button"
                 onClick={() => handleCatalogTypeChange("game")}
                 className={`rounded-md py-1.5 text-xs font-bold transition-studio ${
                   catalogType === "game"
-                    ? "bg-white text-slate-850 shadow-sm dark:bg-slate-800 dark:text-white"
+                    ? "bg-white text-slate-850 shadow-sm dark:bg-night-800 dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                     : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                 }`}
               >
@@ -631,7 +631,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 onClick={() => handleCatalogTypeChange("asset")}
                 className={`rounded-md py-1.5 text-xs font-bold transition-studio ${
                   catalogType === "asset"
-                    ? "bg-white text-slate-850 shadow-sm dark:bg-slate-800 dark:text-white"
+                    ? "bg-white text-slate-850 shadow-sm dark:bg-night-800 dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                     : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                 }`}
               >
@@ -663,14 +663,14 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
         <div className="lg:col-span-3 space-y-5">
           {/* Horizontal Filters Bar (Styled like fab.com search page) */}
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-3 p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl items-center">
+            <div className="launch-raised flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-night-700/60 dark:bg-night-850/82 dark:shadow-[0_18px_46px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.025)]">
               
               {/* 1. Tags Filter Dropdown */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setOpenDropdown(openDropdown === "tags" ? null : "tags")}
-                  className={`flex items-center justify-between text-xs min-w-[120px] sm:min-w-[140px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-all ${
+                  className={`launch-control flex items-center justify-between text-xs min-w-[120px] sm:min-w-[140px] px-4 py-2 bg-slate-50 dark:bg-night-950/80 border border-slate-200 dark:border-night-700/65 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-all ${
                     selectedTags.length > 0 ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
                   }`}
                 >
@@ -686,8 +686,8 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 {openDropdown === "tags" && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
-                    <div className="absolute left-0 mt-1.5 z-40 w-64 p-3 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-2">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("filters.tagsTitle")}</div>
+                    <div className="launch-overlay absolute left-0 z-40 mt-1.5 w-64 space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl backdrop-blur-md animate-fade-in dark:border-night-700/70 dark:bg-night-800 dark:shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{t("filters.tagsTitle")}</div>
                       
                       {/* Search tags input */}
                       <div className="relative">
@@ -747,7 +747,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                             setSelectedTags([]);
                             setTagSearchQuery("");
                           }}
-                          className="text-[11px] font-bold text-slate-400 hover:text-sky-500 cursor-pointer transition-colors"
+                          className="cursor-pointer text-[11px] font-bold text-slate-500 transition-colors hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400"
                         >
                           {t("filters.tagsReset")}
                         </button>
@@ -762,7 +762,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 <button
                   type="button"
                   onClick={() => setOpenDropdown(openDropdown === "price" ? null : "price")}
-                  className={`flex items-center justify-between text-xs min-w-[120px] sm:min-w-[140px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-all ${
+                  className={`launch-control flex items-center justify-between text-xs min-w-[120px] sm:min-w-[140px] px-4 py-2 bg-slate-50 dark:bg-night-950/80 border border-slate-200 dark:border-night-700/65 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-all ${
                     freeOnly || minPriceInput !== "" || maxPriceInput !== "" ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
                   }`}
                 >
@@ -773,8 +773,8 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 {openDropdown === "price" && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
-                    <div className="absolute left-0 mt-1.5 z-40 w-64 p-4 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-3">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("filters.priceTitle")}</div>
+                    <div className="launch-overlay absolute left-0 z-40 mt-1.5 w-64 space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xl backdrop-blur-md animate-fade-in dark:border-night-700/70 dark:bg-night-800 dark:shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">{t("filters.priceTitle")}</div>
                       
                       <div className="flex items-center gap-2">
                         <div className="space-y-1">
@@ -823,7 +823,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 <button
                   type="button"
                   onClick={() => setOpenDropdown(openDropdown === "date" ? null : "date")}
-                  className={`flex items-center justify-between text-xs min-w-[130px] sm:min-w-[150px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-all ${
+                  className={`launch-control flex items-center justify-between text-xs min-w-[130px] sm:min-w-[150px] px-4 py-2 bg-slate-50 dark:bg-night-950/80 border border-slate-200 dark:border-night-700/65 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-all ${
                     publishDateFilter !== "all-time" ? 'border-sky-500 ring-1 ring-sky-500/20' : ''
                   }`}
                 >
@@ -834,7 +834,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 {openDropdown === "date" && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
-                    <ul className="absolute left-0 mt-1.5 z-40 w-44 p-1.5 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-0.5">
+                    <ul className="launch-overlay absolute left-0 z-40 mt-1.5 w-44 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl backdrop-blur-md animate-fade-in dark:border-night-700/70 dark:bg-night-800 dark:shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
                       {publishDateOptions.map((option) => (
                         <li key={option.value}>
                           <button
@@ -859,7 +859,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               </div>
 
               {/* Search input in the middle taking up the available space */}
-              <div className="flex-1 min-w-[200px] relative">
+              <div className="order-first min-w-[220px] flex-[2_1_260px] relative">
                 <Search
                   size={14}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
@@ -870,7 +870,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   aria-label={t("filters.searchLabel")}
-                  className="w-full pl-8 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-sky-500 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 transition-all"
+                  className="launch-control w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-8 text-sm text-slate-800 outline-none placeholder-slate-500 transition-all focus:border-sky-500 dark:border-night-700/65 dark:bg-night-950/80 dark:text-slate-100 dark:placeholder-slate-500"
                 />
                 {searchText && (
                   <button
@@ -890,7 +890,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 <button
                   type="button"
                   onClick={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
-                  className="flex items-center justify-between text-xs min-w-[160px] sm:min-w-[180px] px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none text-slate-655 dark:text-slate-200 cursor-pointer hover:border-slate-350 dark:hover:border-slate-700 transition-colors focus:border-sky-500"
+                  className="launch-control flex min-w-[160px] cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-655 outline-none transition-colors hover:border-slate-350 focus:border-sky-500 dark:border-night-700/65 dark:bg-night-950/80 dark:text-slate-200 dark:hover:border-slate-600 sm:min-w-[180px]"
                 >
                   <span className="truncate">{localSortOptions.find(o => o.value === localSortOrder)?.label || t("filters.sort.newest")}</span>
                   <ChevronDown size={14} className={`ml-2 text-slate-455 transition-transform duration-200 ${openDropdown === "sort" ? 'rotate-180' : ''}`} />
@@ -899,7 +899,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 {openDropdown === "sort" && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
-                    <ul className="absolute right-0 mt-1.5 z-40 w-48 p-1.5 bg-white dark:bg-[#151518] border border-slate-200 dark:border-slate-850 rounded-xl shadow-xl backdrop-blur-md animate-fade-in space-y-0.5">
+                    <ul className="launch-overlay absolute right-0 z-40 mt-1.5 w-48 space-y-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl backdrop-blur-md animate-fade-in dark:border-night-700/70 dark:bg-night-800 dark:shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
                       {localSortOptions.map((option) => (
                         <li key={option.value}>
                           <button
@@ -1012,7 +1012,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
           {/* Visual promo notification banner when list filtered */}
           {sortedAssetListings.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 text-center rounded-2xl flex flex-col items-center justify-center space-y-4">
+            <div className="launch-raised flex flex-col items-center justify-center space-y-4 rounded-2xl border border-slate-200 bg-white p-12 text-center dark:border-night-700/55 dark:bg-night-850/82 dark:shadow-[0_20px_54px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.025)]">
               <Info size={36} className="text-sky-500" />
               <h3 className="font-display font-medium text-slate-800 dark:text-slate-200">
                 {t("empty.noMatchTitle")}
@@ -1030,7 +1030,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
             </div>
           ) : (
             <div className="space-y-6">
-              <section className="relative overflow-hidden rounded-2xl border border-slate-250 bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-900 p-4 shadow-sm backdrop-blur-md dark:border-slate-800 sm:p-5">
+              <section className="launch-raised relative overflow-hidden rounded-2xl border border-slate-250 bg-gradient-to-r from-sky-600/10 via-amber-400/5 to-slate-100 p-4 shadow-sm backdrop-blur-md dark:border-night-700/55 dark:to-night-850 dark:shadow-[0_20px_54px_rgba(0,0,0,0.24)] sm:p-5">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.10),transparent_26%)]" />
                 <div className="relative z-10">
                   <div className="mb-4 flex flex-col gap-2.5 xl:flex-row xl:items-end xl:justify-between">
@@ -1050,7 +1050,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                       <article
                         key={asset.id}
                         onClick={() => handleViewAssetDetails(asset)}
-                        className="group flex cursor-pointer flex-col overflow-hidden rounded-[16px] border border-slate-200/90 bg-white hover:border-[#FE9A00]/45 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-[#FE9A00]/45 transition-all duration-200"
+                        className="launch-media-card launch-interactive group flex cursor-pointer flex-col overflow-hidden rounded-[16px] border border-slate-200/90 bg-white transition-all duration-200 hover:border-[#FE9A00]/45 hover:shadow-lg dark:border-night-700/55 dark:bg-night-800/72 dark:shadow-[0_14px_34px_rgba(0,0,0,0.2)] dark:hover:border-[#FE9A00]/45 dark:hover:bg-night-800 dark:hover:shadow-[0_20px_44px_rgba(0,0,0,0.34)]"
                       >
                         <div className="relative aspect-[1.5/1] overflow-hidden bg-slate-950/20 border-b-2 border-transparent group-hover:border-[#FE9A00] transition-all duration-300">
                           <img

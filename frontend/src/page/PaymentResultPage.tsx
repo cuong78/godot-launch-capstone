@@ -244,7 +244,7 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
       </div>
 
       {isLoading ? (
-        <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-8 text-center text-sm text-slate-500 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:text-slate-400">
+        <div className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-8 text-center text-sm text-slate-500 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:text-slate-400">
           {t('payment:result.loading')}
         </div>
       ) : error ? (
@@ -260,7 +260,7 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
           </div>
         </div>
       ) : !payment ? (
-        <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-8 text-center shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+        <div className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-8 text-center shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
           <p className="font-display text-lg font-bold text-slate-850 dark:text-white">{t('payment:result.sessionNotFound')}</p>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             {t('payment:result.sessionNotFoundDescription')}
@@ -269,7 +269,7 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
       ) : (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.92fr]">
           <section className="space-y-6">
-            <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+            <div className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-3">
@@ -293,25 +293,25 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
 
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {!isTopUp && payment.orderId && (
-                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                  <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.orderNumber')}</p>
                     <p className="mt-2 font-display text-lg font-bold text-slate-850 dark:text-white">
                       {payment.orderId.slice(0, 8).toUpperCase()}
                     </p>
                   </div>
                 )}
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.amount')}</p>
                   <p className="mt-2 font-display text-lg font-bold text-amber-500">{formatMoney(payment.amount, locale, t('payment:common.free'))}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.paidAt')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{formatTimestamp(payment.paidAt, locale, t('payment:common.notAvailable'))}</p>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+            <div className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-3 text-sky-500">
                   <ShieldCheck size={18} />
@@ -325,23 +325,23 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.paymentStatus')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{payment.paymentStatus}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.payosOrderCode')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">{payment.payosOrderCode ?? t('payment:common.notAvailable')}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.paymentReference')}</p>
                   <p className="mt-2 break-all text-sm font-semibold text-slate-850 dark:text-white">{payment.paymentReference || t('payment:common.notAvailable')}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45 sm:col-span-2">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45 sm:col-span-2">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.paymentLinkId')}</p>
                   <p className="mt-2 break-all text-sm font-semibold text-slate-850 dark:text-white">{payment.payosPaymentLinkId || t('payment:common.notAvailable')}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45 sm:col-span-2">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45 sm:col-span-2">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:result.transactionId')}</p>
                   <p className="mt-2 break-all text-sm font-semibold text-slate-850 dark:text-white">{payment.payosTransactionId || t('payment:common.waitingWebhook')}</p>
                 </div>
@@ -350,7 +350,7 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
           </section>
 
           <aside className="space-y-6">
-            <section className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+            <section className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
               <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">{t('payment:result.nextActions')}</h2>
               <div className="mt-5 space-y-3">
                 {canContinuePayment && payment.checkoutUrl && (

@@ -552,7 +552,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                     <span className="block font-bold text-slate-805 dark:text-slate-200">
                       {contract.sellerRepresentative || (mode === 'sign-developer' ? sellerRepresentative : '') || contract.sellerName}
                     </span>
-                    <span className="block text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
+                    <span className="mt-0.5 block text-[9px] text-slate-500 dark:text-slate-400">
                       {contract.signedAtSeller ? t('contract.signature.signedAt', { date: formatDateTime(contract.signedAtSeller) }) : ''}
                     </span>
                   </div>
@@ -579,7 +579,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                     <span className="block font-bold text-slate-805 dark:text-slate-200">
                       {buyerRepresentative}
                     </span>
-                    <span className="block text-[9px] text-slate-400 dark:text-slate-505 mt-0.5">
+                    <span className="mt-0.5 block text-[9px] text-slate-500 dark:text-slate-400">
                       {contract.signedAtBuyer ? t('contract.signature.signedAt', { date: formatDateTime(contract.signedAtBuyer) }) : ''}
                     </span>
                   </div>
@@ -678,7 +678,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                       />
                       <div>
                         <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">{t('contract.response.renegotiate')}</span>
-                        <span className="block text-[10px] text-slate-400 dark:text-slate-500">{t('contract.response.renegotiateHint')}</span>
+                        <span className="block text-[10px] text-slate-500 dark:text-slate-400">{t('contract.response.renegotiateHint')}</span>
                       </div>
                     </label>
 
@@ -693,7 +693,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                       />
                       <div>
                         <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">{t('contract.response.cancel')}</span>
-                        <span className="block text-[10px] text-slate-400 dark:text-slate-500">{t('contract.response.cancelHint')}</span>
+                        <span className="block text-[10px] text-slate-500 dark:text-slate-400">{t('contract.response.cancelHint')}</span>
                       </div>
                     </label>
                   </div>

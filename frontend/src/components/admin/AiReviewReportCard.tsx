@@ -346,7 +346,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
             return null;
           })()}
 
-          <p className="text-[9px] text-slate-400 dark:text-slate-500 italic">
+          <p className="text-[9px] italic text-slate-500 dark:text-slate-400">
             {t("aiReviewCard.footerNote")}
           </p>
         </>

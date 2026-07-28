@@ -21,7 +21,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_20%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.06),transparent_18%),radial-gradient(circle_at_bottom_left,rgba(148,163,184,0.08),transparent_28%)] dark:hidden"
       />
       <div
-        className="pointer-events-none absolute inset-0 hidden scale-[1.03] bg-cover bg-center bg-no-repeat opacity-38 blur-[2px] dark:block"
+        className="pointer-events-none absolute inset-0 hidden scale-[1.03] bg-cover bg-center bg-no-repeat opacity-[0.38] blur-[2px] dark:block"
         style={{ backgroundImage: `url(${IMAGE_SEED_MAP.forest})` }}
       />
       <div className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(180deg,rgba(2,6,23,0.94)_0%,rgba(2,6,23,0.88)_16%,rgba(4,10,18,0.82)_42%,rgba(4,10,18,0.86)_100%)] dark:block" />

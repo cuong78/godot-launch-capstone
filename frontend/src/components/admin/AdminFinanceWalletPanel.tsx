@@ -413,13 +413,13 @@ export const AdminFinanceWalletPanel: React.FC<
             <tbody>
               {isLoadingTransactions ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-400">
+                  <td colSpan={4} className="p-8 text-center text-slate-500 dark:text-slate-400">
                     {t("financeWallet.ledger.loading")}
                   </td>
                 </tr>
               ) : transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-400">
+                  <td colSpan={4} className="p-8 text-center text-slate-500 dark:text-slate-400">
                     {t("financeWallet.ledger.empty")}
                   </td>
                 </tr>

@@ -728,7 +728,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
                 <tr>
                   <td
                     colSpan={5}
-                    className="p-6 text-center text-slate-400 dark:text-slate-500"
+                    className="p-6 text-center text-slate-500 dark:text-slate-400"
                   >
                     {t("withdrawal.empty")}
                   </td>

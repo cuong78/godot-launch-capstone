@@ -81,21 +81,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-6xl overflow-hidden rounded-[28px] border border-slate-200/10 bg-slate-950/96 shadow-[0_36px_120px_rgba(2,6,23,0.78)]"
+        className="relative w-full max-w-6xl overflow-hidden rounded-[28px] border border-slate-200/90 bg-white/96 shadow-[0_36px_120px_rgba(148,163,184,0.28)] dark:border-slate-700/70 dark:bg-night-950/96 dark:shadow-[0_36px_120px_rgba(0,0,0,0.72)]"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
           aria-label={t('payment:quick.close')}
-          className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/85 text-slate-300 transition-all duration-300 hover:border-slate-500 hover:text-white"
+          className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 transition-all duration-300 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
         >
           <X size={18} />
         </button>
 
         <div className="max-h-[92vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-7">
           <div className="space-y-6 animate-fade-in">
-            <div className="bg-gradient-to-r from-emerald-600/10 via-teal-400/5 to-slate-900 border border-slate-250 dark:border-slate-800 p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="bg-gradient-to-r from-emerald-600/10 via-teal-400/5 to-slate-100 dark:to-slate-900 border border-slate-250 dark:border-slate-800 p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <button
             type="button"
@@ -120,7 +120,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-6">
-        <section className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+        <section className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 pb-4 dark:border-slate-800/70">
             <div>
               <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">{t('payment:checkout.orderSummary')}</h2>
@@ -135,7 +135,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
           <div className="mt-5 space-y-3">
             {cart.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/30">
+              <div className="dark-depth-inset rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/30">
                 <p className="font-display text-sm font-semibold text-slate-800 dark:text-slate-200">{t('payment:checkout.emptyTitle')}</p>
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                   {t('payment:checkout.emptyDescription')}
@@ -145,7 +145,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               cart.map((item) => (
                 <article
                   key={item.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45 md:flex-row md:items-center md:justify-between"
+                  className="dark-depth-inset flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <img
@@ -191,7 +191,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         </section>
 
         <aside className="space-y-5">
-          <section className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+          <section className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-emerald-500">
                 <Landmark size={18} />
@@ -210,7 +210,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </span>
                 <span className="font-mono text-sm font-bold text-slate-800 dark:text-white">
                   {isLoadingWallet ? (
-                    <span className="animate-pulse text-slate-400">{t('payment:checkout.wallet.loadingBalance')}</span>
+                    <span className="animate-pulse text-slate-500 dark:text-slate-400">{t('payment:checkout.wallet.loadingBalance')}</span>
                   ) : walletBalance !== null ? (
                     formatMoney(walletBalance, locale, currency, "0")
                   ) : (
@@ -236,7 +236,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               )}
             </div>
 
-            <div className="mt-5 space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+            <div className="dark-depth-inset mt-5 space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400">{t('payment:checkout.wallet.itemCountLabel')}</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{cart.length}</span>

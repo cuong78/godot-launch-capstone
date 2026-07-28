@@ -73,9 +73,9 @@ export default function AdminAgreementPanel() {
         </div>
       )}
 
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+      <div className="rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/70">
             {activeVersion
               ? t('agreementPanel.contentLabel', {
                   version: `(v${activeVersion.version})`,
@@ -87,13 +87,13 @@ export default function AdminAgreementPanel() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={20}
-          className="w-full bg-black/30 border border-white/10 text-white text-xs font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400/60 resize-y"
+          className="w-full resize-y rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-black/30 dark:text-white"
           placeholder={t('agreementPanel.placeholder', {
             commissionRate: '{{commissionRate}}',
             revenueSharePercent: '{{revenueSharePercent}}',
           })}
         />
-        <p className="text-white/40 text-[11px] mt-2">
+        <p className="mt-2 text-[11px] text-slate-500 dark:text-white/40">
           {t('agreementPanel.helper', {
             commissionRate: '{{commissionRate}}',
             revenueSharePercent: '{{revenueSharePercent}}',
@@ -109,25 +109,25 @@ export default function AdminAgreementPanel() {
         </button>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3 text-white/70 text-xs font-semibold uppercase tracking-wide">
+      <div className="rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/70">
           <History className="w-3.5 h-3.5" /> {t('agreementPanel.history')}
         </div>
         {versions.length === 0 ? (
-          <p className="text-white/40 text-sm py-4 text-center">{t('agreementPanel.empty')}</p>
+          <p className="py-4 text-center text-sm text-slate-500 dark:text-white/40">{t('agreementPanel.empty')}</p>
         ) : (
           <div className="space-y-2">
             {versions.map((v) => (
-              <div key={v.id} className="flex items-center justify-between bg-black/20 rounded-lg px-3 py-2">
+              <div key={v.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-black/20">
                 <div className="flex items-center gap-2">
-                  <span className="text-white text-xs font-semibold">v{v.version}</span>
+                  <span className="text-xs font-semibold text-slate-900 dark:text-white">v{v.version}</span>
                   {v.isActive && (
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
                       {t('agreementPanel.active')}
                     </span>
                   )}
                 </div>
-                <span className="text-white/40 text-xs">{new Date(v.createdAt).toLocaleString()}</span>
+                <span className="text-xs text-slate-500 dark:text-white/40">{new Date(v.createdAt).toLocaleString()}</span>
               </div>
             ))}
           </div>

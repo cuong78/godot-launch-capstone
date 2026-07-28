@@ -53,6 +53,7 @@ import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
 const DEFAULT_AUTHOR_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80';
 const PAYMENT_SESSION_STORAGE_KEY = 'godotlaunch-payment-orders';
 const PAYMENT_SELECTED_ORDER_STORAGE_KEY = 'godotlaunch-selected-payment-order';
+const THEME_STORAGE_KEY = 'godotlaunch-theme';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
@@ -230,7 +231,17 @@ export default function App() {
       logout();
     }
   };
-  const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    try {
+      const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (storedTheme === 'dark') return true;
+      if (storedTheme === 'light') return false;
+    } catch (error) {
+      console.warn('Failed to read stored theme preference:', error);
+    }
+
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+  });
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
   const displayScreen = currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen;
   const isCheckoutModalOpen = currentScreen === 'checkout';
@@ -358,10 +369,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (darkMode) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
+    document.documentElement.classList.toggle('dark', darkMode);
+    document.body.classList.toggle('dark', darkMode);
+    document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, darkMode ? 'dark' : 'light');
+    } catch (error) {
+      console.warn('Failed to store theme preference:', error);
     }
   }, [darkMode]);
 
@@ -1021,6 +1036,8 @@ export default function App() {
           setCurrentScreen={setCurrentScreen}
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
           cart={cart}
           isCartOpen={isCartOpen}
           setIsCartOpen={setIsCartOpen}
@@ -1211,6 +1228,7 @@ export default function App() {
           <SignUpPage
             setCurrentScreen={setCurrentScreen}
             setCurrentUser={setCurrentUser}
+            darkMode={darkMode}
           />
         )}
 

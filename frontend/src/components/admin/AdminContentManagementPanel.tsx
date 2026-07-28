@@ -1201,7 +1201,7 @@ const CollectionEditorModal = ({ editing, form, setForm, tags, categoryRows, sav
     >
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.96)_100%)] shadow-[0_30px_100px_rgba(15,23,42,0.22)] dark:border-slate-700/80 dark:bg-[#101722] dark:shadow-[0_30px_100px_rgba(0,0,0,0.55)]"
+        className="dark-depth-card w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.96)_100%)] shadow-[0_30px_100px_rgba(15,23,42,0.22)] dark:border-slate-700/80 dark:bg-night-850 dark:shadow-[0_30px_100px_rgba(0,0,0,0.55)]"
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50/90 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/45 sm:px-6">
           <div>

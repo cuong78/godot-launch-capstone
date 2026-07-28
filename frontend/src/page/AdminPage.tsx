@@ -1523,7 +1523,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-500">
                                       {t("moderationPreview.gameType")}
                                     </span>
-                                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                                       {formatAdminOverviewDate(
                                         game.createdAt,
                                         t("moderationPreview.newLabel"),
@@ -1561,7 +1561,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-500">
                                       {t("moderationPreview.assetType")}
                                     </span>
-                                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                                       {formatAdminOverviewDate(
                                         item.createdAt,
                                         t("moderationPreview.newLabel"),
@@ -2078,7 +2078,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                               );
                                             if (!contract) {
                                               return (
-                                                <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">
+                                                <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
                                                   {t("status.contract.notCreated")}
                                                 </span>
                                               );
@@ -2175,7 +2175,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 return approveRejectButtons;
                                               }
                                               return (
-                                                <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">
+                                                <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
                                                   —
                                                 </span>
                                               );
@@ -2329,7 +2329,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       )}
                                                     </div>
                                                   ) : (
-                                                    <p className="text-[11px] text-slate-400 dark:text-slate-600">
+                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                                       {t(
                                                         "moderationQueue.detail.noTags",
                                                       )}
@@ -2362,7 +2362,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       )}
                                                     </a>
                                                   ) : (
-                                                    <p className="text-[11px] text-slate-400 dark:text-slate-600">
+                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                                       {t(
                                                         "moderationQueue.detail.noRepository",
                                                       )}
@@ -2432,7 +2432,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       {t("playDemo.launchButton")}
                                                     </button>
                                                   ) : (
-                                                    <div className="flex flex-col items-center justify-center py-6 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-6 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                       <Play
                                                         size={20}
                                                         className="mb-1 text-slate-350 dark:text-slate-650"
@@ -2488,7 +2488,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       )}
                                                     </div>
                                                   ) : (
-                                                    <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                       <Image
                                                         size={24}
                                                         className="mb-1 text-slate-350 dark:text-slate-650"
@@ -2518,7 +2518,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       />
                                                     </div>
                                                   ) : (
-                                                    <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                       <Video
                                                         size={24}
                                                         className="mb-1 text-slate-350 dark:text-slate-650"
@@ -2558,7 +2558,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   <tr>
                                     <td
                                       colSpan={7}
-                                      className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
+                                      className="p-8 text-center font-medium text-slate-500 dark:text-slate-400"
                                     >
                                       {t("moderationQueue.emptyGames")}
                                     </td>
@@ -2851,7 +2851,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         )}
                                                       </div>
                                                     ) : (
-                                                      <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                         <Image
                                                           size={24}
                                                           className="mb-1 text-slate-350 dark:text-slate-650"
@@ -2883,7 +2883,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         />
                                                       </div>
                                                     ) : (
-                                                      <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                         <Video
                                                           size={24}
                                                           className="mb-1 text-slate-350 dark:text-slate-650"
@@ -2964,7 +2964,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   <tr>
                                     <td
                                       colSpan={6}
-                                      className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
+                                      className="p-8 text-center font-medium text-slate-500 dark:text-slate-400"
                                     >
                                       {t("moderationQueue.emptyAssets")}
                                     </td>
@@ -3262,7 +3262,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             log.createdAt,
                                           ).toLocaleString()}
                                         </div>
-                                        <div className="text-[9px] text-slate-400 dark:text-slate-550 font-mono mt-0.5">
+                                        <div className="mt-0.5 font-mono text-[9px] text-slate-500 dark:text-slate-400">
                                           {t("audit.ipValue", {
                                             value:
                                               log.ipAddress || t("audit.unknownValue"),
@@ -3284,7 +3284,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             className="font-mono text-[9px] text-slate-450 dark:text-slate-500 mt-0.5"
                                             title={log.actorId}
                                           >
-                                            <span className="text-[8px] text-slate-400 dark:text-slate-600 uppercase mr-1 select-none">
+                                            <span className="mr-1 select-none text-[8px] uppercase text-slate-500 dark:text-slate-400">
                                               {t("audit.actorIdPrefix")}
                                             </span>
                                             <span className="select-all break-all">
@@ -3316,7 +3316,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             className="font-mono text-[9px] text-slate-450 dark:text-slate-500 mt-0.5"
                                             title={log.targetId}
                                           >
-                                            <span className="text-[8px] text-slate-400 dark:text-slate-600 uppercase mr-1 select-none">
+                                            <span className="mr-1 select-none text-[8px] uppercase text-slate-500 dark:text-slate-400">
                                               {t("audit.referenceIdPrefix")}
                                             </span>
                                             <span className="select-all break-all">
@@ -3392,7 +3392,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 <tr>
                                   <td
                                     colSpan={6}
-                                    className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
+                                    className="p-8 text-center font-medium text-slate-500 dark:text-slate-400"
                                   >
                                     {t("audit.empty")}
                                   </td>
@@ -3894,7 +3894,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   {t("modals.itemDetails")}
                 </span>
                 <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-850">

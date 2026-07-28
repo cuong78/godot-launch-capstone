@@ -99,7 +99,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       {/* Bell Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex items-center justify-center rounded-xl border border-slate-700/30 bg-slate-800/40 p-2 text-slate-300 transition-all hover:bg-slate-800/60 hover:text-white active:scale-95"
+        className="relative flex items-center justify-center rounded-xl border border-slate-200 bg-white/90 p-2 text-slate-500 transition-all hover:border-slate-300 hover:bg-white hover:text-slate-900 active:scale-95 dark:border-slate-700/30 dark:bg-slate-800/40 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
         aria-label={t('notifications_open')}
         title={t('notifications_open')}
       >
@@ -116,7 +116,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         <div className="absolute right-0 mt-3 w-80 max-h-[420px] overflow-hidden rounded-2xl bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/70 shadow-2xl z-50 flex flex-col animate-fade-in">
           
           {/* Header */}
-          <div className="p-3.5 border-b border-slate-200/40 dark:border-slate-800/40 flex items-center justify-between bg-slate-800/5">
+          <div className="flex items-center justify-between border-b border-slate-200/40 bg-slate-50/80 p-3.5 dark:border-slate-800/40 dark:bg-slate-800/5">
             <span className="text-sm font-display font-bold text-slate-800 dark:text-white uppercase tracking-wide">{t('notifications_title')}</span>
             {unreadNotificationsCount > 0 && (
               <button
@@ -137,7 +137,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                   onClick={() => handleNotificationClick(notif)}
                   className={`p-3.5 flex gap-3 cursor-pointer transition-colors relative ${
                     notif.isRead 
-                      ? 'hover:bg-slate-150/50 dark:hover:bg-slate-800/30 text-slate-500 dark:text-slate-400' 
+                      ? 'hover:bg-slate-100 dark:hover:bg-slate-800/30 text-slate-500 dark:text-slate-400'
                       : 'bg-amber-400/5 dark:bg-amber-400/5 hover:bg-amber-400/10 text-slate-850 dark:text-slate-200 font-medium'
                   }`}
                 >
@@ -162,10 +162,10 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                       {notif.message}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="p-0.5 rounded bg-slate-800/20 dark:bg-slate-950/40 border border-slate-700/10 dark:border-slate-800/50 flex items-center justify-center shrink-0">
+                      <span className="flex items-center justify-center shrink-0 rounded border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-800/50 dark:bg-slate-950/40">
                         {getIcon(notif.type)}
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">
+                      <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                         {formatNotificationTimestamp(notif.createdAt)}
                       </span>
                     </div>

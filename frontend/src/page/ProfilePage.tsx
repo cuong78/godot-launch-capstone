@@ -228,7 +228,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
           <h1 className="text-3xl font-display font-extrabold tracking-tight bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 bg-clip-text text-transparent">
             {t('header.title')}
           </h1>
-          <p className="text-xs font-mono text-slate-400 tracking-wider">{t('header.subtitle')}</p>
+          <p className="font-mono text-xs tracking-wider text-slate-500 dark:text-slate-400">{t('header.subtitle')}</p>
         </div>
       </div>
 
@@ -247,7 +247,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         
         {/* Left Column: Avatar & Quick Info Card */}
-        <div className="md:col-span-1 bg-white/5 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/20 dark:border-slate-800/80 rounded-2xl p-6 flex flex-col items-center text-center shadow-2xl relative overflow-hidden group">
+        <div className="dark-depth-card group relative flex flex-col items-center overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 p-6 text-center shadow-[0_20px_48px_rgba(148,163,184,0.16)] backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/60 md:col-span-1">
           {/* Accent decoration glow */}
           <div className="absolute -top-16 -left-16 w-32 h-32 bg-amber-400/10 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-400/20 transition-all duration-500" />
           
@@ -268,19 +268,19 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
           <h2 className="text-xl font-display font-bold text-slate-800 dark:text-white truncate w-full">
             {currentUser.fullName || t('sidebar.noNameSet')}
           </h2>
-          <p className="text-xs font-mono text-slate-400 truncate w-full mb-4">
+          <p className="mb-4 w-full truncate font-mono text-xs text-slate-500 dark:text-slate-400">
             {currentUser.email}
           </p>
 
           <div className="w-full flex flex-col gap-2">
-            <div className="flex items-center justify-between px-3 py-2 bg-slate-800/40 border border-slate-700/30 rounded-lg text-xs">
-              <span className="text-slate-450 flex items-center gap-1.5"><ShieldCheck size={14} /> {t('sidebar.nodeRole')}</span>
+            <div className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50/90 px-3 py-2 text-xs dark:border-slate-700/30 dark:bg-slate-800/40">
+              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><ShieldCheck size={14} /> {t('sidebar.nodeRole')}</span>
               <span className="font-bold text-amber-400 capitalize font-mono bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
                 {currentUser.role || 'customer'}
               </span>
             </div>
-            <div className="flex items-center justify-between px-3 py-2 bg-slate-800/40 border border-slate-700/30 rounded-lg text-xs">
-              <span className="text-slate-450 flex items-center gap-1.5"><Mail size={14} /> {t('sidebar.accountStatus')}</span>
+            <div className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50/90 px-3 py-2 text-xs dark:border-slate-700/30 dark:bg-slate-800/40">
+              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Mail size={14} /> {t('sidebar.accountStatus')}</span>
               <span className="font-bold text-emerald-400 capitalize font-mono bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">
                 {currentUser.status || 'active'}
               </span>
@@ -299,7 +299,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
             ) : (
               <Button
                 variant="ghost"
-                className="w-full text-slate-500 dark:text-slate-400 hover:text-white"
+                className="w-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 onClick={() => {
                   setIsEditing(false);
                   setFullName(currentUser.fullName || '');
@@ -315,36 +315,36 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
         </div>
 
         {/* Right Column: View / Edit Form */}
-        <div className="md:col-span-2 bg-white/5 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/20 dark:border-slate-800/80 rounded-2xl p-6 md:p-8 shadow-2xl">
+        <div className="dark-depth-card rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-[0_20px_48px_rgba(148,163,184,0.16)] backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/60 md:col-span-2 md:p-8">
           
           {!isEditing ? (
             /* View Profile details mode */
             <div className="space-y-6">
-              <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white border-b border-slate-700/30 pb-3 flex items-center gap-2">
+              <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white border-b border-slate-200/80 dark:border-slate-700/30 pb-3 flex items-center gap-2">
                 <UserIcon size={18} className="text-amber-400" /> {t('view.accountNodeData')}
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">{t('view.fullDeveloperName')}</label>
-                  <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-800/25 border border-slate-700/20 rounded-xl px-4 py-3">
+                  <label className="mb-1.5 block font-mono text-xs uppercase text-slate-600 dark:text-slate-400">{t('view.fullDeveloperName')}</label>
+                  <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-50/90 dark:bg-slate-800/25 border border-slate-200/80 dark:border-slate-700/20 rounded-xl px-4 py-3">
                     {currentUser.fullName || <span className="text-slate-500 italic">{t('view.notSpecified')}</span>}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">{t('view.registeredEmailNode')}</label>
-                  <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-800/25 border border-slate-700/20 rounded-xl px-4 py-3 flex items-center gap-2">
+                  <label className="mb-1.5 block font-mono text-xs uppercase text-slate-600 dark:text-slate-400">{t('view.registeredEmailNode')}</label>
+                  <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-50/90 dark:bg-slate-800/25 border border-slate-200/80 dark:border-slate-700/20 rounded-xl px-4 py-3 flex items-center gap-2">
                     <Mail size={16} className="text-slate-400 shrink-0" />
                     {currentUser.email}
                   </p>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-700/30">
+              <div className="pt-4 border-t border-slate-200/80 dark:border-slate-700/30">
                 <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                   <ShieldCheck size={18} className="text-amber-400" /> {t('view.permissionsCredentials')}
                 </h3>
-                <p className="text-sm text-slate-400 leading-relaxed mb-4">
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
                   {t('view.rolePrefix')}{' '}
                   <span className="text-amber-400 font-bold font-mono bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">{currentUser.role || 'customer'}</span>{' '}
                   {t('view.roleSuffix')}{' '}
@@ -356,7 +356,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                 </p>
 
                 {/* GitHub Linking / Developer Upgrade Section */}
-                <div className="mt-6 pt-6 border-t border-slate-700/30">
+                <div className="mt-6 pt-6 border-t border-slate-200/80 dark:border-slate-700/30">
                   <h4 className="text-sm font-display font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
                     <Globe size={16} className="text-amber-400" /> {t('github.title')}
                   </h4>
@@ -366,8 +366,8 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 mb-1">
                           {t('github.connected')}
                         </span>
-                        <p className="text-sm text-slate-350 font-semibold">
-                          {t('github.linkedGithub')} <span className="text-white font-mono">@{githubStatus.githubUsername}</span>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 font-semibold">
+                          {t('github.linkedGithub')} <span className="text-slate-950 dark:text-white font-mono">@{githubStatus.githubUsername}</span>
                         </p>
                         {githubStatus.githubLinkedAt && (
                           <p className="text-[10px] text-slate-500 font-mono mt-0.5">
@@ -400,8 +400,8 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                       )}
                     </div>
                   ) : (
-                    <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/30 text-left">
-                      <p className="text-xs text-slate-400 leading-relaxed mb-3">
+                    <div className="p-4 rounded-xl bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/30 text-left">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
                         {currentUser.role === 'customer' 
                           ? t('github.customerPrompt', { email: currentUser.email })
                           : t('github.notLinked')}
@@ -424,37 +424,37 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
           ) : (
             /* Edit profile details form */
             <form onSubmit={handleSaveProfile} className="space-y-6">
-              <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white border-b border-slate-700/30 pb-3 flex items-center gap-2">
+              <h3 className="text-lg font-display font-bold text-slate-800 dark:text-white border-b border-slate-200/80 dark:border-slate-700/30 pb-3 flex items-center gap-2">
                 <UserIcon size={18} className="text-amber-400" /> {t('edit.title')}
               </h3>
 
               <div className="space-y-4">
                 {/* Full name input */}
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">{t('edit.fullDeveloperName')}</label>
+                  <label className="mb-1.5 block font-mono text-xs uppercase text-slate-600 dark:text-slate-400">{t('edit.fullDeveloperName')}</label>
                   <input
                     type="text"
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder={t('edit.enterYourName')}
-                    className="w-full px-4 py-3 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-sm text-slate-800 dark:text-slate-200 transition-all placeholder-slate-500"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 dark:border-slate-700/50 dark:bg-slate-800/30 dark:text-slate-200 dark:placeholder:text-slate-500"
                   />
                 </div>
 
                 {/* Avatar Picker layout */}
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-1.5">{t('edit.chooseAvatarImage')}</label>
+                  <label className="mb-1.5 block font-mono text-xs uppercase text-slate-600 dark:text-slate-400">{t('edit.chooseAvatarImage')}</label>
                   
                   {/* Selector tab switch controls */}
-                  <div className="flex gap-1.5 bg-slate-850 p-1 rounded-lg border border-slate-800/80 mb-4 max-w-sm">
+                  <div className="mb-4 flex max-w-sm gap-1.5 rounded-lg border border-slate-200 bg-slate-100 p-1 dark:border-slate-800/80 dark:bg-slate-850">
                     <button
                       type="button"
                       onClick={() => setAvatarTab('presets')}
                       className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                         avatarTab === 'presets' 
                           ? 'bg-amber-400 text-slate-900 shadow-sm' 
-                          : 'text-slate-400 hover:text-slate-200'
+                          : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
                     >
                       <Grid size={13} /> {t('edit.tabs.presets')}
@@ -465,7 +465,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                       className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                         avatarTab === 'upload' 
                           ? 'bg-amber-400 text-slate-900 shadow-sm' 
-                          : 'text-slate-400 hover:text-slate-200'
+                          : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
                     >
                       {isUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} {t('edit.tabs.localUpload')}
@@ -476,7 +476,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                       className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                         avatarTab === 'url' 
                           ? 'bg-amber-400 text-slate-900 shadow-sm' 
-                          : 'text-slate-400 hover:text-slate-200'
+                          : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
                     >
                       <Globe size={13} /> {t('edit.tabs.urlLink')}
@@ -485,7 +485,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
 
                   {/* Tab contents */}
                   {avatarTab === 'presets' && (
-                    <div className="grid grid-cols-5 gap-3 max-w-md p-2 bg-slate-800/20 border border-slate-700/20 rounded-xl">
+                    <div className="grid max-w-md grid-cols-5 gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 p-2 dark:border-slate-700/20 dark:bg-slate-800/20">
                       {PRESET_AVATARS.map((preset, index) => {
                         const isSelected = avatarUrl === preset;
                         return (
@@ -512,7 +512,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                   )}
 
                   {avatarTab === 'upload' && (
-                    <div className="border-2 border-dashed border-slate-700/60 rounded-xl p-6 text-center hover:border-amber-400/50 transition-colors relative">
+                    <div className="relative rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700/60 p-6 text-center transition-colors hover:border-amber-400/50">
                       <input
                         type="file"
                         id="avatar-upload-file"
@@ -522,11 +522,11 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
                       <div className="flex flex-col items-center gap-2">
-                        <div className="p-3 rounded-full bg-slate-800/50 text-slate-400">
+                        <div className="p-3 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                           {isUploading ? <Loader2 className="animate-spin text-amber-400" size={20} /> : <Upload size={20} />}
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-slate-350">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                             {isUploading ? t('edit.uploadingToSecureStorage') : t('edit.clickOrDragDrop')}
                           </p>
                           <p className="text-[10px] text-slate-500 mt-1">{t('edit.uploadHint')}</p>
@@ -542,7 +542,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                         value={customUrl}
                         onChange={(e) => setCustomUrl(e.target.value)}
                         placeholder={t('edit.urlPlaceholder')}
-                        className="flex-1 px-4 py-2 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all"
+                        className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 dark:border-slate-700/50 dark:bg-slate-800/30 dark:text-slate-200 dark:placeholder:text-slate-500"
                       />
                       <Button
                         type="button"
@@ -563,30 +563,30 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                 </div>
 
                 {/* Password modification fields */}
-                <div className="pt-6 border-t border-slate-700/30 space-y-4">
+                <div className="pt-6 border-t border-slate-200/80 dark:border-slate-700/30 space-y-4">
                   <h4 className="text-sm font-display font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <Lock size={15} className="text-amber-400" /> {t('edit.changePassword')}
                   </h4>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] font-mono text-slate-400 uppercase mb-1.5">{t('edit.newPassword')}</label>
+                      <label className="mb-1.5 block font-mono text-[11px] uppercase text-slate-600 dark:text-slate-400">{t('edit.newPassword')}</label>
                       <input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={t('edit.newPasswordPlaceholder')}
-                        className="w-full px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all placeholder-slate-600"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 dark:border-slate-700/50 dark:bg-slate-800/30 dark:text-slate-200 dark:placeholder:text-slate-600"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-mono text-slate-400 uppercase mb-1.5">{t('edit.confirmNewPassword')}</label>
+                      <label className="mb-1.5 block font-mono text-[11px] uppercase text-slate-600 dark:text-slate-400">{t('edit.confirmNewPassword')}</label>
                       <input
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder={t('edit.confirmNewPasswordPlaceholder')}
-                        className="w-full px-4 py-2.5 bg-slate-800/30 border border-slate-700/50 rounded-xl outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 text-xs text-slate-800 dark:text-slate-200 transition-all placeholder-slate-600"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-900 outline-none transition-all placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 dark:border-slate-700/50 dark:bg-slate-800/30 dark:text-slate-200 dark:placeholder:text-slate-600"
                       />
                     </div>
                   </div>
@@ -594,7 +594,7 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
               </div>
 
               {/* Actions submit block */}
-              <div className="pt-6 border-t border-slate-700/30 flex items-center justify-end gap-3">
+              <div className="pt-6 border-t border-slate-200/80 dark:border-slate-700/30 flex items-center justify-end gap-3">
                 <Button
                   type="button"
                   variant="ghost"

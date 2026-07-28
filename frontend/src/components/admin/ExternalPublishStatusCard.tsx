@@ -148,7 +148,7 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
               disabled
               className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-xs text-slate-500 cursor-not-allowed"
             />
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">
               {t('externalPublish.versionHint')}
             </span>
           </div>
@@ -161,7 +161,7 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
               onChange={(e) => setShortDescription(e.target.value)}
               className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg text-xs"
             />
-            <span className="text-[10px] text-slate-400 font-mono">
+            <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
               {shortDescription.length}/{SHORT_DESCRIPTION_MAX_LEN}
             </span>
           </div>

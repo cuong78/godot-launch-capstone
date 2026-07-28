@@ -640,29 +640,29 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{t('userPanel.fullName')}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.fullName')}</p>
                     <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.fullName}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{t('userPanel.headers.email')}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.headers.email')}</p>
                     <p className="break-all font-medium text-slate-700 dark:text-slate-200">{selectedUser.email}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{t('userPanel.headers.role')}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.headers.role')}</p>
                     <RoleBadge role={selectedUser.role} label={getRoleLabel(selectedUser.role, t)} />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{t('userPanel.headers.status')}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.headers.status')}</p>
                     <StatusBadge status={selectedUser.status} label={getStatusLabel(selectedUser.status, t)} />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{t('userPanel.createdDate')}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.createdDate')}</p>
                     <p className="font-medium text-slate-700 dark:text-slate-200">
                       {formatCreatedDate(selectedUser.createdAt, t('withdrawal.na'))}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{t('userPanel.userId')}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.userId')}</p>
                     <p className="break-all font-mono text-[11px] text-slate-500 dark:text-slate-400">
                       {selectedUser.id}
                     </p>

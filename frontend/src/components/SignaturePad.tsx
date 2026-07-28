@@ -258,7 +258,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
         />
         
         {isEmpty && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-400 text-xs font-medium gap-1.5 select-none transition-opacity duration-300">
+          <div className="pointer-events-none absolute inset-0 flex select-none items-center justify-center gap-1.5 text-xs font-medium text-slate-500 transition-opacity duration-300 dark:text-slate-400">
             <PenTool size={14} className="animate-pulse" />
             {signaturePlaceholder}
           </div>

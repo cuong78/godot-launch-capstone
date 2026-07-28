@@ -86,16 +86,16 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md rounded-[2rem] border border-amber-300/10 bg-[#241f15]/55 p-8 shadow-[0_0_40px_rgba(251,191,36,0.15)] backdrop-blur-2xl text-center">
+      <div className="dark-depth-card w-full max-w-md rounded-[2rem] border border-slate-200/80 bg-white/92 p-8 text-center shadow-[0_18px_48px_rgba(148,163,184,0.16)] backdrop-blur-2xl dark:border-slate-700/70 dark:bg-night-850/90 dark:shadow-[0_24px_60px_rgba(0,0,0,0.32)]">
         {loading ? (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <div className="rounded-full border border-amber-300/20 bg-amber-300/10 p-4">
+            <div className="rounded-full border border-amber-300/30 bg-amber-100 p-4 dark:border-amber-300/20 dark:bg-amber-300/10">
               <Loader2 className="h-8 w-8 animate-spin text-amber-300" />
             </div>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-[#ece1d1]">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-100">
               {t('githubCallback.loadingTitle')}
             </h2>
-            <p className="text-sm text-[#d3c5ac]">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               {t('githubCallback.loadingSubtitle')}
             </p>
           </div>
@@ -104,10 +104,10 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
             <div className="rounded-full border border-red-500/20 bg-red-500/10 p-4 text-red-400">
               <AlertCircle className="h-8 w-8" />
             </div>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-[#ece1d1]">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-100">
               {isLinkFlow ? t('githubCallback.linkingFailed') : t('githubCallback.loginFailed')}
             </h2>
-            <p className="text-sm text-red-200">
+            <p className="text-sm text-red-700 dark:text-red-200">
               {errorMsg}
             </p>
             <button

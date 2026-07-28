@@ -52,14 +52,14 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+      <div className="dark-depth-card w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700/70 dark:bg-night-850">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-white/10">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-rose-400" />
-            <h2 className="text-white font-semibold text-sm">{t('reportDispute.title')}</h2>
+            <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{t('reportDispute.title')}</h2>
           </div>
           {!submitting && (
-            <button onClick={onClose} className="text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-900 dark:text-white/40 dark:hover:text-white"><X className="w-5 h-5" /></button>
           )}
         </div>
 
@@ -67,8 +67,8 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
           {done ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
               <CheckCircle2 className="w-12 h-12 text-emerald-400" />
-              <p className="text-white font-semibold">{t('reportDispute.doneTitle')}</p>
-              <p className="text-white/50 text-sm">{t('reportDispute.doneDescription')}</p>
+              <p className="font-semibold text-slate-950 dark:text-white">{t('reportDispute.doneTitle')}</p>
+              <p className="text-sm text-slate-500 dark:text-white/50">{t('reportDispute.doneDescription')}</p>
             </div>
           ) : (
             <>
@@ -77,34 +77,34 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
               </div>
 
               <div>
-                <label className="text-white/60 text-xs mb-1 block">{t('reportDispute.reasonLabel')}</label>
+                <label className="mb-1 block text-xs text-slate-500 dark:text-white/60">{t('reportDispute.reasonLabel')}</label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
                   placeholder={t('reportDispute.reasonPlaceholder')}
-                  className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-rose-400/60 resize-none"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-rose-400/60 focus:outline-none resize-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="text-white/60 text-xs mb-1 block">{t('reportDispute.repoLabel')}</label>
+                <label className="mb-1 block text-xs text-slate-500 dark:text-white/60">{t('reportDispute.repoLabel')}</label>
                 <input
                   type="text"
                   value={evidenceRepoUrl}
                   onChange={(e) => setEvidenceRepoUrl(e.target.value)}
                   placeholder={t('reportDispute.repoPlaceholder')}
-                  className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-rose-400/60"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-rose-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="text-white/60 text-xs mb-1 block">{t('reportDispute.noteLabel')}</label>
+                <label className="mb-1 block text-xs text-slate-500 dark:text-white/60">{t('reportDispute.noteLabel')}</label>
                 <textarea
                   value={evidenceNote}
                   onChange={(e) => setEvidenceNote(e.target.value)}
                   rows={2}
-                  className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-rose-400/60 resize-none"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-rose-400/60 focus:outline-none resize-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
               </div>
 

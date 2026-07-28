@@ -321,7 +321,7 @@ export const AdminMarketplaceActivityChart: React.FC<AdminMarketplaceActivityCha
           {axisTicks.map((tick) => (
             <span
               key={`${tick.value}-${tick.position}`}
-              className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400"
+              className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400"
             >
               {tick.value}
             </span>
@@ -371,7 +371,7 @@ export const AdminMarketplaceActivityChart: React.FC<AdminMarketplaceActivityCha
                 <div className="mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('admin:activityChart.week', { number: bucket.weekIndex })}
                 </div>
-                <div className="mt-1 text-center text-[10px] leading-tight text-slate-400">
+                <div className="mt-1 text-center text-[10px] leading-tight text-slate-500 dark:text-slate-400">
                   {bucket.rangeLabel}
                 </div>
               </div>

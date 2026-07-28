@@ -102,30 +102,30 @@ export function Footer({ setCurrentScreen, noTopMargin = false }: FooterProps) {
   return (
     <footer
       id="godotlaunch-footer"
-      className={`relative z-10 border-t border-white/10 bg-[#17181d] text-white ${noTopMargin ? "" : "mt-16"}`}
+      className={`launch-chrome relative z-10 border-t border-slate-200/80 bg-white/88 text-slate-900 backdrop-blur-md dark:border-slate-700/45 dark:bg-night-900/96 dark:text-white dark:shadow-[0_-18px_50px_rgba(0,0,0,0.2)] ${noTopMargin ? "" : "mt-16"}`}
     >
       <div className="mx-auto w-full max-w-[1440px] px-5 py-5 sm:px-8 lg:px-12">
         <div className="flex flex-col gap-5 border-b border-transparent pb-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-6 text-[#b9bbc4]">
+          <div className="flex items-center gap-6 text-slate-500 dark:text-slate-400">
             {SOCIAL_LINKS.map((social) => (
               <button
                 key={social.labelKey}
                 type="button"
                 aria-label={t(social.labelKey)}
                 title={t(social.labelKey)}
-                className="transition-colors hover:text-white"
+                className="transition-colors hover:text-slate-900 dark:hover:text-white"
               >
                 {social.icon}
               </button>
             ))}
           </div>
 
-          <div className="flex items-center gap-4 text-sm font-semibold">
+          <div className="flex flex-wrap items-center gap-3 text-sm font-semibold sm:justify-end">
             <span>{t("footer.news")}</span>
             <button
               type="button"
               onClick={() => navigate("signup")}
-              className="inline-flex items-center gap-2 rounded-md bg-white/15 px-3 py-2 text-[#e1e2e6] transition-colors hover:bg-white/25 hover:text-white"
+              className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-white transition-colors hover:bg-slate-800 dark:border dark:border-slate-700/60 dark:bg-night-800 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-white"
             >
               <Mail size={16} />
               {t("footer.signUp")}
@@ -136,10 +136,10 @@ export function Footer({ setCurrentScreen, noTopMargin = false }: FooterProps) {
         <div className="grid grid-cols-2 gap-x-8 gap-y-9 py-8 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-12">
           {FOOTER_SECTIONS.map((section) => (
             <section key={section.titleKey}>
-              <h2 className="mb-3 text-base font-bold text-white">
+              <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
                 {t(section.titleKey)}
               </h2>
-              <ul className="space-y-2 text-sm text-[#c0c2ca]">
+              <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-300">
                 {section.links.map((link) => (
                   <li key={link.labelKey}>
                     {link.href ? (
@@ -147,7 +147,7 @@ export function Footer({ setCurrentScreen, noTopMargin = false }: FooterProps) {
                         href={link.href}
                         target="_blank"
                         rel="noreferrer"
-                        className="transition-colors hover:text-white hover:underline"
+                        className="transition-colors hover:text-slate-900 hover:underline dark:hover:text-white"
                       >
                         {t(link.labelKey)}
                       </a>
@@ -155,7 +155,7 @@ export function Footer({ setCurrentScreen, noTopMargin = false }: FooterProps) {
                       <button
                         type="button"
                         onClick={() => link.screen && navigate(link.screen)}
-                        className="text-left transition-colors hover:text-white hover:underline"
+                        className="text-left transition-colors hover:text-slate-900 hover:underline dark:hover:text-white"
                       >
                         {t(link.labelKey)}
                       </button>
@@ -167,13 +167,13 @@ export function Footer({ setCurrentScreen, noTopMargin = false }: FooterProps) {
           ))}
         </div>
 
-        <div className="border-t border-white/15 pt-8">
-          <p className="max-w-5xl text-xs leading-relaxed text-[#b5b7c0]">
+        <div className="border-t border-slate-200 pt-8 dark:border-white/15">
+          <p className="max-w-5xl text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             {t("footer.copyright")}
           </p>
 
           <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex flex-wrap gap-x-7 gap-y-2 text-sm font-medium text-white">
+            <div className="flex flex-wrap gap-x-7 gap-y-2 text-sm font-medium text-slate-900 dark:text-white">
               <a href="#terms" className="hover:underline">{t("footer.terms")}</a>
               <a href="#privacy" className="hover:underline">{t("footer.privacy")}</a>
               <a href="#cookies" className="hover:underline">{t("footer.cookies")}</a>

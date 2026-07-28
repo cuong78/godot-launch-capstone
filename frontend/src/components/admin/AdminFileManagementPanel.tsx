@@ -324,7 +324,7 @@ export const AdminFileManagementPanel: React.FC = () => {
           <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase tracking-wider">
             {file.fileType}
           </span>
-          <span className="text-[10px] text-slate-400 font-mono">{new Date(file.createdAt).toLocaleString()}</span>
+          <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">{new Date(file.createdAt).toLocaleString()}</span>
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
@@ -364,7 +364,7 @@ export const AdminFileManagementPanel: React.FC = () => {
 
   const renderGameList = () =>
     gameList.length === 0 ? (
-      <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+      <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
         {t('fileManagement.list.noGames')}
       </div>
     ) : (
@@ -389,7 +389,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                   <div className="font-semibold truncate text-slate-800 dark:text-slate-100 text-xs group-hover:text-amber-500 transition-colors">
                     {g.title}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">
+                  <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
                     {t('fileManagement.list.by', { name: g.creatorName })}
                   </div>
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
@@ -401,7 +401,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                     <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase">
                       {g.status}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-mono">
+                    <span className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-500 dark:text-slate-400">
                       <Archive size={9} /> {t('fileManagement.list.fileCount', { count: g.fileCount })}
                     </span>
                   </div>
@@ -431,7 +431,7 @@ export const AdminFileManagementPanel: React.FC = () => {
           </button>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{selectedGame.title}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">
+            <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
               {t('fileManagement.list.by', { name: selectedGame.creatorName })} · {selectedGame.status}
               {selectedGamePublishing ? ` · ${selectedGamePublishing.label}` : ''}
             </div>
@@ -439,7 +439,7 @@ export const AdminFileManagementPanel: React.FC = () => {
         </div>
 
         {selectedGame.files.length === 0 ? (
-          <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+          <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
             {t('fileManagement.list.gameFilesEmpty')}
           </div>
         ) : (
@@ -453,7 +453,7 @@ export const AdminFileManagementPanel: React.FC = () => {
 
   const renderAssetList = () =>
     assetList.length === 0 ? (
-      <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+      <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
         {t('fileManagement.list.noAssets')}
       </div>
     ) : (
@@ -476,14 +476,14 @@ export const AdminFileManagementPanel: React.FC = () => {
                 <div className="font-semibold truncate text-slate-800 dark:text-slate-100 text-xs group-hover:text-amber-500 transition-colors">
                   {a.title}
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
                   {t('fileManagement.list.by', { name: a.sellerName })}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                   <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase">
                     {a.status}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-mono">
+                  <span className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-500 dark:text-slate-400">
                     <Archive size={9} /> {t('fileManagement.list.fileCount', { count: a.fileCount })}
                   </span>
                 </div>
@@ -508,14 +508,14 @@ export const AdminFileManagementPanel: React.FC = () => {
           </button>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{selectedAsset.title}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">
+            <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
               {t('fileManagement.list.by', { name: selectedAsset.sellerName })} · {selectedAsset.status}
             </div>
           </div>
         </div>
 
         {selectedAsset.files.length === 0 ? (
-          <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+          <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
             {t('fileManagement.list.assetFilesEmpty')}
           </div>
         ) : (
@@ -654,7 +654,7 @@ export const AdminFileManagementPanel: React.FC = () => {
               {t('fileManagement.labels.errorPrefix', { error })}
             </div>
           ) : files.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
+            <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
               {t('fileManagement.list.noCategoryFiles')}
             </div>
           ) : (
@@ -680,7 +680,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                           <div className="font-semibold truncate text-slate-800 dark:text-slate-100" title={file.fileName}>
                             {file.fileName}
                           </div>
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 truncate select-all max-w-[200px]" title={file.fileUrl}>
+                          <div className="mt-0.5 max-w-[200px] select-all truncate font-mono text-[10px] text-slate-500 dark:text-slate-400" title={file.fileUrl}>
                             {file.fileUrl}
                           </div>
                         </td>
@@ -696,7 +696,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                         </td>
                         <td className="p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">{file.ownerName}</div>
-                          <div className="text-[9px] text-slate-400 font-mono mt-0.5">
+                          <div className="mt-0.5 font-mono text-[9px] text-slate-500 dark:text-slate-400">
                             {file.ownerType} {t('fileManagement.labels.ownerId')}: {file.ownerId.substring(0, 8)}...
                           </div>
                         </td>

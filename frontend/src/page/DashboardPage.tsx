@@ -466,7 +466,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="space-y-6 animate-fade-in py-2">
         {/* Quick counters grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
             <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
               {t("dashboard:stats.revenue")}
             </span>
@@ -483,7 +483,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </p>
           </div>
 
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
             <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
               {t("dashboard:stats.unitsSold")}
             </span>
@@ -491,7 +491,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <span className="text-2xl font-display font-bold dark:text-white">
                 {salesStats?.totalUnitsSold ?? 0}
               </span>
-              <span className="text-[10px] text-slate-400 font-bold">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
                 {t("dashboard:stats.unitsLabel")}
               </span>
             </div>
@@ -500,7 +500,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </p>
           </div>
 
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
             <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
               {t("dashboard:stats.publishedGames")}
             </span>
@@ -514,7 +514,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </p>
           </div>
 
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
             <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
               {t("dashboard:stats.marketplaceItems")}
             </span>
@@ -577,7 +577,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {activeTab === "my-games" && (
               <div className="space-y-4">
                 {/* Game Status Filter Chips */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md">
+                <div className="dark-depth-card flex flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/60 sm:flex-row sm:items-center">
                   <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     {t("dashboard:filters.gameStatus")}
                   </div>
@@ -599,7 +599,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
 
                 {isLoadingGames ? (
-                  <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
+                  <div className="dark-depth-card flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-12 text-sm text-slate-500 dark:border-slate-850 dark:bg-slate-900">
                     <RefreshCw className="animate-spin" size={18} />{" "}
                     {t("dashboard:table.loadingGames")}
                   </div>
@@ -686,7 +686,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       <Eye size={12} />
                                     </button>
                                   </div>
-                                  <div className="text-[10px] text-slate-400 font-mono">
+                                  <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
                                     ID: {game.id}
                                   </div>
                                 </td>
@@ -1067,7 +1067,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               )}
                                             </div>
                                           ) : (
-                                            <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                               <Image
                                                 size={24}
                                                 className="mb-1 text-slate-350 dark:text-slate-650"
@@ -1099,7 +1099,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               />
                                             </div>
                                           ) : (
-                                            <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                               <Video
                                                 size={24}
                                                 className="mb-1 text-slate-350 dark:text-slate-650"
@@ -1122,7 +1122,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             {" "}
                             <td
                               colSpan={6}
-                              className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-950/20"
+                              className="bg-slate-100/50 p-8 text-center font-medium text-slate-500 dark:bg-slate-950/20 dark:text-slate-400"
                             >
                               {myGames.length === 0
                                 ? t("dashboard:table.emptyGames")
@@ -1141,7 +1141,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {activeTab === "marketplace-items" && (
               <div className="space-y-4">
                 {/* Asset Status Filter Chips */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md">
+                <div className="dark-depth-card flex flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/60 sm:flex-row sm:items-center">
                   <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     {t("dashboard:filters.assetStatus")}
                   </div>
@@ -1163,7 +1163,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
 
                 {isLoadingMarketplace ? (
-                  <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 rounded-xl">
+                  <div className="dark-depth-card flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-12 text-sm text-slate-500 dark:border-slate-855 dark:bg-slate-900">
                     <RefreshCw className="animate-spin" size={18} />{" "}
                     {t("dashboard:table.loadingAssets")}
                   </div>
@@ -1209,7 +1209,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 <div className="font-semibold text-slate-800 dark:text-slate-100">
                                   {item.title}
                                 </div>
-                                <div className="text-[10px] text-slate-400 font-mono">
+                                <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
                                   ID: {item.id}
                                 </div>
                               </td>
@@ -1259,7 +1259,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <tr>
                             <td
                               colSpan={6}
-                              className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium bg-slate-100/50 dark:bg-slate-955/20"
+                              className="bg-slate-100/50 p-8 text-center font-medium text-slate-500 dark:bg-slate-955/20 dark:text-slate-400"
                             >
                               {myMarketplaceItems.length === 0
                                 ? t("dashboard:table.emptyAssets")
@@ -1278,7 +1278,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {activeTab === "sales" && (
               <div className="space-y-4">
                 {isLoadingSales && (
-                  <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl">
+                  <div className="dark-depth-card flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-12 text-sm text-slate-500 dark:border-slate-850 dark:bg-slate-900">
                     <RefreshCw className="animate-spin" size={18} />{" "}
                     {t("dashboard:table.loadingSales")}
                   </div>
@@ -1353,7 +1353,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <tr>
                             <td
                               colSpan={4}
-                              className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
+                              className="p-8 text-center font-medium text-slate-500 dark:text-slate-400"
                             >
                               {t("dashboard:table.emptySales")}
                             </td>

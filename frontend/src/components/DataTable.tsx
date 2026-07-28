@@ -52,7 +52,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onSelectRow }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl overflow-hidden shadow-sm">
+    <div className="dark-depth-card overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
       <div className="p-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">Project Repositories</h3>
@@ -115,7 +115,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onSelectRow }) => {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-600 text-sm">
+                <td colSpan={6} className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   No projects match your filter.
                 </td>
               </tr>
