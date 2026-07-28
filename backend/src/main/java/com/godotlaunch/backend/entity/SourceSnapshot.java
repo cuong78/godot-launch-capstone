@@ -1,5 +1,6 @@
 package com.godotlaunch.backend.entity;
 
+import com.godotlaunch.backend.entity.enums.ReviewProcessStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -53,6 +54,26 @@ public class SourceSnapshot {
     // Link source code đã zip lên storage (AI đọc lại + admin/người mua tải)
     @Column(name = "bundle_url", columnDefinition = "TEXT")
     private String bundleUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_review_status", nullable = false, length = 20)
+    private ReviewProcessStatus aiReviewStatus = ReviewProcessStatus.pending;
+
+    @Column(name = "ai_review_error", columnDefinition = "TEXT")
+    private String aiReviewError;
+
+    @Column(name = "ai_review_completed_at")
+    private Instant aiReviewCompletedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "plagiarism_status", nullable = false, length = 20)
+    private ReviewProcessStatus plagiarismStatus = ReviewProcessStatus.pending;
+
+    @Column(name = "plagiarism_error", columnDefinition = "TEXT")
+    private String plagiarismError;
+
+    @Column(name = "plagiarism_completed_at")
+    private Instant plagiarismCompletedAt;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

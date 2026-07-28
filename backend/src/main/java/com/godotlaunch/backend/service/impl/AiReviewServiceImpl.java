@@ -12,6 +12,7 @@ import com.godotlaunch.backend.entity.enums.ActorRole;
 import com.godotlaunch.backend.entity.enums.AiRecommendation;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.entity.enums.ReviewProcessStatus;
 import com.godotlaunch.backend.repository.AiReviewReportRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.AssetRepository;
@@ -19,6 +20,8 @@ import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.service.AiReviewService;
 import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.service.PlagiarismService;
+import com.godotlaunch.backend.service.SourceReviewStatusService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -46,11 +49,12 @@ public class AiReviewServiceImpl implements AiReviewService {
     private final MediaRepository mediaRepository;
     private final SourceSnapshotRepository sourceSnapshotRepository;
     private final AuditLogService auditLogService;
+    private final PlagiarismService plagiarismService;
+    private final SourceReviewStatusService sourceReviewStatusService;
     private final ObjectMapper objectMapper;
 
     @Override
     @Async
-    @Transactional
     public void reviewGameAsync(UUID gameId) {
         SourceSnapshot latestSnapshot = sourceSnapshotRepository
                 .findFirstByGameIdOrderByCreatedAtDesc(gameId)
@@ -64,18 +68,17 @@ public class AiReviewServiceImpl implements AiReviewService {
 
     @Override
     @Async
-    @Transactional
     public void reviewGameSnapshotAsync(UUID gameId, UUID snapshotId) {
         reviewGameSnapshot(gameId, snapshotId);
     }
 
     private void reviewGameSnapshot(UUID gameId, UUID snapshotId) {
-        Game game = gameRepository.findById(gameId).orElse(null);
+        Game game = gameRepository.findForAiReviewById(gameId).orElse(null);
         if (game == null) {
             log.warn("AI review: không tìm thấy game {}", gameId);
             return;
         }
-        SourceSnapshot snapshot = sourceSnapshotRepository.findById(snapshotId).orElse(null);
+        SourceSnapshot snapshot = sourceSnapshotRepository.findForReviewById(snapshotId).orElse(null);
         if (snapshot == null || snapshot.getGame() == null
                 || !gameId.equals(snapshot.getGame().getId())) {
             log.warn("AI review: snapshot {} không thuộc game {}", snapshotId, gameId);
@@ -83,7 +86,17 @@ public class AiReviewServiceImpl implements AiReviewService {
         }
         if (snapshot.getBundleUrl() == null || snapshot.getBundleUrl().isBlank()) {
             log.warn("AI review: snapshot {} không có source bundle", snapshotId);
+            sourceReviewStatusService.updateAiReview(
+                    snapshotId, ReviewProcessStatus.failed, "Source snapshot has no immutable bundle URL");
+            sourceReviewStatusService.updatePlagiarism(
+                    snapshotId, ReviewProcessStatus.failed, "Source snapshot has no immutable bundle URL");
             return;
+        }
+
+        boolean runPlagiarism = snapshot.getPlagiarismStatus() != ReviewProcessStatus.completed;
+        sourceReviewStatusService.updateAiReview(snapshotId, ReviewProcessStatus.running, null);
+        if (runPlagiarism) {
+            sourceReviewStatusService.updatePlagiarism(snapshotId, ReviewProcessStatus.pending, null);
         }
         try {
             String category = game.getCategory() != null ? game.getCategory().getName() : null;
@@ -109,13 +122,16 @@ public class AiReviewServiceImpl implements AiReviewService {
                     game.getTitle(), game.getDescription(), category,
                     videoUrl, screenshots, tags);
 
-            if (result == null) return;
+            if (result == null) {
+                throw new IllegalStateException("AI review service returned no result");
+            }
 
             AiReviewReport report = new AiReviewReport();
             report.setGame(game);
             report.setSourceSnapshot(snapshot);
             fill(report, result);
             aiReviewReportRepository.save(report);
+            sourceReviewStatusService.updateAiReview(snapshotId, ReviewProcessStatus.completed, null);
 
             auditLogService.publish(
                     game.getCreator().getId(), ActorRole.developer, AuditAction.ai_report_generated,
@@ -125,8 +141,16 @@ public class AiReviewServiceImpl implements AiReviewService {
             log.info("AI review xong cho game {}, snapshot {} → {}",
                     gameId, snapshotId, result.getOverallRecommendation());
         } catch (Exception e) {
+            sourceReviewStatusService.updateAiReview(
+                    snapshotId, ReviewProcessStatus.failed, rootMessage(e));
             log.error("AI review game {}, snapshot {} lỗi (bỏ qua, không chặn submit): {}",
                     gameId, snapshotId, e.getMessage());
+        }
+
+        // Plagiarism là bước độc lập: AI review nội tại lỗi vẫn không được làm mất
+        // cơ hội kiểm tra tương đồng source của cùng snapshot.
+        if (runPlagiarism) {
+            plagiarismService.reviewSnapshot(gameId, snapshotId);
         }
     }
 
@@ -248,5 +272,11 @@ public class AiReviewServiceImpl implements AiReviewService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private String rootMessage(Exception error) {
+        Throwable current = error;
+        while (current.getCause() != null) current = current.getCause();
+        return current.getMessage() == null ? error.getClass().getSimpleName() : current.getMessage();
     }
 }

@@ -454,7 +454,9 @@
       "rerun": "Re-run AI",
       "requesting": "Requesting...",
       "runNow": "Run AI Review now",
-      "success": "AI Review is running in the background. Wait about 15 seconds, then press Refresh above."
+      "success": "AI Review is running in the background. Wait about 15 seconds, then press Refresh above.",
+      "successGame": "AI Review and source similarity checking have been queued for processing.",
+      "successItem": "AI Review has been queued for processing."
     },
     "scores": {
       "codeQuality": "Code quality",
@@ -480,7 +482,26 @@
     },
     "nsfw": {
       "detected": "Detected",
-      "safe": "Safe"
+      "safe": "Safe",
+      "flagged": "NSFW flagged"
+    },
+    "pipeline": {
+      "aiReview": "AI Review",
+      "sourceComparison": "Source comparison",
+      "commitLabel": "commit"
+    },
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "plagiarism": {
+      "title": "Source comparison",
+      "thresholdResults": "{{count}} results above threshold",
+      "noneAboveThreshold": "No source similarity above the threshold was detected.",
+      "snapshotLabel": "snapshot",
+      "commitLabel": "commit"
     }
   },
   "contractComposer": {

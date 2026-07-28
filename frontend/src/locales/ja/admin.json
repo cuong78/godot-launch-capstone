@@ -454,7 +454,9 @@
       "rerun": "AI を再実行",
       "requesting": "リクエスト中...",
       "runNow": "今すぐ AI Review を実行",
-      "success": "AI Review をバックグラウンドで実行中です。約15秒待ってから上の更新ボタンを押してください。"
+      "success": "AI Review をバックグラウンドで実行中です。約15秒待ってから上の更新ボタンを押してください。",
+      "successGame": "AI Review とソース類似度チェックを処理キューに追加しました。",
+      "successItem": "AI Review を処理キューに追加しました。"
     },
     "scores": {
       "codeQuality": "コード品質",
@@ -480,7 +482,26 @@
     },
     "nsfw": {
       "detected": "検出",
-      "safe": "安全"
+      "safe": "安全",
+      "flagged": "NSFW フラグあり"
+    },
+    "pipeline": {
+      "aiReview": "AI Review",
+      "sourceComparison": "ソース照合",
+      "commitLabel": "commit"
+    },
+    "status": {
+      "pending": "待機中",
+      "running": "実行中",
+      "completed": "完了",
+      "failed": "失敗"
+    },
+    "plagiarism": {
+      "title": "ソース照合",
+      "thresholdResults": "しきい値超過 {{count}} 件",
+      "noneAboveThreshold": "しきい値を超えるソース類似は検出されませんでした。",
+      "snapshotLabel": "snapshot",
+      "commitLabel": "commit"
     }
   },
   "contractComposer": {

@@ -102,6 +102,8 @@ services:
       # Self-host model HF (CLIP, NSFW) — tên model có thể override
       - CLIP_MODEL=${CLIP_MODEL:-openai/clip-vit-base-patch32}
       - NSFW_MODEL=${NSFW_MODEL:-Falconsai/nsfw_image_detection}
+      - CODE_EMBEDDING_MODEL=${CODE_EMBEDDING_MODEL:-microsoft/codebert-base}
+      - CODE_EMBEDDING_MODEL_REVISION=${CODE_EMBEDDING_MODEL_REVISION:-3b0952feddeffad0063f274080e3c23d75e7eb39}
       - HF_HOME=/models
     volumes:
       - ./python-face-service/gcp-vision.json:/run/secrets/gcp-vision.json:ro

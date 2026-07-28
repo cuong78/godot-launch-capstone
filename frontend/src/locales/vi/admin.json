@@ -454,7 +454,9 @@
       "rerun": "Chạy lại AI",
       "requesting": "Đang yêu cầu...",
       "runNow": "Chạy AI Review ngay",
-      "success": "Đang chạy AI Review trong nền. Hãy đợi khoảng 15 giây rồi bấm nút Tải lại ở trên."
+      "success": "Đang chạy AI Review trong nền. Hãy đợi khoảng 15 giây rồi bấm nút Tải lại ở trên.",
+      "successGame": "Đã đưa AI Review và kiểm tra tương đồng source vào hàng xử lý.",
+      "successItem": "Đã đưa AI Review vào hàng xử lý."
     },
     "scores": {
       "codeQuality": "Chất lượng code",
@@ -480,7 +482,26 @@
     },
     "nsfw": {
       "detected": "Phát hiện",
-      "safe": "An toàn"
+      "safe": "An toàn",
+      "flagged": "Có cờ NSFW"
+    },
+    "pipeline": {
+      "aiReview": "AI Review",
+      "sourceComparison": "Đối chiếu source",
+      "commitLabel": "commit"
+    },
+    "status": {
+      "pending": "Chờ xử lý",
+      "running": "Đang chạy",
+      "completed": "Hoàn tất",
+      "failed": "Thất bại"
+    },
+    "plagiarism": {
+      "title": "Đối chiếu source",
+      "thresholdResults": "{{count}} kết quả vượt ngưỡng",
+      "noneAboveThreshold": "Không phát hiện source tương đồng vượt ngưỡng.",
+      "snapshotLabel": "snapshot",
+      "commitLabel": "commit"
     }
   },
   "contractComposer": {

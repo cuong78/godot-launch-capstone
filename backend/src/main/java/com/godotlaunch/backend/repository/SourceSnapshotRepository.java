@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,10 @@ import java.util.UUID;
 
 @Repository
 public interface SourceSnapshotRepository extends JpaRepository<SourceSnapshot, UUID> {
+    @EntityGraph(attributePaths = {"game"})
+    @Query("SELECT snapshot FROM SourceSnapshot snapshot WHERE snapshot.id = :snapshotId")
+    Optional<SourceSnapshot> findForReviewById(@Param("snapshotId") UUID snapshotId);
+
     List<SourceSnapshot> findByGameIdOrderByCreatedAtDesc(UUID gameId);
     Optional<SourceSnapshot> findFirstByGameIdOrderByCreatedAtDesc(UUID gameId);
 
