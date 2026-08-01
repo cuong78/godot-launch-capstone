@@ -20,7 +20,7 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyle = "inline-flex items-center justify-center font-display font-semibold rounded-lg shadow-sm active:scale-95 transition-studio duration-150 cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
   
   const variants = {
-    primary: "bg-amber-400 text-slate-900 border border-amber-300 hover:bg-amber-300 shadow-[0_4px_0_0_#9a7d00] hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none hover:shadow-[0_3px_0_0_#9a7d00]",
+    primary: "launch-primary-action bg-amber-400 text-slate-900 border border-amber-300 hover:bg-amber-300 shadow-[0_4px_0_0_#9a7d00] hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none hover:shadow-[0_3px_0_0_#9a7d00]",
     secondary: "bg-sky-500 text-white border border-sky-400 hover:bg-sky-400 shadow-[0_4px_0_0_#025272] hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none hover:shadow-[0_3px_0_0_#025272]",
     'secondary-flat': "bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200/50 dark:border-sky-800/50 hover:bg-sky-200 dark:hover:bg-slate-800/80 active:translate-y-0 shadow-none",
     outline: "bg-transparent text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 active:translate-y-0",

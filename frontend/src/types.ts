@@ -215,6 +215,44 @@ export interface AiReviewReport {
   createdAt?: string;
 }
 
+export type ReviewProcessStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface PlagiarismFlag {
+  id: string;
+  gameId: string;
+  gameTitle: string;
+  matchedGameId: string;
+  matchedGameTitle: string;
+  sourceSnapshotId: string;
+  sourceCommitSha?: string | null;
+  matchedSourceSnapshotId: string;
+  matchedCommitSha?: string | null;
+  codeEmbeddingId: string;
+  matchedCodeEmbeddingId: string;
+  similarityScore: number;
+  severity: 'review' | 'reject';
+  modelName: string;
+  modelVersion: string;
+  reviewThreshold: number;
+  rejectThreshold: number;
+  reviewedByAdmin: boolean;
+  createdAt?: string;
+}
+
+export interface GameReviewOverview {
+  gameId: string;
+  sourceSnapshotId?: string | null;
+  commitSha?: string | null;
+  aiReviewStatus?: ReviewProcessStatus | null;
+  aiReviewError?: string | null;
+  aiReviewCompletedAt?: string | null;
+  plagiarismStatus?: ReviewProcessStatus | null;
+  plagiarismError?: string | null;
+  plagiarismCompletedAt?: string | null;
+  report?: AiReviewReport | null;
+  plagiarismFlags: PlagiarismFlag[];
+}
+
 export type ExtStatus = 'pending' | 'submitted' | 'live' | 'rejected' | 'removed';
 
 export interface ExternalPublishResponse {

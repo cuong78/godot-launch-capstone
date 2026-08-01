@@ -65,6 +65,7 @@
     "resourceAsset": "リソースアセット",
     "game": "ゲーム",
     "resource": "リソース",
+    "free": "無料",
     "currencyVnd": "VND",
     "projectDetails": "プロジェクト {{projectName}} の高度な設定オプションを開いています。エンジン {{engine}} で実行中です。",
     "loadingGames": "ゲームを読み込み中...",
@@ -124,10 +125,19 @@
     "signSuccess": "契約に署名しました。契約は完了し、ゲームは公開承認済みです。",
     "signError": "契約署名の実行中にエラーが発生しました",
     "signErrorMessage": "契約署名に失敗しました",
+    "rejectErrorMessage": "契約拒否に失敗しました",
     "deleteConfirm": "この商品をCreator Marketplaceから削除してもよろしいですか？",
     "deleteSuccess": "商品を正常に削除しました。",
     "deleteFail": "商品を削除できませんでした",
     "deleteError": "商品削除中にエラーが発生しました"
+  },
+  "errors": {
+    "loadGames": "あなたのゲームを読み込めませんでした",
+    "fetchGames": "あなたのゲーム一覧を取得できませんでした",
+    "loadMarketplaceItems": "あなたのマーケットプレイス商品を読み込めませんでした",
+    "fetchMarketplaceItems": "あなたのマーケットプレイス商品を取得できませんでした",
+    "loadSalesStatistics": "売上統計を読み込めませんでした",
+    "fetchSalesStatistics": "売上統計を取得できませんでした"
   },
   "releaseSchedule": {
     "title": "リリーススケジュール追跡",

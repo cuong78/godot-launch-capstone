@@ -53,5 +53,984 @@
       "assetListed": "アセット出品",
       "assetSold": "アセット販売済み"
     }
+  },
+  "common": {
+    "loading": "読み込み中...",
+    "cancel": "キャンセル"
+  },
+  "roles": {
+    "admin": "Admin",
+    "developer": "Developer",
+    "customer": "Customer"
+  },
+  "status": {
+    "contract": {
+      "signed": "署名済み",
+      "cancelled": "キャンセル済み / 再提案待ち",
+      "expired": "期限切れ",
+      "pending": "開発者の署名待ち",
+      "notCreated": "未作成"
+    },
+    "user": {
+      "active": "有効",
+      "inactive": "無効",
+      "suspended": "停止中",
+      "banned": "BAN済み"
+    },
+    "asset": {
+      "active": "有効",
+      "rejected": "却下済み"
+    },
+    "withdrawal": {
+      "pending": "Pending",
+      "approved": "Approved / Waiting Payout",
+      "processing": "Payout Processing",
+      "completed": "Completed",
+      "failed": "Payout Failed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    }
+  },
+  "audit": {
+    "actionLabel": "アクション",
+    "targetTypeLabel": "対象タイプ",
+    "allActions": "すべてのアクション",
+    "allTargets": "すべての対象",
+    "filters": {
+      "actorIdLabel": "実行者 ID (UUID)",
+      "actorIdPlaceholder": "User ID を入力...",
+      "targetIdLabel": "対象 ID (UUID)",
+      "targetIdPlaceholder": "Target ID を入力...",
+      "ipAddressLabel": "IP アドレス",
+      "ipAddressPlaceholder": "例: 127.0.0.1",
+      "clear": "フィルターをクリア",
+      "search": "検索"
+    },
+    "headers": {
+      "timeAndIp": "時刻 & IP",
+      "actorInfo": "実行者情報",
+      "targetReference": "対象参照",
+      "noteSummary": "メモ / 要約"
+    },
+    "loading": "監査ログを読み込み中...",
+    "loadError": "監査ログの読み込みエラー: {{error}}",
+    "viewPayloadDiff": "JSON ペイロード差分を表示",
+    "ipValue": "IP: {{value}}",
+    "unknownValue": "不明",
+    "anonymousSystem": "匿名 / システム",
+    "actorIdPrefix": "ID:",
+    "referenceIdPrefix": "Ref ID:",
+    "unknownRole": "UNKNOWN",
+    "unknownAction": "不明なアクション",
+    "unknownTarget": "不明な対象",
+    "targetTypeValue": "タイプ: {{value}}",
+    "noNotes": "メモなし",
+    "oldValueLabel": "旧値 (Before)",
+    "newValueLabel": "新値 (After)",
+    "nullValue": "NULL",
+    "empty": "選択したフィルターに一致する監査ログはありません。",
+    "pagination": {
+      "summary": "{{current}} / {{total}} ページ ({{count}} 件)",
+      "previous": "前へ",
+      "next": "次へ"
+    },
+    "actions": {
+      "user_registered": "ユーザー登録",
+      "user_login_success": "ログイン成功",
+      "user_login_failed": "ログイン失敗",
+      "user_logged_out": "ログアウト",
+      "user_banned": "ユーザーBAN",
+      "user_unbanned": "ユーザーBAN解除",
+      "user_role_changed": "ユーザー権限変更",
+      "game_submitted": "ゲーム申請",
+      "game_approved": "ゲーム承認",
+      "game_rejected": "ゲーム却下",
+      "game_published": "ゲーム公開",
+      "game_updated": "ゲーム更新",
+      "contract_created": "契約作成",
+      "contract_signed": "契約署名",
+      "contract_cancelled": "契約キャンセル",
+      "security_alert": "セキュリティ警告",
+      "post_created": "投稿作成",
+      "comment_created": "コメント作成",
+      "reaction_created": "リアクション作成",
+      "chat_message_sent": "メッセージ送信"
+    },
+    "targets": {
+      "user": "ユーザー",
+      "game": "ゲーム",
+      "contract": "契約",
+      "community_chat": "コミュニティ投稿/コメント",
+      "chat_message": "ダイレクトメッセージ",
+      "ai_report": "AIレポート",
+      "transaction": "取引",
+      "withdrawal": "出金"
+    }
+  },
+  "overview": {
+    "platformSnapshot": "プラットフォーム概要",
+    "commissionRate": "手数料率",
+    "announcementBanner": "お知らせバナー",
+    "noActiveAnnouncementBanner": "有効なお知らせバナーはありません。",
+    "maintenanceMode": "メンテナンスモード",
+    "maintenanceEnabled": "プラットフォーム保護のため有効です。",
+    "maintenanceDisabled": "無効です。ストアフロントの導線は利用可能です。",
+    "actionRequiredBadge": "対応が必要"
+  },
+  "overviewCards": {
+    "payoutWalletBalance": "支払いウォレット残高",
+    "payoutWalletError": "PayOS 支払い口座の残高を読み込めませんでした。",
+    "payoutWalletSynced": "PayOS 支払い口座から同期済みです。",
+    "payoutWalletLoading": "支払いウォレット残高を読み込み中...",
+    "platformAccounts": "プラットフォームアカウント",
+    "userCount": "{{count}} ユーザー",
+    "liveDirectory": "アクティブディレクトリ",
+    "moderationItemCount": "{{count}} 件"
+  },
+  "finance": {
+    "platformWalletTitle": "プラットフォームウォレット",
+    "platformWalletDescription": "クリエイター用ウォレットに入らずに、管理者手数料台帳と PayOS 支払い口座を監視します。",
+    "refreshWallet": "ウォレットを更新"
+  },
+  "financeWallet": {
+    "notConnected": "未接続",
+    "errors": {
+      "loadPlatformWallet": "プラットフォームウォレットを読み込めませんでした。",
+      "loadTransactions": "ウォレット取引履歴を読み込めませんでした。"
+    },
+    "status": {
+      "unknown": "不明",
+      "active": "稼働中",
+      "enabled": "有効",
+      "pending": "保留中",
+      "processing": "処理中"
+    },
+    "cards": {
+      "platformLedger": {
+        "title": "プラットフォーム台帳",
+        "description": "マーケットプレイス手数料と管理者の財務運用を確認するための内部ウォレットです。"
+      },
+      "payoutBalance": {
+        "title": "PayOS 支払い残高",
+        "description": "運用上の出金処理に使われる支払い口座から同期されます。"
+      },
+      "payoutAccount": {
+        "title": "支払い口座",
+        "description": "管理者が開発者向けの支払い処理を行う際に使う銀行口座情報です。"
+      }
+    },
+    "ledger": {
+      "title": "プラットフォーム取引台帳",
+      "description": "管理者ウォレットの変動を確認し、決済や出金操作の前に参照情報を追跡します。",
+      "page": "{{current}} / {{total}} ページ",
+      "headers": {
+        "type": "種別",
+        "amount": "金額",
+        "reference": "参照",
+        "created": "作成日時"
+      },
+      "loading": "ウォレット取引を読み込み中...",
+      "empty": "現在、管理者ウォレットの取引はありません。",
+      "footer": "この画面は管理者の財務運用レビュー専用として使用してください。"
+    }
+  },
+  "settingsPanel": {
+    "saveSuccess": "システム変数を更新しました。Node サーバーを再読み込みしています...",
+    "loading": "プラットフォーム設定を読み込み中...",
+    "saving": "プラットフォーム設定を保存中...",
+    "save": "プラットフォーム設定を保存",
+    "commissionLabel": "プラットフォーム手数料率 (%)",
+    "commissionHelper": "各 marketplace 取引からプラットフォームが保持する割合",
+    "maintenanceStatusLabel": "システムメンテナンス状態",
+    "maintenanceToggleActive": "有効 - サイトロック中",
+    "maintenanceToggleInactive": "無効 - オンライン",
+    "bannerLabel": "サイト全体のアラートバナーテキスト",
+    "bannerPlaceholder": "バナーを無効にするには空欄にします",
+    "bannerHelperText": "全ユーザー画面の上部に表示されるバナーテキスト",
+    "maintenanceWarningTitle": "警告: メンテナンスモードが有効です。",
+    "maintenanceWarningDescription": "この設定により、管理者以外のユーザーはチェックアウト、ファイルアップロード、リポジトリ同期ができなくなります。慎重に使用してください。"
+  },
+  "contract": {
+    "defaultBuyerRepresentative": "GodotLaunch運営",
+    "defaultBuyerPosition": "システム管理 / 認可代表者",
+    "defaultDisputeClause": "本契約に起因または関連する紛争は、まず友好的な協議によって解決するものとします。解決しない場合は、仲裁に付託されます。"
+  },
+  "alerts": {
+    "downloadFailed": "ファイルをダウンロードできませんでした。再度お試しください。"
+  },
+  "errors": {
+    "loadGames": "ゲームを読み込めませんでした",
+    "fetchModerationQueue": "審査キューを取得できませんでした",
+    "loadMarketplaceItems": "マーケットプレイス商品を読み込めませんでした",
+    "fetchMarketplaceSubmissions": "マーケットプレイス申請を取得できませんでした",
+    "loadUsers": "ユーザーを読み込めませんでした",
+    "fetchUsers": "ユーザーを取得できませんでした",
+    "loadAuditLogs": "監査ログを読み込めませんでした",
+    "fetchAuditLogs": "監査ログを取得できませんでした",
+    "loadPayoutWalletBalance": "支払いウォレット残高を読み込めませんでした",
+    "loadPlatformSettings": "プラットフォーム設定を読み込めませんでした",
+    "approveGame": "ゲーム承認に失敗しました",
+    "rejectionReasonRequired": "却下理由を入力してください。",
+    "rejectGame": "ゲーム却下に失敗しました",
+    "rejectMarketplaceItem": "マーケットプレイス商品の却下に失敗しました",
+    "approveMarketplaceItem": "マーケットプレイス商品の承認に失敗しました",
+    "updateUser": "ユーザーを更新できませんでした。",
+    "updatePlatformSettings": "プラットフォーム設定を更新できませんでした"
+  },
+  "actions": {
+    "approveGame": "ゲームを承認",
+    "rejectGame": "ゲームを却下",
+    "rejectAsset": "アセットを却下",
+    "downloading": "ダウンロード中...",
+    "downloadGamePackage": "ゲームパッケージ (ZIP) をダウンロード",
+    "downloadAssetPackage": "アセットパッケージ (ZIP) をダウンロード",
+    "noGamePackageUploaded": "ダウンロードできるゲーム ZIP ファイルが見つかりません",
+    "noAssetPackageUploaded": "このアセットにはファイルパッケージがまだアップロードされていません"
+  },
+  "moderationPreview": {
+    "pendingModeration": "審査待ち",
+    "title": "審査プレビュー",
+    "queueCount": "{{count}} 件のキュー",
+    "open": "開く",
+    "loading": "審査スナップショットを読み込み中...",
+    "empty": "現在、審査待ちのゲームまたはアセットはありません。",
+    "unknownCreator": "不明な creator",
+    "unknownSeller": "不明な seller",
+    "gameType": "ゲーム",
+    "assetType": "アセット",
+    "newLabel": "新規"
+  },
+  "overviewUsers": {
+    "title": "ユーザー運用",
+    "open": "開く",
+    "loading": "ユーザーディレクトリを読み込み中...",
+    "empty": "現在、ディレクトリに登録されたアカウントはありません。"
+  },
+  "moderationQueue": {
+    "title": "ゲーム・アセット審査キュー",
+    "queueBadge": "キュー",
+    "tabs": {
+      "games": "ゲーム申請",
+      "assets": "アセット申請"
+    },
+    "statusLabel": "キュー状況",
+    "filters": {
+      "pending": "保留中",
+      "approvedPublished": "承認済み / 公開済み",
+      "rejected": "却下済み",
+      "all": "すべての申請"
+    },
+    "headers": {
+      "assetDetails": "項目詳細",
+      "category": "カテゴリ",
+      "publishingType": "公開タイプ",
+      "proposedPrice": "提案価格",
+      "contractStatus": "契約状況",
+      "decisions": "判断",
+      "itemType": "項目タイプ"
+    },
+    "actions": {
+      "hideDetails": "詳細を隠す",
+      "showDetails": "詳細を見る",
+      "quickView": "クイック表示",
+      "approveAsset": "アセットを承認"
+    },
+    "status": {
+      "pendingReview": "審査待ち",
+      "approved": "承認済み"
+    },
+    "decision": {
+      "rejected": "却下済み",
+      "live": "公開中",
+      "approved": "承認済み",
+      "waitingDevSignature": "Developer 署名待ち",
+      "liveGooglePlay": "Google Play 公開中",
+      "waitingBuild": "ビルドアップロード待ち",
+      "renegotiateContract": "契約を再提案"
+    },
+    "price": {
+      "notSet": "価格未設定",
+      "free": "無料"
+    },
+    "loadingGames": "審査待ちゲームを読み込み中...",
+    "errorGames": "ゲーム申請の読み込みエラー: {{error}}",
+    "emptyGames": "現在、審査対象のゲーム申請はありません。",
+    "loadingAssets": "審査待ちアセットを読み込み中...",
+    "errorAssets": "アセット申請の読み込みエラー: {{error}}",
+    "emptyAssets": "現在、審査対象のアセット申請はありません。",
+    "by": "{{name}}",
+    "unassigned": "未分類",
+    "assetType": "RESOURCE ASSET",
+    "previousRejection": "Developer が契約を拒否した理由:",
+    "messages": {
+      "approveGameConfirm": "\"{{title}}\" を承認して公開してもよろしいですか？",
+      "approveGameSuccess": "ゲーム \"{{title}}\" を承認し、正常に公開しました！",
+      "approveAssetConfirm": "Marketplace item \"{{title}}\" を承認して有効化してもよろしいですか？",
+      "approveAssetSuccess": "Marketplace item \"{{title}}\" を承認し、正常に有効化しました！",
+      "defaultRejectReason": "ストアポリシー違反",
+      "rejectGameSuccess": "ゲーム \"{{title}}\" は拒否されました。Creator に通知済みです。",
+      "rejectAssetSuccess": "Marketplace item \"{{title}}\" は拒否されました。Creator に通知済みです。",
+      "rejectItemFailed": "この項目を拒否できませんでした。"
+    },
+    "detail": {
+      "thumbnail": "サムネイル",
+      "noThumbnail": "サムネイルなし",
+      "description": "詳細説明",
+      "noDescription": "Developer から詳細説明は提供されていません。",
+      "tags": "Tags",
+      "noTags": "No tags selected",
+      "githubRepository": "GitHub Repository",
+      "noRepository": "No repository",
+      "itemDescription": "項目説明",
+      "noItemDescription": "説明はありません。",
+      "screenshots": "スクリーンショット",
+      "screenshotAlt": "スクリーンショット {{index}}",
+      "noScreenshots": "Developer はスクリーンショットをアップロードしていません",
+      "noScreenshotsUploaded": "スクリーンショットはアップロードされていません",
+      "videoDemo": "動画デモ",
+      "noVideo": "Developer はゲームプレイ動画をアップロードしていません",
+      "noDemoVideo": "デモ動画はアップロードされていません",
+      "refreshingMedia": "最新メディアを更新中...",
+      "technicalCreatorDetails": "技術情報・Creator 情報",
+      "creatorName": "Creator 名",
+      "creatorEmail": "Creator メール",
+      "version": "バージョン",
+      "submittedOn": "申請日"
+    }
+  },
+  "modals": {
+    "rejectionTitle": "却下理由",
+    "itemDetails": "項目詳細",
+    "rejectionReasonLabel": "却下理由 *",
+    "rejectionReasonPlaceholder": "詳細な却下理由を入力してください...",
+    "rejecting": "却下中...",
+    "rejectSubmission": "提出を却下"
+  },
+  "disputePanel": {
+    "loading": "紛争一覧を読み込み中...",
+    "empty": "現在、紛争はありません。",
+    "deletedProduct": "（削除済み商品）",
+    "accuses": "が申し立て",
+    "resolveCta": "裁定",
+    "resolvedBadge": "処理済み",
+    "resolveError": "紛争の裁定に失敗しました。",
+    "status": {
+      "open": "新規",
+      "investigating": "調査中",
+      "resolved_seller_fault": "Seller 側の違反",
+      "resolved_reporter_fault": "虚偽申告",
+      "resolved_inconclusive": "結論なし",
+      "cancelled": "キャンセル済み"
+    },
+    "resolution": {
+      "inconclusive": "ケース1: 証拠不十分 → 商品を復元し、処分なし",
+      "reporterFault": "ケース2: Reporter の虚偽申告 → 商品を復元し、Reporter を減点",
+      "sellerFault": "ケース3: Seller の盗用 → 5日以内の返金を義務付け、アカウントをBAN"
+    },
+    "modal": {
+      "title": "紛争を裁定",
+      "evidenceRepoLabel": "Reporter の証拠リポジトリ:",
+      "resolutionLabel": "結論",
+      "refundAmountLabel": "Seller が返金すべき金額",
+      "resolutionNoteLabel": "裁定メモ",
+      "banUser": "アカウントをBANする（FaceID と本人確認情報をブラックリスト保存し、再登録を防止）",
+      "submitting": "処理中...",
+      "submit": "裁定を確定"
+    }
+  },
+  "aiReviewCard": {
+    "title": "AI review — 提案のみ（最終判断は admin）",
+    "refresh": "更新",
+    "loading": "AI レポートを読み込み中...",
+    "empty": "この項目にはまだ AI レポートがありません（AI review は submit 後にバックグラウンドで実行されます）。",
+    "summaryLabel": "AI 要約:",
+    "footerNote": "* AI は提案のみを行います。承認/拒否の最終判断は admin にあります。",
+    "errors": {
+      "loadFailed": "AI レポートを読み込めませんでした",
+      "triggerFailed": "AI Review を開始できませんでした"
+    },
+    "trigger": {
+      "rerunTitle": "AI 分析を再実行",
+      "rerun": "AI を再実行",
+      "requesting": "リクエスト中...",
+      "runNow": "今すぐ AI Review を実行",
+      "success": "AI Review をバックグラウンドで実行中です。約15秒待ってから上の更新ボタンを押してください。",
+      "successGame": "AI Review とソース類似度チェックを処理キューに追加しました。",
+      "successItem": "AI Review を処理キューに追加しました。"
+    },
+    "scores": {
+      "codeQuality": "コード品質",
+      "mediaMatch": "メディア一致",
+      "descriptionMatch": "説明一致",
+      "tagsMatch": "タグ適合",
+      "nsfw": "NSFW"
+    },
+    "pricing": {
+      "title": "価格提案（AI 提案）",
+      "free": "無料",
+      "revenueSplit": "開発者の収益配分: {{percent}}%"
+    },
+    "flags": {
+      "title": "警告 ({{count}})",
+      "evidenceImage": "画像 #{{index}}",
+      "none": "警告はありません"
+    },
+    "recommendation": {
+      "approve": "提案: 承認",
+      "review": "提案: 要確認",
+      "reject": "提案: 拒否"
+    },
+    "nsfw": {
+      "detected": "検出",
+      "safe": "安全",
+      "flagged": "NSFW フラグあり"
+    },
+    "pipeline": {
+      "aiReview": "AI Review",
+      "sourceComparison": "ソース照合",
+      "commitLabel": "commit"
+    },
+    "status": {
+      "pending": "待機中",
+      "running": "実行中",
+      "completed": "完了",
+      "failed": "失敗"
+    },
+    "plagiarism": {
+      "title": "ソース照合",
+      "thresholdResults": "しきい値超過 {{count}} 件",
+      "noneAboveThreshold": "しきい値を超えるソース類似は検出されませんでした。",
+      "snapshotLabel": "snapshot",
+      "commitLabel": "commit"
+    }
+  },
+  "contractComposer": {
+    "badge": "配信契約",
+    "title": "配信契約を作成",
+    "description": "ゲーム「{{title}}」の配信条件を入力してください",
+    "previousRejectionTitle": "Developer が契約署名を拒否した理由:",
+    "partyATitle": "甲: GodotLaunch運営",
+    "representativeLabel": "甲の代表者:",
+    "positionLabel": "役職:",
+    "financialTermsTitle": "財務条件",
+    "proposedPriceLabel": "Developer の提案価格:",
+    "freePrice": "無料",
+    "revenueSplitLabel": "Developer 収益配分 (%)",
+    "revenueSplitHelper": "例: 70 の場合、Developer が 70%、Platform が 30% の配信収益を受け取ります",
+    "lumpSumLabel": "一括買い取り金額 (VND)",
+    "lumpSumPlaceholder": "例: 100,000,000",
+    "negotiationHelper": "現在、価格の再交渉中です",
+    "lumpSumHelper": "ゲームの所有権全体を取得するための一括支払い金額です",
+    "legalTermsTitle": "法的条項・追加条項",
+    "disputeResolutionLabel": "紛争解決条項:",
+    "signatureTitle": "甲代表者の署名 (Admin)",
+    "signatureHelp": "Developer に送信する前に、Admin が署名する必要があります。",
+    "signaturePlaceholder": "マウスで甲代表者の署名を描いてください...",
+    "signatureRequired": "契約送信前に甲代表者の署名が必要です。",
+    "createSuccess": "契約案を正常に作成し、Developer に送信しました！",
+    "createError": "契約の作成に失敗しました。",
+    "createRequestError": "契約作成リクエストの送信に失敗しました。",
+    "submit": "提案を送信して契約を作成"
+  },
+  "lightbox": {
+    "enlargedScreenshotAlt": "拡大されたスクリーンショット"
+  },
+  "playDemo": {
+    "title": "{{title}} — Play Demo",
+    "sectionTitle": "ゲームデモをプレイ",
+    "launchButton": "デモを起動 (フルスクリーン)",
+    "empty": "Developer はまだ Web デモをアップロードしていません",
+    "screenshotsTitle": "スクリーンショット"
+  },
+  "agreementPanel": {
+    "loadError": "Unable to load agreement versions.",
+    "emptyError": "Agreement content must not be empty.",
+    "saveError": "Unable to save agreement.",
+    "saveCatchError": "An error occurred while saving the agreement.",
+    "success": "New version saved and activated.",
+    "contentLabel": "Agreement content {{version}}",
+    "contentLabelNoVersion": "Agreement content",
+    "placeholder": "Agreement content... use {{commissionRate}} and {{revenueSharePercent}} to inject the active rates",
+    "helper": "Use {{commissionRate}} and {{revenueSharePercent}} in the content — the system replaces them with the current rates when rendering.",
+    "save": "Save (create new version)",
+    "history": "Version history",
+    "empty": "No versions yet.",
+    "active": "Active"
+  },
+  "bannerPanel": {
+    "loadError": "Unable to load banners.",
+    "uploadError": "Banner image upload failed.",
+    "missingImage": "Please upload an image or provide an image URL.",
+    "saveError": "Unable to save banner.",
+    "deleteError": "Unable to delete banner.",
+    "createSuccess": "Banner created successfully.",
+    "updateSuccess": "Banner updated successfully.",
+    "deleteSuccess": "Banner deleted successfully.",
+    "deleteConfirm": "Delete banner \"{{title}}\"?",
+    "title": "Storefront banners",
+    "description": "Banners are displayed by ascending order. Clicking a banner opens the Browser Game catalog.",
+    "refresh": "Refresh",
+    "edit": "Edit banner",
+    "add": "Add banner",
+    "cancelEdit": "Cancel edit",
+    "fieldTitle": "Title",
+    "fieldDescription": "Description",
+    "fieldImageUrl": "Image URL",
+    "fieldDisplayOrder": "Display order",
+    "titlePlaceholder": "Launch your next Godot adventure",
+    "descriptionPlaceholder": "Short copy shown over the banner image",
+    "imageUrlPlaceholder": "https://... or upload a file",
+    "uploadImage": "Upload banner image (max 10 MB)",
+    "saving": "Saving...",
+    "update": "Update banner",
+    "create": "Create banner",
+    "previewAlt": "Banner preview",
+    "previewLabel": "Preview",
+    "previewTitleFallback": "Banner title",
+    "previewDescriptionFallback": "Banner description",
+    "previewEmpty": "Upload an image to preview the banner.",
+    "empty": "No banners found. Create the first storefront banner above.",
+    "orderBadge": "Order {{order}}",
+    "editAria": "Edit {{title}}",
+    "deleteAria": "Delete {{title}}"
+  },
+  "contentPanel": {
+    "errors": {
+      "loadData": "コンテンツ管理データを読み込めませんでした。",
+      "saveCollection": "コレクションを保存できませんでした。",
+      "deleteCollection": "コレクションを削除できませんでした。Homepage Layout で使用中の可能性があります。",
+      "moveSection": "セクションの並び替えができませんでした。",
+      "deleteSection": "セクションを削除できませんでした。",
+      "addShelf": "シェルフを追加できませんでした。",
+      "saveTag": "タグを保存できませんでした。",
+      "deleteTag": "ゲーム、アセット、またはコレクションで使用中のためタグを削除できませんでした。",
+      "saveCategory": "カテゴリを保存できませんでした。",
+      "deleteCategory": "子カテゴリがあるか、ゲーム、アセット、またはコレクションで使用中のためカテゴリを削除できませんでした。"
+    },
+    "tabs": {
+      "layout": "ホームページ構成",
+      "banners": "バナー",
+      "collections": "コレクション",
+      "tags": "タグ",
+      "categories": "カテゴリー"
+    },
+    "header": {
+      "title": "ストアフロントコンテンツ管理",
+      "description": "バナー、システムシェルフ、コレクションを一か所で管理します。",
+      "reloadAria": "コンテンツデータを再読み込み"
+    },
+    "search": {
+      "nameOrSlug": "名前または slug で検索..."
+    },
+    "layout": {
+      "systemNotice": "Recent Releases と Free Content はシステムセクションであり、常に最大 6 件に制限されます。管理者は名称変更、並び替え、表示切替はできますが、削除やルール変更はできません。",
+      "sectionNameAria": "セクション名",
+      "sectionTypes": {
+        "recentReleases": "Recent Releases",
+        "freeContent": "Free Content",
+        "collection": "Collection"
+      },
+      "systemBadge": "SYSTEM",
+      "collectionLabel": "Collection: {{slug}}",
+      "autoContent": "自動 · 最大 6 件",
+      "visible": "表示",
+      "deleteSectionAria": "{{title}} を削除",
+      "selectCollectionPlaceholder": "シェルフとして追加するコレクションを選択",
+      "addShelf": "シェルフを追加"
+    },
+    "collections": {
+      "title": "コンテンツコレクション",
+      "description": "カテゴリやタグでゲームとアセットをまとめ、ホームページ用のシェルフを作成します。",
+      "create": "コレクションを作成",
+      "emptyTitle": "コレクションがありません",
+      "emptyDescription": "ホームページ用コンテンツを整理する最初のコレクションを作成してください。",
+      "deleteConfirm": "コレクション \"{{title}}\" を削除しますか？ 削除前に Homepage Layout からシェルフを外してください。",
+      "statusActive": "表示中",
+      "statusHidden": "非表示",
+      "editAria": "{{title}} を編集",
+      "deleteAria": "{{title}} を削除",
+      "noFilters": "フィルター条件がありません。このコレクションにはすべてのコンテンツが含まれます。",
+      "metrics": {
+        "categories": "Categories",
+        "tags": "Tags",
+        "maxItems": "Max items"
+      }
+    },
+    "tags": {
+      "title": "タグ管理",
+      "description": "商品またはコレクションで使用中のタグは削除できません。",
+      "createTitle": "新しいタグを作成",
+      "editTitle": "タグを更新",
+      "editing": "編集中: {{name}}",
+      "namePlaceholder": "タグ名",
+      "slugPlaceholder": "slug",
+      "createButton": "タグを作成",
+      "updateButton": "更新",
+      "editAria": "{{name}} を編集",
+      "deleteAria": "{{name}} を削除",
+      "deleteConfirm": "タグ \"{{name}}\" を削除しますか？"
+    },
+    "categories": {
+      "title": "カテゴリ階層",
+      "description": "カテゴリは親子ツリーで表示されます。作成または更新時に親カテゴリを選択してください。",
+      "createTitle": "新しいカテゴリを作成",
+      "editTitle": "カテゴリを更新",
+      "editing": "編集中: {{name}}",
+      "fields": {
+        "name": "カテゴリ名",
+        "slug": "Slug",
+        "type": "コンテンツ種別",
+        "parent": "親カテゴリ",
+        "description": "説明"
+      },
+      "typeAssetOption": "Asset",
+      "typeGameOption": "Game",
+      "noParent": "なし - ルート階層",
+      "createButton": "カテゴリを作成",
+      "updateButton": "更新",
+      "deleteConfirm": "カテゴリ \"{{name}}\" を削除しますか？ 子カテゴリがある、または関連商品があるカテゴリは削除できません。",
+      "gameTitle": "ゲームカテゴリ",
+      "assetTitle": "アセットカテゴリ",
+      "count": "{{count}} 件のカテゴリ",
+      "rootLabel": "ルートカテゴリ",
+      "editAria": "{{name}} を編集",
+      "deleteAria": "{{name}} を削除"
+    },
+    "modal": {
+      "badge": "Content collection",
+      "editTitle": "コレクションを編集",
+      "createTitle": "新しいコレクションを作成",
+      "description": "ストアフロントに表示する情報と商品選択ルールを設定します。",
+      "basicInfo": "基本情報",
+      "fields": {
+        "title": "タイトル",
+        "slug": "Slug",
+        "description": "説明",
+        "maxItems": "最大表示件数"
+      },
+      "placeholders": {
+        "title": "例: Stylized Picks",
+        "slug": "stylized-picks",
+        "description": "このコレクションの目的と内容を説明してください..."
+      },
+      "maxItemsHint": "最新の商品を 1 〜 10 件まで表示します。",
+      "activeTitle": "コレクションを表示",
+      "activeDescription": "Homepage Layout でこのコレクションを利用できるようにします。",
+      "tagsTitle": "Tags",
+      "tagsDescription": "商品は選択したすべてのタグを含む必要があります。",
+      "categoriesTitle": "Categories",
+      "categoriesDescription": "商品は選択したカテゴリのいずれかに属している必要があります。",
+      "saveChanges": "変更を保存",
+      "createAction": "コレクションを作成"
+    },
+    "selectionPicker": {
+      "searchTags": "タグを検索...",
+      "searchCategories": "カテゴリを検索...",
+      "selectedCount": "{{count}} 件選択中",
+      "noResults": "結果がありません。"
+    }
+  },
+  "paymentVerification": {
+    "free": "FREE",
+    "na": "N/A",
+    "loadError": "Failed to load payments",
+    "detailLoadError": "Failed to load payment detail",
+    "detailRefreshError": "Failed to refresh payment detail",
+    "sort": "Sort",
+    "sortAll": "All payments",
+    "headers": {
+      "order": "Order",
+      "buyer": "Buyer",
+      "amount": "Amount",
+      "paymentStatus": "Payment Status",
+      "updated": "Updated",
+      "action": "Action"
+    },
+    "loading": "Loading payment sessions...",
+    "empty": "No payment sessions are available right now.",
+    "view": "View",
+    "previous": "Previous",
+    "next": "Next",
+    "detailTitle": "Payment Detail",
+    "detailSubtitle": "Order {{order}} • {{title}}",
+    "close": "Close",
+    "refresh": "Refresh",
+    "timeline": "Payment Timeline",
+    "createdAt": "Created At",
+    "updatedAt": "Updated At",
+    "paidAt": "Paid At",
+    "orderInfo": "Order Information",
+    "email": "Email",
+    "product": "Product",
+    "reference": "Reference",
+    "payosOrderCode": "PayOS Order Code",
+    "paymentLinkId": "Payment Link ID",
+    "transactionId": "Transaction ID",
+    "waitingWebhook": "Waiting webhook",
+    "status": {
+      "PAID": "Paid",
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "FAILED": "Failed",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired"
+    },
+    "downloadUnlocked": "Download is unlocked for this payment because PayOS webhook confirmation has completed."
+  },
+  "externalPublish": {
+    "loadStatusError": "Unable to load Google Play status.",
+    "loadStatusCatchError": "An error occurred while loading Google Play status.",
+    "requiredError": "Please choose a build file, enter a short description, and choose a feature graphic.",
+    "uploadError": "Build upload failed.",
+    "uploadCatchError": "An error occurred while uploading the build.",
+    "title": "Push Google Play",
+    "reload": "Reload",
+    "statusLive": "Live on Google Play",
+    "statusSubmitted": "Waiting for Google Play review",
+    "statusRejected": "Rejected by Google Play",
+    "versionLabel": "Version: {{value}}",
+    "viewStore": "View on Google Play",
+    "uploadHelp": "Export the APK/AAB from Godot Editor, then upload it here to submit automatically to Google Play. The icon (from thumbnail) and screenshots are taken automatically from the game page — the game must already have a thumbnail and at least 2 screenshots before upload.",
+    "versionHint": "Version is taken automatically from the game (developer version editing is not supported yet).",
+    "shortDescriptionPlaceholder": "Google Play short description (max 80 characters)",
+    "changelogPlaceholder": "Changelog (optional)",
+    "chooseBuild": "Choose APK/AAB file",
+    "noBuildSelected": "No file selected",
+    "chooseFeatureGraphic": "Choose feature graphic (1024x500)",
+    "noFeatureGraphicSelected": "No image selected",
+    "uploading": "Uploading...",
+    "uploadSubmit": "Upload & Submit to Google Play"
+  },
+  "withdrawal": {
+    "na": "N/A",
+    "copy": "Copy",
+    "view": "View",
+    "previous": "Previous",
+    "next": "Next",
+    "understood": "Understood",
+    "defaultDeveloper": "Developer",
+    "loadListError": "Unable to load withdrawal requests.",
+    "loadDetailError": "Unable to load withdrawal request detail.",
+    "insufficientTitle": "Admin wallet balance is insufficient",
+    "insufficientMessage": "Current balance is {{balance}}. You need to top up the payout wallet before processing this transaction.",
+    "approveCompleted": "PayOS confirmed the payout successfully. The withdrawal is now completed.",
+    "approveProcessing": "The payout order has been created. The system is monitoring the transfer automatically.",
+    "approveSuccess": "The withdrawal has been approved successfully.",
+    "approveError": "Unable to approve the withdrawal.",
+    "rejectRequireReason": "Please enter a rejection reason before rejecting.",
+    "rejectSuccess": "The withdrawal has been rejected.",
+    "rejectError": "Unable to reject the withdrawal.",
+    "payoutFailedMessage": "PayOS reported that the payout failed or was rejected. The money has not reached the developer's bank account.",
+    "timeoutMessage": "The system waited 30 seconds but PayOS still did not confirm a successful transfer. Please recheck the transaction or payout wallet balance.",
+    "warningFailedFlash": "PayOS reported the payout failed. Please recheck the withdrawal request.",
+    "warningTimeoutFlash": "The system waited 30 seconds but has not received a success confirmation from PayOS. Please recheck the payout queue.",
+    "successBalanceArrived": "The money has reached the user's account",
+    "searchPlaceholder": "Search by developer, email, bank, or reference...",
+    "filterAll": "All statuses",
+    "headers": {
+      "developer": "Developer",
+      "amount": "Amount",
+      "status": "Status",
+      "createdDate": "Created Date",
+      "actions": "Actions"
+    },
+    "loadingQueue": "Loading withdrawal queue...",
+    "empty": "No withdrawal requests match the current filters.",
+    "detail": {
+      "title": "Withdrawal Detail",
+      "adminBalance": "Admin wallet balance: {{amount}}",
+      "developerInfo": "Developer Information",
+      "fullName": "Full Name",
+      "email": "Email",
+      "created": "Created",
+      "walletInfo": "Wallet Information",
+      "walletBalance": "Wallet Balance",
+      "availableBalance": "Available Balance",
+      "pendingWithdrawal": "Pending Withdrawal",
+      "totalRevenue": "Total Revenue",
+      "bankInfo": "Bank Information",
+      "bankName": "Bank Name",
+      "accountHolder": "Account Holder",
+      "accountNumber": "Account Number",
+      "transferReference": "Transfer Reference",
+      "withdrawalAmount": "Withdrawal Amount",
+      "payoutTracking": "Payout Tracking",
+      "payosPayoutId": "PayOS Payout ID",
+      "payosStatus": "PayOS Status",
+      "payosCreated": "PayOS Created",
+      "lastProcessed": "Last Processed",
+      "noPayoutOrder": "No payout order created yet",
+      "noStatus": "No status available yet",
+      "step1": "Step 1",
+      "step1Title": "Create payout order",
+      "step1Description": "Admin creates a payout order from the platform's PayOS payout channel to the developer's bank account.",
+      "step2": "Step 2",
+      "step2Title": "Sync transfer result",
+      "step2Description": "When PayOS confirms a successful transfer, the withdrawal will automatically move to completed.",
+      "actionsTitle": "Actions",
+      "approvalNote": "Approval Note",
+      "approvalPlaceholder": "Internal note for this payout handling...",
+      "rejectRemark": "Reject Remark",
+      "rejectPlaceholder": "Enter the rejection reason if the bank information or amount has an issue...",
+      "storedRemark": "Stored Remark",
+      "noRemark": "No remark available.",
+      "createPayoutOrder": "Create Payout Order",
+      "rejectRequest": "Reject Request",
+      "finalStateReadonly": "This withdrawal is already in a final state and cannot be modified further.",
+      "payoutTransferStatus": "Payout transfer status",
+      "processingBadge": "Processing",
+      "updatedBadge": "Updated",
+      "processingDescription": "The system is checking the payout status periodically and will close automatically once the transfer is complete.",
+      "updatedDescription": "The payout status has been updated. This modal will close automatically shortly."
+    }
+  },
+  "fileManagement": {
+    "publishing": {
+      "marketplaceListing": "Marketplace",
+      "fullAcquisition": "Store (Buyout)",
+      "coPublishing": "Store (Co-publishing)"
+    },
+    "categories": {
+      "game": "Game (Source & Media)",
+      "asset": "Asset (Marketplace)",
+      "contractPdf": "契約書 (PDF)",
+      "kycImage": "本人確認画像 (KYC)"
+    },
+    "errors": {
+      "loadGames": "ゲーム一覧の読み込みに失敗しました。",
+      "loadAssets": "アセット一覧の読み込みに失敗しました。",
+      "loadFiles": "ファイル一覧の読み込みに失敗しました。",
+      "server": "サーバー接続エラーです。",
+      "gameDetail": "ゲーム詳細を読み込めませんでした。",
+      "gameDetailCatch": "ゲーム詳細の読み込み中にエラーが発生しました。",
+      "assetDetail": "アセット詳細を読み込めませんでした。",
+      "assetDetailCatch": "アセット詳細の読み込み中にエラーが発生しました。",
+      "allowPopup": "ファイルを表示するにはブラウザでポップアップを許可してください。",
+      "download": "ファイルのダウンロードに失敗しました。",
+      "delete": "ファイルの削除に失敗しました。",
+      "deleteCatch": "ファイル削除中にエラーが発生しました。"
+    },
+    "pagination": {
+      "summary": "{{page}} / {{totalPages}} ページ ({{totalElements}} 件)"
+    },
+    "buttons": {
+      "copyUrl": "URL をコピー",
+      "viewDirect": "直接表示",
+      "download": "ダウンロード",
+      "delete": "ファイルを削除",
+      "refresh": "更新",
+      "search": "検索",
+      "backToGames": "ゲーム一覧に戻る",
+      "backToAssets": "アセット一覧に戻る",
+      "confirmDelete": "削除を確定"
+    },
+    "list": {
+      "noGames": "ゲームが見つかりません。",
+      "gameFilesEmpty": "このゲームにはまだストレージ上のファイルがありません。",
+      "noAssets": "アセットが見つかりません。",
+      "assetFilesEmpty": "このアセットにはまだストレージ上のファイルがありません。",
+      "noCategoryFiles": "このカテゴリにはファイルが見つかりませんでした。",
+      "by": "{{name}}",
+      "fileCount": "{{count}} files"
+    },
+    "labels": {
+      "categoryMenu": "ファイルカテゴリ",
+      "totalCategorizedFiles": "分類済みファイル総数",
+      "storageSystem": "ストレージシステム",
+      "storageSubtitle": "SeaweedFS (稼働中・容量最適化)",
+      "searchPlaceholder": "ファイル名、所有者で検索...",
+      "loadingDetail": "詳細を読み込み中...",
+      "loadingList": "一覧を読み込み中...",
+      "loadingFiles": "ファイル一覧を読み込み中...",
+      "errorPrefix": "エラーが発生しました: {{error}}",
+      "storageBadge": "SeaweedFS",
+      "ownerId": "ID",
+      "headers": {
+        "preview": "プレビュー",
+        "fileName": "ファイル名",
+        "category": "カテゴリ",
+        "storage": "ストレージ",
+        "owner": "所有対象",
+        "uploadedAt": "アップロード日時",
+        "actions": "操作"
+      }
+    },
+    "deleteModal": {
+      "title": "ファイル削除の確認",
+      "description": "このファイルを削除してもよろしいですか？ この操作では次を実行します:",
+      "deletePhysicalPrefix": "元ファイルを次のストレージから物理削除します",
+      "unlinkDb": "関連 DB フィールドのリンクを解除し、NULL を設定するか、対応行を削除します:",
+      "object": "対象:",
+      "fileName": "ファイル名:",
+      "cancel": "キャンセル"
+    }
+  },
+  "userPanel": {
+    "userNotFound": "User not found.",
+    "updateError": "Unable to update this user right now.",
+    "fullNameRequired": "Full name is required.",
+    "invalidEmail": "Please enter a valid email address.",
+    "banReasonRequired": "Ban reason is required.",
+    "title": "User Management",
+    "description": "Search accounts, inspect details, and manage roles or account access without deleting users.",
+    "refresh": "Refresh",
+    "searchUser": "Search User",
+    "searchPlaceholder": "Search by name or email...",
+    "roleFilter": "Role Filter",
+    "statusFilter": "Status Filter",
+    "matchingUsers": "{{count}} matching users",
+    "clearFilters": "Clear filters",
+    "loading": "Loading platform users...",
+    "loadError": "Error loading users: {{error}}",
+    "tryAgain": "Try Again",
+    "headers": {
+      "avatar": "Avatar",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "createdDate": "Created Date",
+      "actions": "Actions"
+    },
+    "empty": "No users match the current search and filters.",
+    "you": "You",
+    "archived": "Archived",
+    "view": "View",
+    "detailTitle": "User Detail",
+    "detailDescription": "Review account information and take administrative actions.",
+    "userInformation": "User Information",
+    "fullName": "Full Name",
+    "createdDate": "Created Date",
+    "userId": "User ID",
+    "actionsTitle": "Actions",
+    "editUser": "Edit User",
+    "editUserHint": "Update full name and email address.",
+    "changeRole": "Change Role",
+    "changeRoleHint": "Assign admin, developer, or customer access.",
+    "suspendUser": "Suspend User",
+    "suspendUserHint": "Temporarily block access without deleting the account.",
+    "activateUser": "Activate User",
+    "activateUserHint": "Restore access for suspended or banned accounts.",
+    "banUser": "Ban User",
+    "banUserHint": "Permanently block account access with a required reason.",
+    "editDialogTitle": "Edit User",
+    "editDialogDescription": "Update the user's primary identity details.",
+    "fullNamePlaceholder": "Enter full name",
+    "emailPlaceholder": "Enter email address",
+    "cancel": "Cancel",
+    "save": "Save",
+    "roleDialogTitle": "Change Role",
+    "roleDialogDescription": "Assign the appropriate role for this account.",
+    "suspendDialogTitle": "Suspend User",
+    "suspendDialogDescription": "Temporarily block account access while preserving account data.",
+    "suspendConfirm": "Are you sure you want to suspend this user?",
+    "confirm": "Confirm",
+    "banDialogTitle": "Ban User",
+    "banDialogDescription": "Ban this account and record the reason for the action.",
+    "banConfirm": "Confirm banning this user. A ban reason is required before continuing.",
+    "banReason": "Ban Reason",
+    "banReasonPlaceholder": "Describe why this account is being banned...",
+    "confirmBan": "Confirm Ban",
+    "filterAll": "All"
   }
 }

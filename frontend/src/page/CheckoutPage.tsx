@@ -81,21 +81,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-6xl overflow-hidden rounded-[28px] border border-slate-200/10 bg-slate-950/96 shadow-[0_36px_120px_rgba(2,6,23,0.78)]"
+        className="relative w-full max-w-6xl overflow-hidden rounded-[28px] border border-slate-200/90 bg-white/96 shadow-[0_36px_120px_rgba(148,163,184,0.28)] dark:border-slate-700/70 dark:bg-night-950/96 dark:shadow-[0_36px_120px_rgba(0,0,0,0.72)]"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
           aria-label={t('payment:quick.close')}
-          className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/85 text-slate-300 transition-all duration-300 hover:border-slate-500 hover:text-white"
+          className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 transition-all duration-300 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700/70 dark:bg-slate-900/85 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
         >
           <X size={18} />
         </button>
 
         <div className="max-h-[92vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-7">
           <div className="space-y-6 animate-fade-in">
-            <div className="bg-gradient-to-r from-emerald-600/10 via-teal-400/5 to-slate-900 border border-slate-250 dark:border-slate-800 p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="bg-gradient-to-r from-emerald-600/10 via-teal-400/5 to-slate-100 dark:to-slate-900 border border-slate-250 dark:border-slate-800 p-6 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <button
             type="button"
@@ -108,11 +108,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <ShoppingBag size={20} className="text-emerald-500" /> {t('payment:checkout.title')}
           </h1>
           <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">
-            Thanh toán các sản phẩm trong giỏ hàng sử dụng số dư ví điện tử của bạn.
+            {t('payment:checkout.wallet.subtitle')}
           </p>
         </div>
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-500 font-mono">Tổng thanh toán</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-500 font-mono">{t('payment:checkout.totalPayment')}</p>
           <p className="mt-1 font-display text-xl font-bold text-slate-850 dark:text-white">
             {formatMoney(totalAmount, locale, currency, t('payment:common.free'))}
           </p>
@@ -120,22 +120,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-6">
-        <section className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+        <section className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 pb-4 dark:border-slate-800/70">
             <div>
-              <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">Tóm tắt đơn hàng</h2>
+              <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">{t('payment:checkout.orderSummary')}</h2>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {t('payment:checkout.itemsSelected', { count: cart.length })}
               </p>
             </div>
             <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <Wallet2 size={12} /> Thanh toán qua ví
+              <Wallet2 size={12} /> {t('payment:checkout.wallet.badge')}
             </span>
           </div>
 
           <div className="mt-5 space-y-3">
             {cart.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/30">
+              <div className="dark-depth-inset rounded-2xl border border-dashed border-slate-250 bg-slate-50/50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950/30">
                 <p className="font-display text-sm font-semibold text-slate-800 dark:text-slate-200">{t('payment:checkout.emptyTitle')}</p>
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                   {t('payment:checkout.emptyDescription')}
@@ -145,7 +145,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               cart.map((item) => (
                 <article
                   key={item.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45 md:flex-row md:items-center md:justify-between"
+                  className="dark-depth-inset flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <img
@@ -163,10 +163,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                         </span>
                         <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                           {item.itemType === 'source_code'
-                            ? "Game Source Code"
+                            ? t('payment:checkout.itemType.sourceCode')
                             : item.itemType === 'asset'
-                              ? "Marketplace Asset"
-                              : "Không hỗ trợ"}
+                              ? t('payment:checkout.itemType.asset')
+                              : t('payment:checkout.itemType.unsupported')}
                         </span>
                       </div>
                     </div>
@@ -191,14 +191,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         </section>
 
         <aside className="space-y-5">
-          <section className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+          <section className="dark-depth-card rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-emerald-500">
                 <Landmark size={18} />
               </div>
               <div>
-                <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">Phương thức thanh toán</h2>
-                <p className="text-xs text-slate-550 dark:text-slate-400">Mua trực tiếp qua số dư ví của tài khoản</p>
+                <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">{t('payment:checkout.paymentMethod')}</h2>
+                <p className="text-xs text-slate-550 dark:text-slate-400">{t('payment:checkout.wallet.paymentMethodDescription')}</p>
               </div>
             </div>
 
@@ -206,11 +206,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2">
                   <Wallet2 size={16} className="text-emerald-500" />
-                  Số dư ví hiện tại
+                  {t('payment:checkout.wallet.balanceLabel')}
                 </span>
                 <span className="font-mono text-sm font-bold text-slate-800 dark:text-white">
                   {isLoadingWallet ? (
-                    <span className="animate-pulse text-slate-400">Đang tải...</span>
+                    <span className="animate-pulse text-slate-500 dark:text-slate-400">{t('payment:checkout.wallet.loadingBalance')}</span>
                   ) : walletBalance !== null ? (
                     formatMoney(walletBalance, locale, currency, "0")
                   ) : (
@@ -220,7 +220,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
               
               <div className="border-t border-slate-200/50 dark:border-slate-800/50 pt-2 flex items-center justify-between text-xs">
-                <span className="text-slate-500">Giá trị đơn hàng:</span>
+                <span className="text-slate-500">{t('payment:checkout.totalAmount')}:</span>
                 <span className="font-mono text-slate-700 dark:text-slate-300">
                   -{formatMoney(totalAmount, locale, currency, "0")}
                 </span>
@@ -228,7 +228,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
               {walletBalance !== null && (
                 <div className="border-t border-slate-200/50 dark:border-slate-800/50 pt-2 flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Số dư sau khi mua:</span>
+                  <span className="text-slate-500">{t('payment:checkout.wallet.remainingBalance')}:</span>
                   <span className={`font-mono font-bold ${walletBalance - totalAmount >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
                     {formatMoney(walletBalance - totalAmount, locale, currency, "0")}
                   </span>
@@ -236,17 +236,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               )}
             </div>
 
-            <div className="mt-5 space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+            <div className="dark-depth-inset mt-5 space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Số lượng sản phẩm</span>
+                <span className="text-slate-500 dark:text-slate-400">{t('payment:checkout.wallet.itemCountLabel')}</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{cart.length}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Hình thức thanh toán</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">Trừ trực tiếp số dư ví</span>
+                <span className="text-slate-500 dark:text-slate-400">{t('payment:checkout.wallet.paymentTypeLabel')}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{t('payment:checkout.wallet.directDebit')}</span>
               </div>
               <div className="flex items-center justify-between border-t border-slate-200/80 pt-3 text-sm font-bold dark:border-slate-800/80">
-                <span className="text-slate-800 dark:text-white">Tổng cộng</span>
+                <span className="text-slate-800 dark:text-white">{t('payment:checkout.wallet.totalLabel')}</span>
                 <span className="text-emerald-600 dark:text-emerald-400">
                   {formatMoney(totalAmount, locale, currency, t('payment:common.free'))}
                 </span>
@@ -264,7 +264,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             {hasMultipleItems && (
               <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-400/10 p-4 text-xs text-amber-600 dark:text-amber-400 flex items-start gap-2">
                 <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                <span>Bạn chỉ được mua tối đa 1 sản phẩm cho mỗi phiên thanh toán.</span>
+                <span>{t('payment:checkout.singleItemWarning')}</span>
               </div>
             )}
 
@@ -272,8 +272,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-400 flex items-start gap-2">
                 <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold">Số dư ví không đủ</p>
-                  <p className="mt-1">Bạn cần nạp thêm {formatMoney(totalAmount - walletBalance, locale, currency, "0")} để thanh toán đơn hàng này.</p>
+                  <p className="font-bold">{t('payment:checkout.wallet.insufficientBalanceTitle')}</p>
+                  <p className="mt-1">{t('payment:checkout.wallet.insufficientBalanceDescription', {
+                    amount: formatMoney(totalAmount - walletBalance, locale, currency, "0"),
+                  })}</p>
                 </div>
               </div>
             )}
@@ -287,7 +289,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 icon={<Wallet2 size={16} />}
                 onClick={onGoToWallet}
               >
-                Nạp thêm tiền vào ví
+                {t('payment:checkout.wallet.topUpAction')}
               </Button>
             ) : (
               <Button
@@ -298,7 +300,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 onClick={onPlaceOrder}
                 disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder || isLoadingWallet || walletBalance === null}
               >
-                {isPlacingOrder ? "Đang xử lý thanh toán..." : "Thanh toán bằng số dư ví"}
+                {isPlacingOrder ? t('payment:checkout.wallet.processingOrder') : t('payment:checkout.wallet.placeOrder')}
               </Button>
             )}
           </section>
@@ -307,9 +309,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <div className="flex items-start gap-3">
               <ShieldCheck size={18} className="mt-0.5 text-emerald-500" />
               <div>
-                <h3 className="font-display text-sm font-bold text-slate-850 dark:text-white">Giao dịch an toàn</h3>
+                <h3 className="font-display text-sm font-bold text-slate-850 dark:text-white">{t('payment:checkout.wallet.securityTitle')}</h3>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                  Mọi giao dịch thanh toán bằng số dư ví đều được thực hiện bảo mật, mã hóa đường truyền và có thể hoàn tiền nếu sản phẩm gặp sự cố.
+                  {t('payment:checkout.wallet.securityDescription')}
                 </p>
               </div>
             </div>

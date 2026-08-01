@@ -98,7 +98,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
 
       {isOpen && (
         <>
-          <div className="absolute right-0 z-50 mt-3 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#3d3543]/98 p-2.5 shadow-[0_20px_45px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+          <div className="launch-overlay absolute right-0 z-50 mt-3 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white/98 p-2.5 shadow-[0_20px_45px_rgba(15,23,42,0.2)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-night-800/98 dark:shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
             <div className="space-y-0.5">
               {languages.map((language) => {
                 const isActive = currentLanguage === language.code;
@@ -110,7 +110,9 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
                     type="button"
                     onClick={() => handleLanguageChange(language.code)}
                     disabled={Boolean(loadingLanguage)}
-                    className={`flex min-h-11 w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#f0edf2] transition-colors hover:bg-white/[0.08] ${
+                    className={`flex min-h-11 w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[0.06] ${
+                      isActive ? 'bg-sky-500/8 text-sky-700 dark:bg-sky-400/8 dark:text-sky-200' : ''
+                    } ${
                       isLoading ? 'opacity-60' : ''
                     }`}
                   >

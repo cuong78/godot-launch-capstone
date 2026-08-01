@@ -2,10 +2,12 @@ import React from "react";
 import { createPortal } from "react-dom";
 import {
   CheckCircle2,
+  Moon,
   Rocket,
   X,
   ShoppingCart,
   ShoppingBag,
+  Sun,
   Trash2,
 } from "lucide-react";
 import { Button } from "./Button";
@@ -20,6 +22,8 @@ interface HeaderProps {
   setCurrentScreen: (screen: ScreenType) => void;
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
+  darkMode: boolean;
+  setDarkMode: (mode: boolean) => void;
   cart: Asset[];
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
@@ -237,6 +241,8 @@ export function Header({
   setCurrentScreen,
   currentUser,
   setCurrentUser,
+  darkMode,
+  setDarkMode,
   cart,
   isCartOpen,
   setIsCartOpen,
@@ -281,10 +287,10 @@ export function Header({
     return Array.from(itemMap.values());
   }, [cart]);
   const navGroupButtonClassName = (isActive: boolean, isOpen: boolean) =>
-    `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-studio ${
+    `launch-nav-link inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-studio focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/35 ${
       isActive || isOpen
-        ? "bg-[#292a31] text-white shadow-inner shadow-white/5"
-        : "text-[#b8bac5] hover:bg-white/[0.06] hover:text-white"
+        ? "launch-nav-active bg-slate-900 text-white shadow-inner shadow-white/5 dark:bg-night-800 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-night-800/75 dark:hover:text-white"
     }`;
   const isCreatorActive =
     currentScreen === "path" || currentScreen === "upload";
@@ -316,9 +322,9 @@ export function Header({
   return (
     <header
       id="godotlaunch-navbar"
-      className="sticky top-0 z-40 border-b border-white/10 bg-[#0d0e13]/95 text-white shadow-[0_10px_35px_rgba(0,0,0,0.24)] backdrop-blur-xl"
+      className="launch-chrome sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 text-slate-900 shadow-[0_10px_30px_rgba(148,163,184,0.14)] backdrop-blur-xl dark:border-slate-700/50 dark:bg-night-950/92 dark:text-white dark:shadow-[0_14px_38px_rgba(0,0,0,0.34)]"
     >
-      <div className="flex w-full min-w-0 items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8 xl:gap-6">
+      <div className="flex w-full min-w-0 items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 lg:px-8 xl:gap-6">
         {/* Brand */}
         <div
           className="flex shrink-0 cursor-pointer items-center gap-2.5"
@@ -333,7 +339,7 @@ export function Header({
               className="pointer-events-none absolute -left-[55px] -top-[10px] h-[82px] w-auto max-w-none select-none"
             />
           </div>
-          <span className="font-display text-lg font-bold leading-none tracking-tight text-white sm:text-xl">
+          <span className="launch-brand-wordmark hidden font-display text-lg font-bold leading-none tracking-tight text-slate-900 dark:text-white sm:inline sm:text-xl">
             godotlaunch
           </span>
         </div>
@@ -384,8 +390,18 @@ export function Header({
         </nav>
 
         {/* Utility actions: language, cart, notifications, and account */}
-        <div className="flex shrink-0 items-center gap-1.5">
-          <LanguageSwitcher className="shrink-0 [&>button]:!border-white/10 [&>button]:!bg-white/[0.04] [&>button]:!text-[#b8bac5] [&>button:hover]:!border-white/20 [&>button:hover]:!bg-white/[0.08] [&>button:hover]:!text-white" />
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+          <LanguageSwitcher className="launch-header-language shrink-0 [&>button]:!border-slate-200 [&>button]:!bg-white/85 [&>button]:!text-slate-600 [&>button:hover]:!border-slate-300 [&>button:hover]:!bg-white [&>button:hover]:!text-slate-900 dark:[&>button]:!border-slate-700/60 dark:[&>button]:!bg-night-850/75 dark:[&>button]:!text-slate-300 dark:[&>button:hover]:!border-slate-600/80 dark:[&>button:hover]:!bg-night-800 dark:[&>button:hover]:!text-white dark:[&>button]:!shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" />
+
+          <button
+            type="button"
+            onClick={() => setDarkMode(!darkMode)}
+            className="launch-control launch-header-control shrink-0 rounded-lg border border-slate-200 bg-white/85 p-2 text-slate-600 transition-studio hover:border-slate-300 hover:bg-white hover:text-amber-500 dark:border-slate-700/60 dark:bg-night-850/75 dark:text-slate-300 dark:hover:border-amber-300/35 dark:hover:bg-night-800 dark:hover:text-amber-300"
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
 
           {/* Shopping Cart Trigger */}
           <div className="relative">
@@ -395,7 +411,7 @@ export function Header({
                 setIsCartOpen(!isCartOpen);
                 setIsProfileOpen(false);
               }}
-              className="relative shrink-0 rounded-lg border border-white/10 bg-white/[0.04] p-2 text-[#b8bac5] transition-studio hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+              className="launch-control launch-header-control relative shrink-0 rounded-lg border border-slate-200 bg-white/85 p-2 text-slate-600 transition-studio hover:border-slate-300 hover:bg-white hover:text-slate-900 dark:border-slate-700/60 dark:bg-night-850/75 dark:text-slate-300 dark:hover:border-slate-600/80 dark:hover:bg-night-800 dark:hover:text-white"
               title={t("cart_view_items")}
               aria-label={t("cart_view_items")}
             >
@@ -414,7 +430,7 @@ export function Header({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsCartOpen(false)}
                 />
-                <div className="absolute right-0 mt-2.5 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-xl z-50 p-4 transition-colors duration-200">
+                <div className="launch-overlay absolute right-0 z-50 mt-2.5 w-[calc(100vw-1.5rem)] max-w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl transition-colors duration-200 dark:border-slate-700/60 dark:bg-night-850 dark:shadow-[0_22px_60px_rgba(0,0,0,0.48)]">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2.5">
                     <span className="font-display font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 animate-pulse">
                       <ShoppingBag size={14} /> {t("shopping_cart")}
@@ -446,7 +462,7 @@ export function Header({
                               <p className="text-sm font-semibold text-slate-800 dark:text-white truncate max-w-[140px]">
                                 {item.title}
                               </p>
-                              <p className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                              <p className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
                                 <span>{item.category}</span>
                                 {quantity > 1 && (
                                   <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-bold text-sky-600 dark:text-sky-400">
@@ -488,7 +504,7 @@ export function Header({
                       </button>
                     </div>
                   ) : (
-                    <div className="py-8 text-center text-slate-400 dark:text-slate-650">
+                    <div className="py-8 text-center text-slate-500 dark:text-slate-400">
                       <p className="text-sm">{t("cart_empty")}</p>
                       <button
                         onClick={() => {
@@ -517,7 +533,7 @@ export function Header({
           )}
 
           {/* Authentication Section */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             {currentUser ? (
               <div className="relative flex shrink-0 items-center gap-2">
                 <div className="relative">
@@ -537,7 +553,7 @@ export function Header({
                         className="fixed inset-0 z-40"
                         onClick={() => setIsProfileOpen(false)}
                       />
-                      <div className="absolute right-0 mt-2.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl shadow-xl p-3 z-50">
+                      <div className="launch-overlay absolute right-0 z-50 mt-2.5 w-48 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700/60 dark:bg-night-850 dark:shadow-[0_22px_60px_rgba(0,0,0,0.48)]">
                         <p className="text-sm font-semibold text-slate-850 dark:text-white truncate">
                           {currentUser.username}
                         </p>
@@ -610,11 +626,11 @@ export function Header({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="shrink-0 whitespace-nowrap !text-sm"
+                  className="shrink-0 whitespace-nowrap !px-2 !text-xs sm:!px-3 sm:!text-sm"
                   onClick={() => {
                     setCurrentScreen("signin");
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -625,7 +641,7 @@ export function Header({
                 <Button
                   variant="primary"
                   size="sm"
-                  className="shrink-0 whitespace-nowrap !text-sm"
+                  className="launch-header-cta shrink-0 whitespace-nowrap !px-2 !text-xs sm:!px-3 sm:!text-sm"
                   onClick={() => {
                     setCurrentScreen("signup");
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -640,22 +656,22 @@ export function Header({
       </div>
 
       {/* Mobile Navigation bar strips */}
-      <div className="flex max-w-full justify-start gap-1 overflow-x-auto border-t border-white/10 bg-[#101116]/95 px-3 py-2 text-xs lg:hidden sm:justify-center">
+      <div className="launch-mobile-nav flex max-w-full justify-start gap-1 overflow-x-auto border-t border-slate-200/80 bg-white/92 px-3 py-2 text-xs dark:border-slate-700/40 dark:bg-night-900/95 lg:hidden sm:justify-center">
         <button
           onClick={() => setCurrentScreen("marketplace")}
-          className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "marketplace" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
+          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "marketplace" ? "launch-nav-active bg-slate-900 font-bold text-white dark:bg-night-800" : "text-slate-600 dark:text-slate-300"}`}
         >
           {t("marketplace")}
         </button>
         <button
           onClick={handleOpenCreatorCenter}
-          className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "upload" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
+          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "upload" ? "launch-nav-active bg-slate-900 font-bold text-white dark:bg-night-800" : "text-slate-600 dark:text-slate-300"}`}
         >
           {t("creator_hub")}
         </button>
         <button
           onClick={() => setCurrentScreen("dashboard")}
-          className={`shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "dashboard" ? "bg-[#292a31] font-bold text-white" : "text-[#aeb0bb]"}`}
+          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "dashboard" ? "launch-nav-active bg-slate-900 font-bold text-white dark:bg-night-800" : "text-slate-600 dark:text-slate-300"}`}
         >
           {t("dashboard")}
         </button>

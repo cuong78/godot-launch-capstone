@@ -65,6 +65,7 @@
     "resourceAsset": "TÀI NGUYÊN",
     "game": "Game",
     "resource": "Tài nguyên",
+    "free": "Miễn phí",
     "currencyVnd": "VND",
     "projectDetails": "Đang mở tùy chọn cấu hình nâng cao cho dự án: {{projectName}}. Chạy trên engine {{engine}}.",
     "loadingGames": "Đang tải game...",
@@ -124,10 +125,19 @@
     "signSuccess": "Đã ký hợp đồng thành công! Hợp đồng đã hoàn tất và game hiện đã được phê duyệt để xuất bản.",
     "signError": "Lỗi khi thực hiện ký hợp đồng",
     "signErrorMessage": "Lỗi ký hợp đồng",
+    "rejectErrorMessage": "Lỗi từ chối hợp đồng",
     "deleteConfirm": "Bạn có chắc muốn xóa sản phẩm này khỏi Creator Marketplace không?",
     "deleteSuccess": "Đã gỡ sản phẩm thành công!",
     "deleteFail": "Không thể xóa sản phẩm",
     "deleteError": "Lỗi khi xóa sản phẩm"
+  },
+  "errors": {
+    "loadGames": "Không thể tải game của bạn",
+    "fetchGames": "Không thể lấy danh sách game của bạn",
+    "loadMarketplaceItems": "Không thể tải các mục marketplace của bạn",
+    "fetchMarketplaceItems": "Không thể lấy các mục marketplace của bạn",
+    "loadSalesStatistics": "Không thể tải thống kê doanh số",
+    "fetchSalesStatistics": "Không thể lấy thống kê doanh số"
   },
   "releaseSchedule": {
     "title": "Release Schedule Tracker",

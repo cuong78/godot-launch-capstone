@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, CheckCircle, AlertCircle, Loader2, X, FileText, Edit3 } from 'lucide-react';
 import { kycApi, KycOcrResult, KycConfirmPayload } from '../api/kycApi';
 import { useAuth } from '../hooks/useAuth';
@@ -24,22 +25,13 @@ interface Props {
   successDescription?: string;
 }
 
-const FIELD_LABELS: Record<string, string> = {
-  fullName: 'Họ và tên',
-  idNumber: 'Số CCCD / Hộ chiếu',
-  dateOfBirth: 'Ngày sinh (DD/MM/YYYY)',
-  address: 'Địa chỉ thường trú',
-  bankName: 'Ngân hàng',
-  bankAccount: 'Số tài khoản',
-  bankAccountHolder: 'Chủ tài khoản',
-};
-
 export default function KycOcrModal({
   onSuccess,
   onClose,
-  subtitle = 'Yêu cầu trước khi ký hợp đồng lần đầu',
-  successDescription = 'Thông tin đã được lưu. Đang điền vào hợp đồng...',
+  subtitle,
+  successDescription,
 }: Props) {
+  const { t } = useTranslation(['shared']);
   const { loginWithToken } = useAuth();
   const [step, setStep] = useState<Step>('upload');
   const [docType, setDocType] = useState<DocType>('cccd');
@@ -61,6 +53,18 @@ export default function KycOcrModal({
   const [error, setError] = useState<string | null>(null);
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
+  const resolvedSubtitle = subtitle ?? t('kyc.defaultSubtitle');
+  const resolvedSuccessDescription =
+    successDescription ?? t('kyc.defaultSuccessDescription');
+  const fieldLabels: Record<string, string> = {
+    fullName: t('kyc.field.fullName'),
+    idNumber: t('kyc.field.idNumber'),
+    dateOfBirth: t('kyc.field.dateOfBirth'),
+    address: t('kyc.field.address'),
+    bankName: t('kyc.field.bankName'),
+    bankAccount: t('kyc.field.bankAccount'),
+    bankAccountHolder: t('kyc.field.bankAccountHolder'),
+  };
 
   const handleFileChange = (side: 'front' | 'back') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,11 +89,11 @@ export default function KycOcrModal({
 
   const handleOcr = useCallback(async () => {
     if (!frontBase64) {
-      setError('Vui lòng chọn ảnh mặt trước của giấy tờ.');
+      setError(t('kyc.errorSelectFront'));
       return;
     }
     if (docType === 'cccd' && !backBase64) {
-      setError('Vui lòng chọn ảnh mặt sau của CCCD.');
+      setError(t('kyc.errorSelectBack'));
       return;
     }
     setStep('processing');
@@ -109,18 +113,18 @@ export default function KycOcrModal({
         }));
         setStep('review');
       } else {
-        setError(res.message || 'Không thể đọc thông tin. Vui lòng thử lại với ảnh rõ hơn.');
+        setError(res.message || t('kyc.errorReadFailed'));
         setStep('upload');
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Lỗi kết nối. Vui lòng thử lại.');
+      setError(err?.response?.data?.message || t('kyc.errorConnection'));
       setStep('upload');
     }
-  }, [frontBase64, backBase64, docType]);
+  }, [frontBase64, backBase64, docType, t]);
 
   const handleConfirm = useCallback(async () => {
     if (!form.fullName.trim() || !form.idNumber.trim()) {
-      setError('Họ tên và số giấy tờ không được để trống.');
+      setError(t('kyc.errorMissingRequired'));
       return;
     }
     setStep('submitting');
@@ -157,14 +161,14 @@ export default function KycOcrModal({
           });
         }, 1500);
       } else {
-        setError(res.message || 'Lưu thông tin thất bại.');
+        setError(res.message || t('kyc.errorSaveFailed'));
         setStep('review');
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Lỗi kết nối. Vui lòng thử lại.');
+      setError(err?.response?.data?.message || t('kyc.errorConnection'));
       setStep('review');
     }
-  }, [form, frontBase64, backBase64, onSuccess]);
+  }, [form, frontBase64, backBase64, onSuccess, t]);
 
   const resetUpload = () => {
     setFrontPreviewUrl(null);
@@ -179,20 +183,20 @@ export default function KycOcrModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
+      <div className="dark-depth-card w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700/70 dark:bg-night-850">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-white/10">
           <div className="flex items-center gap-3">
             <div className="bg-amber-500/20 p-2 rounded-xl">
               <FileText className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h2 className="text-white font-semibold text-sm">Xác minh danh tính (KYC)</h2>
-              <p className="text-white/40 text-xs">{subtitle}</p>
+              <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{t('kyc.title')}</h2>
+              <p className="text-xs text-slate-500 dark:text-white/40">{resolvedSubtitle}</p>
             </div>
           </div>
           {step !== 'submitting' && step !== 'processing' && (
-            <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+            <button onClick={onClose} className="text-slate-400 transition-colors hover:text-slate-900 dark:text-white/40 dark:hover:text-white">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -203,27 +207,27 @@ export default function KycOcrModal({
           {step === 'upload' && (
             <div className="space-y-5">
               <div>
-                <p className="text-white/70 text-sm mb-4">
-                  Chụp ảnh hoặc tải lên ảnh CCCD/Hộ chiếu. Hệ thống sẽ tự động đọc thông tin để điền vào hợp đồng.
+                <p className="mb-4 text-sm text-slate-600 dark:text-white/70">
+                  {t('kyc.uploadDescription')}
                 </p>
 
                 {/* Doc type selector */}
                 <div className="flex gap-3 mb-4">
-                  {(['cccd', 'passport'] as DocType[]).map((t) => (
+                  {(['cccd', 'passport'] as DocType[]).map((type) => (
                     <button
-                      key={t}
+                      key={type}
                       onClick={() => {
-                        setDocType(t);
+                        setDocType(type);
                         setBackPreviewUrl(null);
                         setBackBase64('');
                       }}
                       className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
-                        docType === t
+                        docType === type
                           ? 'bg-amber-500 border-amber-500 text-black'
-                          : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'
+                          : 'bg-slate-100 border-slate-200 text-slate-600 hover:border-slate-300 dark:bg-white/5 dark:border-white/10 dark:text-white/60 dark:hover:border-white/30'
                       }`}
                     >
-                      {t === 'cccd' ? 'CCCD' : 'Hộ chiếu'}
+                      {type === 'cccd' ? t('kyc.docTypeId') : t('kyc.docTypePassport')}
                     </button>
                   ))}
                 </div>
@@ -232,21 +236,23 @@ export default function KycOcrModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Front Side Upload */}
                   <div className="space-y-2">
-                    <label className="text-white/60 text-xs font-semibold block">
-                      Mặt trước {docType === 'cccd' ? 'CCCD' : 'Hộ chiếu'} <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-white/60">
+                      {docType === 'cccd'
+                        ? t('kyc.frontLabelId')
+                        : t('kyc.frontLabelPassport')} <span className="text-rose-500">*</span>
                     </label>
                     {!frontPreviewUrl ? (
                       <button
                         type="button"
                         onClick={() => frontInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-white/20 rounded-xl p-6 flex flex-col items-center gap-2 hover:border-amber-400/50 hover:bg-amber-400/5 transition-all h-40 justify-center text-center"
+                        className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition-all hover:border-amber-400/50 hover:bg-amber-400/5 dark:border-white/20"
                       >
-                        <Upload className="w-6 h-6 text-white/30" />
-                        <span className="text-white/50 text-xs">Tải lên mặt trước</span>
-                        <span className="text-white/30 text-[10px]">PNG, JPG, JPEG</span>
+                        <Upload className="h-6 w-6 text-slate-400 dark:text-white/30" />
+                        <span className="text-xs text-slate-500 dark:text-white/50">{t('kyc.uploadFront')}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-white/40">{t('kyc.supportedFormats')}</span>
                       </button>
                     ) : (
-                      <div className="relative rounded-xl overflow-hidden border border-white/10 h-40 bg-black/30 flex items-center justify-center">
+                      <div className="relative flex h-40 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-black/30">
                         <img src={frontPreviewUrl} alt="front-preview" className="max-w-full max-h-full object-contain" />
                         <button
                           type="button"
@@ -273,21 +279,21 @@ export default function KycOcrModal({
                   {/* Back Side Upload (only for CCCD) */}
                   {docType === 'cccd' && (
                     <div className="space-y-2">
-                      <label className="text-white/60 text-xs font-semibold block">
-                        Mặt sau CCCD <span className="text-rose-500">*</span>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-white/60">
+                        {t('kyc.backLabelId')} <span className="text-rose-500">*</span>
                       </label>
                       {!backPreviewUrl ? (
                         <button
                           type="button"
                           onClick={() => backInputRef.current?.click()}
-                          className="w-full border-2 border-dashed border-white/20 rounded-xl p-6 flex flex-col items-center gap-2 hover:border-amber-400/50 hover:bg-amber-400/5 transition-all h-40 justify-center text-center"
+                          className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition-all hover:border-amber-400/50 hover:bg-amber-400/5 dark:border-white/20"
                         >
-                          <Upload className="w-6 h-6 text-white/30" />
-                          <span className="text-white/50 text-xs">Tải lên mặt sau</span>
-                          <span className="text-white/30 text-[10px]">PNG, JPG, JPEG</span>
+                          <Upload className="h-6 w-6 text-slate-400 dark:text-white/30" />
+                          <span className="text-xs text-slate-500 dark:text-white/50">{t('kyc.uploadBack')}</span>
+                          <span className="text-[10px] text-slate-500 dark:text-white/40">{t('kyc.supportedFormats')}</span>
                         </button>
                       ) : (
-                        <div className="relative rounded-xl overflow-hidden border border-white/10 h-40 bg-black/30 flex items-center justify-center">
+                        <div className="relative flex h-40 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-white/10 dark:bg-black/30">
                           <img src={backPreviewUrl} alt="back-preview" className="max-w-full max-h-full object-contain" />
                           <button
                             type="button"
@@ -326,7 +332,7 @@ export default function KycOcrModal({
                 disabled={!frontBase64 || (docType === 'cccd' && !backBase64)}
                 className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-xl transition-colors"
               >
-                Đọc thông tin giấy tờ
+                {t('kyc.readDocumentInfo')}
               </button>
             </div>
           )}
@@ -335,7 +341,7 @@ export default function KycOcrModal({
           {step === 'processing' && (
             <div className="flex flex-col items-center gap-4 py-8">
               <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
-              <p className="text-white/70 text-sm">Đang nhận dạng ký tự...</p>
+              <p className="text-sm text-slate-600 dark:text-white/70">{t('kyc.processing')}</p>
             </div>
           )}
 
@@ -344,25 +350,25 @@ export default function KycOcrModal({
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-amber-400 text-xs bg-amber-400/10 rounded-xl px-4 py-3">
                 <Edit3 className="w-4 h-4 shrink-0" />
-                <span>Kiểm tra và chỉnh sửa thông tin nếu cần, rồi bấm Xác nhận.</span>
+                <span>{t('kyc.reviewHint')}</span>
               </div>
 
               {(['fullName', 'idNumber', 'dateOfBirth', 'address'] as const).map((field) => (
                 <div key={field}>
-                  <label className="text-white/50 text-xs mb-1 block">{FIELD_LABELS[field]}</label>
+                  <label className="mb-1 block text-xs text-slate-500 dark:text-white/50">{fieldLabels[field]}</label>
                   {field === 'address' ? (
                     <textarea
                       value={form[field] ?? ''}
                       onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
                       rows={2}
-                      className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-400/60 resize-none"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none resize-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                     />
                   ) : (
                     <input
                       type="text"
                       value={form[field] ?? ''}
                       onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                      className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-400/60"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                     />
                   )}
                 </div>
@@ -380,15 +386,15 @@ export default function KycOcrModal({
               <div className="flex gap-3 pt-1">
                 <button
                   onClick={resetUpload}
-                  className="flex-1 bg-white/5 border border-white/10 text-white/60 hover:text-white text-sm py-2.5 rounded-xl transition-colors"
+                  className="flex-1 rounded-xl border border-slate-200 bg-slate-100 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:text-white"
                 >
-                  Thử lại
+                  {t('kyc.retry')}
                 </button>
                 <button
                   onClick={handleConfirm}
                   className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm py-2.5 rounded-xl transition-colors"
                 >
-                  Xác nhận
+                  {t('kyc.confirm')}
                 </button>
               </div>
             </div>
@@ -398,7 +404,7 @@ export default function KycOcrModal({
           {step === 'submitting' && (
             <div className="flex flex-col items-center gap-4 py-8">
               <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
-              <p className="text-white/70 text-sm">Đang lưu thông tin KYC...</p>
+              <p className="text-sm text-slate-600 dark:text-white/70">{t('kyc.submitting')}</p>
             </div>
           )}
 
@@ -408,9 +414,9 @@ export default function KycOcrModal({
               <div className="bg-green-500/20 p-4 rounded-full">
                 <CheckCircle className="w-10 h-10 text-green-400" />
               </div>
-              <p className="text-white font-semibold">Xác minh danh tính thành công</p>
-              <p className="text-white/50 text-sm text-center">
-                {successDescription}
+              <p className="font-semibold text-slate-950 dark:text-white">{t('kyc.successTitle')}</p>
+              <p className="text-center text-sm text-slate-500 dark:text-white/50">
+                {resolvedSuccessDescription}
               </p>
             </div>
           )}

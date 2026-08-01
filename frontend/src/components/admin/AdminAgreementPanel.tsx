@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Loader2, AlertTriangle, History } from 'lucide-react';
 import { adminAgreementApi, AgreementVersionResponse } from '../../api/agreementApi';
 
 export default function AdminAgreementPanel() {
+  const { t } = useTranslation(['admin']);
   const [versions, setVersions] = useState<AgreementVersionResponse[]>([]);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -21,7 +23,7 @@ export default function AdminAgreementPanel() {
         setContent(active?.content || '');
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Không thể tải danh sách thỏa thuận.');
+      setError(err?.response?.data?.message || err?.message || t('agreementPanel.loadError'));
     } finally {
       setLoading(false);
     }
@@ -31,7 +33,7 @@ export default function AdminAgreementPanel() {
 
   const handleSave = async () => {
     if (!content.trim()) {
-      setError('Nội dung thỏa thuận không được để trống.');
+      setError(t('agreementPanel.emptyError'));
       return;
     }
     setSaving(true);
@@ -43,10 +45,10 @@ export default function AdminAgreementPanel() {
         setSuccess(true);
         await load();
       } else {
-        setError(res.message || 'Không thể lưu thỏa thuận.');
+        setError(res.message || t('agreementPanel.saveError'));
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Lỗi khi lưu thỏa thuận.');
+      setError(err?.response?.data?.message || err?.message || t('agreementPanel.saveCatchError'));
     } finally {
       setSaving(false);
     }
@@ -62,7 +64,7 @@ export default function AdminAgreementPanel() {
     <div className="space-y-4">
       {success && (
         <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg text-emerald-500 text-xs font-semibold flex items-center gap-1.5">
-          <Check size={14} /> Đã lưu version mới và kích hoạt.
+          <Check size={14} /> {t('agreementPanel.success')}
         </div>
       )}
       {error && (
@@ -71,21 +73,31 @@ export default function AdminAgreementPanel() {
         </div>
       )}
 
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+      <div className="rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-white/70 text-xs font-semibold uppercase tracking-wide">
-            Nội dung thỏa thuận {activeVersion ? `(đang active: v${activeVersion.version})` : ''}
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/70">
+            {activeVersion
+              ? t('agreementPanel.contentLabel', {
+                  version: `(v${activeVersion.version})`,
+                })
+              : t('agreementPanel.contentLabelNoVersion')}
           </span>
         </div>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={20}
-          className="w-full bg-black/30 border border-white/10 text-white text-xs font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400/60 resize-y"
-          placeholder="Nội dung thỏa thuận... dùng {{commissionRate}} và {{revenueSharePercent}} để chèn tỷ lệ hiện hành"
+          className="w-full resize-y rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-black/30 dark:text-white"
+          placeholder={t('agreementPanel.placeholder', {
+            commissionRate: '{{commissionRate}}',
+            revenueSharePercent: '{{revenueSharePercent}}',
+          })}
         />
-        <p className="text-white/40 text-[11px] mt-2">
-          Dùng <code className="text-amber-400">{'{{commissionRate}}'}</code> và <code className="text-amber-400">{'{{revenueSharePercent}}'}</code> trong nội dung — hệ thống tự thay bằng tỷ lệ hiện hành khi hiển thị.
+        <p className="mt-2 text-[11px] text-slate-500 dark:text-white/40">
+          {t('agreementPanel.helper', {
+            commissionRate: '{{commissionRate}}',
+            revenueSharePercent: '{{revenueSharePercent}}',
+          })}
         </p>
         <button
           onClick={handleSave}
@@ -93,29 +105,29 @@ export default function AdminAgreementPanel() {
           className="mt-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-2"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-          Lưu (tạo version mới)
+          {t('agreementPanel.save')}
         </button>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3 text-white/70 text-xs font-semibold uppercase tracking-wide">
-          <History className="w-3.5 h-3.5" /> Lịch sử version
+      <div className="rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/70">
+          <History className="w-3.5 h-3.5" /> {t('agreementPanel.history')}
         </div>
         {versions.length === 0 ? (
-          <p className="text-white/40 text-sm py-4 text-center">Chưa có version nào.</p>
+          <p className="py-4 text-center text-sm text-slate-500 dark:text-white/40">{t('agreementPanel.empty')}</p>
         ) : (
           <div className="space-y-2">
             {versions.map((v) => (
-              <div key={v.id} className="flex items-center justify-between bg-black/20 rounded-lg px-3 py-2">
+              <div key={v.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-black/20">
                 <div className="flex items-center gap-2">
-                  <span className="text-white text-xs font-semibold">v{v.version}</span>
+                  <span className="text-xs font-semibold text-slate-900 dark:text-white">v{v.version}</span>
                   {v.isActive && (
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
-                      Active
+                      {t('agreementPanel.active')}
                     </span>
                   )}
                 </div>
-                <span className="text-white/40 text-xs">{new Date(v.createdAt).toLocaleString()}</span>
+                <span className="text-xs text-slate-500 dark:text-white/40">{new Date(v.createdAt).toLocaleString()}</span>
               </div>
             ))}
           </div>

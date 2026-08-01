@@ -24,10 +24,10 @@ interface SignInPageProps {
   setCurrentUser: (user: User | null) => void;
 }
 
-const panelClassName = 'w-full max-w-xl rounded-[2rem] border border-amber-300/10 bg-[#241f15]/55 p-6 shadow-[0_0_40px_rgba(251,191,36,0.15)] backdrop-blur-2xl sm:p-8 lg:max-w-lg lg:p-10';
-const labelClassName = 'mb-2 ml-1 block font-display text-sm font-semibold text-[#d3c5ac]';
-const inputClassName = 'w-full rounded-2xl border border-[#4f4633] bg-[#201b11]/70 px-5 py-4 text-base text-[#ece1d1] outline-none transition placeholder:text-[#d3c5ac]/40 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 disabled:cursor-not-allowed disabled:opacity-60';
-const socialButtonClassName = 'group flex items-center justify-center gap-3 rounded-2xl border border-[#4f4633] px-4 py-3.5 text-sm font-semibold text-[#ece1d1] transition hover:border-white/20 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60';
+const panelClassName = 'launch-auth-panel w-full max-w-xl rounded-[2rem] border border-slate-200/80 bg-white/92 p-6 shadow-[0_18px_48px_rgba(148,163,184,0.16)] backdrop-blur-2xl dark:border-night-700/60 dark:bg-night-850/88 dark:shadow-[0_28px_80px_rgba(0,0,0,0.42),0_0_42px_rgba(251,191,36,0.055),inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-8 lg:max-w-lg lg:p-10';
+const labelClassName = 'mb-2 ml-1 block font-display text-sm font-semibold text-slate-600 dark:text-slate-300';
+const inputClassName = 'launch-control w-full rounded-2xl border border-slate-300 bg-white/95 px-5 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-night-700/70 dark:bg-night-950/65 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-amber-300/70';
+const socialButtonClassName = 'group flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white/85 px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-night-700/60 dark:bg-night-900/65 dark:text-slate-100 dark:hover:border-slate-600 dark:hover:bg-night-800';
 
 export const SignInPage: React.FC<SignInPageProps> = ({
   setCurrentScreen,
@@ -256,13 +256,13 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   const renderStatusMessage = () => (
     <>
       {displayError && (
-        <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-200">
+        <div className="rounded-2xl border border-red-400/20 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:bg-red-500/10 dark:text-red-200">
           {displayError}
         </div>
       )}
 
       {resetSuccessMessage && (
-        <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-200">
+        <div className="rounded-2xl border border-emerald-400/20 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
           {resetSuccessMessage}
         </div>
       )}
@@ -275,10 +275,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
         <Loader2 className="h-7 w-7 animate-spin text-amber-300" />
       </div>
       <div className="space-y-1">
-        <p className="font-display text-xl font-bold text-[#ece1d1]">
+        <p className="font-display text-xl font-bold text-slate-950 dark:text-slate-100">
           {t('auth:signin.authenticatingTitle', { provider: oauthProvider })}
         </p>
-        <p className="text-sm text-[#d3c5ac]">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
           {t('auth:signin.authenticatingSubtitle')}
         </p>
       </div>
@@ -289,19 +289,19 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     <div className="relative z-10 animate-fade-in py-4 sm:py-8">
       <div className="grid items-center gap-8 lg:min-h-[72vh] lg:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)] lg:gap-12">
         <section className="hidden lg:flex lg:flex-col lg:justify-center">
-          <div className="max-w-2xl space-y-8">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-amber-200">
+          <div className="launch-surface max-w-2xl space-y-8 rounded-[2rem] border border-white/70 bg-white/65 p-8 shadow-[0_24px_70px_-36px_rgba(15,23,42,0.45)] backdrop-blur-[3px] dark:border-night-700/50 dark:bg-night-950/68 dark:shadow-[0_28px_78px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.025)]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-100/85 px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-amber-700 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-200">
               <span className="h-2 w-2 rounded-full bg-amber-300 animate-pulse" />
               {t('auth:signin.badge')}
             </span>
 
             <div className="space-y-5">
-              <h1 className="font-display text-5xl font-extrabold leading-[1.1] tracking-tight text-white xl:text-6xl">
+              <h1 className="font-display text-5xl font-extrabold leading-[1.1] tracking-tight text-slate-950 dark:text-white xl:text-6xl">
                 {signinHeroBefore}
-                <span className="text-amber-300">{t('auth:signin.heroHighlight')}</span>
+                <span className="text-amber-500 dark:text-amber-300">{t('auth:signin.heroHighlight')}</span>
                 {signinHeroAfter}
               </h1>
-              <p className="max-w-xl text-lg leading-relaxed text-slate-300">
+              <p className="max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-300">
                 {t('auth:signin.heroSubtitle')}
               </p>
             </div>
@@ -310,12 +310,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               {featureItems.map(({ icon: Icon, title }) => (
                 <div
                   key={title}
-                  className="flex items-center gap-4 rounded-2xl border border-white/5 bg-black/10 px-4 py-4 backdrop-blur-sm transition hover:border-amber-300/25 hover:bg-black/20"
+                  className="launch-raised launch-interactive flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white/75 px-4 py-4 backdrop-blur-sm transition hover:border-amber-300/25 hover:bg-white dark:border-night-700/45 dark:bg-night-850/75 dark:hover:border-amber-300/20 dark:hover:bg-night-800"
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/10 text-amber-300">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-300/30 bg-amber-100/85 text-amber-500 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-300">
                     <Icon size={20} />
                   </div>
-                  <span className="font-display text-base font-semibold text-[#ece1d1]">
+                  <span className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
                     {title}
                   </span>
                 </div>
@@ -329,16 +329,16 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             {viewMode === 'signin' && (
               <>
                 <div className="mb-8 text-center">
-                  <h2 className="font-display text-3xl font-bold tracking-tight text-[#ece1d1] sm:text-4xl">
+                  <h2 className="font-display text-3xl font-bold tracking-tight text-slate-950 dark:text-slate-100 sm:text-4xl">
                     {t('auth:signin.title')}
                   </h2>
-                  <p className="mt-3 text-sm text-[#d3c5ac] sm:text-base">
+                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 sm:text-base">
                     {t('auth:signin.subtitle')}
                   </p>
                 </div>
 
                 {displayError && (
-                  <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-200">
+                  <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:bg-red-500/10 dark:text-red-200">
                     {displayError}
                   </div>
                 )}
@@ -366,7 +366,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
                       <div>
                         <div className="mb-2 ml-1 flex items-center justify-between gap-3">
-                          <label htmlFor="signin-password" className="font-display text-sm font-semibold text-[#d3c5ac]">
+                          <label htmlFor="signin-password" className="font-display text-sm font-semibold text-slate-600 dark:text-slate-300">
                             {t('auth:signin.passwordLabel')}
                           </label>
                           <button
@@ -377,7 +377,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                               setResetSuccessMessage('');
                               setForgotEmail(email);
                             }}
-                            className="text-sm font-medium text-amber-200 transition hover:text-amber-100 hover:underline"
+                            className="text-sm font-medium text-amber-600 transition hover:text-amber-500 hover:underline dark:text-amber-200 dark:hover:text-amber-100"
                             disabled={isBusy}
                           >
                             {t('auth:forgot_password')}
@@ -398,7 +398,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                           <button
                             type="button"
                             onClick={() => setShowPassword((current) => !current)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#d3c5ac] transition hover:text-white"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                             aria-label={showPassword ? t('auth:signin.hidePassword') : t('auth:signin.showPassword')}
                             disabled={isBusy}
                           >
@@ -414,9 +414,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                           checked={keepSignedIn}
                           onChange={(e) => setKeepSignedIn(e.target.checked)}
                           disabled={isBusy}
-                          className="h-5 w-5 rounded-md border-[#4f4633] bg-[#201b11] text-amber-300 focus:ring-amber-300/50"
+                          className="h-5 w-5 rounded-md border-slate-300 bg-white text-amber-500 focus:ring-amber-300/50 dark:border-night-700 dark:bg-night-950 dark:text-amber-300"
                         />
-                        <label htmlFor="remember" className="ml-3 text-sm text-[#d3c5ac]">
+                        <label htmlFor="remember" className="ml-3 text-sm text-slate-600 dark:text-slate-300">
                           {t('auth:remember_me')}
                         </label>
                       </div>
@@ -433,10 +433,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
                     <div className="relative my-8">
                       <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-white/5" />
+                        <div className="w-full border-t border-slate-200 dark:border-white/5" />
                       </div>
                       <div className="relative flex justify-center">
-                        <span className="bg-[#241f15]/80 px-6 font-mono text-[11px] uppercase tracking-[0.3em] text-[#d3c5ac]">
+                        <span className="bg-white px-6 font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500 dark:bg-night-850 dark:text-slate-400">
                           {t('auth:signin.orContinueWith')}
                         </span>
                       </div>
@@ -476,12 +476,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                     </div>
 
                     <div className="mt-8 text-center">
-                      <p className="text-sm text-[#d3c5ac]">
+                      <p className="text-sm text-slate-600 dark:text-slate-300">
                         {t('auth:signin.noAccount')}{' '}
                         <button
                           type="button"
                           onClick={() => setCurrentScreen('signup')}
-                          className="font-bold text-amber-200 transition hover:text-amber-100 hover:underline"
+                          className="font-bold text-amber-600 transition hover:text-amber-500 hover:underline dark:text-amber-200 dark:hover:text-amber-100"
                           disabled={isBusy}
                         >
                           {t('auth:signin.createAccount')}
@@ -496,10 +496,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             {viewMode === 'forgot_email' && (
               <>
                 <div className="mb-8 text-center">
-                  <h2 className="font-display text-3xl font-bold tracking-tight text-[#ece1d1]">
+                  <h2 className="font-display text-3xl font-bold tracking-tight text-slate-950 dark:text-slate-100">
                     {t('auth:forgot.title')}
                   </h2>
-                  <p className="mt-3 text-sm text-[#d3c5ac]">
+                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                     {t('auth:forgot.subtitle')}
                   </p>
                 </div>
@@ -541,7 +541,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                       setLocalError('');
                       setResetSuccessMessage('');
                     }}
-                    className="flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#d3c5ac] transition hover:text-white"
+                    className="flex w-full items-center justify-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                     disabled={loading}
                   >
                     <ArrowLeft size={16} />
@@ -554,10 +554,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             {viewMode === 'forgot_reset' && (
               <>
                 <div className="mb-8 text-center">
-                  <h2 className="font-display text-3xl font-bold tracking-tight text-[#ece1d1]">
+                  <h2 className="font-display text-3xl font-bold tracking-tight text-slate-950 dark:text-slate-100">
                     {t('auth:reset.title')}
                   </h2>
-                  <p className="mt-3 text-sm text-[#d3c5ac]">
+                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                     {t('auth:reset.subtitle', { email: forgotEmail })}
                   </p>
                 </div>
@@ -632,7 +632,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                       setLocalError('');
                       setResetSuccessMessage('');
                     }}
-                    className="flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#d3c5ac] transition hover:text-white"
+                    className="flex w-full items-center justify-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                     disabled={loading}
                   >
                     <ArrowLeft size={16} />

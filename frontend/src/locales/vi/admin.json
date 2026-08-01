@@ -53,5 +53,984 @@
       "assetListed": "Asset đăng bán",
       "assetSold": "Asset đã bán"
     }
+  },
+  "common": {
+    "loading": "Đang tải...",
+    "cancel": "Hủy"
+  },
+  "roles": {
+    "admin": "Admin",
+    "developer": "Developer",
+    "customer": "Customer"
+  },
+  "status": {
+    "contract": {
+      "signed": "Đã ký",
+      "cancelled": "Đã hủy / chờ chào lại",
+      "expired": "Hết hạn",
+      "pending": "Đang chờ Developer ký",
+      "notCreated": "Chưa tạo"
+    },
+    "user": {
+      "active": "Đang hoạt động",
+      "inactive": "Không hoạt động",
+      "suspended": "Tạm khóa",
+      "banned": "Bị cấm"
+    },
+    "asset": {
+      "active": "Đang hoạt động",
+      "rejected": "Bị từ chối"
+    },
+    "withdrawal": {
+      "pending": "Đang chờ",
+      "approved": "Đã duyệt / chờ chi tiền",
+      "processing": "Đang xử lý payout",
+      "completed": "Hoàn tất",
+      "failed": "Payout thất bại",
+      "rejected": "Bị từ chối",
+      "cancelled": "Đã hủy"
+    }
+  },
+  "audit": {
+    "actionLabel": "Hành động",
+    "targetTypeLabel": "Loại đối tượng",
+    "allActions": "Tất cả hành động",
+    "allTargets": "Tất cả đối tượng",
+    "filters": {
+      "actorIdLabel": "ID người thực hiện (UUID)",
+      "actorIdPlaceholder": "Nhập User ID...",
+      "targetIdLabel": "ID đối tượng (UUID)",
+      "targetIdPlaceholder": "Nhập Target ID...",
+      "ipAddressLabel": "Địa chỉ IP",
+      "ipAddressPlaceholder": "Ví dụ: 127.0.0.1",
+      "clear": "Xóa bộ lọc",
+      "search": "Tìm kiếm"
+    },
+    "headers": {
+      "timeAndIp": "Thời gian & IP",
+      "actorInfo": "Thông tin người thực hiện",
+      "targetReference": "Tham chiếu đối tượng",
+      "noteSummary": "Ghi chú / Tóm tắt"
+    },
+    "loading": "Đang tải audit logs...",
+    "loadError": "Lỗi tải audit logs: {{error}}",
+    "viewPayloadDiff": "Xem chênh lệch JSON payload",
+    "ipValue": "IP: {{value}}",
+    "unknownValue": "Không xác định",
+    "anonymousSystem": "Ẩn danh / Hệ thống",
+    "actorIdPrefix": "ID:",
+    "referenceIdPrefix": "Ref ID:",
+    "unknownRole": "UNKNOWN",
+    "unknownAction": "Hành động không xác định",
+    "unknownTarget": "Đối tượng không xác định",
+    "targetTypeValue": "Loại: {{value}}",
+    "noNotes": "Không có ghi chú",
+    "oldValueLabel": "Giá trị cũ (Before)",
+    "newValueLabel": "Giá trị mới (After)",
+    "nullValue": "NULL",
+    "empty": "Không tìm thấy audit log nào khớp với bộ lọc đã chọn.",
+    "pagination": {
+      "summary": "Trang {{current}} / {{total}} ({{count}} bản ghi)",
+      "previous": "Trước",
+      "next": "Sau"
+    },
+    "actions": {
+      "user_registered": "Đăng ký người dùng",
+      "user_login_success": "Đăng nhập thành công",
+      "user_login_failed": "Đăng nhập thất bại",
+      "user_logged_out": "Đăng xuất",
+      "user_banned": "Cấm người dùng",
+      "user_unbanned": "Gỡ cấm người dùng",
+      "user_role_changed": "Thay đổi vai trò người dùng",
+      "game_submitted": "Gửi game lên duyệt",
+      "game_approved": "Duyệt game",
+      "game_rejected": "Từ chối game",
+      "game_published": "Xuất bản game",
+      "game_updated": "Cập nhật game",
+      "contract_created": "Tạo hợp đồng",
+      "contract_signed": "Ký hợp đồng",
+      "contract_cancelled": "Hủy hợp đồng",
+      "security_alert": "Cảnh báo bảo mật",
+      "post_created": "Tạo bài viết",
+      "comment_created": "Tạo bình luận",
+      "reaction_created": "Tạo phản ứng",
+      "chat_message_sent": "Gửi tin nhắn"
+    },
+    "targets": {
+      "user": "Người dùng",
+      "game": "Game",
+      "contract": "Hợp đồng",
+      "community_chat": "Bài viết/Bình luận cộng đồng",
+      "chat_message": "Tin nhắn trực tiếp",
+      "ai_report": "Báo cáo AI",
+      "transaction": "Giao dịch",
+      "withdrawal": "Rút tiền"
+    }
+  },
+  "overview": {
+    "platformSnapshot": "Tổng quan nền tảng",
+    "commissionRate": "Tỷ lệ hoa hồng",
+    "announcementBanner": "Banner thông báo",
+    "noActiveAnnouncementBanner": "Hiện không có banner thông báo nào.",
+    "maintenanceMode": "Chế độ bảo trì",
+    "maintenanceEnabled": "Đã bật để bảo vệ nền tảng.",
+    "maintenanceDisabled": "Đã tắt. Các luồng storefront vẫn hoạt động.",
+    "actionRequiredBadge": "Cần xử lý"
+  },
+  "overviewCards": {
+    "payoutWalletBalance": "Số dư ví chi trả",
+    "payoutWalletError": "Không thể tải số dư tài khoản chi trả PayOS.",
+    "payoutWalletSynced": "Đã đồng bộ từ tài khoản chi trả PayOS.",
+    "payoutWalletLoading": "Đang tải số dư ví chi trả...",
+    "platformAccounts": "Tài khoản nền tảng",
+    "userCount": "{{count}} người dùng",
+    "liveDirectory": "Danh bạ hoạt động",
+    "moderationItemCount": "{{count}} mục"
+  },
+  "finance": {
+    "platformWalletTitle": "Ví nền tảng",
+    "platformWalletDescription": "Theo dõi sổ cái hoa hồng admin và tài khoản chi trả PayOS mà không cần đi vào luồng ví của creator.",
+    "refreshWallet": "Làm mới ví"
+  },
+  "financeWallet": {
+    "notConnected": "Chưa kết nối",
+    "errors": {
+      "loadPlatformWallet": "Không thể tải ví nền tảng.",
+      "loadTransactions": "Không thể tải lịch sử giao dịch ví."
+    },
+    "status": {
+      "unknown": "Không xác định",
+      "active": "Đang hoạt động",
+      "enabled": "Đã bật",
+      "pending": "Đang chờ",
+      "processing": "Đang xử lý"
+    },
+    "cards": {
+      "platformLedger": {
+        "title": "Sổ cái nền tảng",
+        "description": "Ví nội bộ dùng để theo dõi hoa hồng marketplace và vận hành tài chính của admin."
+      },
+      "payoutBalance": {
+        "title": "Số dư chi trả PayOS",
+        "description": "Đồng bộ từ tài khoản chi trả được dùng cho các lệnh rút tiền vận hành."
+      },
+      "payoutAccount": {
+        "title": "Tài khoản chi trả",
+        "description": "Thông tin ngân hàng được dùng khi admin xử lý payout cho developer."
+      }
+    },
+    "ledger": {
+      "title": "Sổ giao dịch nền tảng",
+      "description": "Theo dõi biến động ví admin và tra cứu mã tham chiếu trước khi xử lý thanh toán hoặc rút tiền.",
+      "page": "Trang {{current}} / {{total}}",
+      "headers": {
+        "type": "Loại giao dịch",
+        "amount": "Số tiền",
+        "reference": "Mã tham chiếu",
+        "created": "Thời gian tạo"
+      },
+      "loading": "Đang tải giao dịch ví...",
+      "empty": "Hiện chưa có giao dịch ví admin nào.",
+      "footer": "Giữ màn hình này cho mục đích rà soát vận hành tài chính của admin."
+    }
+  },
+  "settingsPanel": {
+    "saveSuccess": "Đã cập nhật biến hệ thống thành công. Node server đang tải lại...",
+    "loading": "Đang tải cấu hình nền tảng...",
+    "saving": "Đang lưu cấu hình nền tảng...",
+    "save": "Lưu cấu hình nền tảng",
+    "commissionLabel": "Tỷ lệ hoa hồng nền tảng (%)",
+    "commissionHelper": "Phần trăm nền tảng giữ lại từ mỗi giao dịch marketplace",
+    "maintenanceStatusLabel": "Trạng thái bảo trì hệ thống",
+    "maintenanceToggleActive": "ĐANG BẬT - ĐÃ KHÓA SITE",
+    "maintenanceToggleInactive": "ĐANG TẮT - TRỰC TUYẾN",
+    "bannerLabel": "Nội dung banner cảnh báo toàn hệ thống",
+    "bannerPlaceholder": "Để trống nếu muốn tắt banner",
+    "bannerHelperText": "Nội dung banner hiển thị ở đầu tất cả màn hình người dùng",
+    "maintenanceWarningTitle": "Cảnh báo: chế độ bảo trì đang bật.",
+    "maintenanceWarningDescription": "Tính năng này sẽ chặn người dùng không phải admin checkout, upload file hoặc đồng bộ repository. Hãy sử dụng cẩn thận."
+  },
+  "contract": {
+    "defaultBuyerRepresentative": "Ban quản trị GodotLaunch",
+    "defaultBuyerPosition": "Ban quản trị hệ thống / Đại diện được ủy quyền",
+    "defaultDisputeClause": "Mọi tranh chấp phát sinh từ hoặc liên quan đến hợp đồng này sẽ được giải quyết trước tiên thông qua thương lượng thân thiện. Nếu không giải quyết được, tranh chấp sẽ được đưa ra giải quyết tại Trọng tài theo quy định."
+  },
+  "alerts": {
+    "downloadFailed": "Không thể tải xuống tệp. Vui lòng kiểm tra lại."
+  },
+  "errors": {
+    "loadGames": "Không thể tải danh sách game",
+    "fetchModerationQueue": "Không thể lấy hàng chờ kiểm duyệt",
+    "loadMarketplaceItems": "Không thể tải danh sách marketplace item",
+    "fetchMarketplaceSubmissions": "Không thể lấy danh sách gửi duyệt marketplace",
+    "loadUsers": "Không thể tải người dùng",
+    "fetchUsers": "Không thể lấy người dùng",
+    "loadAuditLogs": "Không thể tải audit logs",
+    "fetchAuditLogs": "Không thể lấy audit logs",
+    "loadPayoutWalletBalance": "Không thể tải số dư ví chi trả",
+    "loadPlatformSettings": "Không thể tải cấu hình nền tảng",
+    "approveGame": "Không thể duyệt game",
+    "rejectionReasonRequired": "Vui lòng nhập lý do từ chối.",
+    "rejectGame": "Không thể từ chối game",
+    "rejectMarketplaceItem": "Không thể từ chối marketplace item",
+    "approveMarketplaceItem": "Không thể duyệt marketplace item",
+    "updateUser": "Không thể cập nhật người dùng.",
+    "updatePlatformSettings": "Không thể cập nhật cấu hình nền tảng"
+  },
+  "actions": {
+    "approveGame": "Duyệt game",
+    "rejectGame": "Từ chối game",
+    "rejectAsset": "Từ chối asset",
+    "downloading": "Đang tải xuống...",
+    "downloadGamePackage": "Tải gói game (ZIP)",
+    "downloadAssetPackage": "Tải gói asset (ZIP)",
+    "noGamePackageUploaded": "Không tìm thấy tệp game ZIP để tải về",
+    "noAssetPackageUploaded": "Asset này chưa có gói tệp được tải lên"
+  },
+  "moderationPreview": {
+    "pendingModeration": "Kiểm duyệt đang chờ",
+    "title": "Xem nhanh kiểm duyệt",
+    "queueCount": "{{count}} hàng chờ",
+    "open": "Mở",
+    "loading": "Đang tải nhanh dữ liệu kiểm duyệt...",
+    "empty": "Hiện không có game hoặc asset nào đang chờ duyệt.",
+    "unknownCreator": "Creator không xác định",
+    "unknownSeller": "Seller không xác định",
+    "gameType": "Game",
+    "assetType": "Asset",
+    "newLabel": "Mới"
+  },
+  "overviewUsers": {
+    "title": "Người dùng",
+    "open": "Mở",
+    "loading": "Đang tải danh bạ người dùng...",
+    "empty": "Hiện chưa có tài khoản nào trong danh bạ."
+  },
+  "moderationQueue": {
+    "title": "Hàng chờ kiểm duyệt game & asset",
+    "queueBadge": "Hàng chờ",
+    "tabs": {
+      "games": "Game Submissions",
+      "assets": "Asset Submissions"
+    },
+    "statusLabel": "Trạng thái hàng chờ",
+    "filters": {
+      "pending": "Đang chờ",
+      "approvedPublished": "Đã duyệt / Đã phát hành",
+      "rejected": "Bị từ chối",
+      "all": "Tất cả submissions"
+    },
+    "headers": {
+      "assetDetails": "Thông tin mục",
+      "category": "Danh mục",
+      "publishingType": "Kiểu phát hành",
+      "proposedPrice": "Giá đề xuất",
+      "contractStatus": "Trạng thái HĐ",
+      "decisions": "Quyết định",
+      "itemType": "Loại mục"
+    },
+    "actions": {
+      "hideDetails": "Ẩn chi tiết",
+      "showDetails": "Xem chi tiết",
+      "quickView": "Xem nhanh nội dung",
+      "approveAsset": "Duyệt asset"
+    },
+    "status": {
+      "pendingReview": "Chờ duyệt",
+      "approved": "Đã duyệt"
+    },
+    "decision": {
+      "rejected": "Bị từ chối",
+      "live": "Đang live",
+      "approved": "Đã duyệt",
+      "waitingDevSignature": "Chờ Dev ký",
+      "liveGooglePlay": "Live trên Google Play",
+      "waitingBuild": "Chờ Upload Build",
+      "renegotiateContract": "Chào lại HĐ"
+    },
+    "price": {
+      "notSet": "Chưa có giá",
+      "free": "Miễn phí"
+    },
+    "loadingGames": "Đang tải danh sách game chờ duyệt...",
+    "errorGames": "Lỗi tải submissions game: {{error}}",
+    "emptyGames": "Hiện không có submission game nào cần kiểm duyệt.",
+    "loadingAssets": "Đang tải danh sách asset chờ duyệt...",
+    "errorAssets": "Lỗi tải submissions asset: {{error}}",
+    "emptyAssets": "Hiện không có submission asset nào cần kiểm duyệt.",
+    "by": "bởi {{name}}",
+    "unassigned": "Chưa phân loại",
+    "assetType": "RESOURCE ASSET",
+    "previousRejection": "Developer từ chối hợp đồng với lý do:",
+    "messages": {
+      "approveGameConfirm": "Bạn có chắc muốn DUYỆT và phát hành \"{{title}}\" không?",
+      "approveGameSuccess": "Game \"{{title}}\" đã được duyệt và phát hành thành công!",
+      "approveAssetConfirm": "Bạn có chắc muốn DUYỆT và kích hoạt marketplace item \"{{title}}\" không?",
+      "approveAssetSuccess": "Marketplace item \"{{title}}\" đã được duyệt và kích hoạt thành công!",
+      "defaultRejectReason": "Vi phạm chính sách cửa hàng",
+      "rejectGameSuccess": "Game \"{{title}}\" đã bị từ chối. Creator đã được thông báo.",
+      "rejectAssetSuccess": "Marketplace item \"{{title}}\" đã bị từ chối. Creator đã được thông báo.",
+      "rejectItemFailed": "Không thể từ chối mục này."
+    },
+    "detail": {
+      "thumbnail": "Thumbnail",
+      "noThumbnail": "Không có thumbnail",
+      "description": "Mô tả chi tiết",
+      "noDescription": "Không có mô tả chi tiết từ developer.",
+      "tags": "Tags",
+      "noTags": "Không có tag nào được chọn",
+      "githubRepository": "GitHub Repository",
+      "noRepository": "Không có repo",
+      "itemDescription": "Mô tả item",
+      "noItemDescription": "Không có mô tả.",
+      "screenshots": "Screenshots",
+      "screenshotAlt": "Screenshot {{index}}",
+      "noScreenshots": "Developer không tải lên screenshot nào",
+      "noScreenshotsUploaded": "Không có screenshot nào được tải lên",
+      "videoDemo": "Video demo",
+      "noVideo": "Developer không tải lên video gameplay nào",
+      "noDemoVideo": "Không có video demo nào được tải lên",
+      "refreshingMedia": "Đang làm mới media mới nhất...",
+      "technicalCreatorDetails": "Thông tin kỹ thuật & creator",
+      "creatorName": "Tên creator",
+      "creatorEmail": "Email creator",
+      "version": "Phiên bản",
+      "submittedOn": "Ngày gửi duyệt"
+    }
+  },
+  "modals": {
+    "rejectionTitle": "Lý do từ chối",
+    "itemDetails": "Thông tin mục",
+    "rejectionReasonLabel": "Lý do từ chối *",
+    "rejectionReasonPlaceholder": "Vui lòng nhập lý do từ chối chi tiết...",
+    "rejecting": "Đang từ chối...",
+    "rejectSubmission": "Xác nhận từ chối"
+  },
+  "disputePanel": {
+    "loading": "Đang tải khiếu nại...",
+    "empty": "Chưa có khiếu nại nào.",
+    "deletedProduct": "(sản phẩm đã xóa)",
+    "accuses": "tố",
+    "resolveCta": "Phán xử",
+    "resolvedBadge": "Đã xử lý",
+    "resolveError": "Phán xử thất bại.",
+    "status": {
+      "open": "Mới",
+      "investigating": "Đang điều tra",
+      "resolved_seller_fault": "Seller vi phạm",
+      "resolved_reporter_fault": "Vu cáo",
+      "resolved_inconclusive": "Không kết luận",
+      "cancelled": "Đã hủy"
+    },
+    "resolution": {
+      "inconclusive": "TH1: Không đủ căn cứ → khôi phục sản phẩm, không phạt",
+      "reporterFault": "TH2: Reporter vu cáo → khôi phục + trừ điểm reporter",
+      "sellerFault": "TH3: Seller đạo nhái → buộc hoàn tiền 5 ngày + ban"
+    },
+    "modal": {
+      "title": "Phán xử khiếu nại",
+      "evidenceRepoLabel": "Repo bằng chứng của reporter:",
+      "resolutionLabel": "Kết luận",
+      "refundAmountLabel": "Số tiền seller phải hoàn",
+      "resolutionNoteLabel": "Ghi chú kết luận",
+      "banUser": "Ban tài khoản (lưu FaceID + CCCD vào blacklist, chặn đăng ký lại)",
+      "submitting": "Đang xử lý...",
+      "submit": "Xác nhận phán xử"
+    }
+  },
+  "aiReviewCard": {
+    "title": "AI review — đề xuất (admin quyết định cuối)",
+    "refresh": "Tải lại",
+    "loading": "Đang tải báo cáo AI...",
+    "empty": "Chưa có báo cáo AI cho mục này (AI review chạy nền sau khi submit).",
+    "summaryLabel": "Tóm tắt AI:",
+    "footerNote": "* AI chỉ đưa đề xuất — quyết định duyệt/từ chối thuộc về admin.",
+    "errors": {
+      "loadFailed": "Không tải được báo cáo AI",
+      "triggerFailed": "Không thể kích hoạt AI Review"
+    },
+    "trigger": {
+      "rerunTitle": "Chạy lại phân tích AI",
+      "rerun": "Chạy lại AI",
+      "requesting": "Đang yêu cầu...",
+      "runNow": "Chạy AI Review ngay",
+      "success": "Đang chạy AI Review trong nền. Hãy đợi khoảng 15 giây rồi bấm nút Tải lại ở trên.",
+      "successGame": "Đã đưa AI Review và kiểm tra tương đồng source vào hàng xử lý.",
+      "successItem": "Đã đưa AI Review vào hàng xử lý."
+    },
+    "scores": {
+      "codeQuality": "Chất lượng code",
+      "mediaMatch": "Media khớp",
+      "descriptionMatch": "Mô tả đúng",
+      "tagsMatch": "Tags phù hợp",
+      "nsfw": "NSFW"
+    },
+    "pricing": {
+      "title": "Khuyến nghị giá (AI đề xuất)",
+      "free": "Miễn phí",
+      "revenueSplit": "Chia DT cho dev: {{percent}}%"
+    },
+    "flags": {
+      "title": "Cảnh báo ({{count}})",
+      "evidenceImage": "ảnh #{{index}}",
+      "none": "Không có cảnh báo nào"
+    },
+    "recommendation": {
+      "approve": "ĐỀ XUẤT: DUYỆT",
+      "review": "ĐỀ XUẤT: CẦN XEM KỸ",
+      "reject": "ĐỀ XUẤT: TỪ CHỐI"
+    },
+    "nsfw": {
+      "detected": "Phát hiện",
+      "safe": "An toàn",
+      "flagged": "Có cờ NSFW"
+    },
+    "pipeline": {
+      "aiReview": "AI Review",
+      "sourceComparison": "Đối chiếu source",
+      "commitLabel": "commit"
+    },
+    "status": {
+      "pending": "Chờ xử lý",
+      "running": "Đang chạy",
+      "completed": "Hoàn tất",
+      "failed": "Thất bại"
+    },
+    "plagiarism": {
+      "title": "Đối chiếu source",
+      "thresholdResults": "{{count}} kết quả vượt ngưỡng",
+      "noneAboveThreshold": "Không phát hiện source tương đồng vượt ngưỡng.",
+      "snapshotLabel": "snapshot",
+      "commitLabel": "commit"
+    }
+  },
+  "contractComposer": {
+    "badge": "Hợp đồng phát hành",
+    "title": "Soạn thảo hợp đồng phát hành",
+    "description": "Nhập các điều khoản phát hành cho trò chơi \"{{title}}\"",
+    "previousRejectionTitle": "Lý do Developer từ chối ký hợp đồng:",
+    "partyATitle": "Bên A: Ban quản trị GodotLaunch",
+    "representativeLabel": "Người đại diện Bên A:",
+    "positionLabel": "Chức vụ:",
+    "financialTermsTitle": "Điều khoản tài chính",
+    "proposedPriceLabel": "Giá đề xuất từ Developer:",
+    "freePrice": "Miễn phí / Free",
+    "revenueSplitLabel": "Tỷ lệ chia sẻ doanh thu cho Developer (%)",
+    "revenueSplitHelper": "Ví dụ: 70 có nghĩa là Developer nhận 70% và Platform nhận 30% doanh thu phát hành",
+    "lumpSumLabel": "Số tiền mua đứt trọn gói (VNĐ)",
+    "lumpSumPlaceholder": "Ví dụ: 100.000.000",
+    "negotiationHelper": "Đang trong tiến trình thương lượng lại giá",
+    "lumpSumHelper": "Số tiền thanh toán một lần để mua toàn bộ quyền sở hữu trò chơi",
+    "legalTermsTitle": "Điều khoản pháp lý & bổ sung",
+    "disputeResolutionLabel": "Điều khoản giải quyết tranh chấp:",
+    "signatureTitle": "Chữ ký đại diện Bên A (Ban quản trị)",
+    "signatureHelp": "Admin phải ký ngay khi gửi hợp đồng cho Developer.",
+    "signaturePlaceholder": "Dùng chuột để vẽ chữ ký đại diện Bên A...",
+    "signatureRequired": "Vui lòng ký tên (Bên A) trước khi gửi hợp đồng.",
+    "createSuccess": "Hợp đồng đề xuất đã được tạo thành công và gửi cho Developer!",
+    "createError": "Lỗi tạo hợp đồng",
+    "createRequestError": "Lỗi gửi yêu cầu tạo hợp đồng",
+    "submit": "Gửi đề nghị & Tạo hợp đồng"
+  },
+  "lightbox": {
+    "enlargedScreenshotAlt": "Ảnh chụp màn hình phóng to"
+  },
+  "playDemo": {
+    "title": "{{title}} — Play Demo",
+    "sectionTitle": "Play Game Demo",
+    "launchButton": "Chơi thử Demo (Fullscreen)",
+    "empty": "Developer chưa tải lên web demo nào",
+    "screenshotsTitle": "Ảnh chụp màn hình (Screenshots)"
+  },
+  "agreementPanel": {
+    "loadError": "Không thể tải danh sách thỏa thuận.",
+    "emptyError": "Nội dung thỏa thuận không được để trống.",
+    "saveError": "Không thể lưu thỏa thuận.",
+    "saveCatchError": "Lỗi khi lưu thỏa thuận.",
+    "success": "Đã lưu version mới và kích hoạt.",
+    "contentLabel": "Nội dung thỏa thuận {{version}}",
+    "contentLabelNoVersion": "Nội dung thỏa thuận",
+    "placeholder": "Nội dung thỏa thuận... dùng {{commissionRate}} và {{revenueSharePercent}} để chèn tỷ lệ hiện hành",
+    "helper": "Dùng {{commissionRate}} và {{revenueSharePercent}} trong nội dung — hệ thống tự thay bằng tỷ lệ hiện hành khi hiển thị.",
+    "save": "Lưu (tạo version mới)",
+    "history": "Lịch sử version",
+    "empty": "Chưa có version nào.",
+    "active": "Đang active"
+  },
+  "bannerPanel": {
+    "loadError": "Không thể tải danh sách banner.",
+    "uploadError": "Upload ảnh banner thất bại.",
+    "missingImage": "Vui lòng upload ảnh hoặc nhập image URL.",
+    "saveError": "Không thể lưu banner.",
+    "deleteError": "Không thể xóa banner.",
+    "createSuccess": "Tạo banner thành công.",
+    "updateSuccess": "Cập nhật banner thành công.",
+    "deleteSuccess": "Xóa banner thành công.",
+    "deleteConfirm": "Xóa banner \"{{title}}\"?",
+    "title": "Banner storefront",
+    "description": "Banner được hiển thị theo thứ tự tăng dần. Khi bấm vào banner, hệ thống sẽ mở danh mục Browser Game.",
+    "refresh": "Làm mới",
+    "edit": "Sửa banner",
+    "add": "Thêm banner",
+    "cancelEdit": "Hủy chỉnh sửa",
+    "fieldTitle": "Tiêu đề",
+    "fieldDescription": "Mô tả",
+    "fieldImageUrl": "Image URL",
+    "fieldDisplayOrder": "Thứ tự hiển thị",
+    "titlePlaceholder": "Khởi chạy cuộc phiêu lưu Godot tiếp theo của bạn",
+    "descriptionPlaceholder": "Đoạn mô tả ngắn hiển thị trên ảnh banner",
+    "imageUrlPlaceholder": "https://... hoặc upload tệp",
+    "uploadImage": "Upload ảnh banner (tối đa 10 MB)",
+    "saving": "Đang lưu...",
+    "update": "Cập nhật banner",
+    "create": "Tạo banner",
+    "previewAlt": "Xem trước banner",
+    "previewLabel": "Xem trước",
+    "previewTitleFallback": "Tiêu đề banner",
+    "previewDescriptionFallback": "Mô tả banner",
+    "previewEmpty": "Upload một ảnh để xem trước banner.",
+    "empty": "Chưa có banner nào. Hãy tạo banner storefront đầu tiên ở trên.",
+    "orderBadge": "Thứ tự {{order}}",
+    "editAria": "Sửa {{title}}",
+    "deleteAria": "Xóa {{title}}"
+  },
+  "contentPanel": {
+    "errors": {
+      "loadData": "Không thể tải dữ liệu quản lý nội dung.",
+      "saveCollection": "Không thể lưu collection.",
+      "deleteCollection": "Không thể xóa collection. Collection có thể đang được dùng trong Homepage Layout.",
+      "moveSection": "Không thể đổi thứ tự section.",
+      "deleteSection": "Không thể xóa section.",
+      "addShelf": "Không thể thêm shelf.",
+      "saveTag": "Không thể lưu tag.",
+      "deleteTag": "Không thể xóa tag vì đang được Game, Asset hoặc Collection sử dụng.",
+      "saveCategory": "Không thể lưu category.",
+      "deleteCategory": "Không thể xóa category vì đang có category con, Game, Asset hoặc Collection sử dụng."
+    },
+    "tabs": {
+      "layout": "Bố cục trang chủ",
+      "banners": "Banner",
+      "collections": "Bộ sưu tập",
+      "tags": "Thẻ",
+      "categories": "Danh mục"
+    },
+    "header": {
+      "title": "Quản lý nội dung storefront",
+      "description": "Điều khiển banner, shelf hệ thống và collection từ một nơi.",
+      "reloadAria": "Tải lại dữ liệu nội dung"
+    },
+    "search": {
+      "nameOrSlug": "Tìm theo tên hoặc slug..."
+    },
+    "layout": {
+      "systemNotice": "Recent Releases và Free Content là section hệ thống, luôn giới hạn tối đa 6. Admin có thể đổi tên, thứ tự và bật/tắt nhưng không thể xóa hoặc đổi quy tắc.",
+      "sectionNameAria": "Tên section",
+      "sectionTypes": {
+        "recentReleases": "Recent Releases",
+        "freeContent": "Free Content",
+        "collection": "Collection"
+      },
+      "systemBadge": "HỆ THỐNG",
+      "collectionLabel": "Collection: {{slug}}",
+      "autoContent": "Tự động · tối đa 6 sản phẩm",
+      "visible": "Hiển thị",
+      "deleteSectionAria": "Xóa {{title}}",
+      "selectCollectionPlaceholder": "Chọn collection để thêm shelf",
+      "addShelf": "Thêm shelf"
+    },
+    "collections": {
+      "title": "Content collections",
+      "description": "Nhóm Game và Asset bằng category hoặc tag để tạo shelf trên homepage.",
+      "create": "Tạo collection",
+      "emptyTitle": "Chưa có collection",
+      "emptyDescription": "Tạo collection đầu tiên để nhóm nội dung cho homepage.",
+      "deleteConfirm": "Xóa collection \"{{title}}\"? Hãy gỡ shelf của collection khỏi Homepage Layout trước khi xóa.",
+      "statusActive": "HIỂN THỊ",
+      "statusHidden": "ẨN",
+      "editAria": "Sửa {{title}}",
+      "deleteAria": "Xóa {{title}}",
+      "noFilters": "Chưa có điều kiện lọc - collection sẽ lấy toàn bộ nội dung.",
+      "metrics": {
+        "categories": "Categories",
+        "tags": "Tags",
+        "maxItems": "Max items"
+      }
+    },
+    "tags": {
+      "title": "Quản lý tag",
+      "description": "Tag đang được sử dụng bởi sản phẩm hoặc collection sẽ không thể xóa.",
+      "createTitle": "Tạo tag mới",
+      "editTitle": "Cập nhật tag",
+      "editing": "Đang sửa: {{name}}",
+      "namePlaceholder": "Tên tag",
+      "slugPlaceholder": "slug",
+      "createButton": "Tạo tag",
+      "updateButton": "Cập nhật",
+      "editAria": "Sửa {{name}}",
+      "deleteAria": "Xóa {{name}}",
+      "deleteConfirm": "Xóa tag \"{{name}}\"?"
+    },
+    "categories": {
+      "title": "Cây category",
+      "description": "Category được hiển thị theo cây cha-con; chọn parent khi tạo hoặc cập nhật.",
+      "createTitle": "Tạo category mới",
+      "editTitle": "Cập nhật category",
+      "editing": "Đang sửa: {{name}}",
+      "fields": {
+        "name": "Tên category",
+        "slug": "Slug",
+        "type": "Loại nội dung",
+        "parent": "Category cha",
+        "description": "Mô tả"
+      },
+      "typeAssetOption": "Asset",
+      "typeGameOption": "Game",
+      "noParent": "Không có - cấp gốc",
+      "createButton": "Tạo category",
+      "updateButton": "Cập nhật",
+      "deleteConfirm": "Xóa category \"{{name}}\"? Category có category con hoặc sản phẩm liên kết sẽ không thể xóa.",
+      "gameTitle": "Game categories",
+      "assetTitle": "Asset categories",
+      "count": "{{count}} category",
+      "rootLabel": "Category gốc",
+      "editAria": "Sửa {{name}}",
+      "deleteAria": "Xóa {{name}}"
+    },
+    "modal": {
+      "badge": "Content collection",
+      "editTitle": "Chỉnh sửa collection",
+      "createTitle": "Tạo collection mới",
+      "description": "Thiết lập thông tin và quy tắc chọn sản phẩm xuất hiện trên storefront.",
+      "basicInfo": "Thông tin cơ bản",
+      "fields": {
+        "title": "Tiêu đề",
+        "slug": "Slug",
+        "description": "Mô tả",
+        "maxItems": "Số sản phẩm tối đa"
+      },
+      "placeholders": {
+        "title": "Ví dụ: Stylized Picks",
+        "slug": "stylized-picks",
+        "description": "Mô tả mục đích và nội dung collection..."
+      },
+      "maxItemsHint": "Từ 1 đến 10 sản phẩm mới nhất.",
+      "activeTitle": "Hiển thị collection",
+      "activeDescription": "Cho phép dùng collection trong Homepage Layout.",
+      "tagsTitle": "Tags",
+      "tagsDescription": "Sản phẩm phải có đầy đủ tag đã chọn.",
+      "categoriesTitle": "Categories",
+      "categoriesDescription": "Sản phẩm thuộc một trong các category đã chọn.",
+      "saveChanges": "Lưu thay đổi",
+      "createAction": "Tạo collection"
+    },
+    "selectionPicker": {
+      "searchTags": "Tìm tag...",
+      "searchCategories": "Tìm category...",
+      "selectedCount": "{{count}} đã chọn",
+      "noResults": "Không có kết quả."
+    }
+  },
+  "paymentVerification": {
+    "free": "MIỄN PHÍ",
+    "na": "N/A",
+    "loadError": "Không thể tải danh sách thanh toán",
+    "detailLoadError": "Không thể tải chi tiết thanh toán",
+    "detailRefreshError": "Không thể làm mới chi tiết thanh toán",
+    "sort": "Sắp xếp",
+    "sortAll": "Tất cả thanh toán",
+    "headers": {
+      "order": "Đơn hàng",
+      "buyer": "Người mua",
+      "amount": "Số tiền",
+      "paymentStatus": "Trạng thái thanh toán",
+      "updated": "Cập nhật",
+      "action": "Hành động"
+    },
+    "loading": "Đang tải các phiên thanh toán...",
+    "empty": "Hiện chưa có phiên thanh toán nào.",
+    "view": "Xem",
+    "previous": "Trước",
+    "next": "Sau",
+    "detailTitle": "Chi tiết thanh toán",
+    "detailSubtitle": "Đơn hàng {{order}} • {{title}}",
+    "close": "Đóng",
+    "refresh": "Làm mới",
+    "timeline": "Dòng thời gian thanh toán",
+    "createdAt": "Tạo lúc",
+    "updatedAt": "Cập nhật lúc",
+    "paidAt": "Thanh toán lúc",
+    "orderInfo": "Thông tin đơn hàng",
+    "email": "Email",
+    "product": "Sản phẩm",
+    "reference": "Mã tham chiếu",
+    "payosOrderCode": "Mã đơn PayOS",
+    "paymentLinkId": "ID liên kết thanh toán",
+    "transactionId": "ID giao dịch",
+    "waitingWebhook": "Đang chờ webhook",
+    "status": {
+      "PAID": "Đã thanh toán",
+      "PENDING": "Đang chờ",
+      "PROCESSING": "Đang xử lý",
+      "FAILED": "Thất bại",
+      "CANCELLED": "Đã hủy",
+      "EXPIRED": "Hết hạn"
+    },
+    "downloadUnlocked": "Tệp tải xuống đã được mở khóa cho thanh toán này vì webhook PayOS đã xác nhận hoàn tất."
+  },
+  "externalPublish": {
+    "loadStatusError": "Không tải được trạng thái Google Play.",
+    "loadStatusCatchError": "Lỗi tải trạng thái Google Play.",
+    "requiredError": "Vui lòng chọn file build, nhập short description và chọn feature graphic.",
+    "uploadError": "Upload build thất bại.",
+    "uploadCatchError": "Lỗi upload build.",
+    "title": "Đẩy Google Play",
+    "reload": "Tải lại",
+    "statusLive": "Đã live trên Google Play",
+    "statusSubmitted": "Đang chờ Google Play duyệt",
+    "statusRejected": "Google Play từ chối",
+    "versionLabel": "Version: {{value}}",
+    "viewStore": "Xem trên Google Play",
+    "uploadHelp": "Export APK/AAB từ Godot Editor rồi upload tại đây để tự động submit lên Google Play. Icon (từ thumbnail) và screenshots được tự động lấy từ trang game — cần game đã có thumbnail và tối thiểu 2 screenshot trước khi upload.",
+    "versionHint": "Version lấy tự động từ game (chưa hỗ trợ developer tự cập nhật version).",
+    "shortDescriptionPlaceholder": "Short description cho Google Play (tối đa 80 ký tự)",
+    "changelogPlaceholder": "Changelog (tùy chọn)",
+    "chooseBuild": "Chọn file APK/AAB",
+    "noBuildSelected": "Chưa chọn file",
+    "chooseFeatureGraphic": "Chọn Feature graphic (1024x500)",
+    "noFeatureGraphicSelected": "Chưa chọn ảnh",
+    "uploading": "Đang upload...",
+    "uploadSubmit": "Upload & Submit lên Google Play"
+  },
+  "withdrawal": {
+    "na": "N/A",
+    "copy": "Sao chép",
+    "view": "Xem",
+    "previous": "Trước",
+    "next": "Sau",
+    "understood": "Đã hiểu",
+    "defaultDeveloper": "Developer",
+    "loadListError": "Không thể tải danh sách rút tiền.",
+    "loadDetailError": "Không thể tải chi tiết yêu cầu rút tiền.",
+    "insufficientTitle": "Số dư ví admin không đủ",
+    "insufficientMessage": "Số dư hiện tại là {{balance}}. Bạn cần nộp tiền vào ví để thực hiện giao dịch.",
+    "approveCompleted": "PayOS đã xác nhận payout thành công. Withdrawal đã hoàn tất.",
+    "approveProcessing": "Payout order đã được tạo. Hệ thống đang tự động theo dõi việc chuyển tiền.",
+    "approveSuccess": "Withdrawal đã được approve thành công.",
+    "approveError": "Không thể approve withdrawal.",
+    "rejectRequireReason": "Vui lòng nhập lý do từ chối trước khi reject.",
+    "rejectSuccess": "Withdrawal đã được reject.",
+    "rejectError": "Không thể reject withdrawal.",
+    "payoutFailedMessage": "PayOS đã phản hồi payout thất bại hoặc bị từ chối. Tiền chưa về tài khoản ngân hàng của developer.",
+    "timeoutMessage": "Đã chờ đủ 30 giây nhưng PayOS vẫn chưa xác nhận chuyển tiền thành công. Vui lòng kiểm tra lại giao dịch hoặc số dư payout wallet.",
+    "warningFailedFlash": "PayOS đã phản hồi payout thất bại. Vui lòng kiểm tra lại yêu cầu rút tiền.",
+    "warningTimeoutFlash": "Đã chờ 30 giây nhưng chưa có xác nhận thành công từ PayOS. Vui lòng kiểm tra lại payout queue.",
+    "successBalanceArrived": "Tiền đã về tài khoản người dùng",
+    "searchPlaceholder": "Tìm theo developer, email, ngân hàng hoặc mã tham chiếu...",
+    "filterAll": "Tất cả trạng thái",
+    "headers": {
+      "developer": "Developer",
+      "amount": "Số tiền",
+      "status": "Trạng thái",
+      "createdDate": "Ngày tạo",
+      "actions": "Hành động"
+    },
+    "loadingQueue": "Đang tải withdrawal queue...",
+    "empty": "Không có yêu cầu rút tiền nào khớp bộ lọc hiện tại.",
+    "detail": {
+      "title": "Withdrawal Detail",
+      "adminBalance": "Số dư ví admin: {{amount}}",
+      "developerInfo": "Thông tin developer",
+      "fullName": "Họ và tên",
+      "email": "Email",
+      "created": "Ngày tạo",
+      "walletInfo": "Thông tin ví",
+      "walletBalance": "Số dư ví",
+      "availableBalance": "Số dư khả dụng",
+      "pendingWithdrawal": "Số dư chờ rút",
+      "totalRevenue": "Tổng doanh thu",
+      "bankInfo": "Thông tin ngân hàng",
+      "bankName": "Tên ngân hàng",
+      "accountHolder": "Chủ tài khoản",
+      "accountNumber": "Số tài khoản",
+      "transferReference": "Mã chuyển khoản",
+      "withdrawalAmount": "Số tiền rút",
+      "payoutTracking": "Theo dõi payout",
+      "payosPayoutId": "PayOS Payout ID",
+      "payosStatus": "PayOS Status",
+      "payosCreated": "PayOS Created",
+      "lastProcessed": "Xử lý lần cuối",
+      "noPayoutOrder": "Chưa tạo payout order",
+      "noStatus": "Chưa có trạng thái",
+      "step1": "Bước 1",
+      "step1Title": "Tạo payout order",
+      "step1Description": "Admin tạo lệnh chi từ kênh PayOS payout của nền tảng tới tài khoản ngân hàng developer.",
+      "step2": "Bước 2",
+      "step2Title": "Đồng bộ kết quả chuyển tiền",
+      "step2Description": "Khi PayOS xác nhận chuyển tiền thành công, withdrawal sẽ tự chuyển sang completed.",
+      "actionsTitle": "Hành động",
+      "approvalNote": "Ghi chú duyệt",
+      "approvalPlaceholder": "Ghi chú nội bộ cho lần xử lý chuyển khoản này...",
+      "rejectRemark": "Ghi chú từ chối",
+      "rejectPlaceholder": "Nhập lý do từ chối nếu thông tin ngân hàng hoặc amount có vấn đề...",
+      "storedRemark": "Ghi chú đã lưu",
+      "noRemark": "Không có ghi chú.",
+      "createPayoutOrder": "Tạo payout order",
+      "rejectRequest": "Từ chối yêu cầu",
+      "finalStateReadonly": "Withdrawal này đã ở trạng thái cuối và không thể chỉnh sửa thêm.",
+      "payoutTransferStatus": "Trạng thái chuyển payout",
+      "processingBadge": "Đang xử lý",
+      "updatedBadge": "Đã cập nhật",
+      "processingDescription": "Hệ thống đang kiểm tra lại trạng thái payout định kỳ và sẽ tự thoát khi giao dịch hoàn tất.",
+      "updatedDescription": "Trạng thái payout đã được cập nhật. Modal này sẽ tự động đóng trong giây lát."
+    }
+  },
+  "fileManagement": {
+    "publishing": {
+      "marketplaceListing": "Marketplace",
+      "fullAcquisition": "Store (Mua đứt)",
+      "coPublishing": "Store (Hợp tác)"
+    },
+    "categories": {
+      "game": "Game (Source & Media)",
+      "asset": "Asset (Marketplace)",
+      "contractPdf": "Hợp đồng (PDF)",
+      "kycImage": "Ảnh xác thực CCCD/Passport (KYC)"
+    },
+    "errors": {
+      "loadGames": "Lỗi tải danh sách Game.",
+      "loadAssets": "Lỗi tải danh sách Asset.",
+      "loadFiles": "Lỗi tải danh sách tập tin.",
+      "server": "Lỗi kết nối máy chủ.",
+      "gameDetail": "Không tải được chi tiết Game.",
+      "gameDetailCatch": "Lỗi khi tải chi tiết Game.",
+      "assetDetail": "Không tải được chi tiết Asset.",
+      "assetDetailCatch": "Lỗi khi tải chi tiết Asset.",
+      "allowPopup": "Vui lòng cho phép mở popup trên trình duyệt để xem file.",
+      "download": "Tải file thất bại.",
+      "delete": "Xóa file thất bại.",
+      "deleteCatch": "Lỗi khi xóa file."
+    },
+    "pagination": {
+      "summary": "Trang {{page}} của {{totalPages}} ({{totalElements}} mục)"
+    },
+    "buttons": {
+      "copyUrl": "Sao chép URL",
+      "viewDirect": "Xem trực tiếp",
+      "download": "Tải về máy",
+      "delete": "Xóa tập tin",
+      "refresh": "Làm mới",
+      "search": "Tìm kiếm",
+      "backToGames": "Quay lại danh sách Game",
+      "backToAssets": "Quay lại danh sách Asset",
+      "confirmDelete": "Xác nhận xóa"
+    },
+    "list": {
+      "noGames": "Không tìm thấy Game nào.",
+      "gameFilesEmpty": "Game này chưa có file nào trên storage.",
+      "noAssets": "Không tìm thấy Asset nào.",
+      "assetFilesEmpty": "Asset này chưa có file nào trên storage.",
+      "noCategoryFiles": "Không tìm thấy tập tin nào trong danh mục này.",
+      "by": "bởi {{name}}",
+      "fileCount": "{{count}} file"
+    },
+    "labels": {
+      "categoryMenu": "Danh mục Tập tin",
+      "totalCategorizedFiles": "Tổng tập tin phân loại",
+      "storageSystem": "Hệ thống lưu trữ",
+      "storageSubtitle": "SeaweedFS (Hoạt động · Tối ưu dung lượng)",
+      "searchPlaceholder": "Tìm theo tên file, chủ sở hữu...",
+      "loadingDetail": "Đang tải chi tiết...",
+      "loadingList": "Đang tải danh sách...",
+      "loadingFiles": "Đang tải danh sách tập tin...",
+      "errorPrefix": "Có lỗi xảy ra: {{error}}",
+      "storageBadge": "SeaweedFS",
+      "ownerId": "ID",
+      "headers": {
+        "preview": "Xem trước",
+        "fileName": "Tên tập tin",
+        "category": "Phân loại",
+        "storage": "Lưu trữ",
+        "owner": "Đối tượng sở hữu",
+        "uploadedAt": "Ngày tải lên",
+        "actions": "Hành động"
+      }
+    },
+    "deleteModal": {
+      "title": "Xác nhận xóa tập tin",
+      "description": "Bạn có chắc chắn muốn xóa file này? Hành động này sẽ thực hiện:",
+      "deletePhysicalPrefix": "Xóa vật lý file gốc trên nhà lưu trữ",
+      "unlinkDb": "Hủy liên kết và gán giá trị NULL (hoặc xóa dòng tương ứng) trong DB cho:",
+      "object": "Đối tượng:",
+      "fileName": "Tên file:",
+      "cancel": "Hủy bỏ"
+    }
+  },
+  "userPanel": {
+    "userNotFound": "Không tìm thấy người dùng.",
+    "updateError": "Hiện không thể cập nhật người dùng này.",
+    "fullNameRequired": "Họ tên là bắt buộc.",
+    "invalidEmail": "Vui lòng nhập địa chỉ email hợp lệ.",
+    "banReasonRequired": "Lý do ban là bắt buộc.",
+    "title": "Quản lý người dùng",
+    "description": "Tìm tài khoản, xem chi tiết và quản lý vai trò hoặc quyền truy cập mà không xóa người dùng.",
+    "refresh": "Làm mới",
+    "searchUser": "Tìm người dùng",
+    "searchPlaceholder": "Tìm theo tên hoặc email...",
+    "roleFilter": "Lọc vai trò",
+    "statusFilter": "Lọc trạng thái",
+    "matchingUsers": "{{count}} người dùng phù hợp",
+    "clearFilters": "Xóa bộ lọc",
+    "loading": "Đang tải danh sách người dùng...",
+    "loadError": "Lỗi tải người dùng: {{error}}",
+    "tryAgain": "Thử lại",
+    "headers": {
+      "avatar": "Avatar",
+      "name": "Tên",
+      "email": "Email",
+      "role": "Vai trò",
+      "status": "Trạng thái",
+      "createdDate": "Ngày tạo",
+      "actions": "Hành động"
+    },
+    "empty": "Không có người dùng nào khớp với tìm kiếm và bộ lọc hiện tại.",
+    "you": "Bạn",
+    "archived": "Đã lưu trữ",
+    "view": "Xem",
+    "detailTitle": "Chi tiết người dùng",
+    "detailDescription": "Xem thông tin tài khoản và thực hiện các thao tác quản trị.",
+    "userInformation": "Thông tin người dùng",
+    "fullName": "Họ và tên",
+    "createdDate": "Ngày tạo",
+    "userId": "Mã người dùng",
+    "actionsTitle": "Hành động",
+    "editUser": "Sửa người dùng",
+    "editUserHint": "Cập nhật họ tên và địa chỉ email.",
+    "changeRole": "Đổi vai trò",
+    "changeRoleHint": "Gán quyền admin, developer hoặc customer.",
+    "suspendUser": "Tạm khóa người dùng",
+    "suspendUserHint": "Chặn truy cập tạm thời mà không xóa tài khoản.",
+    "activateUser": "Kích hoạt người dùng",
+    "activateUserHint": "Khôi phục quyền truy cập cho tài khoản bị khóa hoặc bị cấm.",
+    "banUser": "Ban người dùng",
+    "banUserHint": "Chặn vĩnh viễn quyền truy cập và yêu cầu lý do.",
+    "editDialogTitle": "Sửa người dùng",
+    "editDialogDescription": "Cập nhật thông tin nhận diện chính của người dùng.",
+    "fullNamePlaceholder": "Nhập họ và tên",
+    "emailPlaceholder": "Nhập địa chỉ email",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "roleDialogTitle": "Đổi vai trò",
+    "roleDialogDescription": "Gán vai trò phù hợp cho tài khoản này.",
+    "suspendDialogTitle": "Tạm khóa người dùng",
+    "suspendDialogDescription": "Chặn truy cập tạm thời trong khi vẫn giữ dữ liệu tài khoản.",
+    "suspendConfirm": "Bạn có chắc muốn tạm khóa người dùng này không?",
+    "confirm": "Xác nhận",
+    "banDialogTitle": "Ban người dùng",
+    "banDialogDescription": "Ban tài khoản này và lưu lại lý do thực hiện.",
+    "banConfirm": "Xác nhận ban người dùng này. Bắt buộc phải có lý do trước khi tiếp tục.",
+    "banReason": "Lý do ban",
+    "banReasonPlaceholder": "Mô tả lý do tài khoản này bị ban...",
+    "confirmBan": "Xác nhận ban",
+    "filterAll": "Tất cả"
   }
 }

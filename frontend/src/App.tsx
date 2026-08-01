@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { Header } from './components/Header';
 import { AdminHeader } from './components/admin/AdminHeader';
@@ -52,7 +53,9 @@ import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
 const DEFAULT_AUTHOR_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80';
 const PAYMENT_SESSION_STORAGE_KEY = 'godotlaunch-payment-orders';
 const PAYMENT_SELECTED_ORDER_STORAGE_KEY = 'godotlaunch-selected-payment-order';
+const THEME_STORAGE_KEY = 'godotlaunch-theme';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 const readStoredPayments = (): PaymentResponse[] => {
   try {
@@ -73,14 +76,14 @@ const readStoredSelectedPaymentOrder = () => {
   }
 };
 
-const formatMarketplaceDate = (date?: string) => {
+const formatMarketplaceDate = (date: string | undefined, t: TranslateFn) => {
   if (!date) {
-    return 'Recently listed';
+    return t('app.marketplace.recentlyListed');
   }
 
   const parsedDate = new Date(date);
   if (Number.isNaN(parsedDate.getTime())) {
-    return 'Recently listed';
+    return t('app.marketplace.recentlyListed');
   }
 
   return new Intl.DateTimeFormat('en-US', {
@@ -108,18 +111,19 @@ const getMarketplaceImage = (item: MarketplaceItemResponse) =>
 
 const buildMarketplaceTagList = (
   item: MarketplaceItemResponse,
-  category: Asset['category']
+  category: Asset['category'],
+  t: TranslateFn
 ) => [
-  'Asset Pack',
+  t('app.marketplace.assetPack'),
   category,
   item.version,
   item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : undefined
 ].filter((tag): tag is string => Boolean(tag));
 
-const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
-  const category = item.categoryName?.trim() || 'Uncategorized';
+const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse, t: TranslateFn): Asset => {
+  const category = item.categoryName?.trim() || t('app.marketplace.uncategorized');
   const dbTags = item.tags || [];
-  const tagList = dbTags.length > 0 ? dbTags : buildMarketplaceTagList(item, category);
+  const tagList = dbTags.length > 0 ? dbTags : buildMarketplaceTagList(item, category, t);
 
   return {
     id: item.id,
@@ -127,7 +131,7 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
     price: Number(item.price || 0),
     rating: 4.8,
     reviewedCount: 0,
-    author: item.sellerFullName || item.sellerEmail || 'Unknown Creator',
+    author: item.sellerFullName || item.sellerEmail || t('app.marketplace.unknownCreator'),
     authorAvatar: DEFAULT_AUTHOR_AVATAR,
     category,
     description: item.description || '',
@@ -141,15 +145,17 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse): Asset => {
     documentation: '',
 
     supportedPlatforms: item.supportedPlatforms || '',
-    lastUpdated: formatMarketplaceDate(item.updatedAt || item.createdAt),
+    lastUpdated: formatMarketplaceDate(item.updatedAt || item.createdAt, t),
     details: {
-      tilesCount: 'Pack archive',
-      spritesCount: 'Ready-to-import resources',
-      propsCount: 'Marketplace file package',
+      tilesCount: t('app.marketplace.packArchive'),
+      spritesCount: t('app.marketplace.readyResources'),
+      propsCount: t('app.marketplace.filePackage'),
       featuresList: [
-        'Real marketplace asset listing from API',
-        'Ready for import into your production pipeline',
-        category ? `${category} category mapping preserved` : 'Category metadata preserved'
+        t('app.marketplace.feature.realListing'),
+        t('app.marketplace.feature.importPipeline'),
+        category
+          ? t('app.marketplace.feature.categoryPreserved', { category })
+          : t('app.marketplace.feature.categoryMetadataPreserved')
       ]
     }
   };
@@ -213,6 +219,7 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
 };
 
 export default function App() {
+  const { t } = useTranslation(['shared']);
   const initialRoute = pathToScreen(window.location.pathname);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
   const [checkoutOriginScreen, setCheckoutOriginScreen] = useState<ScreenType>(
@@ -224,7 +231,17 @@ export default function App() {
       logout();
     }
   };
-  const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    try {
+      const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (storedTheme === 'dark') return true;
+      if (storedTheme === 'light') return false;
+    } catch (error) {
+      console.warn('Failed to read stored theme preference:', error);
+    }
+
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+  });
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
   const displayScreen = currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen;
   const isCheckoutModalOpen = currentScreen === 'checkout';
@@ -352,10 +369,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (darkMode) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
+    document.documentElement.classList.toggle('dark', darkMode);
+    document.body.classList.toggle('dark', darkMode);
+    document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, darkMode ? 'dark' : 'light');
+    } catch (error) {
+      console.warn('Failed to store theme preference:', error);
     }
   }, [darkMode]);
 
@@ -499,20 +520,25 @@ export default function App() {
     price: game.priceProposed || 0,
     rating: 5.0,
     reviewedCount: 0,
-    author: game.creatorFullName || game.creatorName || 'Unknown Creator',
+    author: game.creatorFullName || game.creatorName || t('app.marketplace.unknownCreator'),
     authorAvatar: DEFAULT_AUTHOR_AVATAR,
-    category: game.categoryName || 'Uncategorized',
+    category: game.categoryName || t('app.marketplace.uncategorized'),
     description: game.description || '',
     image: game.thumbnailUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
-    tag: game.publishingType ? `Publishing: ${game.publishingType}` : 'Game',
+    tag: game.publishingType
+      ? t('app.marketplace.publishingPrefix', { value: game.publishingType })
+      : t('app.marketplace.gameTag'),
     tagList: game.tags && game.tags.length > 0 ? game.tags : [game.publishingType || 'Marketplace', game.status || 'Published'],
     version: game.version || '1.0.0',
-    lastUpdated: 'Just now',
+    lastUpdated: t('app.marketplace.justNow'),
     details: {
       tilesCount: 'N/A',
       spritesCount: 'Included',
       propsCount: 'Editable',
-      featuresList: ['Premium Godot game project', 'Verified clean and safe source code']
+      featuresList: [
+        t('app.marketplace.feature.premiumProject'),
+        t('app.marketplace.feature.verifiedSafe'),
+      ]
     },
     screenshots: game.screenshots,
     videoUrl: game.videoUrl,
@@ -530,7 +556,7 @@ export default function App() {
           return;
         }
 
-        const mapped = res.data.map(mapMarketplaceItemToAsset);
+        const mapped = res.data.map((item) => mapMarketplaceItemToAsset(item, t));
         setAssets(prev => {
           const nonMarketplaceCatalog = prev.filter(item => item.itemType !== 'asset');
           return [...mapped, ...nonMarketplaceCatalog];
@@ -610,34 +636,34 @@ export default function App() {
     variant: 'success' | 'failed' | 'cancelled'
   ) => {
     if (payment.paymentStatus === 'PAID') {
-      showToast(`Mua hàng thành công: ${payment.marketplaceItemTitle}.`, 'success');
+      showToast(t('app.toast.purchaseSuccessItem', { title: payment.marketplaceItemTitle }), 'success');
       return;
     }
 
     if (payment.paymentStatus === 'FAILED') {
-      showToast(`Thanh toán thất bại cho ${payment.marketplaceItemTitle}.`, 'error');
+      showToast(t('app.toast.purchaseFailedItem', { title: payment.marketplaceItemTitle }), 'error');
       return;
     }
 
     if (payment.paymentStatus === 'CANCELLED' || variant === 'cancelled') {
-      showToast(`Bạn đã hủy thanh toán cho ${payment.marketplaceItemTitle}.`, 'warning');
+      showToast(t('app.toast.purchaseCancelledItem', { title: payment.marketplaceItemTitle }), 'warning');
       return;
     }
 
     if (payment.paymentStatus === 'EXPIRED') {
-      showToast(`Phiên thanh toán cho ${payment.marketplaceItemTitle} đã hết hạn.`, 'warning');
+      showToast(t('app.toast.purchaseExpiredItem', { title: payment.marketplaceItemTitle }), 'warning');
       return;
     }
 
     if (variant === 'success') {
-      showToast(`Đơn hàng ${payment.marketplaceItemTitle} đang chờ PayOS xác nhận.`, 'info');
+      showToast(t('app.toast.purchasePendingConfirmItem', { title: payment.marketplaceItemTitle }), 'info');
       return;
     }
 
     if (variant === 'failed') {
-      showToast(`Thanh toán cho ${payment.marketplaceItemTitle} chưa hoàn tất.`, 'error');
+      showToast(t('app.toast.purchaseIncompleteItem', { title: payment.marketplaceItemTitle }), 'error');
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   // Switch to Detail Screen helper
   const handleViewAssetDetails = (asset: Asset) => {
@@ -672,13 +698,13 @@ export default function App() {
   const handleAddToCart = (asset: Asset, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!currentUser) {
-      showToast("Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng!", "warning");
+      showToast(t('app.toast.loginRequiredAddToCart'), "warning");
       setCurrentScreen('signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     if (ownedProductIds.has(asset.id)) {
-      showToast("Bạn đã sở hữu sản phẩm này rồi, không thể mua lại.", "warning");
+      showToast(t('app.toast.ownedAlready'), "warning");
       return;
     }
     setCart(prev => {
@@ -698,19 +724,19 @@ export default function App() {
 
   const handleBuyNow = (asset: Asset) => {
     if (!currentUser) {
-      showToast("Bạn cần đăng nhập để mua hàng!", "warning");
+      showToast(t('app.toast.loginRequiredBuy'), "warning");
       setCurrentScreen('signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (!asset.itemType) {
-      showToast("Chỉ marketplace item mới hỗ trợ luồng thanh toán mới ở thời điểm hiện tại.", "warning");
+      showToast(t('app.toast.onlyMarketplacePaymentSupported'), "warning");
       return;
     }
 
     if (ownedProductIds.has(asset.id)) {
-      showToast("Bạn đã sở hữu sản phẩm này rồi, không thể mua lại.", "warning");
+      showToast(t('app.toast.ownedAlready'), "warning");
       return;
     }
 
@@ -729,14 +755,14 @@ export default function App() {
   // Navigate to checkout instead of simulating an immediate completed purchase
   const handleCheckout = () => {
     if (!currentUser) {
-      showToast("Bạn cần đăng nhập để mua hàng!", "warning");
+      showToast(t('app.toast.loginRequiredBuy'), "warning");
       setCurrentScreen('signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (cart.length === 0) {
-      showToast("Giỏ hàng của bạn đang trống.", "info");
+      showToast(t('app.toast.cartEmpty'), "info");
       return;
     }
 
@@ -761,7 +787,7 @@ export default function App() {
       if (trackedPayments.length === 0) {
         const historyResponse = await paymentApi.getMyPayments();
         if (!historyResponse.success || !historyResponse.data) {
-          throw new Error(historyResponse.message || 'Không thể tải danh sách thanh toán của bạn.');
+          throw new Error(historyResponse.message || t('app.toast.loadMyPaymentsFailed'));
         }
 
         trackedPayments = historyResponse.data;
@@ -775,7 +801,7 @@ export default function App() {
         trackedPayments.map(async (payment) => {
           const response = await paymentApi.confirmPayment(payment.id);
           if (!response.success || !response.data) {
-            throw new Error(response.message || 'Không thể tải trạng thái thanh toán.');
+            throw new Error(response.message || t('app.toast.loadPaymentStatusFailed'));
           }
           return response.data;
         })
@@ -783,7 +809,7 @@ export default function App() {
 
       replaceTrackedPayments(refreshedPayments, selectedPaymentOrderId);
     } catch (err: any) {
-      showToast(err.response?.data?.message || err.message || 'Không thể làm mới trạng thái thanh toán.', 'error');
+      showToast(err.response?.data?.message || err.message || t('app.toast.refreshPaymentFailed'), 'error');
     } finally {
       setIsRefreshingPayments(false);
     }
@@ -791,31 +817,31 @@ export default function App() {
 
   const handlePlaceOrder = async () => {
     if (!currentUser) {
-      showToast("Bạn cần đăng nhập để mua hàng!", "warning");
+      showToast(t('app.toast.loginRequiredBuy'), "warning");
       setCurrentScreen('signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (cart.length === 0) {
-      showToast("Giỏ hàng của bạn đang trống.", "info");
+      showToast(t('app.toast.cartEmpty'), "info");
       return;
     }
 
     const unsupportedItems = cart.filter((item) => !item.itemType);
     if (unsupportedItems.length > 0) {
-      showToast("Giỏ hàng đang có item chưa thuộc marketplace payment flow. Vui lòng xóa chúng trước khi checkout.", "warning");
+      showToast(t('app.toast.unsupportedCartItems'), "warning");
       return;
     }
 
     if (cart.length > 1) {
-      showToast("Luồng PayOS hiện tại đang hỗ trợ 1 marketplace item cho mỗi checkout session. Bạn hãy giữ lại 1 item trong giỏ trước khi thanh toán.", "warning");
+      showToast(t('app.toast.singleItemPayos'), "warning");
       return;
     }
 
     const nonPersistedMarketplaceItems = cart.filter((item) => !UUID_PATTERN.test(item.id));
     if (nonPersistedMarketplaceItems.length > 0) {
-      showToast("Một số sản phẩm đang là dữ liệu demo cũ, chưa có record thật trong database nên chưa thể tạo payment.", "warning");
+      showToast(t('app.toast.demoDataNoPayment'), "warning");
       return;
     }
 
@@ -830,10 +856,10 @@ export default function App() {
       });
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || `Không thể tạo đơn hàng thanh toán cho ${checkoutItem.title}.`);
+        throw new Error(response.message || t('app.toast.createOrderFailedFor', { title: checkoutItem.title }));
       }
 
-      showToast("Mua thành công!", "success");
+      showToast(t('app.toast.buySuccess'), "success");
       setCart([]);
       setIsCartOpen(false);
 
@@ -850,11 +876,16 @@ export default function App() {
       const shortfall = err.response?.data?.data?.shortfall;
 
       if (errorCode === 'INSUFFICIENT_BALANCE' && typeof shortfall === 'number') {
-        showToast(`Ví không đủ tiền — bạn cần nạp thêm ${shortfall.toLocaleString('vi-VN')}đ để mua sản phẩm này.`, 'warning');
+        showToast(
+          t('app.toast.walletShortfall', {
+            amount: `${shortfall.toLocaleString('vi-VN')}đ`,
+          }),
+          'warning',
+        );
       } else if (errorCode === 'DATA_CONFLICT') {
-        showToast('Sản phẩm này có thể vừa được mua hoặc có yêu cầu trùng lặp. Vui lòng tải lại trang và kiểm tra lại.', 'warning');
+        showToast(t('app.toast.dataConflict'), 'warning');
       } else {
-        showToast(err.response?.data?.message || err.message || 'Không thể thực hiện mua bằng ví.', 'error');
+        showToast(err.response?.data?.message || err.message || t('app.toast.walletPurchaseFailed'), 'error');
       }
     } finally {
       setIsPlacingOrder(false);
@@ -865,13 +896,13 @@ export default function App() {
     try {
       const response = await paymentApi.cancelPayment(paymentId);
       if (!response.success || !response.data) {
-        throw new Error(response.message || 'Không thể hủy payment session.');
+        throw new Error(response.message || t('app.toast.cancelPaymentFailed'));
       }
 
       syncTrackedPayment(response.data);
-      showToast("Payment session đã được hủy.", "success");
+      showToast(t('app.toast.cancelPaymentSuccess'), "success");
     } catch (err: any) {
-      showToast(err.response?.data?.message || err.message || 'Không thể hủy payment session.', 'error');
+      showToast(err.response?.data?.message || err.message || t('app.toast.cancelPaymentFailed'), 'error');
       throw err;
     }
   };
@@ -949,13 +980,16 @@ export default function App() {
   };
 
   // Interactive Projects Array mapped to custom reusable DataTable component
-  const projectRepositories = [
-    { id: '1', projectName: 'Skyward Chronicles Engine', version: 'v4.1.2', date: 'Just now', status: 'LIVE' as const, engine: 'Godot 4.1-Stable', downloads: '12.4k' },
-    { id: '2', projectName: 'Neon Drift Mechanics Module', version: 'v2.0.1', date: '3 hours ago', status: 'LIVE' as const, engine: 'Godot 4.2-Dev3', downloads: '3.1k' },
-    { id: '3', projectName: 'Retro Platformer Pro Controller', version: 'v1.4.0', date: 'Yesterday', status: 'BETA' as const, engine: 'Godot 3.5 LTS', downloads: '890' },
-    { id: '4', projectName: 'Isometric Combat Pathfinder', version: 'v0.9.8-Beta', date: 'Last week', status: 'BETA' as const, engine: 'Godot 4.x-Beta', downloads: '1,420' },
-    { id: '5', projectName: 'Procedural Terrain Generator', version: 'v0.2.1-Alpha', date: 'May 10', status: 'ALPHA' as const, engine: 'Godot 4.3', downloads: '112' }
-  ];
+  const projectRepositories = useMemo(
+    () => [
+      { id: '1', projectName: 'Skyward Chronicles Engine', version: 'v4.1.2', date: t('app.projectDate.justNow'), status: 'LIVE' as const, engine: 'Godot 4.1-Stable', downloads: '12.4k' },
+      { id: '2', projectName: 'Neon Drift Mechanics Module', version: 'v2.0.1', date: t('app.projectDate.hoursAgo', { count: 3 }), status: 'LIVE' as const, engine: 'Godot 4.2-Dev3', downloads: '3.1k' },
+      { id: '3', projectName: 'Retro Platformer Pro Controller', version: 'v1.4.0', date: t('app.projectDate.yesterday'), status: 'BETA' as const, engine: 'Godot 3.5 LTS', downloads: '890' },
+      { id: '4', projectName: 'Isometric Combat Pathfinder', version: 'v0.9.8-Beta', date: t('app.projectDate.lastWeek'), status: 'BETA' as const, engine: 'Godot 4.x-Beta', downloads: '1,420' },
+      { id: '5', projectName: 'Procedural Terrain Generator', version: 'v0.2.1-Alpha', date: t('app.projectDate.may10'), status: 'ALPHA' as const, engine: 'Godot 4.3', downloads: '112' }
+    ],
+    [t],
+  );
 
   return (
     <div id="godotlaunch-root" className={`${darkMode ? 'dark bg-transparent text-slate-100' : 'bg-transparent text-slate-800'} min-h-screen flex flex-col font-sans transition-colors duration-300 relative`}>
@@ -969,7 +1003,7 @@ export default function App() {
             <img
               id="voxel-background-layer"
               src={VOXEL_BG_IMAGE}
-              alt="Voxel Background Scenery"
+              alt={t('app.voxelBackgroundAlt')}
               className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none transition-all duration-700"
               style={{
                 filter: darkMode ? 'brightness(0.4) contrast(1.1) saturate(1.12)' : 'brightness(0.98) contrast(1.0) saturate(1.0)'
@@ -1002,6 +1036,8 @@ export default function App() {
           setCurrentScreen={setCurrentScreen}
           currentUser={currentUser}
           setCurrentUser={setCurrentUser}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
           cart={cart}
           isCartOpen={isCartOpen}
           setIsCartOpen={setIsCartOpen}
@@ -1192,6 +1228,7 @@ export default function App() {
           <SignUpPage
             setCurrentScreen={setCurrentScreen}
             setCurrentUser={setCurrentUser}
+            darkMode={darkMode}
           />
         )}
 

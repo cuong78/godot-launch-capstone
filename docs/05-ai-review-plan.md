@@ -28,6 +28,10 @@ AI Review không thay thế:
 - Plagiarism Detection giữa nhiều sản phẩm.
 - Dispute workflow và bằng chứng pháp lý.
 
+Luồng tổng thể kết hợp `SourceSnapshot`, AI Review, `CodeEmbedding` và
+`PlagiarismFlag`, kèm Mermaid sequence/entity diagram, nằm tại
+[06. AI Review và Plagiarism Detection](06-plagiarism-detection-plan.md).
+
 ## 2. Phạm vi theo loại nội dung
 
 | Nội dung | Nguồn chính | Code analysis | Media/NSFW | Text/tag analysis |
@@ -302,8 +306,8 @@ CHECK (
 | `SourceSnapshot` | AI phân tích bundle trực tiếp; `AiReviewReport.sourceSnapshot` giữ FK tới snapshot |
 | `AuditLog` | Đã ghi event `ai_report_generated` sau khi lưu report |
 | `SourceCommit` | Entity/schema đã có nhưng submit flow chưa lưu commit history |
-| `CodeEmbedding` | Entity/schema đã có nhưng chưa có pipeline tạo embedding |
-| `PlagiarismFlag` | Entity/schema đã có nhưng chưa được tạo bởi service |
+| `CodeEmbedding` | Đã sinh từ exact snapshot, lưu model/revision và vector 768 chiều |
+| `PlagiarismFlag` | Đã tạo từ pgvector top-N khi vượt threshold; giữ đủ hai phía để audit |
 
 `CodeEmbedding` và `PlagiarismFlag` thuộc module Plagiarism Detection, không nên gộp vào JSON `AiReviewReport.flags` vì cần query quan hệ Game-to-Game có cấu trúc.
 
@@ -359,6 +363,7 @@ Response chính:
 | POST | `/api/v1/admin/ai-reviews/game/{gameId}/trigger` | Chạy lại Game review |
 | POST | `/api/v1/admin/ai-reviews/asset/{assetId}/trigger` | Chạy lại Asset review |
 | GET | `/api/v1/admin/ai-reviews/game/{gameId}` | Report Game mới nhất |
+| GET | `/api/v1/admin/ai-reviews/game/{gameId}/overview` | Snapshot/status/report/plagiarism flags mới nhất |
 | GET | `/api/v1/admin/ai-reviews/asset/{assetId}` | Report Asset mới nhất |
 | GET | `/api/v1/admin/ai-reviews/game/{gameId}/history` | Lịch sử Game report |
 | GET | `/api/v1/admin/ai-reviews/asset/{assetId}/history` | Lịch sử Asset report |
@@ -396,7 +401,10 @@ AI Review đang chạy bằng `@Async` và fail-soft:
 not_started | queued | running | completed | failed
 ```
 
-Hiện chưa có trạng thái job riêng; việc “chưa có report” không phân biệt được chưa chạy, đang chạy hay đã lỗi.
+Với Game source, migration V11 lưu trạng thái trực tiếp trên exact
+`SourceSnapshot`: `aiReviewStatus` và `plagiarismStatus`, kèm error/completedAt.
+Admin UI polling endpoint overview khi một bước đang chạy. Asset media-only vẫn
+dùng report hiện có và không tham gia code plagiarism.
 
 ## 12. Cấu hình runtime
 
@@ -409,6 +417,11 @@ DEEPSEEK_MODEL=deepseek-chat
 CLIP_MODEL=openai/clip-vit-base-patch32
 NSFW_MODEL=Falconsai/nsfw_image_detection
 NSFW_THRESHOLD=0.7
+CODE_EMBEDDING_MODEL=microsoft/codebert-base
+CODE_EMBEDDING_MODEL_REVISION=3b0952feddeffad0063f274080e3c23d75e7eb39
+PLAGIARISM_REVIEW_THRESHOLD=0.70
+PLAGIARISM_REJECT_THRESHOLD=0.90
+PLAGIARISM_TOP_N=10
 ```
 
 Các Java client đọc property `app.face-service.url`; nếu chưa khai báo trong YAML, giá trị mặc định là `http://localhost:8001`:
@@ -446,13 +459,14 @@ FFmpeg phải tồn tại trong image Python. CLIP và NSFW model được lazy-
 | OCR media moderation | Đã có |
 | Admin latest/history/re-run API | Đã có |
 | Admin report card | Đã có |
-| AI job status/queue | Chưa có |
+| Trạng thái AI/plagiarism theo Game snapshot | Đã có |
+| Durable queue/worker và retry backoff | Chưa có; hiện vẫn dùng `@Async` |
 | Clone GitHub đúng một lần cho mỗi submit | Đã có |
 | Bundle path chứa Game ID và Snapshot ID | Đã có |
 | Python tải bundle và xác minh `bundleHash` | Đã có |
 | Report gắn với exact SourceSnapshot | Đã có |
 | Evidence image preview | Chưa có |
-| Plagiarism runtime pipeline | Chưa có |
+| Plagiarism runtime pipeline | Đã có cho source code Game |
 | Web demo screenshot đưa vào CLIP | Chưa có |
 
 ## 14. Kế hoạch hoàn thiện theo ưu tiên
@@ -465,8 +479,8 @@ FFmpeg phải tồn tại trong image Python. CLIP và NSFW model được lazy-
 
 ### P1 — vận hành ổn định
 
-- Tạo entity/job state cho `queued/running/completed/failed`.
-- Chống trigger trùng bằng idempotency key theo target + snapshot/media version.
+- [x] Lưu `pending/running/completed/failed` theo exact Game snapshot.
+- [x] Plagiarism idempotent theo snapshot + model + version; không chạy lại snapshot đã completed.
 - Dùng queue/worker thay cho `@Async` trong process Spring Boot.
 - Retry có backoff cho lỗi tạm thời.
 - Thêm metrics: thời gian xử lý, lỗi model, số report theo recommendation.
@@ -482,11 +496,12 @@ FFmpeg phải tồn tại trong image Python. CLIP và NSFW model được lazy-
 
 ### P3 — Plagiarism Detection
 
-- Sample code từ exact SourceSnapshot.
-- Tạo CodeBERT embedding và lưu `CodeEmbedding`.
-- Query top-N cosine similarity bằng pgvector.
-- Tạo `PlagiarismFlag` khi vượt threshold.
-- Hiển thị hai game và bằng chứng side-by-side cho admin.
+- [x] Sample code từ exact SourceSnapshot.
+- [x] Tạo CodeBERT embedding và lưu `CodeEmbedding`.
+- [x] Query top-N cosine similarity bằng pgvector.
+- [x] Tạo `PlagiarismFlag` khi vượt threshold.
+- [x] Hiển thị Game/snapshot/commit/model/similarity đối chiếu cho admin.
+- [ ] Hiển thị diff source side-by-side ở cấp file/đoạn code.
 
 Chi tiết nằm trong [06. Plagiarism Detection](06-plagiarism-detection-plan.md).
 

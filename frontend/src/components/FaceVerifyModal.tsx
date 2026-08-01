@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import Webcam from 'react-webcam';
 import { Camera, Loader2, ShieldCheck, X, RefreshCw } from 'lucide-react';
 import { faceVerifyApi } from '../api/faceVerifyApi';
@@ -18,14 +19,18 @@ type Step = 'intro' | 'camera' | 'preview' | 'submitting' | 'success';
 export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
   onSuccess,
   onClose,
-  description = 'Trước khi đăng tải lên Marketplace lần đầu, hệ thống cần xác minh danh tính để đảm bảo mỗi người chỉ có một tài khoản developer.',
-  successMessage = 'Bạn có thể đăng tải lên Marketplace. Đang tiếp tục...',
+  description,
+  successMessage,
 }) => {
+  const { t } = useTranslation(['shared']);
   const [step, setStep] = useState<Step>('intro');
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string>('');
   const [error, setError] = useState('');
   const webcamRef = useRef<Webcam>(null);
+  const resolvedDescription = description ?? t('faceVerify.defaultDescription');
+  const resolvedSuccessMessage =
+    successMessage ?? t('faceVerify.defaultSuccessMessage');
 
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -45,11 +50,11 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
         setStep('success');
         setTimeout(onSuccess, 1500);
       } else {
-        setError(res.message || 'Xác thực thất bại. Vui lòng thử lại.');
+        setError(res.message || t('faceVerify.errorDefault'));
         setStep('preview');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Xác thực thất bại. Vui lòng thử lại.';
+      const msg = err.response?.data?.message || t('faceVerify.errorDefault');
       setError(msg);
       setStep('preview');
     }
@@ -66,14 +71,14 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#17130a] shadow-2xl">
+      <div className="dark-depth-card relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700/70 dark:bg-night-850">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-white/10">
           <div className="flex items-center gap-2">
             <ShieldCheck className="text-amber-400" size={20} />
-            <span className="font-display font-bold text-[#ece1d1]">Xác Thực Danh Tính</span>
+            <span className="font-display font-bold text-slate-950 dark:text-slate-100">{t('faceVerify.title')}</span>
           </div>
-          <button onClick={onClose} className="text-[#d3c5ac]/50 hover:text-[#ece1d1] transition">
+          <button onClick={onClose} className="text-slate-400 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
             <X size={18} />
           </button>
         </div>
@@ -86,21 +91,21 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
                 <Camera className="text-amber-400" size={28} />
               </div>
               <div>
-                <h3 className="font-display text-lg font-bold text-[#ece1d1]">Xác Thực Khuôn Mặt Một Lần</h3>
-                <p className="mt-2 text-sm text-[#d3c5ac]/70">
-                  {description}
+                <h3 className="font-display text-lg font-bold text-slate-950 dark:text-slate-100">{t('faceVerify.oneTimeTitle')}</h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  {resolvedDescription}
                 </p>
               </div>
-              <ul className="space-y-2 text-left text-xs text-[#d3c5ac]/70">
-                <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">✓</span> Chỉ cần thực hiện <strong className="text-[#ece1d1]">một lần duy nhất</strong></li>
-                <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">✓</span> Hệ thống chỉ lưu <strong className="text-[#ece1d1]">mã đặc trưng khuôn mặt</strong>, không lưu ảnh gốc</li>
-                <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">✓</span> Đảm bảo môi trường <strong className="text-[#ece1d1]">đủ ánh sáng</strong>, nhìn thẳng vào camera</li>
+              <ul className="space-y-2 text-left text-xs text-slate-600 dark:text-slate-300">
+                <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">✓</span> {t('faceVerify.checklist.once')}</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">✓</span> {t('faceVerify.checklist.embedding')}</li>
+                <li className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">✓</span> {t('faceVerify.checklist.lighting')}</li>
               </ul>
               <button
                 onClick={() => setStep('camera')}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 font-display font-bold text-[#6c4f00] transition hover:bg-amber-300 active:scale-[0.98]"
               >
-                <Camera size={16} /> Bắt Đầu Chụp Ảnh
+                <Camera size={16} /> {t('faceVerify.startCapture')}
               </button>
             </div>
           )}
@@ -108,8 +113,8 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
           {/* Camera step */}
           {step === 'camera' && (
             <div className="space-y-4">
-              <p className="text-center text-xs text-[#d3c5ac]/70">Nhìn thẳng vào camera và giữ khuôn mặt trong khung</p>
-              <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black">
+              <p className="text-center text-xs text-slate-600 dark:text-slate-300">{t('faceVerify.lookAtCamera')}</p>
+              <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-900 dark:border-white/10">
                 <Webcam
                   ref={webcamRef}
                   audio={false}
@@ -117,7 +122,7 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
                   screenshotQuality={0.9}
                   videoConstraints={{ facingMode: 'user', width: 480, height: 360 }}
                   onUserMedia={() => setIsCameraReady(true)}
-                  onUserMediaError={() => setError('Không thể truy cập camera. Vui lòng cấp quyền và thử lại.')}
+                  onUserMediaError={() => setError(t('faceVerify.cameraAccessError'))}
                   className="w-full"
                 />
                 {/* Oval face guide overlay */}
@@ -131,7 +136,7 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
                 disabled={!isCameraReady}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 font-display font-bold text-[#6c4f00] transition hover:bg-amber-300 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isCameraReady ? <><Camera size={16} /> Chụp Ảnh</> : <><Loader2 size={16} className="animate-spin" /> Đang kết nối...</>}
+                {isCameraReady ? <><Camera size={16} /> {t('faceVerify.capturePhoto')}</> : <><Loader2 size={16} className="animate-spin" /> {t('faceVerify.connecting')}</>}
               </button>
             </div>
           )}
@@ -139,11 +144,11 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
           {/* Preview step */}
           {step === 'preview' && (
             <div className="space-y-4">
-              <p className="text-center text-xs text-[#d3c5ac]/70">Kiểm tra ảnh trước khi xác nhận</p>
+              <p className="text-center text-xs text-slate-600 dark:text-slate-300">{t('faceVerify.reviewPhoto')}</p>
               <img
                 src={capturedImage}
                 alt="Captured face"
-                className="w-full rounded-xl border border-white/10 object-cover"
+                className="w-full rounded-xl border border-slate-200 object-cover dark:border-white/10"
               />
               {error && (
                 <div className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-2 text-xs text-red-300">
@@ -153,15 +158,15 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
               <div className="flex gap-3">
                 <button
                   onClick={handleRetake}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-[#d3c5ac] transition hover:bg-white/10"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:border-slate-700/70 dark:bg-night-900 dark:text-slate-300 dark:hover:bg-night-800"
                 >
-                  <RefreshCw size={14} /> Chụp Lại
+                  <RefreshCw size={14} /> {t('faceVerify.retake')}
                 </button>
                 <button
                   onClick={handleSubmit}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-bold text-[#6c4f00] transition hover:bg-amber-300 active:scale-[0.98]"
                 >
-                  <ShieldCheck size={14} /> Xác Nhận
+                  <ShieldCheck size={14} /> {t('faceVerify.confirm')}
                 </button>
               </div>
             </div>
@@ -171,8 +176,8 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
           {step === 'submitting' && (
             <div className="flex flex-col items-center gap-4 py-6 text-center">
               <Loader2 className="animate-spin text-amber-400" size={36} />
-              <p className="text-sm text-[#d3c5ac]">Đang xác thực khuôn mặt...</p>
-              <p className="text-xs text-[#d3c5ac]/50">Quá trình này có thể mất vài giây</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300">{t('faceVerify.verifying')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500">{t('faceVerify.verifyingHint')}</p>
             </div>
           )}
 
@@ -183,8 +188,8 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
                 <ShieldCheck className="text-emerald-400" size={32} />
               </div>
               <div>
-                <p className="font-display font-bold text-emerald-300">Xác Thực Thành Công!</p>
-                <p className="mt-1 text-xs text-[#d3c5ac]/70">{successMessage}</p>
+                <p className="font-display font-bold text-emerald-300">{t('faceVerify.successTitle')}</p>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{resolvedSuccessMessage}</p>
               </div>
             </div>
           )}

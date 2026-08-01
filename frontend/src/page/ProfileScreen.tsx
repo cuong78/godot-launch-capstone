@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   MessageSquare, 
   ArrowLeft,
@@ -22,6 +23,7 @@ export function ProfileScreen({
   onMessageCreator
 }: ProfileScreenProps) {
   const { currentUser } = useAuth();
+  const { t } = useTranslation(["profile"]);
   const [author, setAuthor] = useState<UserSummary | null>(initialAuthor || null);
 
   useEffect(() => {
@@ -36,9 +38,9 @@ export function ProfileScreen({
 
   if (!author) {
     return (
-      <div className="max-w-4xl mx-auto py-12 flex flex-col items-center justify-center min-h-[50vh] text-center p-8 bg-white/5 dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-800/60 shadow-xl">
+      <div className="max-w-4xl mx-auto flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-slate-200/70 bg-white/85 p-8 py-12 text-center shadow-xl backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/40">
         <Loader2 className="animate-spin text-amber-500 mb-4 animate-spin-slow" size={32} />
-        <p className="text-slate-500 dark:text-slate-400 font-mono text-xs uppercase tracking-widest">Loading creator profile...</p>
+        <p className="text-slate-500 dark:text-slate-400 font-mono text-xs uppercase tracking-widest">{t("public.loadingCreatorProfile")}</p>
       </div>
     );
   }
@@ -49,9 +51,9 @@ export function ProfileScreen({
       {/* Back button */}
       <button 
         onClick={onNavigateBack}
-        className="flex items-center gap-2 text-xs font-mono font-bold text-slate-500 hover:text-amber-400 transition-colors uppercase tracking-wider mb-6 bg-slate-800/20 px-3.5 py-2 rounded-xl border border-slate-700/20"
+        className="mb-6 flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider text-slate-500 transition-colors hover:border-amber-300 hover:text-amber-500 dark:border-slate-700/20 dark:bg-slate-800/20 dark:hover:text-amber-400"
       >
-        <ArrowLeft size={14} /> Back
+        <ArrowLeft size={14} /> {t("public.back")}
       </button>
 
       {/* Profile Header Stats Card */}
@@ -82,7 +84,7 @@ export function ProfileScreen({
             onClick={() => onMessageCreator?.(author)}
             className="mt-4 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-4 py-2 rounded-xl text-xs transition-colors shadow-lg active:scale-95 cursor-pointer"
           >
-            <MessageSquare size={14} /> Send Message
+            <MessageSquare size={14} /> {t("public.sendMessage")}
           </button>
         )}
       </div>

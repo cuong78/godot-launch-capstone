@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Ban,
   Eye,
@@ -50,21 +51,6 @@ type DialogMode = 'detail' | 'edit' | 'role' | 'suspend' | 'ban' | null;
 type RoleFilter = 'all' | AdminUserRole;
 type StatusFilter = 'all' | AdminUserStatus;
 
-const roleOptions: Array<{ value: RoleFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'developer', label: 'Developer' },
-  { value: 'customer', label: 'Customer' },
-];
-
-const statusOptions: Array<{ value: StatusFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'suspended', label: 'Suspended' },
-  { value: 'banned', label: 'Banned' },
-];
-
 const dialogActionClasses =
   'flex w-full items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left transition-studio hover:border-amber-300 hover:bg-amber-50/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-amber-500/30 dark:hover:bg-slate-900';
 
@@ -74,28 +60,28 @@ const selectClassName =
 const filterSelectClassName =
   'w-full rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2.5 text-sm font-medium text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800/80 dark:bg-slate-950/90 dark:text-slate-100';
 
-const getRoleLabel = (role: AdminUserRole) => {
+const getRoleLabel = (role: AdminUserRole, t: (key: string) => string) => {
   switch (role) {
     case 'admin':
-      return 'Admin';
+      return t('roles.admin');
     case 'developer':
-      return 'Developer';
+      return t('roles.developer');
     case 'customer':
     default:
-      return 'Customer';
+      return t('roles.customer');
   }
 };
 
-const getStatusLabel = (status: AdminUserStatus) => {
+const getStatusLabel = (status: AdminUserStatus, t: (key: string) => string) => {
   switch (status) {
     case 'active':
-      return 'Active';
+      return t('status.user.active');
     case 'inactive':
-      return 'Inactive';
+      return t('status.user.inactive');
     case 'suspended':
-      return 'Suspended';
+      return t('status.user.suspended');
     case 'banned':
-      return 'Banned';
+      return t('status.user.banned');
     default:
       return status;
   }
@@ -128,14 +114,14 @@ const getStatusBadgeClass = (status: AdminUserStatus) => {
   }
 };
 
-const formatCreatedDate = (createdAt?: string) => {
+const formatCreatedDate = (createdAt: string | undefined, fallback: string) => {
   if (!createdAt) {
-    return 'Unavailable';
+    return fallback;
   }
 
   const parsedDate = new Date(createdAt);
   if (Number.isNaN(parsedDate.getTime())) {
-    return 'Unavailable';
+    return fallback;
   }
 
   return parsedDate.toLocaleDateString(undefined, {
@@ -156,7 +142,7 @@ const getAvatarInitials = (fullName: string, username: string) => {
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
 };
 
-const getErrorMessage = (error: unknown) => {
+const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message) {
     return error.message;
   }
@@ -165,25 +151,25 @@ const getErrorMessage = (error: unknown) => {
     return error;
   }
 
-  return 'Unable to update this user right now.';
+  return fallback;
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const StatusBadge: React.FC<{ status: AdminUserStatus }> = ({ status }) => (
+const StatusBadge: React.FC<{ status: AdminUserStatus; label: string }> = ({ status, label }) => (
   <span
     className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${getStatusBadgeClass(status)}`}
   >
     <span className="h-1.5 w-1.5 rounded-full bg-current" />
-    {getStatusLabel(status)}
+    {label}
   </span>
 );
 
-const RoleBadge: React.FC<{ role: AdminUserRole }> = ({ role }) => (
+const RoleBadge: React.FC<{ role: AdminUserRole; label: string }> = ({ role, label }) => (
   <span
     className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${getRoleBadgeClass(role)}`}
   >
-    {getRoleLabel(role)}
+    {label}
   </span>
 );
 
@@ -247,6 +233,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
   onRefresh,
   onUpdateUser,
 }) => {
+  const { t } = useTranslation(['admin']);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
@@ -258,6 +245,21 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
   const [editForm, setEditForm] = useState({ fullName: '', email: '' });
   const [roleDraft, setRoleDraft] = useState<AdminUserRole>('customer');
   const [banReason, setBanReason] = useState('');
+
+  const roleOptions: Array<{ value: RoleFilter; label: string }> = [
+    { value: 'all', label: t('userPanel.filterAll') },
+    { value: 'admin', label: t('roles.admin') },
+    { value: 'developer', label: t('roles.developer') },
+    { value: 'customer', label: t('roles.customer') },
+  ];
+
+  const statusOptions: Array<{ value: StatusFilter; label: string }> = [
+    { value: 'all', label: t('userPanel.filterAll') },
+    { value: 'active', label: t('status.user.active') },
+    { value: 'inactive', label: t('status.user.inactive') },
+    { value: 'suspended', label: t('status.user.suspended') },
+    { value: 'banned', label: t('status.user.banned') },
+  ];
 
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? null;
 
@@ -335,7 +337,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
       await onUpdateUser(payload);
       setDialogMode(nextMode);
     } catch (error) {
-      setActionError(getErrorMessage(error));
+      setActionError(getErrorMessage(error, t('userPanel.updateError')));
     } finally {
       setIsSubmitting(false);
     }
@@ -350,12 +352,12 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
     const email = editForm.email.trim();
 
     if (!fullName) {
-      setActionError('Full name is required.');
+      setActionError(t('userPanel.fullNameRequired'));
       return;
     }
 
     if (!emailPattern.test(email)) {
-      setActionError('Please enter a valid email address.');
+      setActionError(t('userPanel.invalidEmail'));
       return;
     }
 
@@ -417,7 +419,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
 
     const trimmedReason = banReason.trim();
     if (!trimmedReason) {
-      setActionError('Ban reason is required.');
+      setActionError(t('userPanel.banReasonRequired'));
       return;
     }
 
@@ -442,10 +444,10 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h3 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[28px]">
-            User Management
+            {t('userPanel.title')}
           </h3>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Search accounts, inspect details, and manage roles or account access without deleting users.
+            {t('userPanel.description')}
           </p>
         </div>
         <Button
@@ -456,7 +458,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
           onClick={onRefresh}
           className="self-start lg:self-auto"
         >
-          Refresh
+          {t('userPanel.refresh')}
         </Button>
       </div>
 
@@ -464,7 +466,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.5fr)_170px_170px] xl:items-end">
           <label className="space-y-1">
             <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-              Search User
+              {t('userPanel.searchUser')}
             </span>
             <div className="relative">
               <Search
@@ -474,20 +476,20 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
               <input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search by name or email..."
+                placeholder={t('userPanel.searchPlaceholder')}
                 className="w-full rounded-xl border border-slate-200/80 bg-white/90 py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800/80 dark:bg-slate-950/90 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
           </label>
 
           <FilterSelect
-            label="Role Filter"
+            label={t('userPanel.roleFilter')}
             value={roleFilter}
             options={roleOptions}
             onChange={(value) => setRoleFilter(value as RoleFilter)}
           />
           <FilterSelect
-            label="Status Filter"
+            label={t('userPanel.statusFilter')}
             value={statusFilter}
             options={statusOptions}
             onChange={(value) => setStatusFilter(value as StatusFilter)}
@@ -496,7 +498,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span className="rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-1 text-[11px] font-medium dark:border-slate-800/80 dark:bg-slate-950/90">
-            {filteredUsers.length} matching users
+            {t('userPanel.matchingUsers', { count: filteredUsers.length })}
           </span>
           {(searchQuery || roleFilter !== 'all' || statusFilter !== 'all') && (
             <button
@@ -508,7 +510,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
               }}
               className="text-[11px] font-medium text-amber-500 transition-studio hover:text-amber-400"
             >
-              Clear filters
+              {t('userPanel.clearFilters')}
             </button>
           )}
         </div>
@@ -516,13 +518,13 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
-          <RefreshCw className="animate-spin" size={18} /> Loading platform users...
+          <RefreshCw className="animate-spin" size={18} /> {t('userPanel.loading')}
         </div>
       ) : error ? (
         <div className="space-y-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-500">
-          <p className="font-semibold">Error loading users: {error}</p>
+          <p className="font-semibold">{t('userPanel.loadError', { error })}</p>
           <Button type="button" variant="outline" size="sm" onClick={onRefresh}>
-            Try Again
+            {t('userPanel.tryAgain')}
           </Button>
         </div>
       ) : (
@@ -530,20 +532,20 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
           <table className="w-full min-w-[920px] border-collapse text-left">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/50 text-[10px] font-semibold uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-950/20 dark:text-slate-400">
-                <th className="p-3">Avatar</th>
-                <th className="p-3">Name</th>
-                <th className="p-3">Email</th>
-                <th className="p-3">Role</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Created Date</th>
-                <th className="p-3 text-center">Actions</th>
+                <th className="p-3">{t('userPanel.headers.avatar')}</th>
+                <th className="p-3">{t('userPanel.headers.name')}</th>
+                <th className="p-3">{t('userPanel.headers.email')}</th>
+                <th className="p-3">{t('userPanel.headers.role')}</th>
+                <th className="p-3">{t('userPanel.headers.status')}</th>
+                <th className="p-3">{t('userPanel.headers.createdDate')}</th>
+                <th className="p-3 text-center">{t('userPanel.headers.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs dark:divide-slate-800/40">
               {filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                    No users match the current search and filters.
+                    {t('userPanel.empty')}
                   </td>
                 </tr>
               ) : (
@@ -567,12 +569,12 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                             </span>
                             {isCurrentUser && (
                               <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-500">
-                                You
+                                {t('userPanel.you')}
                               </span>
                             )}
                             {user.isSoftDeleted && (
                               <span className="rounded-full border border-slate-300 bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                                Archived
+                                {t('userPanel.archived')}
                               </span>
                             )}
                           </div>
@@ -583,13 +585,13 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                       </td>
                       <td className="p-3 text-slate-600 dark:text-slate-300">{user.email}</td>
                       <td className="p-3">
-                        <RoleBadge role={user.role} />
+                        <RoleBadge role={user.role} label={getRoleLabel(user.role, t)} />
                       </td>
                       <td className="p-3">
-                        <StatusBadge status={user.status} />
+                        <StatusBadge status={user.status} label={getStatusLabel(user.status, t)} />
                       </td>
                       <td className="p-3 text-slate-600 dark:text-slate-350">
-                        {formatCreatedDate(user.createdAt)}
+                        {formatCreatedDate(user.createdAt, t('withdrawal.na'))}
                       </td>
                       <td className="p-3">
                         <div className="flex justify-center">
@@ -600,7 +602,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                             icon={<Eye size={14} />}
                             onClick={() => openDialog(user.id, 'detail')}
                           >
-                            View
+                            {t('userPanel.view')}
                           </Button>
                         </div>
                       </td>
@@ -616,8 +618,8 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
       <AdminDialog
         isOpen={dialogMode === 'detail' && !!selectedUser}
         onClose={closeAllDialogs}
-        title="User Detail"
-        description="Review account information and take administrative actions."
+        title={t('userPanel.detailTitle')}
+        description={t('userPanel.detailDescription')}
         size="lg"
       >
         {selectedUser && (
@@ -625,7 +627,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <div className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
                 <UserRound size={14} />
-                User Information
+                {t('userPanel.userInformation')}
               </div>
 
               <div className="grid gap-5 lg:grid-cols-[auto,1fr]">
@@ -638,29 +640,29 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Full Name</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.fullName')}</p>
                     <p className="font-semibold text-slate-900 dark:text-white">{selectedUser.fullName}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Email</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.headers.email')}</p>
                     <p className="break-all font-medium text-slate-700 dark:text-slate-200">{selectedUser.email}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Role</p>
-                    <RoleBadge role={selectedUser.role} />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.headers.role')}</p>
+                    <RoleBadge role={selectedUser.role} label={getRoleLabel(selectedUser.role, t)} />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Status</p>
-                    <StatusBadge status={selectedUser.status} />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.headers.status')}</p>
+                    <StatusBadge status={selectedUser.status} label={getStatusLabel(selectedUser.status, t)} />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Created Date</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.createdDate')}</p>
                     <p className="font-medium text-slate-700 dark:text-slate-200">
-                      {formatCreatedDate(selectedUser.createdAt)}
+                      {formatCreatedDate(selectedUser.createdAt, t('withdrawal.na'))}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">User ID</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">{t('userPanel.userId')}</p>
                     <p className="break-all font-mono text-[11px] text-slate-500 dark:text-slate-400">
                       {selectedUser.id}
                     </p>
@@ -672,7 +674,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
             <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
                 <ShieldCheck size={14} />
-                Actions
+                {t('userPanel.actionsTitle')}
               </div>
 
               {renderActionError}
@@ -686,9 +688,9 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                 >
                   <PencilLine size={18} className="mt-0.5 text-sky-500" />
                   <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">Edit User</p>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{t('userPanel.editUser')}</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Update full name and email address.
+                      {t('userPanel.editUserHint')}
                     </p>
                   </div>
                 </button>
@@ -701,9 +703,9 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                 >
                   <UserCog size={18} className="mt-0.5 text-amber-500" />
                   <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">Change Role</p>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{t('userPanel.changeRole')}</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Assign admin, developer, or customer access.
+                      {t('userPanel.changeRoleHint')}
                     </p>
                   </div>
                 </button>
@@ -720,9 +722,9 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                 >
                   <ShieldCheck size={18} className="mt-0.5 text-orange-500" />
                   <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">Suspend User</p>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{t('userPanel.suspendUser')}</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Temporarily block access without deleting the account.
+                      {t('userPanel.suspendUserHint')}
                     </p>
                   </div>
                 </button>
@@ -739,9 +741,9 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                 >
                   <ShieldCheck size={18} className="mt-0.5 text-emerald-500" />
                   <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">Activate User</p>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{t('userPanel.activateUser')}</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Restore access for suspended or banned accounts.
+                      {t('userPanel.activateUserHint')}
                     </p>
                   </div>
                 </button>
@@ -758,9 +760,9 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                 >
                   <Ban size={18} className="mt-0.5 text-rose-500" />
                   <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">Ban User</p>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{t('userPanel.banUser')}</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Permanently block account access with a required reason.
+                      {t('userPanel.banUserHint')}
                     </p>
                   </div>
                 </button>
@@ -773,23 +775,23 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
       <AdminDialog
         isOpen={dialogMode === 'edit' && !!selectedUser}
         onClose={goBackToDetail}
-        title="Edit User"
-        description="Update the user's primary identity details."
+        title={t('userPanel.editDialogTitle')}
+        description={t('userPanel.editDialogDescription')}
       >
         <div className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
             <Input
-              label="Full Name"
+              label={t('userPanel.fullName')}
               value={editForm.fullName}
               onChange={(event) => setEditForm((current) => ({ ...current, fullName: event.target.value }))}
-              placeholder="Enter full name"
+              placeholder={t('userPanel.fullNamePlaceholder')}
             />
             <Input
-              label="Email"
+              label={t('userPanel.headers.email')}
               type="email"
               value={editForm.email}
               onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))}
-              placeholder="Enter email address"
+              placeholder={t('userPanel.emailPlaceholder')}
             />
           </div>
 
@@ -797,10 +799,10 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={goBackToDetail} disabled={isSubmitting}>
-              Cancel
+              {t('userPanel.cancel')}
             </Button>
             <Button type="button" onClick={handleEditSave} disabled={isSubmitting}>
-              Save
+              {t('userPanel.save')}
             </Button>
           </div>
         </div>
@@ -809,20 +811,20 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
       <AdminDialog
         isOpen={dialogMode === 'role' && !!selectedUser}
         onClose={goBackToDetail}
-        title="Change Role"
-        description="Assign the appropriate role for this account."
+        title={t('userPanel.roleDialogTitle')}
+        description={t('userPanel.roleDialogDescription')}
       >
         <div className="space-y-5">
           <label className="space-y-1.5">
-            <span className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">Role</span>
+            <span className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">{t('userPanel.headers.role')}</span>
             <select
               value={roleDraft}
               onChange={(event) => setRoleDraft(event.target.value as AdminUserRole)}
               className={selectClassName}
             >
-              <option value="admin">Admin</option>
-              <option value="developer">Developer</option>
-              <option value="customer">Customer</option>
+              <option value="admin">{t('roles.admin')}</option>
+              <option value="developer">{t('roles.developer')}</option>
+              <option value="customer">{t('roles.customer')}</option>
             </select>
           </label>
 
@@ -830,10 +832,10 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={goBackToDetail} disabled={isSubmitting}>
-              Cancel
+              {t('userPanel.cancel')}
             </Button>
             <Button type="button" onClick={handleRoleSave} disabled={isSubmitting}>
-              Save
+              {t('userPanel.save')}
             </Button>
           </div>
         </div>
@@ -842,19 +844,19 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
       <AdminDialog
         isOpen={dialogMode === 'suspend' && !!selectedUser}
         onClose={goBackToDetail}
-        title="Suspend User"
-        description="Temporarily block account access while preserving account data."
+        title={t('userPanel.suspendDialogTitle')}
+        description={t('userPanel.suspendDialogDescription')}
       >
         <div className="space-y-5">
           <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4 text-sm text-orange-600 dark:text-orange-300">
-            Are you sure you want to suspend this user?
+            {t('userPanel.suspendConfirm')}
           </div>
 
           {renderActionError}
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={goBackToDetail} disabled={isSubmitting}>
-              Cancel
+              {t('userPanel.cancel')}
             </Button>
             <Button
               type="button"
@@ -862,7 +864,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
               disabled={isSubmitting}
               className="border-orange-300 bg-orange-500 text-white shadow-[0_4px_0_0_#9a3412] hover:bg-orange-400 hover:shadow-[0_3px_0_0_#9a3412]"
             >
-              Confirm
+              {t('userPanel.confirm')}
             </Button>
           </div>
         </div>
@@ -871,19 +873,19 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
       <AdminDialog
         isOpen={dialogMode === 'ban' && !!selectedUser}
         onClose={goBackToDetail}
-        title="Ban User"
-        description="Ban this account and record the reason for the action."
+        title={t('userPanel.banDialogTitle')}
+        description={t('userPanel.banDialogDescription')}
       >
         <div className="space-y-5">
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-500">
-            Confirm banning this user. A ban reason is required before continuing.
+            {t('userPanel.banConfirm')}
           </div>
 
           <TextArea
-            label="Ban Reason"
+            label={t('userPanel.banReason')}
             value={banReason}
             onChange={(event) => setBanReason(event.target.value)}
-            placeholder="Describe why this account is being banned..."
+            placeholder={t('userPanel.banReasonPlaceholder')}
             rows={5}
           />
 
@@ -891,7 +893,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={goBackToDetail} disabled={isSubmitting}>
-              Cancel
+              {t('userPanel.cancel')}
             </Button>
             <Button
               type="button"
@@ -899,7 +901,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
               disabled={isSubmitting}
               className="border-rose-700 bg-rose-600 text-white shadow-[0_4px_0_0_#881337] hover:bg-rose-500 hover:shadow-[0_3px_0_0_#881337]"
             >
-              Confirm Ban
+              {t('userPanel.confirmBan')}
             </Button>
           </div>
         </div>

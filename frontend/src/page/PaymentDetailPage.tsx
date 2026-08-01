@@ -303,7 +303,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
           </div>
 
           <div className={`grid gap-3 ${isEmbedded ? 'grid-cols-2' : 'grid-cols-2 xl:grid-cols-4'}`}>
-            <div className="rounded-2xl border border-slate-200/80 bg-white/72 p-4 backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/40">
+            <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-white/72 p-4 backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/40">
               <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.stats.trackedOrders')}</p>
               <p className="mt-2 font-display text-2xl font-bold text-slate-850 dark:text-white">{payments.length}</p>
             </div>
@@ -315,7 +315,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
               <p className="text-[10px] uppercase tracking-[0.2em] text-amber-600 font-mono dark:text-amber-400">{t('payment:center.stats.needAttention')}</p>
               <p className="mt-2 font-display text-2xl font-bold text-slate-850 dark:text-white">{pendingCount}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white/72 p-4 backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/40">
+            <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-white/72 p-4 backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/40">
               <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.stats.totalPaid')}</p>
               <p className="mt-2 font-display text-lg font-bold text-slate-850 dark:text-white">
                 {formatMoney(totalPaidAmount, activePayment.currency, locale, t('payment:common.free'))}
@@ -332,7 +332,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
 
       <div className={`grid gap-4 ${layoutClass}`}>
         <aside className="space-y-4">
-          <div className="rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
+          <div className="dark-depth-card rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-lg font-bold text-slate-850 dark:text-white">
@@ -361,7 +361,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                     className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-studio ${
                       isActive
                         ? 'border-amber-400/55 bg-gradient-to-r from-amber-400/14 via-white to-white shadow-sm dark:from-amber-400/14 dark:via-slate-900/75 dark:to-slate-900/75'
-                        : 'border-slate-200/80 bg-slate-50/75 hover:border-sky-500/30 dark:border-slate-800/80 dark:bg-slate-950/40'
+                        : 'dark-depth-inset border-slate-200/80 bg-slate-50/75 hover:border-sky-500/30 dark:border-slate-800/80 dark:bg-slate-950/40'
                     }`}
                   >
                     <div className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${paymentItemMeta.softClass}`} />
@@ -399,7 +399,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
         </aside>
 
         <section className="space-y-4">
-          <div className="relative overflow-hidden rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
+          <div className="dark-depth-card relative overflow-hidden rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
             <div className={`absolute inset-x-0 top-0 h-28 bg-gradient-to-r ${itemMeta.softClass}`} />
 
             <div className="relative">
@@ -461,13 +461,13 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.amount')}</p>
                   <p className="mt-2 font-display text-lg font-bold text-amber-500">
                     {formatMoney(activePayment.amount, activePayment.currency, locale, t('payment:common.free'))}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.detail.reference')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
                     {activePayment.paymentReference || t('payment:common.waitingReference')}
@@ -478,7 +478,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
           </div>
 
           <div className={`grid gap-4 ${detailSplitClass}`}>
-            <div className="rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
+            <div className="dark-depth-card rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-3 text-sky-500">
                   <ShieldCheck size={18} />
@@ -494,25 +494,25 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.payos.orderCode')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
                     {activePayment.payosOrderCode ?? t('payment:common.notAvailable')}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.payos.paymentLinkId')}</p>
                   <p className="mt-2 break-all text-sm font-semibold text-slate-850 dark:text-white">
                     {activePayment.payosPaymentLinkId || t('payment:common.notAvailable')}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.payos.transactionId')}</p>
                   <p className="mt-2 break-all text-sm font-semibold text-slate-850 dark:text-white">
                     {activePayment.payosTransactionId || t('payment:common.waitingWebhook')}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
+                <div className="dark-depth-inset rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800/80 dark:bg-slate-950/45">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-mono">{t('payment:center.payos.paidAt')}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-850 dark:text-white">
                     {formatTimestamp(activePayment.paidAt, locale, t('payment:common.notAvailable'))}
@@ -532,7 +532,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
               </div>
             </div>
 
-            <div className="rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
+            <div className="dark-depth-card rounded-[26px] border border-slate-200/90 bg-white/92 p-5 shadow-sm backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/72">
               <div className="flex items-center gap-3">
                 <div className={`rounded-2xl border p-3 ${itemMeta.accentClass}`}>
                   {itemMeta.icon}

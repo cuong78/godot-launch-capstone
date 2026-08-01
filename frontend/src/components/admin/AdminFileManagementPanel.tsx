@@ -30,6 +30,7 @@ import {
   AssetFileSummaryResponse,
   AssetFileDetailResponse
 } from '../../api/storageApi';
+import { useTranslation } from 'react-i18next';
 
 interface CategoryOption {
   value: string;
@@ -42,13 +43,14 @@ interface CategoryOption {
 const ENTITY_CATEGORIES = ['game', 'asset'] as const;
 type EntityCategory = typeof ENTITY_CATEGORIES[number];
 
-const PUBLISHING_TYPE_LABEL: Record<string, { label: string; className: string }> = {
-  marketplace_listing: { label: 'Marketplace', className: 'bg-sky-400/10 text-sky-400 border-sky-400/20' },
-  full_acquisition: { label: 'Store (Mua đứt)', className: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
-  co_publishing: { label: 'Store (Hợp tác)', className: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
+const PUBLISHING_TYPE_META: Record<string, { labelKey: string; className: string }> = {
+  marketplace_listing: { labelKey: 'marketplaceListing', className: 'bg-sky-400/10 text-sky-400 border-sky-400/20' },
+  full_acquisition: { labelKey: 'fullAcquisition', className: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
+  co_publishing: { labelKey: 'coPublishing', className: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
 };
 
 export const AdminFileManagementPanel: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [category, setCategory] = useState<string>('game');
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(0);
@@ -76,11 +78,22 @@ export const AdminFileManagementPanel: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<UploadedFileResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
+  const getPublishingTypeMeta = (publishingType?: string) => {
+    if (!publishingType) return null;
+    const meta = PUBLISHING_TYPE_META[publishingType];
+    if (!meta) return null;
+
+    return {
+      label: t(`fileManagement.publishing.${meta.labelKey}`),
+      className: meta.className,
+    };
+  };
+
   const categories: CategoryOption[] = [
-    { value: 'game', label: 'Game (Source & Media)', icon: <Gamepad2 size={14} /> },
-    { value: 'asset', label: 'Asset (Marketplace)', icon: <Package size={14} /> },
-    { value: 'contract_pdf', label: 'Hợp đồng (PDF)', icon: <FileText size={14} /> },
-    { value: 'cccd_image', label: 'Ảnh xác thực CCCD/Passport (KYC)', icon: <User size={14} /> },
+    { value: 'game', label: t('fileManagement.categories.game'), icon: <Gamepad2 size={14} /> },
+    { value: 'asset', label: t('fileManagement.categories.asset'), icon: <Package size={14} /> },
+    { value: 'contract_pdf', label: t('fileManagement.categories.contractPdf'), icon: <FileText size={14} /> },
+    { value: 'cccd_image', label: t('fileManagement.categories.kycImage'), icon: <User size={14} /> },
   ];
 
   const fetchFiles = async () => {
@@ -94,7 +107,7 @@ export const AdminFileManagementPanel: React.FC = () => {
           setTotalPages(res.data.totalPages);
           setTotalElements(res.data.totalElements);
         } else {
-          setError(res.message || 'Lỗi tải danh sách Game.');
+          setError(res.message || t('fileManagement.errors.loadGames'));
         }
       } else if (category === 'asset') {
         const res = await storageApi.listAssets(search, page, size);
@@ -103,7 +116,7 @@ export const AdminFileManagementPanel: React.FC = () => {
           setTotalPages(res.data.totalPages);
           setTotalElements(res.data.totalElements);
         } else {
-          setError(res.message || 'Lỗi tải danh sách Asset.');
+          setError(res.message || t('fileManagement.errors.loadAssets'));
         }
       } else {
         const res = await storageApi.listUploadedFiles(category, search, page, size);
@@ -112,11 +125,11 @@ export const AdminFileManagementPanel: React.FC = () => {
           setTotalPages(res.data.totalPages);
           setTotalElements(res.data.totalElements);
         } else {
-          setError(res.message || 'Lỗi tải danh sách tập tin.');
+          setError(res.message || t('fileManagement.errors.loadFiles'));
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ.');
+      setError(err.response?.data?.message || err.message || t('fileManagement.errors.server'));
     } finally {
       setIsLoading(false);
     }
@@ -135,10 +148,10 @@ export const AdminFileManagementPanel: React.FC = () => {
       if (res.success && res.data) {
         setSelectedGame(res.data);
       } else {
-        alert(res.message || 'Không tải được chi tiết Game.');
+        alert(res.message || t('fileManagement.errors.gameDetail'));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Lỗi khi tải chi tiết Game.');
+      alert(err.response?.data?.message || err.message || t('fileManagement.errors.gameDetailCatch'));
     } finally {
       setIsDetailLoading(false);
     }
@@ -151,10 +164,10 @@ export const AdminFileManagementPanel: React.FC = () => {
       if (res.success && res.data) {
         setSelectedAsset(res.data);
       } else {
-        alert(res.message || 'Không tải được chi tiết Asset.');
+        alert(res.message || t('fileManagement.errors.assetDetail'));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Lỗi khi tải chi tiết Asset.');
+      alert(err.response?.data?.message || err.message || t('fileManagement.errors.assetDetailCatch'));
     } finally {
       setIsDetailLoading(false);
     }
@@ -185,7 +198,7 @@ export const AdminFileManagementPanel: React.FC = () => {
         if (newTab) {
           newTab.location.href = url;
         } else {
-          alert('Vui lòng cho phép mở popup trên trình duyệt để xem file.');
+          alert(t('fileManagement.errors.allowPopup'));
         }
       } else {
         const link = document.createElement('a');
@@ -198,7 +211,7 @@ export const AdminFileManagementPanel: React.FC = () => {
       
       setTimeout(() => window.URL.revokeObjectURL(url), 15000);
     } catch (err: any) {
-      alert('Tải file thất bại.');
+      alert(t('fileManagement.errors.download'));
     } finally {
       setDownloadingId(null);
     }
@@ -222,10 +235,10 @@ export const AdminFileManagementPanel: React.FC = () => {
         setDeleteTarget(null);
         fetchFiles();
       } else {
-        alert(res.message || 'Xóa file thất bại.');
+        alert(res.message || t('fileManagement.errors.delete'));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Lỗi khi xóa file.');
+      alert(err.response?.data?.message || err.message || t('fileManagement.errors.deleteCatch'));
     } finally {
       setIsDeleting(false);
     }
@@ -270,7 +283,11 @@ export const AdminFileManagementPanel: React.FC = () => {
     totalPages > 1 && (
       <div className="flex justify-between items-center bg-white dark:bg-slate-900/10 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
         <span className="text-xs text-slate-500 font-mono">
-          Trang {page + 1} của {totalPages} ({totalElements} mục)
+          {t('fileManagement.pagination.summary', {
+            page: page + 1,
+            totalPages,
+            totalElements,
+          })}
         </span>
         <div className="flex gap-2">
           <button
@@ -307,14 +324,14 @@ export const AdminFileManagementPanel: React.FC = () => {
           <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase tracking-wider">
             {file.fileType}
           </span>
-          <span className="text-[10px] text-slate-400 font-mono">{new Date(file.createdAt).toLocaleString()}</span>
+          <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">{new Date(file.createdAt).toLocaleString()}</span>
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={() => handleCopyUrl(file.fileUrl, file.id)}
           className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer"
-          title="Sao chép URL"
+          title={t('fileManagement.buttons.copyUrl')}
         >
           {copiedId === file.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
         </button>
@@ -322,7 +339,7 @@ export const AdminFileManagementPanel: React.FC = () => {
           onClick={() => handleDownload(file, true)}
           disabled={downloadingId !== null}
           className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer disabled:opacity-50"
-          title="Xem trực tiếp"
+          title={t('fileManagement.buttons.viewDirect')}
         >
           {downloadingId === file.id + '-view' ? <RefreshCw size={14} className="animate-spin" /> : <Eye size={14} />}
         </button>
@@ -330,14 +347,14 @@ export const AdminFileManagementPanel: React.FC = () => {
           onClick={() => handleDownload(file, false)}
           disabled={downloadingId !== null}
           className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer disabled:opacity-50"
-          title="Tải về máy"
+          title={t('fileManagement.buttons.download')}
         >
           {downloadingId === file.id + '-download' ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
         </button>
         <button
           onClick={() => handleDeleteClick(file)}
           className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 rounded-lg transition-all cursor-pointer"
-          title="Xóa tập tin"
+          title={t('fileManagement.buttons.delete')}
         >
           <Trash2 size={14} />
         </button>
@@ -347,14 +364,14 @@ export const AdminFileManagementPanel: React.FC = () => {
 
   const renderGameList = () =>
     gameList.length === 0 ? (
-      <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
-        Không tìm thấy Game nào.
+      <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        {t('fileManagement.list.noGames')}
       </div>
     ) : (
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {gameList.map((g) => {
-            const pubType = g.publishingType ? PUBLISHING_TYPE_LABEL[g.publishingType] : null;
+            const pubType = getPublishingTypeMeta(g.publishingType);
             return (
               <button
                 key={g.id}
@@ -372,7 +389,9 @@ export const AdminFileManagementPanel: React.FC = () => {
                   <div className="font-semibold truncate text-slate-800 dark:text-slate-100 text-xs group-hover:text-amber-500 transition-colors">
                     {g.title}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">bởi {g.creatorName}</div>
+                  <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                    {t('fileManagement.list.by', { name: g.creatorName })}
+                  </div>
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                     {pubType && (
                       <span className={`inline-block px-1.5 py-0.5 border text-[9px] font-bold rounded ${pubType.className}`}>
@@ -382,8 +401,8 @@ export const AdminFileManagementPanel: React.FC = () => {
                     <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase">
                       {g.status}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-mono">
-                      <Archive size={9} /> {g.fileCount} file
+                    <span className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-500 dark:text-slate-400">
+                      <Archive size={9} /> {t('fileManagement.list.fileCount', { count: g.fileCount })}
                     </span>
                   </div>
                 </div>
@@ -395,31 +414,33 @@ export const AdminFileManagementPanel: React.FC = () => {
       </div>
     );
 
-  const renderGameDetail = () =>
-    selectedGame && (
+  const renderGameDetail = () => {
+    if (!selectedGame) return null;
+
+    const selectedGamePublishing = getPublishingTypeMeta(selectedGame.publishingType);
+
+    return (
       <div className="space-y-4">
         <div className="flex items-center gap-3 p-4 bg-white/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl">
           <button
             onClick={() => setSelectedGame(null)}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-xl transition-all cursor-pointer"
-            title="Quay lại danh sách Game"
+            title={t('fileManagement.buttons.backToGames')}
           >
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{selectedGame.title}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">
-              bởi {selectedGame.creatorName} · {selectedGame.status}
-              {selectedGame.publishingType && PUBLISHING_TYPE_LABEL[selectedGame.publishingType]
-                ? ` · ${PUBLISHING_TYPE_LABEL[selectedGame.publishingType].label}`
-                : ''}
+            <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              {t('fileManagement.list.by', { name: selectedGame.creatorName })} · {selectedGame.status}
+              {selectedGamePublishing ? ` · ${selectedGamePublishing.label}` : ''}
             </div>
           </div>
         </div>
 
         {selectedGame.files.length === 0 ? (
-          <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
-            Game này chưa có file nào trên storage.
+          <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            {t('fileManagement.list.gameFilesEmpty')}
           </div>
         ) : (
           <div className="space-y-2">
@@ -428,11 +449,12 @@ export const AdminFileManagementPanel: React.FC = () => {
         )}
       </div>
     );
+  };
 
   const renderAssetList = () =>
     assetList.length === 0 ? (
-      <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
-        Không tìm thấy Asset nào.
+      <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        {t('fileManagement.list.noAssets')}
       </div>
     ) : (
       <div className="space-y-4">
@@ -454,13 +476,15 @@ export const AdminFileManagementPanel: React.FC = () => {
                 <div className="font-semibold truncate text-slate-800 dark:text-slate-100 text-xs group-hover:text-amber-500 transition-colors">
                   {a.title}
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">bởi {a.sellerName}</div>
+                <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  {t('fileManagement.list.by', { name: a.sellerName })}
+                </div>
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                   <span className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold font-mono rounded uppercase">
                     {a.status}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-mono">
-                    <Archive size={9} /> {a.fileCount} file
+                  <span className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-500 dark:text-slate-400">
+                    <Archive size={9} /> {t('fileManagement.list.fileCount', { count: a.fileCount })}
                   </span>
                 </div>
               </div>
@@ -478,19 +502,21 @@ export const AdminFileManagementPanel: React.FC = () => {
           <button
             onClick={() => setSelectedAsset(null)}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-xl transition-all cursor-pointer"
-            title="Quay lại danh sách Asset"
+            title={t('fileManagement.buttons.backToAssets')}
           >
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">{selectedAsset.title}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">bởi {selectedAsset.sellerName} · {selectedAsset.status}</div>
+            <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              {t('fileManagement.list.by', { name: selectedAsset.sellerName })} · {selectedAsset.status}
+            </div>
           </div>
         </div>
 
         {selectedAsset.files.length === 0 ? (
-          <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
-            Asset này chưa có file nào trên storage.
+          <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            {t('fileManagement.list.assetFilesEmpty')}
           </div>
         ) : (
           <div className="space-y-2">
@@ -509,7 +535,7 @@ export const AdminFileManagementPanel: React.FC = () => {
           className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
         >
           <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
-          Làm mới
+          {t('fileManagement.buttons.refresh')}
         </button>
       </div>
 
@@ -518,7 +544,7 @@ export const AdminFileManagementPanel: React.FC = () => {
         {/* Left Column: Category Menu */}
         <div className="lg:col-span-1 bg-white/50 dark:bg-slate-900/30 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-4 space-y-4">
           <h4 className="text-xs uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800/60 pb-2">
-            <FolderOpen size={14} className="text-amber-500" /> Danh mục Tập tin
+            <FolderOpen size={14} className="text-amber-500" /> {t('fileManagement.labels.categoryMenu')}
           </h4>
           
           <div className="space-y-1">
@@ -551,7 +577,9 @@ export const AdminFileManagementPanel: React.FC = () => {
                 <Archive size={18} />
               </div>
               <div>
-                <p className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Tổng tập tin phân loại</p>
+                <p className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                  {t('fileManagement.labels.totalCategorizedFiles')}
+                </p>
                 <p className="text-lg font-bold font-display dark:text-white mt-0.5">{isLoading ? '...' : totalElements}</p>
               </div>
             </div>
@@ -561,8 +589,12 @@ export const AdminFileManagementPanel: React.FC = () => {
                 <Server size={18} />
               </div>
               <div>
-                <p className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">Hệ thống lưu trữ</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-semibold">SeaweedFS (Hoạt động · Tối ưu dung lượng)</p>
+                <p className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                  {t('fileManagement.labels.storageSystem')}
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-semibold">
+                  {t('fileManagement.labels.storageSubtitle')}
+                </p>
               </div>
             </div>
           </div>
@@ -574,7 +606,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                 <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Tìm theo tên file, chủ sở hữu..."
+                  placeholder={t('fileManagement.labels.searchPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl text-xs outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 text-slate-850 dark:text-slate-200 transition-all placeholder-slate-400"
@@ -584,7 +616,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                 type="submit"
                 className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs shadow-md shadow-amber-400/10 hover:shadow-amber-400/20 transition-all active:scale-95 cursor-pointer shrink-0"
               >
-                Tìm kiếm
+                {t('fileManagement.buttons.search')}
               </button>
             </form>
 
@@ -594,7 +626,7 @@ export const AdminFileManagementPanel: React.FC = () => {
           {isEntityMode ? (
             isDetailLoading ? (
               <div className="flex items-center justify-center py-20 gap-2 text-slate-500 text-sm">
-                <RefreshCw className="animate-spin" size={18} /> Đang tải chi tiết...
+                <RefreshCw className="animate-spin" size={18} /> {t('fileManagement.labels.loadingDetail')}
               </div>
             ) : category === 'game' && selectedGame ? (
               renderGameDetail()
@@ -602,11 +634,11 @@ export const AdminFileManagementPanel: React.FC = () => {
               renderAssetDetail()
             ) : isLoading ? (
               <div className="flex items-center justify-center py-20 gap-2 text-slate-500 text-sm">
-                <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách...
+                <RefreshCw className="animate-spin" size={18} /> {t('fileManagement.labels.loadingList')}
               </div>
             ) : error ? (
               <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                Có lỗi xảy ra: {error}
+                {t('fileManagement.labels.errorPrefix', { error })}
               </div>
             ) : category === 'game' ? (
               renderGameList()
@@ -615,15 +647,15 @@ export const AdminFileManagementPanel: React.FC = () => {
             )
           ) : isLoading ? (
             <div className="flex items-center justify-center py-20 gap-2 text-slate-500 text-sm">
-              <RefreshCw className="animate-spin" size={18} /> Đang tải danh sách tập tin...
+              <RefreshCw className="animate-spin" size={18} /> {t('fileManagement.labels.loadingFiles')}
             </div>
           ) : error ? (
             <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-              Có lỗi xảy ra: {error}
+              {t('fileManagement.labels.errorPrefix', { error })}
             </div>
           ) : files.length === 0 ? (
-            <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400">
-              Không tìm thấy tập tin nào trong danh mục này.
+            <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              {t('fileManagement.list.noCategoryFiles')}
             </div>
           ) : (
             <div className="space-y-4">
@@ -631,13 +663,13 @@ export const AdminFileManagementPanel: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-mono">
-                      <th className="p-3 w-16">Xem trước</th>
-                      <th className="p-3">Tên tập tin</th>
-                      <th className="p-3">Phân loại</th>
-                      <th className="p-3">Lưu trữ</th>
-                      <th className="p-3">Đối tượng sở hữu</th>
-                      <th className="p-3">Ngày tải lên</th>
-                      <th className="p-3 text-center">Hành động</th>
+                      <th className="p-3 w-16">{t('fileManagement.labels.headers.preview')}</th>
+                      <th className="p-3">{t('fileManagement.labels.headers.fileName')}</th>
+                      <th className="p-3">{t('fileManagement.labels.headers.category')}</th>
+                      <th className="p-3">{t('fileManagement.labels.headers.storage')}</th>
+                      <th className="p-3">{t('fileManagement.labels.headers.owner')}</th>
+                      <th className="p-3">{t('fileManagement.labels.headers.uploadedAt')}</th>
+                      <th className="p-3 text-center">{t('fileManagement.labels.headers.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs text-slate-700 dark:text-slate-300">
@@ -648,7 +680,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                           <div className="font-semibold truncate text-slate-800 dark:text-slate-100" title={file.fileName}>
                             {file.fileName}
                           </div>
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 truncate select-all max-w-[200px]" title={file.fileUrl}>
+                          <div className="mt-0.5 max-w-[200px] select-all truncate font-mono text-[10px] text-slate-500 dark:text-slate-400" title={file.fileUrl}>
                             {file.fileUrl}
                           </div>
                         </td>
@@ -659,13 +691,13 @@ export const AdminFileManagementPanel: React.FC = () => {
                         </td>
                         <td className="p-3">
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-400/10 border border-blue-400/20 text-blue-400 text-[10px] font-bold font-mono rounded">
-                            <Server size={10} /> SeaweedFS
+                            <Server size={10} /> {t('fileManagement.labels.storageBadge')}
                           </span>
                         </td>
                         <td className="p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">{file.ownerName}</div>
-                          <div className="text-[9px] text-slate-400 font-mono mt-0.5">
-                            {file.ownerType} ID: {file.ownerId.substring(0, 8)}...
+                          <div className="mt-0.5 font-mono text-[9px] text-slate-500 dark:text-slate-400">
+                            {file.ownerType} {t('fileManagement.labels.ownerId')}: {file.ownerId.substring(0, 8)}...
                           </div>
                         </td>
                         <td className="p-3 text-[10px] text-slate-500 font-mono">
@@ -676,7 +708,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                             <button
                               onClick={() => handleCopyUrl(file.fileUrl, file.id)}
                               className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all relative cursor-pointer"
-                              title="Sao chép URL"
+                              title={t('fileManagement.buttons.copyUrl')}
                             >
                               {copiedId === file.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                             </button>
@@ -684,7 +716,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                               onClick={() => handleDownload(file, true)}
                               disabled={downloadingId !== null}
                               className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
-                              title="Xem trực tiếp"
+                              title={t('fileManagement.buttons.viewDirect')}
                             >
                               {downloadingId === file.id + '-view' ? <RefreshCw size={14} className="animate-spin" /> : <Eye size={14} />}
                             </button>
@@ -692,14 +724,14 @@ export const AdminFileManagementPanel: React.FC = () => {
                               onClick={() => handleDownload(file, false)}
                               disabled={downloadingId !== null}
                               className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
-                              title="Tải về máy"
+                              title={t('fileManagement.buttons.download')}
                             >
                               {downloadingId === file.id + '-download' ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
                             </button>
                             <button
                               onClick={() => handleDeleteClick(file)}
                               className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 rounded-lg transition-all cursor-pointer"
-                              title="Xóa tập tin"
+                              title={t('fileManagement.buttons.delete')}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -726,18 +758,27 @@ export const AdminFileManagementPanel: React.FC = () => {
               <div className="p-2 bg-rose-500/10 rounded-2xl">
                 <AlertTriangle size={24} />
               </div>
-              <h4 className="font-display font-bold text-slate-900 dark:text-white text-base">Xác nhận xóa tập tin</h4>
+              <h4 className="font-display font-bold text-slate-900 dark:text-white text-base">
+                {t('fileManagement.deleteModal.title')}
+              </h4>
             </div>
 
             <div className="text-xs text-slate-600 dark:text-slate-400 space-y-2 leading-relaxed">
-              <p>Bạn có chắc chắn muốn xóa file này? Hành động này sẽ thực hiện:</p>
+              <p>{t('fileManagement.deleteModal.description')}</p>
               <ul className="list-disc pl-4 space-y-1">
-                <li>Xóa vật lý file gốc trên nhà lưu trữ <span className="font-bold uppercase text-amber-500">SeaweedFS</span>.</li>
-                <li>Hủy liên kết và gán giá trị <span className="font-mono bg-slate-100 dark:bg-slate-950 px-1 rounded border border-slate-200 dark:border-slate-800">NULL</span> (hoặc xóa dòng tương ứng) trong DB cho:</li>
+                <li>
+                  {t('fileManagement.deleteModal.deletePhysicalPrefix')}{' '}
+                  <span className="font-bold uppercase text-amber-500">{t('fileManagement.labels.storageBadge')}</span>.
+                </li>
+                <li>{t('fileManagement.deleteModal.unlinkDb')}</li>
               </ul>
               <div className="p-3 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-slate-200 dark:border-slate-800/50 mt-2 font-mono text-[10px] space-y-1">
-                <div><span className="text-slate-500">Đối tượng:</span> {deleteTarget.ownerType} ({deleteTarget.ownerName})</div>
-                <div className="truncate"><span className="text-slate-500">Tên file:</span> {deleteTarget.fileName}</div>
+                <div>
+                  <span className="text-slate-500">{t('fileManagement.deleteModal.object')}</span> {deleteTarget.ownerType} ({deleteTarget.ownerName})
+                </div>
+                <div className="truncate">
+                  <span className="text-slate-500">{t('fileManagement.deleteModal.fileName')}</span> {deleteTarget.fileName}
+                </div>
               </div>
             </div>
 
@@ -748,7 +789,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                 disabled={isDeleting}
                 className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition-all cursor-pointer"
               >
-                Hủy bỏ
+                {t('fileManagement.deleteModal.cancel')}
               </button>
               <button
                 type="button"
@@ -757,7 +798,7 @@ export const AdminFileManagementPanel: React.FC = () => {
                 className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-600 text-white font-bold rounded-xl text-xs shadow-md shadow-rose-500/10 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 {isDeleting ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                Xác nhận xóa
+                {t('fileManagement.buttons.confirmDelete')}
               </button>
             </div>
           </div>

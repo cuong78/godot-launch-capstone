@@ -37,8 +37,41 @@ public class PlagiarismFlag {
     @JoinColumn(name = "matched_game_id", nullable = false)
     private Game matchedGame;
 
+    // Embedding của game MỚI được dùng trong phép so sánh.
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "code_embedding_id", nullable = false)
+    private CodeEmbedding codeEmbedding;
+
+    // Embedding của game ĐÃ CÓ được dùng trong phép so sánh.
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "matched_code_embedding_id", nullable = false)
+    private CodeEmbedding matchedCodeEmbedding;
+
+    // Lưu trực tiếp hai snapshot để audit/query mà không phụ thuộc vào join gián tiếp.
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "source_snapshot_id", nullable = false)
+    private SourceSnapshot sourceSnapshot;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "matched_source_snapshot_id", nullable = false)
+    private SourceSnapshot matchedSourceSnapshot;
+
     @Column(name = "similarity_score", nullable = false)
     private Float similarityScore;
+
+    @Column(name = "model_name", nullable = false, length = 100)
+    private String modelName;
+
+    @Column(name = "model_version", nullable = false, length = 100)
+    private String modelVersion;
+
+    // Ngưỡng bắt đầu tạo flag REVIEW tại thời điểm phép so sánh được chạy.
+    @Column(name = "review_threshold", nullable = false)
+    private Float reviewThreshold;
+
+    // Ngưỡng chuyển đề xuất từ REVIEW sang REJECT tại thời điểm chạy.
+    @Column(name = "reject_threshold", nullable = false)
+    private Float rejectThreshold;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "severity", nullable = false, length = 20)

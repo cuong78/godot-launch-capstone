@@ -56,7 +56,7 @@ def _keyword_check(text: str, field: str) -> list[dict]:
     return issues
 
 
-def _deepseek_eval(title: str, description: str, tags: list = []) -> dict:
+def _deepseek_eval(title: str, description: str, tags: list | None = None) -> dict:
     """
     Dùng DeepSeek đánh giá:
     1. Tên có phù hợp, không nhạy cảm không?
@@ -66,6 +66,7 @@ def _deepseek_eval(title: str, description: str, tags: list = []) -> dict:
 
     Trả về dict hoặc {"skipped": true, "reason": ...}
     """
+    tags = tags or []
     if not DEEPSEEK_API_KEY:
         return {"skipped": True, "reason": "DEEPSEEK_API_KEY không được cấu hình"}
 
@@ -120,11 +121,12 @@ Trả về JSON với format (không được thêm markdown):
         return {"skipped": True, "reason": f"DeepSeek lỗi: {str(e)[:100]}"}
 
 
-def analyze(title: str = "", description: str = "", tags: list = []) -> dict:
+def analyze(title: str = "", description: str = "", tags: list | None = None) -> dict:
     """
     Phân tích tên + mô tả game + tags. Entry point cho main.py.
     Luôn trả về dict đầy đủ — fail-soft với keyword check nếu DeepSeek lỗi.
     """
+    tags = tags or []
     title = (title or "").strip()
     description = (description or "").strip()
 

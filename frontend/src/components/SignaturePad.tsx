@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Trash2, RotateCcw, PenTool } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Point {
   x: number;
@@ -17,8 +18,9 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
   onChange,
   width = 500,
   height = 200,
-  placeholder = "Ký tên của bạn vào đây..."
+  placeholder
 }) => {
+  const { t } = useTranslation(['shared']);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastImageDataRef = useRef<ImageData | null>(null);
@@ -30,6 +32,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
   const pointsRef = useRef<Point[]>([]);
   const [history, setHistory] = useState<string[]>([]); // Array of dataURLs for undo states
   const [isEmpty, setIsEmpty] = useState(true);
+  const signaturePlaceholder = placeholder || t('signaturePad.placeholder');
 
   // Set up High-DPI canvas
   const setupCanvas = () => {
@@ -255,9 +258,9 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
         />
         
         {isEmpty && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-400 text-xs font-medium gap-1.5 select-none transition-opacity duration-300">
+          <div className="pointer-events-none absolute inset-0 flex select-none items-center justify-center gap-1.5 text-xs font-medium text-slate-500 transition-opacity duration-300 dark:text-slate-400">
             <PenTool size={14} className="animate-pulse" />
-            {placeholder}
+            {signaturePlaceholder}
           </div>
         )}
       </div>
@@ -268,7 +271,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
         {/* Brush size slider */}
         <div className="flex items-center gap-2">
           <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-            Nét bút:
+            {t('signaturePad.brushSize')}
           </span>
           <input
             type="range"
@@ -288,19 +291,21 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             onClick={handleUndo}
             disabled={history.length === 0}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            title="Hoàn tác nét vẽ cuối"
+            title={t('signaturePad.undoTitle')}
+            aria-label={t('signaturePad.undoTitle')}
           >
             <RotateCcw size={12} />
-            <span>Hoàn tác</span>
+            <span>{t('signaturePad.undo')}</span>
           </button>
           <button
             type="button"
             onClick={handleClear}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-955/20 border border-transparent dark:border-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 hover:text-rose-700 transition-all cursor-pointer"
-            title="Xóa toàn bộ để ký lại"
+            title={t('signaturePad.clearTitle')}
+            aria-label={t('signaturePad.clearTitle')}
           >
             <Trash2 size={12} />
-            <span>Xóa chữ ký</span>
+            <span>{t('signaturePad.clear')}</span>
           </button>
         </div>
 

@@ -623,7 +623,7 @@ export const WalletPage: React.FC<{
         }`}
       >
         {isAdmin ? (
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
             <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
               {t("wallet:cards.walletBalance")}
             </span>
@@ -652,7 +652,7 @@ export const WalletPage: React.FC<{
         ) : (
           <>
             {/* Available balance */}
-            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
+            <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
                 {t("wallet:cards.availableBalance")}
               </span>
@@ -671,7 +671,7 @@ export const WalletPage: React.FC<{
             </div>
 
             {/* Pending withdrawal */}
-            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
+            <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
                 {t("wallet:cards.pendingWithdrawal")}
               </span>
@@ -691,7 +691,7 @@ export const WalletPage: React.FC<{
 
             {/* Total revenue — developer only */}
             {!isCustomer && (
-              <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-2">
+              <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
                 <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
                   {t("wallet:cards.totalRevenue")}
                 </span>
@@ -714,7 +714,7 @@ export const WalletPage: React.FC<{
       </div>
 
       {/* Ledger timestamp */}
-      <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+      <p className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
         {walletBalance != null
           ? t("wallet:page.ledger", {
               balance: formatMoney(
@@ -787,7 +787,7 @@ export const WalletPage: React.FC<{
                       <tr>
                         <td
                           colSpan={5}
-                          className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs"
+                          className="p-8 text-center text-xs text-slate-500 dark:text-slate-400"
                         >
                           {t("wallet:history.empty")}
                         </td>
@@ -889,7 +889,7 @@ export const WalletPage: React.FC<{
                     <tr>
                       <td
                         colSpan={4}
-                        className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs"
+                        className="p-8 text-center text-xs text-slate-500 dark:text-slate-400"
                       >
                         {t("wallet:transactions.empty")}
                       </td>
@@ -1003,7 +1003,7 @@ export const WalletPage: React.FC<{
 
             {/* ── Top-up form ──────────────────────────────────── */}
             {activeRightTab === "topup" && canTopUp && (
-              <div className="space-y-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl p-5">
+              <div className="dark-depth-card space-y-5 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800/80 dark:bg-slate-900">
                 <div>
                   <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
                     {t("wallet:topup.title")}
@@ -1049,7 +1049,7 @@ export const WalletPage: React.FC<{
 
             {/* ── Withdrawal form ──────────────────────────────── */}
             {activeRightTab === "withdraw" && canUseSelfServiceWithdrawal && (
-              <div className="space-y-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl p-5">
+              <div className="dark-depth-card space-y-5 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800/80 dark:bg-slate-900">
                 <div>
                   <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
                     {t("wallet:form.title")}
@@ -1150,7 +1150,7 @@ export const WalletPage: React.FC<{
                             onClick={() =>
                               setIsBankDropdownOpen((current) => !current)
                             }
-                            className="group flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-sky-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                            className="dark-depth-inset group flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-sky-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-600"
                             aria-label={t("wallet:form.bankDropdownButton")}
                             aria-expanded={isBankDropdownOpen}
                           >
@@ -1207,7 +1207,7 @@ export const WalletPage: React.FC<{
                                         <span className="font-semibold">
                                           {option.label}
                                         </span>
-                                        <span className="text-[9px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                        <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
                                           BIN {option.code}
                                         </span>
                                       </div>
@@ -1268,7 +1268,7 @@ export const WalletPage: React.FC<{
             )}
 
             {/* Workflow guide */}
-            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl space-y-3">
+            <div className="dark-depth-card space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
               <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
                 {t("wallet:workflow.title")}
               </h3>

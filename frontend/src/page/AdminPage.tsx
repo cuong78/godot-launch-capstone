@@ -207,65 +207,68 @@ const mapAdminStatusToApiStatus = (status: AdminUserStatus) => {
   return status;
 };
 
-const getContractStatusLabel = (status: string) => {
+const getContractStatusLabel = (
+  status: string,
+  t: (key: string) => string,
+) => {
   switch (status) {
     case "signed":
       return {
-        text: "Đã ký",
+        text: t("status.contract.signed"),
         colorClass: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
       };
     case "cancelled":
       return {
-        text: "Đã hủy / Chờ chào lại",
+        text: t("status.contract.cancelled"),
         colorClass: "bg-rose-500/10 text-rose-500 border-rose-500/20",
       };
     case "expired":
       return {
-        text: "Hết hạn",
+        text: t("status.contract.expired"),
         colorClass: "bg-slate-500/10 text-slate-500 border-slate-500/20",
       };
     case "pending":
     default:
       return {
-        text: "Chờ Developer ký",
+        text: t("status.contract.pending"),
         colorClass:
           "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse",
       };
   }
 };
 
-const AUDIT_ACTIONS = [
-  { value: "user_registered", label: "User Registered" },
-  { value: "user_login_success", label: "Login Success" },
-  { value: "user_login_failed", label: "Login Failed" },
-  { value: "user_logged_out", label: "Logged Out" },
-  { value: "user_banned", label: "User Banned" },
-  { value: "user_unbanned", label: "User Unbanned" },
-  { value: "user_role_changed", label: "User Role Changed" },
-  { value: "game_submitted", label: "Game Submitted" },
-  { value: "game_approved", label: "Game Approved" },
-  { value: "game_rejected", label: "Game Rejected" },
-  { value: "game_published", label: "Game Published" },
-  { value: "game_updated", label: "Game Updated" },
-  { value: "contract_created", label: "Contract Created" },
-  { value: "contract_signed", label: "Contract Signed" },
-  { value: "contract_cancelled", label: "Contract Cancelled" },
-  { value: "security_alert", label: "Security Alert" },
-  { value: "post_created", label: "Post Created" },
-  { value: "comment_created", label: "Comment Created" },
-  { value: "reaction_created", label: "Reaction Created" },
-  { value: "chat_message_sent", label: "Chat Message Sent" },
+const getAuditActions = (t: (key: string) => string) => [
+  { value: "user_registered", label: t("audit.actions.user_registered") },
+  { value: "user_login_success", label: t("audit.actions.user_login_success") },
+  { value: "user_login_failed", label: t("audit.actions.user_login_failed") },
+  { value: "user_logged_out", label: t("audit.actions.user_logged_out") },
+  { value: "user_banned", label: t("audit.actions.user_banned") },
+  { value: "user_unbanned", label: t("audit.actions.user_unbanned") },
+  { value: "user_role_changed", label: t("audit.actions.user_role_changed") },
+  { value: "game_submitted", label: t("audit.actions.game_submitted") },
+  { value: "game_approved", label: t("audit.actions.game_approved") },
+  { value: "game_rejected", label: t("audit.actions.game_rejected") },
+  { value: "game_published", label: t("audit.actions.game_published") },
+  { value: "game_updated", label: t("audit.actions.game_updated") },
+  { value: "contract_created", label: t("audit.actions.contract_created") },
+  { value: "contract_signed", label: t("audit.actions.contract_signed") },
+  { value: "contract_cancelled", label: t("audit.actions.contract_cancelled") },
+  { value: "security_alert", label: t("audit.actions.security_alert") },
+  { value: "post_created", label: t("audit.actions.post_created") },
+  { value: "comment_created", label: t("audit.actions.comment_created") },
+  { value: "reaction_created", label: t("audit.actions.reaction_created") },
+  { value: "chat_message_sent", label: t("audit.actions.chat_message_sent") },
 ];
 
-const AUDIT_TARGETS = [
-  { value: "user", label: "User" },
-  { value: "game", label: "Game" },
-  { value: "contract", label: "Contract" },
-  { value: "community_chat", label: "Community Post/Comment" },
-  { value: "chat_message", label: "Direct Message" },
-  { value: "ai_report", label: "AI Report" },
-  { value: "transaction", label: "Transaction" },
-  { value: "withdrawal", label: "Withdrawal" },
+const getAuditTargets = (t: (key: string) => string) => [
+  { value: "user", label: t("audit.targets.user") },
+  { value: "game", label: t("audit.targets.game") },
+  { value: "contract", label: t("audit.targets.contract") },
+  { value: "community_chat", label: t("audit.targets.community_chat") },
+  { value: "chat_message", label: t("audit.targets.chat_message") },
+  { value: "ai_report", label: t("audit.targets.ai_report") },
+  { value: "transaction", label: t("audit.targets.transaction") },
+  { value: "withdrawal", label: t("audit.targets.withdrawal") },
 ];
 
 const getActionBadgeClass = (action: string) => {
@@ -298,27 +301,51 @@ const getActionBadgeClass = (action: string) => {
   return "bg-slate-500/10 text-slate-500 border border-slate-500/20";
 };
 
-const formatCurrency = (value?: number | null, currency = "VND") => {
-  if (value == null || Number.isNaN(value)) {
-    return "N/A";
+const resolveLocale = (language?: string | null) => {
+  if (!language) {
+    return "vi-VN";
   }
 
-  return new Intl.NumberFormat("vi-VN", {
+  if (language.startsWith("ja")) {
+    return "ja-JP";
+  }
+
+  if (language.startsWith("en")) {
+    return "en-US";
+  }
+
+  return "vi-VN";
+};
+
+const formatCurrency = (
+  value: number | null | undefined,
+  currency = "VND",
+  locale = "vi-VN",
+  fallbackLabel = "N/A",
+) => {
+  if (value == null || Number.isNaN(value)) {
+    return fallbackLabel;
+  }
+
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
   }).format(value);
 };
 
-const getAdminPreviewRoleLabel = (role: AdminUserRecord["role"]) => {
+const getAdminPreviewRoleLabel = (
+  role: AdminUserRecord["role"],
+  t: (key: string) => string,
+) => {
   switch (role) {
     case "admin":
-      return "Admin";
+      return t("roles.admin");
     case "developer":
-      return "Developer";
+      return t("roles.developer");
     case "customer":
     default:
-      return "Customer";
+      return t("roles.customer");
   }
 };
 
@@ -334,16 +361,19 @@ const getAdminPreviewRoleBadgeClass = (role: AdminUserRecord["role"]) => {
   }
 };
 
-const getAdminPreviewStatusLabel = (status: AdminUserStatus) => {
+const getAdminPreviewStatusLabel = (
+  status: AdminUserStatus,
+  t: (key: string) => string,
+) => {
   switch (status) {
     case "active":
-      return "Active";
+      return t("status.user.active");
     case "inactive":
-      return "Inactive";
+      return t("status.user.inactive");
     case "suspended":
-      return "Suspended";
+      return t("status.user.suspended");
     case "banned":
-      return "Banned";
+      return t("status.user.banned");
     default:
       return status;
   }
@@ -375,37 +405,81 @@ const getAdminPreviewInitials = (fullName: string, username: string) => {
   return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
 };
 
-const formatAdminOverviewDate = (value?: string) => {
+const formatAdminOverviewDate = (
+  value: string | undefined,
+  fallbackLabel: string,
+  locale = "vi-VN",
+) => {
   if (!value) {
-    return "New";
+    return fallbackLabel;
   }
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return "New";
+    return fallbackLabel;
   }
 
-  return parsed.toLocaleDateString(undefined, {
+  return parsed.toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
   });
 };
 
-const moderationStatusFilterOptions: Array<{
-  value: ModerationStatusFilter;
-  label: string;
-}> = [
-  { value: "pending", label: "Pending" },
-  { value: "approved_published", label: "Approved / Published" },
-  { value: "rejected", label: "Rejected" },
-  { value: "all", label: "All Submissions" },
-];
-
 export const AdminPage: React.FC<AdminPageProps> = ({
   setCurrentScreen,
   currentUser,
 }) => {
-  const { t } = useTranslation(["admin"]);
+  const { t, i18n } = useTranslation(["admin"]);
+  const locale = useMemo(
+    () => resolveLocale(i18n.resolvedLanguage || i18n.language || "vi"),
+    [i18n.language, i18n.resolvedLanguage],
+  );
+  const auditActions = useMemo(() => getAuditActions(t), [t]);
+  const auditTargets = useMemo(() => getAuditTargets(t), [t]);
+  const getAuditActionLabel = useCallback(
+    (action?: string | null) => {
+      if (!action) {
+        return t("audit.unknownAction");
+      }
+
+      return auditActions.find((item) => item.value === action)?.label || action;
+    },
+    [auditActions, t],
+  );
+  const getAuditTargetLabel = useCallback(
+    (targetType?: string | null) => {
+      if (!targetType) {
+        return t("audit.unknownTarget");
+      }
+
+      return (
+        auditTargets.find((item) => item.value === targetType)?.label ||
+        targetType
+      );
+    },
+    [auditTargets, t],
+  );
+  const moderationStatusFilterOptions = useMemo(
+    () => [
+      {
+        value: "pending" as ModerationStatusFilter,
+        label: t("moderationQueue.filters.pending"),
+      },
+      {
+        value: "approved_published" as ModerationStatusFilter,
+        label: t("moderationQueue.filters.approvedPublished"),
+      },
+      {
+        value: "rejected" as ModerationStatusFilter,
+        label: t("moderationQueue.filters.rejected"),
+      },
+      {
+        value: "all" as ModerationStatusFilter,
+        label: t("moderationQueue.filters.all"),
+      },
+    ],
+    [t],
+  );
   const [activeTab, setActiveTab] = useState<AdminTabKey>("moderation");
   const [activeSection, setActiveSection] =
     useState<AdminSectionKey>("overview");
@@ -446,6 +520,30 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [marketplaceItemDetails, setMarketplaceItemDetails] = useState<
     Record<string, MarketplaceItemResponse>
   >({});
+
+  const getModerationPublishingLabel = (publishingType?: string) => {
+    switch (publishingType) {
+      case "full_acquisition":
+        return t("fileManagement.publishing.fullAcquisition");
+      case "co_publishing":
+        return t("fileManagement.publishing.coPublishing");
+      case "marketplace_listing":
+      default:
+        return t("fileManagement.publishing.marketplaceListing");
+    }
+  };
+
+  const formatModerationPrice = (price?: number | null) => {
+    if (price == null) {
+      return t("moderationQueue.price.notSet");
+    }
+
+    if (price === 0) {
+      return t("moderationQueue.price.free");
+    }
+
+    return formatCurrency(price, "VND", locale, t("withdrawal.na"));
+  };
   const [marketplaceDetailLoadingId, setMarketplaceDetailLoadingId] = useState<
     string | null
   >(null);
@@ -669,7 +767,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     "game",
   );
   const [rejectReason, setRejectReason] = useState<string>(
-    "Violated store policies",
+    t("moderationQueue.messages.defaultRejectReason"),
   );
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [selectedContract, setSelectedContract] =
@@ -680,7 +778,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Form states for creating contract
   const [buyerRepresentative, setBuyerRepresentative] = useState("");
   const [buyerPosition, setBuyerPosition] = useState(
-    "Ban quản trị hệ thống / Authorized Representative",
+    t("contract.defaultBuyerPosition"),
   );
   const [sellerRepresentative, setSellerRepresentative] = useState("");
   const [sellerAddress, setSellerAddress] = useState("");
@@ -688,7 +786,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [lumpSumAmount, setLumpSumAmount] = useState("");
   const [revenueSplit, setRevenueSplit] = useState(70);
   const [disputeResolutionClause, setDisputeResolutionClause] = useState(
-    "Mọi tranh chấp phát sinh từ hoặc liên quan đến hợp đồng này sẽ được giải quyết trước tiên thông qua thương lượng thân thiện. Nếu không giải quyết được, tranh chấp sẽ được đưa ra giải quyết tại Trọng tài theo quy định.\nAny dispute arising out of or in connection with this contract shall first be resolved through friendly negotiations. If unresolved, it shall be referred to arbitration.",
+    t("contract.defaultDisputeClause"),
   );
   const [additionalTerms, setAdditionalTerms] = useState("");
   const [adminSignatureBase64, setAdminSignatureBase64] = useState<
@@ -714,7 +812,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Download failed:", error);
-      alert("Không thể tải xuống tệp. Vui lòng kiểm tra lại!");
+      alert(t("alerts.downloadFailed"));
     } finally {
       setDownloadingFile(null);
     }
@@ -732,7 +830,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       if (gamesRes.success && gamesRes.data) {
         setAllGames(gamesRes.data);
       } else {
-        setGamesError(gamesRes.message || "Failed to load games");
+        setGamesError(gamesRes.message || t("errors.loadGames"));
       }
 
       if (contractsRes.success && contractsRes.data) {
@@ -742,7 +840,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setGamesError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to fetch moderation queue",
+          t("errors.fetchModerationQueue"),
       );
     } finally {
       setIsLoadingGames(false);
@@ -757,13 +855,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       if (res.success && res.data) {
         setAllMarketplaceItems(res.data);
       } else {
-        setMarketplaceError(res.message || "Failed to load marketplace items");
+        setMarketplaceError(res.message || t("errors.loadMarketplaceItems"));
       }
     } catch (err: any) {
       setMarketplaceError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to fetch marketplace submissions",
+          t("errors.fetchMarketplaceSubmissions"),
       );
     } finally {
       setIsLoadingMarketplace(false);
@@ -823,11 +921,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         const mappedUsers = response.data.map(mapApiUserToAdminUser);
         setUsers(mappedUsers);
       } else {
-        setUsersError(response.message || "Failed to load users");
+        setUsersError(response.message || t("errors.loadUsers"));
       }
     } catch (err: any) {
       setUsersError(
-        err.response?.data?.message || err.message || "Failed to fetch users",
+        err.response?.data?.message || err.message || t("errors.fetchUsers"),
       );
     } finally {
       setIsLoadingUsers(false);
@@ -874,13 +972,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         setTotalPages(res.data.totalPages);
         setTotalElements(res.data.totalElements);
       } else {
-        setLogsError(res.message || "Failed to load audit logs");
+        setLogsError(res.message || t("errors.loadAuditLogs"));
       }
     } catch (err: any) {
       setLogsError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to fetch audit logs",
+          t("errors.fetchAuditLogs"),
       );
     } finally {
       setIsLoadingLogs(false);
@@ -894,7 +992,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const response = await walletApi.getAdminPayoutBalance();
       if (!response.success || !response.data) {
         throw new Error(
-          response.message || "Failed to load payout wallet balance",
+          response.message || t("errors.loadPayoutWalletBalance"),
         );
       }
 
@@ -903,7 +1001,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setPayoutBalanceError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to load payout wallet balance",
+          t("errors.loadPayoutWalletBalance"),
       );
     } finally {
       setIsLoadingPayoutBalance(false);
@@ -931,19 +1029,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   }, [activeTab, currentPage, pageSize, filterAction, filterTargetType]);
 
   const payoutBalanceDisplay = isLoadingPayoutBalance
-    ? "Loading..."
+    ? t("common.loading")
     : payoutBalance
       ? formatCurrency(
           Number(payoutBalance.balance),
           payoutBalance.currency || "VND",
+          locale,
+          t("withdrawal.na"),
         )
-      : "N/A";
+      : t("withdrawal.na");
 
   const payoutBalanceCaption = payoutBalanceError
-    ? payoutBalanceError
+    ? t("overviewCards.payoutWalletError")
     : payoutBalance
-      ? "Synced from the PayOS payout account."
-      : "Loading payout wallet balance...";
+      ? t("overviewCards.payoutWalletSynced")
+      : t("overviewCards.payoutWalletLoading");
 
   const handleApplyTextFilters = (e: React.FormEvent) => {
     e.preventDefault();
@@ -975,7 +1075,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     try {
       const response = await platformSettingsApi.getPlatformSettings();
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Failed to load platform settings");
+        throw new Error(response.message || t("errors.loadPlatformSettings"));
       }
 
       applyPlatformSettings(response.data);
@@ -983,7 +1083,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setSettingsError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to load platform settings",
+          t("errors.loadPlatformSettings"),
       );
     } finally {
       setIsLoadingSettings(false);
@@ -1005,7 +1105,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     if (!game.publishingType || game.publishingType === "marketplace_listing") {
       if (
         !window.confirm(
-          `Are you sure you want to APPROVE and publish "${game.title}"?`,
+          t("moderationQueue.messages.approveGameConfirm", {
+            title: game.title,
+          }),
         )
       ) {
         return;
@@ -1013,16 +1115,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       try {
         const res = await gameApi.approveGame(game.id);
         if (res.success) {
-          alert(`Game "${game.title}" approved & published successfully!`);
+          alert(
+            t("moderationQueue.messages.approveGameSuccess", {
+              title: game.title,
+            }),
+          );
           fetchPendingGamesAndContracts();
         } else {
-          alert(res.message || "Failed to approve game");
+          alert(res.message || t("errors.approveGame"));
         }
       } catch (err: any) {
         alert(
-          err.response?.data?.message ||
+            err.response?.data?.message ||
             err.message ||
-            "Failed to approve game",
+            t("errors.approveGame"),
         );
       }
     } else {
@@ -1035,13 +1141,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setRejectItemId(id);
     setRejectItemTitle(title);
     setRejectItemType("game");
-    setRejectReason("Violated store policies");
+    setRejectReason(t("moderationQueue.messages.defaultRejectReason"));
     setIsRejectModalOpen(true);
   };
 
   const handleConfirmRejection = async () => {
     if (!rejectReason.trim()) {
-      alert("Please enter a rejection reason.");
+      alert(t("errors.rejectionReasonRequired"));
       return;
     }
     setIsSubmittingReject(true);
@@ -1049,11 +1155,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       if (rejectItemType === "game") {
         const res = await gameApi.rejectGame(rejectItemId, rejectReason);
         if (res.success) {
-          alert(`Game "${rejectItemTitle}" rejected. Creator notified.`);
+          alert(
+            t("moderationQueue.messages.rejectGameSuccess", {
+              title: rejectItemTitle,
+            }),
+          );
           setIsRejectModalOpen(false);
           fetchPendingGamesAndContracts();
         } else {
-          alert(res.message || "Failed to reject game");
+          alert(res.message || t("errors.rejectGame"));
         }
       } else {
         const res = await marketplaceApi.rejectMarketplaceItem(
@@ -1062,17 +1172,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         );
         if (res.success) {
           alert(
-            `Marketplace item "${rejectItemTitle}" rejected. Creator notified.`,
+            t("moderationQueue.messages.rejectAssetSuccess", {
+              title: rejectItemTitle,
+            }),
           );
           setIsRejectModalOpen(false);
           fetchPendingMarketplaceItems();
         } else {
-          alert(res.message || "Failed to reject marketplace item");
+          alert(res.message || t("errors.rejectMarketplaceItem"));
         }
       }
     } catch (err: any) {
       alert(
-        err.response?.data?.message || err.message || "Failed to reject item",
+        err.response?.data?.message ||
+          err.message ||
+          t("moderationQueue.messages.rejectItemFailed"),
       );
     } finally {
       setIsSubmittingReject(false);
@@ -1084,7 +1198,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   ) => {
     if (
       !window.confirm(
-        `Are you sure you want to APPROVE and activate the marketplace item "${item.title}"?`,
+        t("moderationQueue.messages.approveAssetConfirm", {
+          title: item.title,
+        }),
       )
     ) {
       return;
@@ -1093,17 +1209,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const res = await marketplaceApi.approveMarketplaceItem(item.id);
       if (res.success) {
         alert(
-          `Marketplace item "${item.title}" approved & activated successfully!`,
+          t("moderationQueue.messages.approveAssetSuccess", {
+            title: item.title,
+          }),
         );
         fetchPendingMarketplaceItems();
       } else {
-        alert(res.message || "Failed to approve marketplace item");
+        alert(res.message || t("errors.approveMarketplaceItem"));
       }
     } catch (err: any) {
       alert(
         err.response?.data?.message ||
           err.message ||
-          "Failed to approve marketplace item",
+          t("errors.approveMarketplaceItem"),
       );
     }
   };
@@ -1112,7 +1230,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setRejectItemId(id);
     setRejectItemTitle(title);
     setRejectItemType("marketplace");
-    setRejectReason("Violated store policies");
+    setRejectReason(t("moderationQueue.messages.defaultRejectReason"));
     setIsRejectModalOpen(true);
   };
 
@@ -1146,7 +1264,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     e.preventDefault();
     if (!selectedGame) return;
     if (!adminSignatureBase64) {
-      alert("Vui lòng ký tên (Bên A) trước khi gửi hợp đồng.");
+      alert(t("contractComposer.signatureRequired"));
       return;
     }
 
@@ -1176,17 +1294,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       });
 
       if (res.success) {
-        alert("Hợp đồng đề xuất đã được tạo thành công và gửi cho Developer!");
+        alert(t("contractComposer.createSuccess"));
         setIsContractModalOpen(false);
         fetchPendingGamesAndContracts();
       } else {
-        alert(res.message || "Lỗi tạo hợp đồng");
+        alert(res.message || t("contractComposer.createError"));
       }
     } catch (err: any) {
       alert(
         err.response?.data?.message ||
           err.message ||
-          "Lỗi gửi yêu cầu tạo hợp đồng",
+          t("contractComposer.createRequestError"),
       );
     }
   };
@@ -1194,7 +1312,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const handleAdminUserUpdate = async (input: AdminUserUpdateInput) => {
     const existingUser = users.find((user) => user.id === input.id);
     if (!existingUser) {
-      throw new Error("User not found.");
+      throw new Error(t("userPanel.userNotFound"));
     }
 
     try {
@@ -1208,7 +1326,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       });
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Failed to update user.");
+        throw new Error(response.message || t("errors.updateUser"));
       }
 
       const updatedUser = mapApiUserToAdminUser(response.data);
@@ -1217,7 +1335,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       );
     } catch (err: any) {
       throw new Error(
-        err.response?.data?.message || err.message || "Failed to update user.",
+        err.response?.data?.message || err.message || t("errors.updateUser"),
       );
     }
   };
@@ -1237,7 +1355,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
       if (!response.success || !response.data) {
         throw new Error(
-          response.message || "Failed to update platform settings",
+          response.message || t("errors.updatePlatformSettings"),
         );
       }
 
@@ -1248,7 +1366,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setSettingsError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to update platform settings",
+          t("errors.updatePlatformSettings"),
       );
     } finally {
       setIsSavingSettings(false);
@@ -1273,8 +1391,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 <div className="rounded-[24px] border border-slate-200/90 bg-white/96 p-4 shadow-[0_14px_36px_rgba(148,163,184,0.12)] space-y-2.5 dark:border-slate-800/80 dark:bg-slate-900 dark:shadow-none">
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1">
-                    <DollarSign size={12} className="text-sky-500" /> Payout
-                    wallet balance
+                    <DollarSign size={12} className="text-sky-500" />{" "}
+                    {t("overviewCards.payoutWalletBalance")}
                   </span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-display font-bold dark:text-white">
@@ -1297,31 +1415,33 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                 <div className="rounded-[24px] border border-slate-200/90 bg-white/96 p-4 shadow-[0_14px_36px_rgba(148,163,184,0.12)] space-y-2.5 dark:border-slate-800/80 dark:bg-slate-900 dark:shadow-none">
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1">
-                    <Users size={12} className="text-amber-500" /> Platform
-                    accounts
+                    <Users size={12} className="text-amber-500" />{" "}
+                    {t("overviewCards.platformAccounts")}
                   </span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-display font-bold dark:text-white">
-                      {users.length} users
+                      {t("overviewCards.userCount", { count: users.length })}
                     </span>
                     <span className="text-[10px] text-emerald-500 font-bold font-mono">
-                      Live directory
+                      {t("overviewCards.liveDirectory")}
                     </span>
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-slate-200/90 bg-white/96 p-4 shadow-[0_14px_36px_rgba(148,163,184,0.12)] space-y-2.5 dark:border-slate-800/80 dark:bg-slate-900 dark:shadow-none">
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1">
-                    <FileCheck size={12} className="text-purple-500" /> Pending
-                    Moderation
+                    <FileCheck size={12} className="text-purple-500" />{" "}
+                    {t("moderationPreview.pendingModeration")}
                   </span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-display font-bold dark:text-white">
-                      {moderationItemsCount} items
+                      {t("overviewCards.moderationItemCount", {
+                        count: moderationItemsCount,
+                      })}
                     </span>
                     {moderationItemsCount > 0 && (
                       <span className="text-[10px] text-amber-500 font-bold font-mono animate-pulse">
-                        Action required
+                        {t("overview.actionRequiredBadge")}
                       </span>
                     )}
                   </div>
@@ -1343,10 +1463,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       </span>
                       <div className="flex items-center gap-2">
                         <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                          Moderation Preview
+                          {t("moderationPreview.title")}
                         </h3>
                         <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-500 leading-none">
-                          {moderationItemsCount} queue
+                          {t("moderationPreview.queueCount", {
+                            count: moderationItemsCount,
+                          })}
                         </span>
                       </div>
                     </div>
@@ -1357,14 +1479,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       }
                       className="rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 text-[11px] font-semibold text-slate-700 dark:text-slate-300 transition-studio hover:border-amber-400/35 hover:text-amber-600 dark:hover:text-amber-300"
                     >
-                      Open
+                      {t("moderationPreview.open")}
                     </button>
                   </div>
 
                   <div className="mt-4 space-y-3">
                     {isLoadingGames || isLoadingMarketplace ? (
                       <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
-                        Loading moderation snapshot...
+                        {t("moderationPreview.loading")}
                       </div>
                     ) : gamesError || marketplaceError ? (
                       <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-500">
@@ -1372,7 +1494,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       </div>
                     ) : moderationItemsCount === 0 ? (
                       <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
-                        No pending game or asset submissions right now.
+                        {t("moderationPreview.empty")}
                       </div>
                     ) : (
                       <>
@@ -1394,15 +1516,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
                                       {game.creatorFullName ||
                                         game.creatorName ||
-                                        "Unknown creator"}
+                                        t("moderationPreview.unknownCreator")}
                                     </div>
                                   </div>
                                   <div className="flex shrink-0 flex-col items-end gap-2">
                                     <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-500">
-                                      Game
+                                      {t("moderationPreview.gameType")}
                                     </span>
-                                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
-                                      {formatAdminOverviewDate(game.createdAt)}
+                                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                                      {formatAdminOverviewDate(
+                                        game.createdAt,
+                                        t("moderationPreview.newLabel"),
+                                        locale,
+                                      )}
                                     </span>
                                   </div>
                                 </div>
@@ -1428,15 +1554,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
                                       {item.sellerFullName ||
                                         item.sellerEmail ||
-                                        "Unknown seller"}
+                                        t("moderationPreview.unknownSeller")}
                                     </div>
                                   </div>
                                   <div className="flex shrink-0 flex-col items-end gap-2">
                                     <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-500">
-                                      Asset
+                                      {t("moderationPreview.assetType")}
                                     </span>
-                                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
-                                      {formatAdminOverviewDate(item.createdAt)}
+                                    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                                      {formatAdminOverviewDate(
+                                        item.createdAt,
+                                        t("moderationPreview.newLabel"),
+                                        locale,
+                                      )}
                                     </span>
                                   </div>
                                 </div>
@@ -1458,7 +1588,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         <Users size={16} />
                       </span>
                       <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                        User Ops
+                        {t("overviewUsers.title")}
                       </h3>
                     </div>
                     <button
@@ -1466,14 +1596,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       onClick={() => handleOpenSectionTab("users", "users")}
                       className="rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 text-[11px] font-semibold text-slate-700 dark:text-slate-300 transition-studio hover:border-sky-400/35 hover:text-sky-600 dark:hover:text-sky-300"
                     >
-                      Open
+                      {t("overviewUsers.open")}
                     </button>
                   </div>
 
                   <div className="mt-5 space-y-3">
                     {isLoadingUsers ? (
                       <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
-                        Loading user directory...
+                        {t("overviewUsers.loading")}
                       </div>
                     ) : usersError ? (
                       <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-500">
@@ -1481,7 +1611,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       </div>
                     ) : users.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
-                        No indexed accounts right now.
+                        {t("overviewUsers.empty")}
                       </div>
                     ) : (
                       users.slice(0, 4).map((user) => {
@@ -1520,7 +1650,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     </div>
                                     {isCurrentAdmin ? (
                                       <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-500">
-                                        You
+                                        {t("userPanel.you")}
                                       </span>
                                     ) : null}
                                   </div>
@@ -1533,13 +1663,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   <span
                                     className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${getAdminPreviewRoleBadgeClass(user.role)}`}
                                   >
-                                    {getAdminPreviewRoleLabel(user.role)}
+                                    {getAdminPreviewRoleLabel(user.role, t)}
                                   </span>
                                   <span
                                     className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${getAdminPreviewStatusBadgeClass(user.status)}`}
                                   >
                                     <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                                    {getAdminPreviewStatusLabel(user.status)}
+                                    {getAdminPreviewStatusLabel(user.status, t)}
                                   </span>
                                 </div>
                               </div>
@@ -1554,14 +1684,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 <div className="rounded-[24px] border border-slate-200/90 bg-white/95 p-6 shadow-[0_18px_40px_rgba(148,163,184,0.12)] backdrop-blur-md dark:border-slate-800/60 dark:bg-slate-900/45 dark:shadow-none">
                   <div>
                     <h3 className="font-display font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                      Platform Snapshot
+                      {t("overview.platformSnapshot")}
                     </h3>
                   </div>
 
                   <div className="mt-5 space-y-3">
                     <div className="rounded-2xl border border-slate-200/85 bg-slate-50/85 p-4 shadow-[0_10px_20px_rgba(148,163,184,0.08)] dark:border-slate-800 dark:bg-slate-950/40 dark:shadow-none">
                       <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        Commission rate
+                        {t("overview.commissionRate")}
                       </div>
                       <div className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                         {commission}%
@@ -1570,11 +1700,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                     <div className="rounded-2xl border border-slate-200/85 bg-slate-50/85 p-4 shadow-[0_10px_20px_rgba(148,163,184,0.08)] dark:border-slate-800 dark:bg-slate-950/40 dark:shadow-none">
                       <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        Announcement banner
+                        {t("overview.announcementBanner")}
                       </div>
                       <div className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                         {announcement?.trim() ||
-                          "No active announcement banner."}
+                          t("overview.noActiveAnnouncementBanner")}
                       </div>
                     </div>
 
@@ -1586,12 +1716,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       }`}
                     >
                       <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        Maintenance mode
+                        {t("overview.maintenanceMode")}
                       </div>
                       <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
                         {maintenance
-                          ? "Enabled for platform protection."
-                          : "Disabled. Storefront flows remain open."}
+                          ? t("overview.maintenanceEnabled")
+                          : t("overview.maintenanceDisabled")}
                       </div>
                     </div>
                   </div>
@@ -1641,11 +1771,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
                           <h3 className="font-display text-2xl font-bold text-slate-900 dark:text-white sm:text-[28px]">
-                            Platform Wallet
+                            {t("finance.platformWalletTitle")}
                           </h3>
                           <p className="max-w-3xl text-sm text-slate-500 dark:text-slate-400">
-                            Monitor the admin commission ledger and PayOS payout
-                            account without entering the creator wallet flow.
+                            {t("finance.platformWalletDescription")}
                           </p>
                         </div>
 
@@ -1667,7 +1796,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           onClick={() => financeRefreshState?.refresh()}
                           disabled={!financeRefreshState}
                         >
-                          Refresh Wallet
+                          {t("finance.refreshWallet")}
                         </Button>
                       </div>
                     </div>
@@ -1726,14 +1855,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="font-display text-lg font-bold text-slate-800 dark:text-slate-200 sm:text-[22px]">
-                        Game & Asset Moderation Queue
+                        {t("moderationQueue.title")}
                       </h3>
                       <button
                         type="button"
                         onClick={() => setActiveTab("moderation")}
                         className="inline-flex min-w-[108px] items-center justify-between gap-3 rounded-2xl border border-sky-400/35 bg-sky-400/12 px-4 py-2 text-sm font-semibold text-sky-700 transition-studio dark:text-sky-200"
                       >
-                        <span>Queue</span>
+                        <span>{t("moderationQueue.queueBadge")}</span>
                         {moderationItemsCount > 0 ? (
                           <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold leading-none text-amber-600 dark:text-amber-300">
                             {moderationItemsCount}
@@ -1753,7 +1882,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         }`}
                       >
                         <Gamepad2 size={14} />
-                        Game Submissions
+                        {t("moderationQueue.tabs.games")}
                         <span
                           className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
                             moderationSubTab === "games"
@@ -1773,7 +1902,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         }`}
                       >
                         <ShoppingBag size={14} />
-                        Asset Submissions
+                        {t("moderationQueue.tabs.assets")}
                         <span
                           className={`px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-md ${
                             moderationSubTab === "marketplace"
@@ -1788,7 +1917,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                     <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                        Queue Status
+                        {t("moderationQueue.statusLabel")}
                       </div>
 
                       <label className="relative block w-full sm:w-[260px]">
@@ -1819,11 +1948,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {isLoadingGames ? (
                           <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
                             <RefreshCw className="animate-spin" size={18} />{" "}
-                            Loading pending submissions...
+                            {t("moderationQueue.loadingGames")}
                           </div>
                         ) : gamesError ? (
                           <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                            Error loading submissions: {gamesError}
+                            {t("moderationQueue.errorGames", {
+                              error: gamesError,
+                            })}
                           </div>
                         ) : (
                           <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
@@ -1831,14 +1962,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                               <thead>
                                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
                                   <th className="p-3 w-10"></th>
-                                  <th className="p-3">Asset Details</th>
-                                  <th className="p-3">Category</th>
-                                  <th className="p-3">Publishing Type</th>
-                                  <th className="p-3">Proposed Price</th>
+                                  <th className="p-3">{t("moderationQueue.headers.assetDetails")}</th>
+                                  <th className="p-3">{t("moderationQueue.headers.category")}</th>
+                                  <th className="p-3">{t("moderationQueue.headers.publishingType")}</th>
+                                  <th className="p-3">{t("moderationQueue.headers.proposedPrice")}</th>
                                   <th className="p-3 text-center">
-                                    Trạng thái HĐ
+                                    {t("moderationQueue.headers.contractStatus")}
                                   </th>
-                                  <th className="p-3 text-center">Decisions</th>
+                                  <th className="p-3 text-center">{t("moderationQueue.headers.decisions")}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
@@ -1860,8 +1991,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
                                             title={
                                               expandedGameId === game.id
-                                                ? "Hide Details"
-                                                : "Show Details"
+                                                ? t("moderationQueue.actions.hideDetails")
+                                                : t("moderationQueue.actions.showDetails")
                                             }
                                           >
                                             {expandedGameId === game.id ? (
@@ -1887,8 +2018,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             >
                                               {game.status?.toLowerCase() ===
                                               "pending"
-                                                ? "Chờ duyệt"
-                                                : "Đã duyệt"}
+                                                ? t("moderationQueue.status.pendingReview")
+                                                : t("moderationQueue.status.approved")}
                                             </span>
                                             <button
                                               onClick={() =>
@@ -1899,17 +2030,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 )
                                               }
                                               className="text-slate-400 hover:text-amber-500 transition-colors"
-                                              title="Quick View Content"
+                                              title={t("moderationQueue.actions.quickView")}
                                             >
                                               <Eye size={12} />
                                             </button>
                                           </div>
                                           <div className="text-[10px] text-slate-500 dark:text-slate-455">
-                                            by {game.creatorName}
+                                            {t("moderationQueue.by", {
+                                              name: game.creatorName,
+                                            })}
                                           </div>
                                         </td>
                                         <td className="p-3 text-slate-600 dark:text-slate-350">
-                                          {game.categoryName || "Unassigned"}
+                                          {game.categoryName ||
+                                            t("moderationQueue.unassigned")}
                                         </td>
                                         <td className="p-3">
                                           <span
@@ -1923,17 +2057,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                   : "bg-slate-100 dark:bg-slate-950 text-slate-500 border-slate-200 dark:border-slate-800"
                                             }`}
                                           >
-                                            {game.publishingType
-                                              ? game.publishingType.toUpperCase()
-                                              : "MARKETPLACE_LISTING"}
+                                            {getModerationPublishingLabel(
+                                              game.publishingType,
+                                            )}
                                           </span>
                                         </td>
                                         <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                                          {game.priceProposed == null
-                                            ? "Chưa có giá"
-                                            : game.priceProposed === 0
-                                              ? "Miễn phí"
-                                              : `${game.priceProposed.toLocaleString("vi-VN")} đ`}
+                                          {formatModerationPrice(
+                                            game.priceProposed,
+                                          )}
                                         </td>
                                         <td className="p-3 text-center">
                                           {(() => {
@@ -1946,14 +2078,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                               );
                                             if (!contract) {
                                               return (
-                                                <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">
-                                                  Chưa tạo
+                                                <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                                                  {t("status.contract.notCreated")}
                                                 </span>
                                               );
                                             }
                                             const statusInfo =
                                               getContractStatusLabel(
                                                 contract.status,
+                                                t,
                                               );
                                             return (
                                               <span
@@ -1973,7 +2106,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                     handleApproveGame(game)
                                                   }
                                                   className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                                  title="Duyệt game"
+                                                  title={t("actions.approveGame")}
                                                 >
                                                   <Check size={14} />
                                                 </button>
@@ -1985,7 +2118,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                     )
                                                   }
                                                   className="p-1.5 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                                  title="Từ chối game"
+                                                  title={t("actions.rejectGame")}
                                                 >
                                                   <X size={14} />
                                                 </button>
@@ -1998,7 +2131,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             ) {
                                               return (
                                                 <span className="inline-block px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-[10px] font-bold font-display">
-                                                  Rejected
+                                                  {t("moderationQueue.decision.rejected")}
                                                 </span>
                                               );
                                             }
@@ -2013,14 +2146,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                               ) {
                                                 return approveRejectButtons;
                                               }
-                                              return game.status?.toLowerCase() ===
+                                                return game.status?.toLowerCase() ===
                                                 "published" ? (
                                                 <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
-                                                  Live
+                                                  {t("moderationQueue.decision.live")}
                                                 </span>
                                               ) : (
                                                 <span className="inline-block px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-lg text-[10px] font-bold font-display">
-                                                  Approved
+                                                  {t("moderationQueue.decision.approved")}
                                                 </span>
                                               );
                                             }
@@ -2042,7 +2175,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 return approveRejectButtons;
                                               }
                                               return (
-                                                <span className="text-slate-400 dark:text-slate-600 font-mono text-[10px]">
+                                                <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
                                                   —
                                                 </span>
                                               );
@@ -2061,7 +2194,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                   className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
                                                 >
                                                   <Eye size={12} />
-                                                  Chờ Dev ký
+                                                  {t("moderationQueue.decision.waitingDevSignature")}
                                                 </button>
                                               );
                                             }
@@ -2073,13 +2206,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                               ) {
                                                 return (
                                                   <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
-                                                    Live trên Google Play
+                                                    {t("moderationQueue.decision.liveGooglePlay")}
                                                   </span>
                                                 );
                                               }
                                               return (
                                                 <span className="inline-block px-2.5 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-500 rounded-lg text-[10px] font-bold font-display animate-pulse">
-                                                  Chờ Upload Build
+                                                  {t("moderationQueue.decision.waitingBuild")}
                                                 </span>
                                               );
                                             }
@@ -2093,7 +2226,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[10px] transition-studio cursor-pointer"
                                               >
                                                 <Sliders size={12} />
-                                                Chào lại HĐ
+                                                {t("moderationQueue.decision.renegotiateContract")}
                                               </button>
                                             );
                                           })()}
@@ -2126,8 +2259,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                     return (
                                                       <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs space-y-1">
                                                         <span className="font-bold block">
-                                                          Developer từ chối hợp
-                                                          đồng với lý do:
+                                                          {t("moderationQueue.previousRejection")}
                                                         </span>
                                                         <p className="italic text-[11px] text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-rose-500/10 break-words">
                                                           "
@@ -2143,7 +2275,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 <div>
                                                   <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
                                                     <Image size={12} />{" "}
-                                                    Thumbnail
+                                                    {t("moderationQueue.detail.thumbnail")}
                                                   </h4>
                                                   <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
                                                     {game.thumbnailUrl ? (
@@ -2159,7 +2291,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                           className="mb-2 text-slate-650"
                                                         />
                                                         <span className="text-[10px] font-mono">
-                                                          NO THUMBNAIL
+                                                          {t("moderationQueue.detail.noThumbnail")}
                                                         </span>
                                                       </div>
                                                     )}
@@ -2168,17 +2300,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                                                 <div className="space-y-1.5">
                                                   <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                    Mô tả chi tiết
+                                                    {t("moderationQueue.detail.description")}
                                                   </h4>
                                                   <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
                                                     {game.description ||
-                                                      "Không có mô tả chi tiết từ developer."}
+                                                      t("moderationQueue.detail.noDescription")}
                                                   </p>
                                                 </div>
 
                                                 <div className="space-y-1.5">
                                                   <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                    Tags
+                                                    {t(
+                                                      "moderationQueue.detail.tags",
+                                                    )}
                                                   </h4>
                                                   {game.tags &&
                                                   game.tags.length > 0 ? (
@@ -2195,16 +2329,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       )}
                                                     </div>
                                                   ) : (
-                                                    <p className="text-[11px] text-slate-400 dark:text-slate-600">
-                                                      Không có tags nào được
-                                                      chọn
+                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                      {t(
+                                                        "moderationQueue.detail.noTags",
+                                                      )}
                                                     </p>
                                                   )}
                                                 </div>
 
                                                 <div className="space-y-1.5">
                                                   <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                    GitHub Repository
+                                                    {t(
+                                                      "moderationQueue.detail.githubRepository",
+                                                    )}
                                                   </h4>
                                                   {game.githubRepoUrl ? (
                                                     <a
@@ -2225,8 +2362,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       )}
                                                     </a>
                                                   ) : (
-                                                    <p className="text-[11px] text-slate-400 dark:text-slate-600">
-                                                      Không có repo
+                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                      {t(
+                                                        "moderationQueue.detail.noRepository",
+                                                      )}
                                                     </p>
                                                   )}
                                                 </div>
@@ -2252,20 +2391,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                           className="animate-spin"
                                                           size={14}
                                                         />{" "}
-                                                        Downloading...
+                                                        {t("actions.downloading")}
                                                       </>
                                                     ) : (
                                                       <>
                                                         <Download size={14} />{" "}
-                                                        Download Game Package
-                                                        (ZIP)
+                                                        {t("actions.downloadGamePackage")}
                                                       </>
                                                     )}
                                                   </button>
                                                 ) : (
                                                   <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                                                    Không tìm thấy tệp game ZIP
-                                                    để tải về
+                                                    {t("actions.noGamePackageUploaded")}
                                                   </div>
                                                 )}
                                               </div>
@@ -2279,7 +2416,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       size={12}
                                                       className="text-amber-500"
                                                     />{" "}
-                                                    Play Game Demo
+                                                    {t("playDemo.sectionTitle")}
                                                   </h4>
                                                   {game.webDemoUrl ? (
                                                     <button
@@ -2292,17 +2429,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         size={14}
                                                         fill="currentColor"
                                                       />{" "}
-                                                      Chơi thử Demo (Fullscreen)
+                                                      {t("playDemo.launchButton")}
                                                     </button>
                                                   ) : (
-                                                    <div className="flex flex-col items-center justify-center py-6 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-6 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                       <Play
                                                         size={20}
                                                         className="mb-1 text-slate-350 dark:text-slate-650"
                                                       />
                                                       <span className="text-[10px]">
-                                                        Developer chưa tải lên
-                                                        web demo nào
+                                                        {t("playDemo.empty")}
                                                       </span>
                                                     </div>
                                                   )}
@@ -2314,8 +2450,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       size={12}
                                                       className="text-amber-500"
                                                     />{" "}
-                                                    Ảnh chụp màn hình
-                                                    (Screenshots)
+                                                    {t("playDemo.screenshotsTitle")}
                                                   </h4>
                                                   {game.screenshots &&
                                                   game.screenshots.length >
@@ -2337,7 +2472,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                           >
                                                             <img
                                                               src={url}
-                                                              alt={`Screenshot ${index + 1}`}
+                                                              alt={t("moderationQueue.detail.screenshotAlt", {
+                                                                index: index + 1,
+                                                              })}
                                                               className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                                                             />
                                                             <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -2351,14 +2488,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       )}
                                                     </div>
                                                   ) : (
-                                                    <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                       <Image
                                                         size={24}
                                                         className="mb-1 text-slate-350 dark:text-slate-650"
                                                       />
                                                       <span className="text-[10px]">
-                                                        Developer không tải lên
-                                                        screenshot nào
+                                                        {t("moderationQueue.detail.noScreenshots")}
                                                       </span>
                                                     </div>
                                                   )}
@@ -2371,7 +2507,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       size={12}
                                                       className="text-amber-500"
                                                     />{" "}
-                                                    Video Gameplay Demo
+                                                    {t("moderationQueue.detail.videoDemo")}
                                                   </h4>
                                                   {game.videoUrl ? (
                                                     <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
@@ -2382,14 +2518,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       />
                                                     </div>
                                                   ) : (
-                                                    <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                       <Video
                                                         size={24}
                                                         className="mb-1 text-slate-350 dark:text-slate-650"
                                                       />
                                                       <span className="text-[10px]">
-                                                        Developer không tải lên
-                                                        video gameplay nào
+                                                        {t("moderationQueue.detail.noVideo")}
                                                       </span>
                                                     </div>
                                                   )}
@@ -2423,10 +2558,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   <tr>
                                     <td
                                       colSpan={7}
-                                      className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
+                                      className="p-8 text-center font-medium text-slate-500 dark:text-slate-400"
                                     >
-                                      Clean slate! No pending submissions to
-                                      moderate.
+                                      {t("moderationQueue.emptyGames")}
                                     </td>
                                   </tr>
                                 )}
@@ -2440,11 +2574,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {isLoadingMarketplace ? (
                           <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
                             <RefreshCw className="animate-spin" size={18} />{" "}
-                            Loading pending marketplace items...
+                            {t("moderationQueue.loadingAssets")}
                           </div>
                         ) : marketplaceError ? (
                           <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                            Error loading marketplace items: {marketplaceError}
+                            {t("moderationQueue.errorAssets", {
+                              error: marketplaceError,
+                            })}
                           </div>
                         ) : (
                           <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
@@ -2452,11 +2588,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                               <thead>
                                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
                                   <th className="p-3 w-10"></th>
-                                  <th className="p-3">Asset Details</th>
-                                  <th className="p-3">Item Type</th>
-                                  <th className="p-3">Category</th>
-                                  <th className="p-3">Proposed Price</th>
-                                  <th className="p-3 text-center">Decisions</th>
+                                  <th className="p-3">{t("moderationQueue.headers.assetDetails")}</th>
+                                  <th className="p-3">{t("moderationQueue.headers.itemType")}</th>
+                                  <th className="p-3">{t("moderationQueue.headers.category")}</th>
+                                  <th className="p-3">{t("moderationQueue.headers.proposedPrice")}</th>
+                                  <th className="p-3 text-center">{t("moderationQueue.headers.decisions")}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
@@ -2481,8 +2617,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                               title={
                                                 expandedMarketplaceId ===
                                                 item.id
-                                                  ? "Hide Details"
-                                                  : "Show Details"
+                                                  ? t("moderationQueue.actions.hideDetails")
+                                                  : t("moderationQueue.actions.showDetails")
                                               }
                                             >
                                               {expandedMarketplaceId ===
@@ -2507,27 +2643,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       : "bg-rose-500/10 text-rose-500 border-rose-500/20"
                                                 }`}
                                               >
-                                                {item.status || "Pending"}
+                                                {item.status ||
+                                                  t("moderationQueue.filters.pending")}
                                               </span>
                                             </div>
                                             <div className="text-[10px] text-slate-500 dark:text-slate-455">
-                                              by{" "}
-                                              {item.sellerFullName ||
-                                                item.sellerEmail}
+                                              {t("moderationQueue.by", {
+                                                name:
+                                                  item.sellerFullName ||
+                                                  item.sellerEmail,
+                                              })}
                                             </div>
                                           </td>
                                           <td className="p-3">
                                             <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border bg-emerald-450/10 text-emerald-500 border-emerald-500/20">
-                                              RESOURCE ASSET
+                                              {t("moderationQueue.assetType")}
                                             </span>
                                           </td>
                                           <td className="p-3 text-slate-600 dark:text-slate-355">
-                                            {item.categoryName || "Unassigned"}
+                                            {item.categoryName ||
+                                              t("moderationQueue.unassigned")}
                                           </td>
                                           <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                                            {item.price === 0
-                                              ? "Miễn phí"
-                                              : `${item.price.toLocaleString("vi-VN")} đ`}
+                                            {formatModerationPrice(item.price)}
                                           </td>
                                           <td className="p-3 text-center">
                                             {item.status?.toLowerCase() ===
@@ -2540,7 +2678,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                     )
                                                   }
                                                   className="p-1.5 bg-emerald-50 dark:bg-emerald-955/20 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-lg transition-studio border border-transparent dark:border-emerald-900/30 cursor-pointer"
-                                                  title="Approve Asset"
+                                                  title={t("moderationQueue.actions.approveAsset")}
                                                 >
                                                   <Check size={14} />
                                                 </button>
@@ -2552,7 +2690,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                     )
                                                   }
                                                   className="p-1.5 bg-rose-50 dark:bg-rose-955/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-lg transition-studio border border-transparent dark:border-rose-900/30 cursor-pointer"
-                                                  title="Reject Asset"
+                                                  title={t("actions.rejectAsset")}
                                                 >
                                                   <X size={14} />
                                                 </button>
@@ -2562,11 +2700,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 {item.status?.toLowerCase() ===
                                                 "active" ? (
                                                   <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
-                                                    Active
+                                                    {t("status.asset.active")}
                                                   </span>
                                                 ) : (
                                                   <span className="inline-block px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-[10px] font-bold font-display">
-                                                    Rejected
+                                                    {t("status.asset.rejected")}
                                                   </span>
                                                 )}
                                               </div>
@@ -2587,13 +2725,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                   {marketplaceDetailLoadingId ===
                                                     item.id && (
                                                     <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-[11px] font-semibold text-sky-500">
-                                                      Refreshing latest media...
+                                                      {t("moderationQueue.detail.refreshingMedia")}
                                                     </div>
                                                   )}
                                                   <div>
                                                     <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
                                                       <Image size={12} />{" "}
-                                                      Thumbnail
+                                                      {t("moderationQueue.detail.thumbnail")}
                                                     </h4>
                                                     <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
                                                       {displayItem.thumbnailUrl ? (
@@ -2613,7 +2751,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                             className="mb-2 text-slate-650"
                                                           />
                                                           <span className="text-[10px] font-mono">
-                                                            NO THUMBNAIL
+                                                            {t("moderationQueue.detail.noThumbnail")}
                                                           </span>
                                                         </div>
                                                       )}
@@ -2622,11 +2760,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                                                   <div className="space-y-1.5">
                                                     <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                      Item Description
+                                                      {t("moderationQueue.detail.itemDescription")}
                                                     </h4>
                                                     <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
                                                       {displayItem.description ||
-                                                        "No description provided."}
+                                                        t("moderationQueue.detail.noItemDescription")}
                                                     </p>
                                                   </div>
 
@@ -2651,20 +2789,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                             className="animate-spin"
                                                             size={14}
                                                           />{" "}
-                                                          Downloading...
+                                                          {t("actions.downloading")}
                                                         </>
                                                       ) : (
                                                         <>
                                                           <Download size={14} />{" "}
-                                                          Download Asset Package
-                                                          (ZIP)
+                                                          {t("actions.downloadAssetPackage")}
                                                         </>
                                                       )}
                                                     </button>
                                                   ) : (
                                                     <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                                                      No file package uploaded
-                                                      for this asset
+                                                      {t("actions.noAssetPackageUploaded")}
                                                     </div>
                                                   )}
                                                 </div>
@@ -2677,7 +2813,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         size={12}
                                                         className="text-amber-500"
                                                       />{" "}
-                                                      Screenshots
+                                                      {t("moderationQueue.detail.screenshots")}
                                                     </h4>
                                                     {displayItem.screenshots &&
                                                     displayItem.screenshots
@@ -2699,7 +2835,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                             >
                                                               <img
                                                                 src={url}
-                                                                alt={`Screenshot ${index + 1}`}
+                                                                alt={t("moderationQueue.detail.screenshotAlt", {
+                                                                  index: index + 1,
+                                                                })}
                                                                 className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                                                               />
                                                               <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -2713,14 +2851,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         )}
                                                       </div>
                                                     ) : (
-                                                      <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                         <Image
                                                           size={24}
                                                           className="mb-1 text-slate-350 dark:text-slate-650"
                                                         />
                                                         <span className="text-[10px]">
-                                                          No screenshots
-                                                          uploaded
+                                                          {t("moderationQueue.detail.noScreenshotsUploaded")}
                                                         </span>
                                                       </div>
                                                     )}
@@ -2733,7 +2870,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         size={12}
                                                         className="text-amber-500"
                                                       />{" "}
-                                                      Video Demo
+                                                      {t("moderationQueue.detail.videoDemo")}
                                                     </h4>
                                                     {displayItem.videoUrl ? (
                                                       <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
@@ -2746,13 +2883,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         />
                                                       </div>
                                                     ) : (
-                                                      <div className="flex flex-col items-center justify-center py-8 rounded-lg bg-slate-100/50 dark:bg-slate-955/20 border border-dashed border-slate-200 dark:border-slate-800 text-slate-400">
+                                                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                                         <Video
                                                           size={24}
                                                           className="mb-1 text-slate-350 dark:text-slate-650"
                                                         />
                                                         <span className="text-[10px]">
-                                                          No demo video uploaded
+                                                          {t("moderationQueue.detail.noDemoVideo")}
                                                         </span>
                                                       </div>
                                                     )}
@@ -2763,22 +2900,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 <div className="space-y-4">
                                                   <div className="space-y-3.5 bg-white/30 dark:bg-slate-900/10 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                                                     <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5">
-                                                      Technical & Creator
-                                                      Details
+                                                      {t("moderationQueue.detail.technicalCreatorDetails")}
                                                     </h4>
                                                     <div className="space-y-2 text-xs">
                                                       <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                         <span className="text-slate-500">
-                                                          Creator Name
+                                                          {t("moderationQueue.detail.creatorName")}
                                                         </span>
                                                         <span className="font-semibold">
                                                           {displayItem.sellerFullName ||
-                                                            "N/A"}
+                                                            t("withdrawal.na")}
                                                         </span>
                                                       </div>
                                                       <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                         <span className="text-slate-500">
-                                                          Creator Email
+                                                          {t("moderationQueue.detail.creatorEmail")}
                                                         </span>
                                                         <span className="font-mono">
                                                           {
@@ -2788,23 +2924,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       </div>
                                                       <div className="flex justify-between border-b border-slate-105 dark:border-slate-800/50 pb-1.5">
                                                         <span className="text-slate-500">
-                                                          Version
+                                                          {t("moderationQueue.detail.version")}
                                                         </span>
                                                         <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">
                                                           {displayItem.version ||
-                                                            "N/A"}
+                                                            t("withdrawal.na")}
                                                         </span>
                                                       </div>
                                                       <div className="flex justify-between pb-0.5">
                                                         <span className="text-slate-500">
-                                                          Submitted On
+                                                          {t("moderationQueue.detail.submittedOn")}
                                                         </span>
                                                         <span>
-                                                          {displayItem.createdAt
-                                                            ? new Date(
-                                                                displayItem.createdAt,
-                                                              ).toLocaleDateString()
-                                                            : "N/A"}
+                                                          {formatAdminOverviewDate(
+                                                            displayItem.createdAt,
+                                                            t("withdrawal.na"),
+                                                            locale,
+                                                          )}
                                                         </span>
                                                       </div>
                                                     </div>
@@ -2828,10 +2964,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   <tr>
                                     <td
                                       colSpan={6}
-                                      className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
+                                      className="p-8 text-center font-medium text-slate-500 dark:text-slate-400"
                                     >
-                                      Clean slate! No pending marketplace
-                                      submissions to moderate.
+                                      {t("moderationQueue.emptyAssets")}
                                     </td>
                                   </tr>
                                 )}
@@ -2887,7 +3022,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {/* Action Filter */}
                         <div className="flex flex-col gap-1.5 relative">
                           <label className="text-[9px] uppercase font-mono tracking-[0.22em] text-slate-500 dark:text-slate-400 font-bold">
-                            Action
+                            {t("audit.actionLabel")}
                           </label>
                           <button
                             type="button"
@@ -2899,10 +3034,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           >
                             <span className="truncate">
                               {filterAction
-                                ? AUDIT_ACTIONS.find(
+                                ? auditActions.find(
                                     (act) => act.value === filterAction,
                                   )?.label || filterAction
-                                : "All Actions"}
+                                : t("audit.allActions")}
                             </span>
                             <ChevronDown
                               size={14}
@@ -2926,9 +3061,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   }}
                                   className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-amber-400 hover:text-slate-950 ${!filterAction ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold" : "text-slate-700 dark:text-slate-300"}`}
                                 >
-                                  All Actions
+                                  {t("audit.allActions")}
                                 </button>
-                                {AUDIT_ACTIONS.map((act) => (
+                                {auditActions.map((act) => (
                                   <button
                                     key={act.value}
                                     type="button"
@@ -2950,7 +3085,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {/* Target Type Filter */}
                         <div className="flex flex-col gap-1.5 relative">
                           <label className="text-[9px] uppercase font-mono tracking-[0.22em] text-slate-500 dark:text-slate-400 font-bold">
-                            Target Type
+                            {t("audit.targetTypeLabel")}
                           </label>
                           <button
                             type="button"
@@ -2962,10 +3097,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           >
                             <span className="truncate">
                               {filterTargetType
-                                ? AUDIT_TARGETS.find(
+                                ? auditTargets.find(
                                     (t) => t.value === filterTargetType,
                                   )?.label || filterTargetType
-                                : "All Targets"}
+                                : t("audit.allTargets")}
                             </span>
                             <ChevronDown
                               size={14}
@@ -2989,9 +3124,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   }}
                                   className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-amber-400 hover:text-slate-950 ${!filterTargetType ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold" : "text-slate-700 dark:text-slate-300"}`}
                                 >
-                                  All Targets
+                                  {t("audit.allTargets")}
                                 </button>
-                                {AUDIT_TARGETS.map((t) => (
+                                {auditTargets.map((t) => (
                                   <button
                                     key={t.value}
                                     type="button"
@@ -3013,11 +3148,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {/* Actor ID Filter */}
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[9px] uppercase font-mono tracking-[0.22em] text-slate-500 dark:text-slate-400 font-bold">
-                            Actor ID (UUID)
+                            {t("audit.filters.actorIdLabel")}
                           </label>
                           <input
                             type="text"
-                            placeholder="Enter User ID..."
+                            placeholder={t("audit.filters.actorIdPlaceholder")}
                             value={searchActorId}
                             onChange={(e) => setSearchActorId(e.target.value)}
                             className="w-full rounded-xl border border-slate-200/60 bg-white/70 px-3 py-2.5 text-sm text-slate-800 outline-none transition-studio shadow-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 placeholder-slate-400 dark:border-slate-800/60 dark:bg-slate-900/65 dark:text-slate-200 dark:placeholder-slate-500"
@@ -3027,11 +3162,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {/* Target ID Filter */}
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[9px] uppercase font-mono tracking-[0.22em] text-slate-500 dark:text-slate-400 font-bold">
-                            Target ID (UUID)
+                            {t("audit.filters.targetIdLabel")}
                           </label>
                           <input
                             type="text"
-                            placeholder="Enter Target ID..."
+                            placeholder={t("audit.filters.targetIdPlaceholder")}
                             value={searchTargetId}
                             onChange={(e) => setSearchTargetId(e.target.value)}
                             className="w-full rounded-xl border border-slate-200/60 bg-white/70 px-3 py-2.5 text-sm text-slate-800 outline-none transition-studio shadow-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 placeholder-slate-400 dark:border-slate-800/60 dark:bg-slate-900/65 dark:text-slate-200 dark:placeholder-slate-500"
@@ -3041,11 +3176,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {/* IP Address Filter */}
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[9px] uppercase font-mono tracking-[0.22em] text-slate-500 dark:text-slate-400 font-bold">
-                            IP Address
+                            {t("audit.filters.ipAddressLabel")}
                           </label>
                           <input
                             type="text"
-                            placeholder="e.g. 127.0.0.1"
+                            placeholder={t("audit.filters.ipAddressPlaceholder")}
                             value={searchIpAddress}
                             onChange={(e) => setSearchIpAddress(e.target.value)}
                             className="w-full rounded-xl border border-slate-200/60 bg-white/70 px-3 py-2.5 text-sm text-slate-800 outline-none transition-studio shadow-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 placeholder-slate-400 dark:border-slate-800/60 dark:bg-slate-900/65 dark:text-slate-200 dark:placeholder-slate-500"
@@ -3060,13 +3195,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           onClick={handleClearFilters}
                           className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-studio hover:bg-slate-200 hover:text-slate-900 active:scale-95 cursor-pointer dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
                         >
-                          Clear Filters
+                          {t("audit.filters.clear")}
                         </button>
                         <button
                           type="submit"
                           className="rounded-xl bg-amber-400 px-5 py-2 text-xs font-bold text-slate-950 shadow-md shadow-amber-400/10 transition-studio hover:bg-amber-500 hover:text-black hover:shadow-amber-400/20 active:scale-95 cursor-pointer"
                         >
-                          Search
+                          {t("audit.filters.search")}
                         </button>
                       </div>
                     </form>
@@ -3074,12 +3209,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     {/* Error or Loader */}
                     {isLoadingLogs ? (
                       <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
-                        <RefreshCw className="animate-spin" size={18} /> Loading
-                        audit logs...
+                        <RefreshCw className="animate-spin" size={18} /> {t("audit.loading")}
                       </div>
                     ) : logsError ? (
                       <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                        Error loading audit logs: {logsError}
+                        {t("audit.loadError", { error: logsError })}
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -3088,11 +3222,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             <thead>
                               <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
                                 <th className="p-3 w-10"></th>
-                                <th className="p-3">Time & IP</th>
-                                <th className="p-3">Actor Info</th>
-                                <th className="p-3">Action Type</th>
-                                <th className="p-3">Target Reference</th>
-                                <th className="p-3">Note / Summary</th>
+                                <th className="p-3">{t("audit.headers.timeAndIp")}</th>
+                                <th className="p-3">{t("audit.headers.actorInfo")}</th>
+                                <th className="p-3">{t("audit.actionLabel")}</th>
+                                <th className="p-3">{t("audit.headers.targetReference")}</th>
+                                <th className="p-3">{t("audit.headers.noteSummary")}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
@@ -3113,7 +3247,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             )
                                           }
                                           className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
-                                          title="View JSON Payload Diff"
+                                          title={t("audit.viewPayloadDiff")}
                                         >
                                           {expandedLogId === log.id ? (
                                             <ChevronUp size={14} />
@@ -3128,8 +3262,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             log.createdAt,
                                           ).toLocaleString()}
                                         </div>
-                                        <div className="text-[9px] text-slate-400 dark:text-slate-550 font-mono mt-0.5">
-                                          IP: {log.ipAddress || "Unknown"}
+                                        <div className="mt-0.5 font-mono text-[9px] text-slate-500 dark:text-slate-400">
+                                          {t("audit.ipValue", {
+                                            value:
+                                              log.ipAddress || t("audit.unknownValue"),
+                                          })}
                                         </div>
                                       </td>
                                       <td className="p-3">
@@ -3139,7 +3276,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           </div>
                                         ) : (
                                           <div className="italic text-slate-450">
-                                            Anonymous / System
+                                            {t("audit.anonymousSystem")}
                                           </div>
                                         )}
                                         {log.actorId && (
@@ -3147,8 +3284,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             className="font-mono text-[9px] text-slate-450 dark:text-slate-500 mt-0.5"
                                             title={log.actorId}
                                           >
-                                            <span className="text-[8px] text-slate-400 dark:text-slate-600 uppercase mr-1 select-none">
-                                              ID:
+                                            <span className="mr-1 select-none text-[8px] uppercase text-slate-500 dark:text-slate-400">
+                                              {t("audit.actorIdPrefix")}
                                             </span>
                                             <span className="select-all break-all">
                                               {log.actorId}
@@ -3158,27 +3295,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         <span className="inline-block mt-1 px-1.5 py-0.2 bg-slate-105 dark:bg-slate-950 text-[9px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded font-mono">
                                           {log.actorRole
                                             ? log.actorRole.toUpperCase()
-                                            : "UNKNOWN"}
+                                            : t("audit.unknownRole")}
                                         </span>
                                       </td>
                                       <td className="p-3">
                                         <span
                                           className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono ${getActionBadgeClass(log.action)}`}
                                         >
-                                          {log.action}
+                                          {getAuditActionLabel(log.action)}
                                         </span>
                                       </td>
                                       <td className="p-3">
                                         <div className="font-semibold text-slate-655 dark:text-slate-400">
-                                          Type: {log.targetType}
+                                          {t("audit.targetTypeValue", {
+                                            value: getAuditTargetLabel(log.targetType),
+                                          })}
                                         </div>
                                         {log.targetId && (
                                           <div
                                             className="font-mono text-[9px] text-slate-450 dark:text-slate-500 mt-0.5"
                                             title={log.targetId}
                                           >
-                                            <span className="text-[8px] text-slate-400 dark:text-slate-600 uppercase mr-1 select-none">
-                                              Ref ID:
+                                            <span className="mr-1 select-none text-[8px] uppercase text-slate-500 dark:text-slate-400">
+                                              {t("audit.referenceIdPrefix")}
                                             </span>
                                             <span className="select-all break-all">
                                               {log.targetId}
@@ -3187,7 +3326,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                         )}
                                       </td>
                                       <td className="p-3 text-slate-700 dark:text-slate-300 max-w-xs break-words">
-                                        {log.note || "No notes"}
+                                        {log.note || t("audit.noNotes")}
                                       </td>
                                     </tr>
 
@@ -3201,7 +3340,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
                                             <div>
                                               <span className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">
-                                                Old Value (Before)
+                                                {t("audit.oldValueLabel")}
                                               </span>
                                               <pre className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl overflow-x-auto text-[10px] text-slate-800 dark:text-slate-300 max-h-48 leading-normal">
                                                 {log.oldValue
@@ -3218,12 +3357,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         return log.oldValue;
                                                       }
                                                     })()
-                                                  : "NULL"}
+                                                  : t("audit.nullValue")}
                                               </pre>
                                             </div>
                                             <div>
                                               <span className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">
-                                                New Value (After)
+                                                {t("audit.newValueLabel")}
                                               </span>
                                               <pre className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl overflow-x-auto text-[10px] text-slate-800 dark:text-slate-300 max-h-48 leading-normal">
                                                 {log.newValue
@@ -3240,7 +3379,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                         return log.newValue;
                                                       }
                                                     })()
-                                                  : "NULL"}
+                                                  : t("audit.nullValue")}
                                               </pre>
                                             </div>
                                           </div>
@@ -3253,10 +3392,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 <tr>
                                   <td
                                     colSpan={6}
-                                    className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium"
+                                    className="p-8 text-center font-medium text-slate-500 dark:text-slate-400"
                                   >
-                                    No audit logs found matching the selected
-                                    filters.
+                                    {t("audit.empty")}
                                   </td>
                                 </tr>
                               )}
@@ -3268,8 +3406,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {totalPages > 1 && (
                           <div className="flex justify-between items-center bg-white dark:bg-slate-900/10 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
                             <span className="text-xs text-slate-500 font-mono">
-                              Page {currentPage + 1} of {totalPages} (
-                              {totalElements} logs)
+                              {t("audit.pagination.summary", {
+                                current: currentPage + 1,
+                                total: totalPages,
+                                count: totalElements,
+                              })}
                             </span>
                             <div className="flex gap-2">
                               <button
@@ -3282,7 +3423,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 disabled={currentPage === 0 || isLoadingLogs}
                                 className="px-3 py-1.5 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold transition-studio disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                               >
-                                Previous
+                                {t("audit.pagination.previous")}
                               </button>
                               <button
                                 type="button"
@@ -3296,7 +3437,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 }
                                 className="px-3 py-1.5 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800/80 rounded-lg text-xs font-semibold transition-studio disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                               >
-                                Next
+                                {t("audit.pagination.next")}
                               </button>
                             </div>
                           </div>
@@ -3318,8 +3459,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="space-y-4">
                     {settingsSuccess && (
                       <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg text-emerald-500 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
-                        <Check size={14} /> System variables successfully
-                        updated. Node servers reloading...
+                        <Check size={14} /> {t("settingsPanel.saveSuccess")}
                       </div>
                     )}
 
@@ -3331,8 +3471,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                     {isLoadingSettings && (
                       <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-lg text-slate-500 dark:text-slate-400 text-xs font-semibold flex items-center gap-1.5">
-                        <RefreshCw size={14} className="animate-spin" /> Loading
-                        platform settings...
+                        <RefreshCw size={14} className="animate-spin" />{" "}
+                        {t("settingsPanel.loading")}
                       </div>
                     )}
 
@@ -3342,7 +3482,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
-                          label="Platform Commission rate (%)"
+                          label={t("settingsPanel.commissionLabel")}
                           type="number"
                           min="0"
                           max="100"
@@ -3351,13 +3491,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           onChange={(e) =>
                             setCommission(parseFloat(e.target.value) || 0)
                           }
-                          helperText="Percentage kept by the platform from each marketplace transaction"
+                          helperText={t("settingsPanel.commissionHelper")}
                           required
                         />
 
                         <div className="flex flex-col gap-2">
                           <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                            System Maintenance Status
+                            {t("settingsPanel.maintenanceStatusLabel")}
                           </label>
                           <div className="flex items-center gap-3 pt-1.5">
                             <button
@@ -3371,19 +3511,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             </button>
                             <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
                               {maintenance
-                                ? "ACTIVE - Site Locked"
-                                : "INACTIVE - Online"}
+                                ? t("settingsPanel.maintenanceToggleActive")
+                                : t("settingsPanel.maintenanceToggleInactive")}
                             </span>
                           </div>
                         </div>
                       </div>
 
                       <Input
-                        label="Site-Wide Alert Header Banner Text"
+                        label={t("settingsPanel.bannerLabel")}
                         value={announcement}
                         onChange={(e) => setAnnouncement(e.target.value)}
-                        placeholder="Leave blank to disable banner"
-                        helperText="Banner text displayed at the top of all user screens"
+                        placeholder={t("settingsPanel.bannerPlaceholder")}
+                        helperText={t("settingsPanel.bannerHelperText")}
                       />
 
                       {maintenance && (
@@ -3394,12 +3534,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           />
                           <div>
                             <span className="block font-bold">
-                              Warning: Maintenance mode is active.
+                              {t("settingsPanel.maintenanceWarningTitle")}
                             </span>
                             <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal block mt-0.5">
-                              This locks non-admin users out of performing
-                              checkouts, uploading files, or sync repos. Use
-                              with care.
+                              {t("settingsPanel.maintenanceWarningDescription")}
                             </span>
                           </div>
                         </div>
@@ -3414,8 +3552,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           disabled={isSavingSettings || isLoadingSettings}
                         >
                           {isSavingSettings
-                            ? "Saving Platform Config..."
-                            : "Save Platform Variable Config"}
+                            ? t("settingsPanel.saving")
+                            : t("settingsPanel.save")}
                         </Button>
                       </div>
                     </form>
@@ -3436,6 +3574,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <button
                 className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-studio cursor-pointer"
                 onClick={() => setIsContractModalOpen(false)}
+                aria-label={t("dialog.close")}
+                title={t("dialog.close")}
               >
                 <X size={18} />
               </button>
@@ -3446,14 +3586,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 </div>
                 <div>
                   <span className="text-[10px] font-mono tracking-widest text-amber-600 dark:text-amber-450 uppercase font-bold px-2 py-0.5 bg-amber-500/10 rounded">
-                    HỢP ĐỒNG PHÁT HÀNH
+                    {t("contractComposer.badge")}
                   </span>
                   <h2 className="font-display font-bold text-xl text-slate-800 dark:text-white mt-1">
-                    Soạn thảo Hợp đồng Phát hành
+                    {t("contractComposer.title")}
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Nhập các điều khoản phát hành cho trò chơi "
-                    {selectedGame.title}"
+                    {t("contractComposer.description", {
+                      title: selectedGame.title,
+                    })}
                   </p>
                 </div>
               </div>
@@ -3472,8 +3613,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   return (
                     <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl space-y-2 text-xs text-rose-600 dark:text-rose-450">
                       <span className="font-bold flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
-                        <AlertTriangle size={15} /> Lý do Developer từ chối ký
-                        hợp đồng:
+                        <AlertTriangle size={15} />{" "}
+                        {t("contractComposer.previousRejectionTitle")}
                       </span>
                       <p className="italic bg-white/70 dark:bg-slate-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-900/20 text-slate-800 dark:text-slate-200 leading-normal break-words shadow-sm">
                         "{activeRejectedContract.rejectionReason ?? ""}"
@@ -3490,25 +3631,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
                     <span className="w-1.5 h-3 rounded bg-sky-500" />
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                      BÊN A: BAN QUẢN TRỊ GODOTLAUNCH
+                      {t("contractComposer.partyATitle")}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
                       <span className="text-slate-500 block mb-0.5">
-                        Người đại diện Bên A:
+                        {t("contractComposer.representativeLabel")}
                       </span>
                       <strong className="text-slate-800 dark:text-slate-200">
-                        {buyerRepresentative || "Ban quản trị GodotLaunch"}
+                        {buyerRepresentative ||
+                          t("contract.defaultBuyerRepresentative")}
                       </strong>
                     </div>
                     <div>
                       <span className="text-slate-500 block mb-0.5">
-                        Chức vụ:
+                        {t("contractComposer.positionLabel")}
                       </span>
                       <strong className="text-slate-800 dark:text-slate-200">
-                        {buyerPosition ||
-                          "Ban quản trị hệ thống / Authorized Representative"}
+                        {buyerPosition || t("contract.defaultBuyerPosition")}
                       </strong>
                     </div>
                   </div>
@@ -3519,7 +3660,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
                     <span className="w-1.5 h-3 rounded bg-amber-400" />
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                      ĐIỀU KHOẢN TÀI CHÍNH
+                      {t("contractComposer.financialTermsTitle")}
                     </span>
                   </div>
 
@@ -3527,12 +3668,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     selectedGame.priceProposed !== null && (
                       <div className="p-3 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl flex flex-col gap-0.5 text-xs">
                         <span className="text-slate-500 dark:text-slate-400 font-medium">
-                          Giá đề xuất từ Developer:
+                          {t("contractComposer.proposedPriceLabel")}
                         </span>
                         <strong className="text-slate-800 dark:text-slate-200 text-sm">
                           {selectedGame.priceProposed === 0
-                            ? "Miễn phí / Free"
-                            : `${selectedGame.priceProposed.toLocaleString("vi-VN")} VND`}
+                            ? t("contractComposer.freePrice")
+                            : formatCurrency(
+                                selectedGame.priceProposed,
+                                "VND",
+                                locale,
+                                t("withdrawal.na"),
+                              )}
                         </strong>
                       </div>
                     )}
@@ -3554,7 +3700,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     if (selectedGame.publishingType === "co_publishing") {
                       return (
                         <Input
-                          label="Tỷ lệ chia sẻ doanh thu cho Developer (%)"
+                          label={t("contractComposer.revenueSplitLabel")}
                           type="number"
                           min="0"
                           max="100"
@@ -3562,7 +3708,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           onChange={(e) =>
                             setRevenueSplit(parseInt(e.target.value) || 0)
                           }
-                          helperText="Ví dụ: 70 có nghĩa là Developer nhận 70% và Platform nhận 30% doanh thu phát hành"
+                          helperText={t("contractComposer.revenueSplitHelper")}
                           required
                         />
                       );
@@ -3573,14 +3719,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       if (!hasProposedPrice || isNegotiating) {
                         return (
                           <Input
-                            label="Số tiền mua đứt trọn gói (VNĐ)"
-                            placeholder="Ví dụ: 100.000.000"
+                            label={t("contractComposer.lumpSumLabel")}
+                            placeholder={t("contractComposer.lumpSumPlaceholder")}
                             value={lumpSumAmount}
                             onChange={(e) => setLumpSumAmount(e.target.value)}
                             helperText={
                               isNegotiating
-                                ? "Đang trong tiến trình thương lượng lại giá"
-                                : "Số tiền thanh toán một lần để mua toàn bộ quyền sở hữu trò chơi"
+                                ? t("contractComposer.negotiationHelper")
+                                : t("contractComposer.lumpSumHelper")
                             }
                             required
                           />
@@ -3596,17 +3742,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
                     <span className="w-1.5 h-3 rounded bg-sky-500" />
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                      ĐIỀU KHOẢN PHÁP LÝ & BỔ SUNG
+                      {t("contractComposer.legalTermsTitle")}
                     </span>
                   </div>
                   <div className="text-xs space-y-3">
                     <div>
                       <span className="text-slate-500 block mb-1">
-                        Điều khoản giải quyết tranh chấp:
+                        {t("contractComposer.disputeResolutionLabel")}
                       </span>
                       <p className="bg-slate-100 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-250 dark:border-slate-800/80 whitespace-pre-line text-slate-700 dark:text-slate-350 leading-relaxed">
                         {disputeResolutionClause ||
-                          "Mọi tranh chấp phát sinh từ hoặc liên quan đến hợp đồng này sẽ được giải quyết trước tiên thông qua thương lượng thân thiện. Nếu không giải quyết được, tranh chấp sẽ được đưa ra giải quyết tại Trọng tài theo quy định.\nAny dispute arising out of or in connection with this contract shall first be resolved through friendly negotiations. If unresolved, it shall be referred to arbitration."}
+                          t("contract.defaultDisputeClause")}
                       </p>
                     </div>
                   </div>
@@ -3617,15 +3763,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
                     <span className="w-1.5 h-3 rounded bg-emerald-500" />
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                      CHỮ KÝ ĐẠI DIỆN BÊN A (BAN QUẢN TRỊ)
+                      {t("contractComposer.signatureTitle")}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Admin phải ký ngay khi gửi hợp đồng cho Developer.
+                    {t("contractComposer.signatureHelp")}
                   </p>
                   <SignaturePad
                     onChange={setAdminSignatureBase64}
-                    placeholder="Dùng chuột để vẽ chữ ký đại diện Bên A..."
+                    placeholder={t("contractComposer.signaturePlaceholder")}
                   />
                 </div>
 
@@ -3635,7 +3781,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-studio"
                     onClick={() => setIsContractModalOpen(false)}
                   >
-                    Hủy bỏ
+                    {t("common.cancel")}
                   </button>
                   <Button
                     variant="primary"
@@ -3644,7 +3790,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     icon={<FileCheck size={16} />}
                     disabled={!adminSignatureBase64}
                   >
-                    Gửi đề nghị & Tạo Hợp đồng
+                    {t("contractComposer.submit")}
                   </Button>
                 </div>
               </form>
@@ -3676,6 +3822,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           <button
             className="absolute top-4 right-4 p-2 bg-slate-900 border border-slate-800 text-slate-500 hover:text-white rounded-lg transition-studio active:scale-95 cursor-pointer"
             onClick={() => setIsOpenLightbox(false)}
+            aria-label={t("dialog.close")}
+            title={t("dialog.close")}
           >
             <X size={20} />
           </button>
@@ -3685,7 +3833,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           >
             <img
               src={activeScreenshotUrl}
-              alt="Enlarged screenshot"
+              alt={t("lightbox.enlargedScreenshotAlt")}
               className="w-full h-auto max-h-[85vh] object-contain"
             />
           </div>
@@ -3700,11 +3848,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         >
           <div className="w-full max-w-6xl flex items-center justify-between mb-3">
             <h3 className="font-display font-bold text-sm text-white truncate">
-              {playDemoGame.title} — Play Demo
+              {t("playDemo.title", { title: playDemoGame.title })}
             </h3>
             <button
               className="p-2 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-lg transition-studio active:scale-95 cursor-pointer shrink-0"
               onClick={() => setPlayDemoGame(null)}
+              aria-label={t("dialog.close")}
+              title={t("dialog.close")}
             >
               <X size={18} />
             </button>
@@ -3718,7 +3868,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
               allow="autoplay; fullscreen; gamepad; cross-origin-isolated"
               className="w-full h-full border-none"
-              title={`${playDemoGame.title} Play Demo`}
+              title={t("playDemo.title", { title: playDemoGame.title })}
             />
           </div>
         </div>
@@ -3731,19 +3881,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-5 animate-scale-up">
               <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
                 <h3 className="font-display font-bold text-base text-slate-900 dark:text-white">
-                  Rejection Reason
+                  {t("modals.rejectionTitle")}
                 </h3>
                 <button
                   onClick={() => setIsRejectModalOpen(false)}
                   className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-studio active:scale-95"
+                  aria-label={t("dialog.close")}
+                  title={t("dialog.close")}
                 >
                   <X size={16} />
                 </button>
               </div>
 
               <div className="space-y-1.5">
-                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  Item Details
+                <span className="font-mono text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  {t("modals.itemDetails")}
                 </span>
                 <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200/50 dark:border-slate-850">
                   {rejectItemTitle}
@@ -3752,12 +3904,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Reason for Rejection *
+                  {t("modals.rejectionReasonLabel")}
                 </label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="Please enter a detailed rejection reason..."
+                  placeholder={t("modals.rejectionReasonPlaceholder")}
                   rows={4}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-450 dark:placeholder:text-slate-600"
                 />
@@ -3769,7 +3921,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold rounded-lg text-xs transition-studio"
                   onClick={() => setIsRejectModalOpen(false)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
@@ -3777,7 +3929,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   className="px-4 py-2 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-studio active:scale-95"
                   onClick={handleConfirmRejection}
                 >
-                  {isSubmittingReject ? "Rejecting..." : "Reject Submission"}
+                  {isSubmittingReject
+                    ? t("modals.rejecting")
+                    : t("modals.rejectSubmission")}
                 </button>
               </div>
             </div>
