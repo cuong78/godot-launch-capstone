@@ -150,7 +150,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
   // Ảnh preview cho marketplace asset
   const [assetImages, setAssetImages] = useState<
-    { file: File; objectKey?: string }[]
+    { file: File; objectKey?: string; tempId?: string }[]
   >([]);
 
   // Upload progress & status states
@@ -620,31 +620,31 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     }
   };
 
-  // Upload ảnh preview cho asset (asset_image)
+  // Upload ảnh preview cho asset (screenshot)
   const handleAssetImageAdd = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (!e.target.files || !gameId) return;
     const files = Array.from(e.target.files);
     for (const file of files) {
-      const idx = assetImages.length;
-      setAssetImages((prev) => [...prev, { file }]);
+      const tempId = Math.random().toString(36).substring(2, 9);
+      setAssetImages((prev) => [...prev, { file, tempId }]);
       try {
         const res = await marketplaceApi.uploadItemMedia(
           gameId,
-          "asset_image",
+          "screenshot",
           file,
         );
         if (res.success && res.data?.objectKey) {
           setAssetImages((prev) =>
-            prev.map((it, i) =>
-              i === idx ? { ...it, objectKey: res.data!.objectKey } : it,
+            prev.map((it) =>
+              it.tempId === tempId ? { ...it, objectKey: res.data!.objectKey } : it,
             ),
           );
         }
       } catch (err: any) {
         setUploadError(err.response?.data?.message || t("errors.failedUploadImage"));
-        setAssetImages((prev) => prev.filter((_, i) => i !== idx));
+        setAssetImages((prev) => prev.filter((it) => it.tempId !== tempId));
       }
     }
   };
