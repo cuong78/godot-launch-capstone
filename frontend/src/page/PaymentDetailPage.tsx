@@ -242,11 +242,14 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
     (activePayment.paymentStatus === 'PENDING' || activePayment.paymentStatus === 'PROCESSING');
   const canCancelPayment =
     activePayment.paymentStatus === 'PENDING' || activePayment.paymentStatus === 'PROCESSING';
+  const hasActiveDownload = activePayment.paymentStatus === 'PAID'
+    && Boolean(activeDownloadUrl);
   const isPaidSourcePurchase = activePayment.paymentStatus === 'PAID'
     && activePayment.marketplaceItemType === 'game_source'
     && Boolean(activeDownloadUrl);
   const isPaidAssetPurchase = activePayment.paymentStatus === 'PAID'
-    && activePayment.marketplaceItemType === 'asset';
+    && activePayment.marketplaceItemType === 'asset'
+    && !activeDownloadUrl;
   const layoutClass = isEmbedded ? 'grid-cols-1' : 'xl:grid-cols-[0.92fr_1.25fr]';
   const detailSplitClass = isEmbedded ? 'grid-cols-1' : 'lg:grid-cols-[1.05fr_0.95fr]';
 
@@ -444,19 +447,19 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
                       {t('payment:center.detail.continuePayos')} <ExternalLink size={15} />
                     </a>
                   )}
-                  {isPaidSourcePurchase && activeDownloadUrl && (
-                    <a
-                      href={activeDownloadUrl}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
-                    >
-                      <Download size={15} /> {t('payment:center.detail.downloadPackage')}
-                    </a>
-                  )}
-                  {isPaidAssetPurchase && (
-                    <span className="inline-flex items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-600 dark:text-sky-400">
-                      {t('payment:common.owned')}
-                    </span>
-                  )}
+                   {hasActiveDownload && (
+                     <a
+                       href={activeDownloadUrl}
+                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
+                     >
+                       <Download size={15} /> {t('payment:center.detail.downloadPackage')}
+                     </a>
+                   )}
+                   {isPaidAssetPurchase && (
+                     <span className="inline-flex items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-600 dark:text-sky-400">
+                       {t('payment:common.owned')}
+                     </span>
+                   )}
                 </div>
               </div>
 
@@ -590,7 +593,7 @@ export const PaymentDetailPage: React.FC<PaymentDetailPageProps> = ({
             </div>
           </div>
 
-          {isPaidSourcePurchase && activeDownloadUrl && (
+          {hasActiveDownload && (
             <div className="rounded-[26px] border border-emerald-500/20 bg-emerald-500/10 p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>

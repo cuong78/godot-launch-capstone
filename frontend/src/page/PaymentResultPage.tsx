@@ -210,10 +210,13 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
     Boolean(payment?.checkoutUrl) &&
     (payment?.paymentStatus === 'PENDING' || payment?.paymentStatus === 'PROCESSING');
   const resolvedDownloadUrl = React.useMemo(() => resolveApiUrl(payment?.downloadUrl), [payment?.downloadUrl]);
+  const hasActiveDownload = payment?.paymentStatus === 'PAID' && Boolean(resolvedDownloadUrl);
   const isPaidSourcePurchase = payment?.paymentStatus === 'PAID'
     && payment?.marketplaceItemType === 'game_source'
     && Boolean(resolvedDownloadUrl);
-  const isPaidAssetPurchase = payment?.paymentStatus === 'PAID' && payment?.marketplaceItemType === 'asset';
+  const isPaidAssetPurchase = payment?.paymentStatus === 'PAID'
+    && payment?.marketplaceItemType === 'asset'
+    && !resolvedDownloadUrl;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -370,14 +373,14 @@ export const PaymentResultPage: React.FC<PaymentResultPageProps> = ({
                   {t('payment:center.backToMarketplace')}
                 </Button>
 
-                {isPaidSourcePurchase && resolvedDownloadUrl && (
-                  <a
-                    href={resolvedDownloadUrl}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
-                  >
-                    <Download size={15} /> {t('payment:center.download.downloadNow')}
-                  </a>
-                )}
+                 {hasActiveDownload && resolvedDownloadUrl && (
+                   <a
+                     href={resolvedDownloadUrl}
+                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
+                   >
+                     <Download size={15} /> {t('payment:center.download.downloadNow')}
+                   </a>
+                 )}
 
                 {isPaidAssetPurchase && (
                   <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-700 dark:text-sky-300">

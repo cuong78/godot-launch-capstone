@@ -159,15 +159,14 @@ export const PurchasedInventoryPanel: React.FC<PurchasedInventoryPanelProps> = (
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {isSourceCode && downloadUrl && (
+                      {downloadUrl ? (
                         <a
                           href={downloadUrl}
                           className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white shadow-[0_4px_0_0_#0f8a5f] transition-studio hover:bg-emerald-400 hover:translate-y-[1px] active:translate-y-[3px] active:shadow-none"
                         >
                           <Download size={13} /> Download
                         </a>
-                      )}
-                      {!isSourceCode && (
+                      ) : (
                         <span className="inline-flex items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-[11px] font-bold text-sky-600 dark:text-sky-400">
                           Purchased Successfully
                         </span>
