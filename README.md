@@ -16,7 +16,7 @@ Nền tảng dành cho cộng đồng **Godot Engine** — giúp developers subm
  ## Tech Stack
  
  ```
- Backend   Spring Boot 4.0.6 · Java 21 · PostgreSQL 16 · Flyway
+ Backend   Spring Boot 4.0.6 · Java 21 · PostgreSQL 16 · MongoDB · Flyway
  Frontend  React 19 · TypeScript · Tailwind CSS v4
  Auth      JWT · Google OAuth · GitHub OAuth
  Storage   SeaweedFS (dynamic routing, admin-configured)

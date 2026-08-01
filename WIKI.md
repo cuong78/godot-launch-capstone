@@ -24,13 +24,13 @@
 
 ```
 [React SPA]  <--HTTP/WS-->  [Spring Boot API]  <--JDBC-->  [PostgreSQL 16]
-                                    |
-                            [Storage Service]
-                                    |
-                               [SeaweedFS]
-                           \              /
-                     [EncryptionUtils AES-256]
-                     (credentials encrypted in DB)
+                             |              |
+                             | (Mongo)      +--[Storage Service]--> [SeaweedFS]
+                             v
+                         [MongoDB 7.0] (Audit logs)
+                         \              /
+                   [EncryptionUtils AES-256]
+                   (credentials encrypted in DB)
 ```
 
 **Nguyên tắc thiết kế:**
