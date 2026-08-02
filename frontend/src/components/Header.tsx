@@ -289,7 +289,7 @@ export function Header({
   const navGroupButtonClassName = (isActive: boolean, isOpen: boolean) =>
     `launch-nav-link inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-studio focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/35 ${
       isActive || isOpen
-        ? "launch-nav-active bg-slate-900 text-white shadow-inner shadow-white/5 dark:bg-night-800 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+        ? "launch-nav-active border-slate-200 bg-slate-100 text-slate-900 shadow-sm dark:border-transparent dark:bg-night-800 dark:text-white dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-night-800/75 dark:hover:text-white"
     }`;
   const isCreatorActive =
@@ -659,19 +659,19 @@ export function Header({
       <div className="launch-mobile-nav flex max-w-full justify-start gap-1 overflow-x-auto border-t border-slate-200/80 bg-white/92 px-3 py-2 text-xs dark:border-slate-700/40 dark:bg-night-900/95 lg:hidden sm:justify-center">
         <button
           onClick={() => setCurrentScreen("marketplace")}
-          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "marketplace" ? "launch-nav-active bg-slate-900 font-bold text-white dark:bg-night-800" : "text-slate-600 dark:text-slate-300"}`}
+          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "marketplace" ? "launch-nav-active border-slate-200 bg-slate-100 font-bold text-slate-900 shadow-sm dark:border-transparent dark:bg-night-800 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}
         >
           {t("marketplace")}
         </button>
         <button
           onClick={handleOpenCreatorCenter}
-          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "upload" ? "launch-nav-active bg-slate-900 font-bold text-white dark:bg-night-800" : "text-slate-600 dark:text-slate-300"}`}
+          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "upload" ? "launch-nav-active border-slate-200 bg-slate-100 font-bold text-slate-900 shadow-sm dark:border-transparent dark:bg-night-800 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}
         >
           {t("creator_hub")}
         </button>
         <button
           onClick={() => setCurrentScreen("dashboard")}
-          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "dashboard" ? "launch-nav-active bg-slate-900 font-bold text-white dark:bg-night-800" : "text-slate-600 dark:text-slate-300"}`}
+          className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "dashboard" ? "launch-nav-active border-slate-200 bg-slate-100 font-bold text-slate-900 shadow-sm dark:border-transparent dark:bg-night-800 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}
         >
           {t("dashboard")}
         </button>
