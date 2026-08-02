@@ -23,6 +23,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.RestTemplate;
+import java.util.Map;
+import java.util.HashMap;
 
 import java.security.Principal;
 import java.util.Optional;
@@ -183,5 +190,51 @@ class KycControllerTest {
         // Assert
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should throw IDENTITY_BANNED when KYC ID number belongs to banned list")
+    void shouldThrowException_WhenIdentityIsBanned() {
+        KycConfirmRequest request = new KycConfirmRequest();
+        request.setIdNumber("banned-id-number");
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(bannedIdentityRepository.existsByKycIdNumber("banned-id-number")).thenReturn(true);
+
+        assertThatThrownBy(() -> kycController.confirmKyc(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.IDENTITY_BANNED);
+    }
+
+    @Test
+    @DisplayName("Should perform OCR document successfully")
+    void shouldOcrDocument_Successfully() {
+        KycOcrRequest request = new KycOcrRequest();
+        request.setImageBase64("base-64-image");
+        request.setDocumentType("CCCD");
+
+        RestTemplate restTemplateMock = mock(RestTemplate.class);
+        ReflectionTestUtils.setField(kycController, "restTemplate", restTemplateMock);
+
+        Map<String, Object> ocrData = Map.of(
+                "documentType", "CCCD",
+                "idNumber", "012345678901",
+                "fullName", "Nguyen Van A",
+                "dateOfBirth", "01/01/1990",
+                "address", "Hanoi"
+        );
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(restTemplateMock.exchange(
+                anyString(), eq(HttpMethod.POST), any(HttpEntity.class), any(ParameterizedTypeReference.class)
+        )).thenReturn(new ResponseEntity<>(ocrData, HttpStatus.OK));
+
+        ResponseEntity<ApiResponse<KycOcrResponse>> response = kycController.ocrDocument(request, principal);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getData().getIdNumber()).isEqualTo("012345678901");
     }
 }

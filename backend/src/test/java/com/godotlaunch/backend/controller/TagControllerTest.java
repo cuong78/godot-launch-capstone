@@ -1,8 +1,8 @@
 package com.godotlaunch.backend.controller;
 
+import com.godotlaunch.backend.dto.request.TagRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.TagResponse;
-import com.godotlaunch.backend.entity.Tag;
 import com.godotlaunch.backend.service.TagService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,5 +64,71 @@ class TagControllerTest {
         assertThat(response.getBody().getData().get(0).getName()).isEqualTo("2D");
         assertThat(response.getBody().getData().get(1).getName()).isEqualTo("Physics");
         verify(tagService, times(1)).getAll();
+    }
+
+    @Test
+    @DisplayName("shouldSearchTags_WhenQueryProvided")
+    void shouldSearchTags_WhenQueryProvided() {
+        // Arrange
+        when(tagService.search("2D", 12)).thenReturn(List.of(tag1));
+
+        // Act
+        ResponseEntity<ApiResponse<List<TagResponse>>> response = tagController.searchTags("2D", 12);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getData()).hasSize(1);
+        verify(tagService, times(1)).search("2D", 12);
+    }
+
+    @Test
+    @DisplayName("shouldCreateTag_WhenAdmin")
+    void shouldCreateTag_WhenAdmin() {
+        // Arrange
+        TagRequest request = new TagRequest();
+        request.setName("3D");
+        request.setSlug("3d");
+        when(tagService.create(any(TagRequest.class))).thenReturn(tag1);
+
+        // Act
+        ResponseEntity<ApiResponse<TagResponse>> response = tagController.create(request);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().getData().getName()).isEqualTo("2D");
+        verify(tagService, times(1)).create(request);
+    }
+
+    @Test
+    @DisplayName("shouldUpdateTag_WhenAdmin")
+    void shouldUpdateTag_WhenAdmin() {
+        // Arrange
+        TagRequest request = new TagRequest();
+        request.setName("3D");
+        request.setSlug("3d");
+        UUID id = UUID.randomUUID();
+        when(tagService.update(eq(id), any(TagRequest.class))).thenReturn(tag1);
+
+        // Act
+        ResponseEntity<ApiResponse<TagResponse>> response = tagController.update(id, request);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(tagService, times(1)).update(id, request);
+    }
+
+    @Test
+    @DisplayName("shouldDeleteTag_WhenAdmin")
+    void shouldDeleteTag_WhenAdmin() {
+        // Arrange
+        UUID id = UUID.randomUUID();
+        doNothing().when(tagService).delete(id);
+
+        // Act
+        ResponseEntity<ApiResponse<Void>> response = tagController.delete(id);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(tagService, times(1)).delete(id);
     }
 }

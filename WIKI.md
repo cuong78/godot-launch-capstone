@@ -24,13 +24,13 @@
 
 ```
 [React SPA]  <--HTTP/WS-->  [Spring Boot API]  <--JDBC-->  [PostgreSQL 16]
-                                    |
-                            [Storage Service]
-                                    |
-                               [SeaweedFS]
-                           \              /
-                     [EncryptionUtils AES-256]
-                     (credentials encrypted in DB)
+                             |              |
+                             | (Mongo)      +--[Storage Service]--> [SeaweedFS]
+                             v
+                         [MongoDB 7.0] (Audit logs)
+                         \              /
+                   [EncryptionUtils AES-256]
+                   (credentials encrypted in DB)
 ```
 
 **Nguyên tắc thiết kế:**
@@ -43,7 +43,8 @@
 
 ## 2. Database Schema
 
-### 27 bảng gốc (V1) + 3 bảng storage (V14)
+### PostgreSQL: 26 bảng gốc (V1) + 3 bảng storage (V14)
+### MongoDB: 1 collection lưu Audit Logs
 
 #### Nhóm Identity
 | Bảng | Mô tả |
@@ -89,13 +90,17 @@
 - `item_type = source_code` bắt buộc: `godot_version` + `github_repo_url` + `github_verified_at`
 - Source code phải thuộc GitHub repo của seller (verify trước khi INSERT)
 
-#### Nhóm Security & Operations
+#### Nhóm Security & Operations (PostgreSQL)
 | Bảng | Mô tả |
 |---|---|
 | `user_ip_logs` | Log IP các action quan trọng (register, login, upload...) |
 | `banned_ips` | Danh sách IP bị chặn — `expires_at NULL` = vĩnh viễn |
-| `audit_logs` | IMMUTABLE — REVOKE UPDATE/DELETE. `actor_id NULL` = AI/system |
 | `notifications` | Thông báo in-app |
+
+#### MongoDB Collections
+| Collection | Mô tả |
+|---|---|
+| `audit_logs` | Nhật ký kiểm toán hành vi (Audit log) — IMMUTABLE, lưu vết các action quan trọng của users/system. |
 
 #### Nhóm Storage (V14)
 | Bảng | Mô tả |

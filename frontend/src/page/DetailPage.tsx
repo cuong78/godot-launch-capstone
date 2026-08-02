@@ -1,8 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Info, Star, Film, Play, X, ChevronRight } from "lucide-react";
+import { Check, Info, Star, Film, Play, X, ChevronRight, Download } from "lucide-react";
 import { Button } from "../components/Button";
-import { Asset, User, CategoryResponse } from "../types";
+import { Asset, User, CategoryResponse, PaymentResponse } from "../types";
+import { resolveApiUrl } from "../utils/apiUrl";
 import { IMAGE_SEED_MAP } from "../../assets/images";
 import { gameApi } from "../api/gameApi";
 
@@ -25,6 +26,7 @@ interface DetailPageProps {
     type?: "info" | "success" | "warning" | "error",
   ) => void;
   ownedProductIds: Set<string>;
+  purchaseOrderPayments?: PaymentResponse[];
   handleCategoryClick: (category: string) => void;
   handleTagClick: (tag: string) => void;
 }
@@ -52,11 +54,19 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   currentUser,
   showToast,
   ownedProductIds,
+  purchaseOrderPayments,
   handleCategoryClick,
   handleTagClick,
 }) => {
   const { t, i18n } = useTranslation(["marketplace"]);
   const isOwned = ownedProductIds.has(focusedAsset.id);
+  const downloadUrl = React.useMemo(() => {
+    if (!purchaseOrderPayments) return null;
+    const payment = purchaseOrderPayments.find(
+      (p) => p.paymentStatus === 'PAID' && p.marketplaceItemId === focusedAsset.id
+    );
+    return payment ? resolveApiUrl(payment.downloadUrl) : null;
+  }, [purchaseOrderPayments, focusedAsset.id]);
   const numberLocale = resolveNumberLocale(
     i18n.resolvedLanguage || i18n.language,
   );
@@ -356,8 +366,18 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             {/* Purchase actions (No Wishlist, Buy Now on top, Add to Cart below) */}
             <div className="space-y-2.5 pt-2">
               {isOwned ? (
-                <div className="w-full py-2.5 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-500 font-display text-center">
-                  {t("detail.pricing.ownedMessage")}
+                <div className="space-y-2 w-full">
+                  <div className="w-full py-2.5 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-500 font-display text-center">
+                    {t("detail.pricing.ownedMessage")}
+                  </div>
+                  {downloadUrl && (
+                    <a
+                      href={downloadUrl}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-white py-2.5 px-4 text-xs font-bold font-display text-center transition-studio cursor-pointer shadow-md"
+                    >
+                      <Download size={14} /> Download Asset Package
+                    </a>
+                  )}
                 </div>
               ) : (
                 <>

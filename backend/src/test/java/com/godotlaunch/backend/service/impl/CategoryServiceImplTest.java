@@ -90,6 +90,65 @@ class CategoryServiceImplTest {
     }
 
     @Test
+    @DisplayName("shouldCreateCategory_WithParent")
+    void shouldCreateCategory_WithParent() {
+        // Arrange
+        UUID parentId = UUID.randomUUID();
+        Category parentCategory = new Category();
+        parentCategory.setId(parentId);
+        parentCategory.setName("Gaming");
+        parentCategory.setSlug("gaming");
+
+        CategoryRequest request = new CategoryRequest();
+        request.setName("Action");
+        request.setSlug("action");
+        request.setParentId(parentId);
+
+        Category childCategory = new Category();
+        childCategory.setId(categoryId);
+        childCategory.setName("Action");
+        childCategory.setSlug("action");
+        childCategory.setParent(parentCategory);
+
+        when(categoryRepository.existsByName("Action")).thenReturn(false);
+        when(categoryRepository.existsBySlug("action")).thenReturn(false);
+        when(categoryRepository.findById(parentId)).thenReturn(Optional.of(parentCategory));
+        when(categoryRepository.save(any(Category.class))).thenReturn(childCategory);
+
+        // Act
+        CategoryResponse response = categoryService.createCategory(request);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getName()).isEqualTo("Action");
+        assertThat(response.getParentId()).isEqualTo(parentId);
+        verify(categoryRepository, times(1)).save(any(Category.class));
+    }
+
+    @Test
+    @DisplayName("shouldThrowException_WhenParentCategoryNotFound")
+    void shouldThrowException_WhenParentCategoryNotFound() {
+        // Arrange
+        UUID parentId = UUID.randomUUID();
+        CategoryRequest request = new CategoryRequest();
+        request.setName("Action");
+        request.setSlug("action");
+        request.setParentId(parentId);
+
+        when(categoryRepository.existsByName("Action")).thenReturn(false);
+        when(categoryRepository.existsBySlug("action")).thenReturn(false);
+        when(categoryRepository.findById(parentId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> categoryService.createCategory(request))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PARENT_CATEGORY_NOT_FOUND);
+
+        verify(categoryRepository, never()).save(any(Category.class));
+    }
+
+    @Test
     @DisplayName("shouldUpdateCategory_WhenValidRequest")
     void shouldUpdateCategory_WhenValidRequest() {
         // Arrange
@@ -168,5 +227,65 @@ class CategoryServiceImplTest {
         // Assert
         assertThat(list).hasSize(1);
         assertThat(list.get(0).getType()).isEqualTo("game");
+    }
+
+    @Test
+    void shouldThrowException_WhenUpdateCategoryNotFound() {
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.updateCategory(categoryId, new CategoryRequest()))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowException_WhenDeleteCategoryNotFound() {
+        when(categoryRepository.existsById(categoryId)).thenReturn(false);
+
+        assertThatThrownBy(() -> categoryService.deleteCategory(categoryId))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowException_WhenGetCategoryByIdNotFound() {
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.getCategoryById(categoryId))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
+    }
+
+    @Test
+    void shouldThrowException_WhenUpdateCategoryParentCycleMultiLevel() {
+        UUID aId = categoryId;
+        UUID bId = UUID.randomUUID();
+        UUID cId = UUID.randomUUID();
+
+        Category b = new Category();
+        b.setId(bId);
+        Category c = new Category();
+        c.setId(cId);
+        Category a = new Category();
+        a.setId(aId);
+        b.setParent(c);
+        c.setParent(a);
+
+        CategoryRequest request = new CategoryRequest();
+        request.setName("Action");
+        request.setSlug("action");
+        request.setParentId(bId);
+
+        when(categoryRepository.findById(aId)).thenReturn(Optional.of(category));
+        when(categoryRepository.findById(bId)).thenReturn(Optional.of(b));
+        when(categoryRepository.findById(cId)).thenReturn(Optional.of(c));
+
+        assertThatThrownBy(() -> categoryService.updateCategory(aId, request))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CATEGORY_PARENT_CYCLE);
     }
 }

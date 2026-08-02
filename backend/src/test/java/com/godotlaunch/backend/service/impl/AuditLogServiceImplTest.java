@@ -94,4 +94,70 @@ class AuditLogServiceImplTest {
         // Assert
         verify(auditLogRepository, times(1)).save(any(AuditLog.class));
     }
+
+    @Test
+    @DisplayName("shouldHandleAuditLogEvent_AndSaveToMongo_WhenActorNotFound")
+    void shouldHandleAuditLogEvent_AndSaveToMongo_WhenActorNotFound() {
+        // Arrange
+        UUID unknownActorId = UUID.randomUUID();
+        AuditLogEvent event = AuditLogEvent.builder()
+                .actorId(unknownActorId)
+                .action(AuditAction.game_published)
+                .targetType(AuditTarget.game)
+                .targetId(UUID.randomUUID())
+                .oldValue("\"pending\"")
+                .newValue("\"published\"")
+                .note("Game approved")
+                .ipAddress("127.0.0.1")
+                .build();
+
+        when(userRepository.findWithRoleById(unknownActorId)).thenReturn(Optional.empty());
+
+        // Act
+        auditLogService.handleAuditLogEvent(event);
+
+        // Assert
+        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
+    }
+
+    @Test
+    void shouldPublishAuto_WhenCalled() {
+        org.springframework.security.core.context.SecurityContext securityContext = mock(org.springframework.security.core.context.SecurityContext.class);
+        org.springframework.security.core.Authentication auth = mock(org.springframework.security.core.Authentication.class);
+        when(auth.isAuthenticated()).thenReturn(true);
+        when(auth.getPrincipal()).thenReturn("admin@godotlaunch.dev");
+        when(securityContext.getAuthentication()).thenReturn(auth);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(securityContext);
+
+        auditLogService.publishAuto(AuditAction.game_published, AuditTarget.game, UUID.randomUUID(), "old", "new", "note");
+
+        verify(eventPublisher, times(1)).publishEvent(any(AuditLogEvent.class));
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void shouldHandleAuditLogEvent_WhenActorEmailProvided() {
+        AuditLogEvent event = AuditLogEvent.builder()
+                .actorEmail("admin@godotlaunch.dev")
+                .action(AuditAction.game_published)
+                .targetType(AuditTarget.game)
+                .targetId(UUID.randomUUID())
+                .build();
+
+        when(userRepository.findWithRoleByEmail("admin@godotlaunch.dev")).thenReturn(Optional.of(actor));
+
+        auditLogService.handleAuditLogEvent(event);
+
+        verify(auditLogRepository, times(1)).save(any(AuditLog.class));
+    }
+
+    @Test
+    void shouldFallbackSerialization_WhenExceptionOccurs() throws Exception {
+        when(objectMapper.writeValueAsString(any())).thenThrow(new RuntimeException("Serialization error"));
+
+        auditLogService.publish(actorId, ActorRole.admin, AuditAction.game_published,
+                AuditTarget.game, UUID.randomUUID(), "old-value", "new-value", "Approved", "127.0.0.1");
+
+        verify(eventPublisher, times(1)).publishEvent(any(AuditLogEvent.class));
+    }
 }

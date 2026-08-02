@@ -273,4 +273,68 @@ public class UserServiceImplTest {
         // Assert
         assertThat(resp.getPreferredLanguage()).isEqualTo("en");
     }
+
+    @Test
+    void shouldThrowException_WhenUnlinkGitHub_AndNotDeveloper() {
+        mockUser.setRole(customerRole);
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(mockUser));
+
+        assertThatThrownBy(() -> userService.unlinkGitHub("test@example.com"))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ACCESS_DENIED);
+    }
+
+    @Test
+    void shouldGetLanguagePreference_Successfully() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(mockUser));
+
+        LanguagePreferenceResponse resp = userService.getLanguagePreference("test@example.com");
+
+        assertThat(resp.getPreferredLanguage()).isEqualTo("vi");
+    }
+
+    @Test
+    void shouldReturnEmptyList_WhenSearchUsersWithEmptyQuery() {
+        List<UserResponse> result = userService.searchUsersByName("", "test@example.com");
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldReturnEmpty_WhenDeleteUserAlreadyDeleted() {
+        mockUser.setStatus("inactive");
+        mockUser.setEmail("test@example.com_deleted_12345");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+
+        userService.deleteUser(userId);
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowException_WhenCreateUserDuplicateEmail() {
+        AdminCreateUserRequest req = new AdminCreateUserRequest();
+        req.setEmail("test@example.com");
+
+        when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.createUser(req))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+    }
+
+    @Test
+    void shouldThrowException_WhenUpdateUserDuplicateEmail() {
+        AdminUpdateUserRequest req = new AdminUpdateUserRequest();
+        req.setEmail("other@example.com");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+        when(userRepository.existsByEmail("other@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.updateUser(userId, req))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+    }
 }

@@ -2444,91 +2444,69 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                   )}
                                                 </div>
 
-                                                <div className="space-y-2">
-                                                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                    <Image
-                                                      size={12}
-                                                      className="text-amber-500"
-                                                    />{" "}
-                                                    {t("playDemo.screenshotsTitle")}
-                                                  </h4>
-                                                  {game.screenshots &&
-                                                  game.screenshots.length >
-                                                    0 ? (
-                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                      {game.screenshots.map(
-                                                        (url, index) => (
-                                                          <div
-                                                            key={index}
-                                                            onClick={() => {
-                                                              setActiveScreenshotUrl(
-                                                                url,
-                                                              );
-                                                              setIsOpenLightbox(
-                                                                true,
-                                                              );
-                                                            }}
-                                                            className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-amber-400/50 transition-studio"
-                                                          >
-                                                            <img
-                                                              src={url}
-                                                              alt={t("moderationQueue.detail.screenshotAlt", {
-                                                                index: index + 1,
-                                                              })}
-                                                              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                                                            />
-                                                            <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                              <Eye
-                                                                size={16}
-                                                                className="text-white"
+                                                  {game.screenshots && game.screenshots.length > 0 && (
+                                                    <div className="space-y-2">
+                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                        <Image
+                                                          size={12}
+                                                          className="text-amber-500"
+                                                        />{" "}
+                                                        {t("playDemo.screenshotsTitle")}
+                                                      </h4>
+                                                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                        {game.screenshots.map(
+                                                          (url, index) => (
+                                                            <div
+                                                              key={index}
+                                                              onClick={() => {
+                                                                setActiveScreenshotUrl(
+                                                                  url,
+                                                                );
+                                                                setIsOpenLightbox(
+                                                                  true,
+                                                                );
+                                                              }}
+                                                              className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-amber-400/50 transition-studio"
+                                                            >
+                                                              <img
+                                                                src={url}
+                                                                alt={t("moderationQueue.detail.screenshotAlt", {
+                                                                  index: index + 1,
+                                                                })}
+                                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                                                               />
+                                                              <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <Eye
+                                                                  size={16}
+                                                                  className="text-white"
+                                                                />
+                                                              </div>
                                                             </div>
-                                                          </div>
-                                                        ),
-                                                      )}
-                                                    </div>
-                                                  ) : (
-                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
-                                                      <Image
-                                                        size={24}
-                                                        className="mb-1 text-slate-350 dark:text-slate-650"
-                                                      />
-                                                      <span className="text-[10px]">
-                                                        {t("moderationQueue.detail.noScreenshots")}
-                                                      </span>
+                                                          ),
+                                                        )}
+                                                      </div>
                                                     </div>
                                                   )}
-                                                </div>
 
-                                                {/* Video Gameplay */}
-                                                <div className="space-y-2">
-                                                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                    <Video
-                                                      size={12}
-                                                      className="text-amber-500"
-                                                    />{" "}
-                                                    {t("moderationQueue.detail.videoDemo")}
-                                                  </h4>
-                                                  {game.videoUrl ? (
-                                                    <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
-                                                      <video
-                                                        src={game.videoUrl}
-                                                        controls
-                                                        className="w-full h-full object-contain"
-                                                      />
-                                                    </div>
-                                                  ) : (
-                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
-                                                      <Video
-                                                        size={24}
-                                                        className="mb-1 text-slate-350 dark:text-slate-650"
-                                                      />
-                                                      <span className="text-[10px]">
-                                                        {t("moderationQueue.detail.noVideo")}
-                                                      </span>
+                                                  {/* Video Gameplay */}
+                                                  {game.videoUrl && (
+                                                    <div className="space-y-2">
+                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                        <Video
+                                                          size={12}
+                                                          className="text-amber-500"
+                                                        />{" "}
+                                                        {t("moderationQueue.detail.videoDemo")}
+                                                      </h4>
+                                                      <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
+                                                        <video
+                                                          src={game.videoUrl}
+                                                          controls
+                                                          className="w-full h-full object-contain"
+                                                        />
+                                                      </div>
                                                     </div>
                                                   )}
-                                                </div>
 
                                                 {/* AI REVIEW REPORT */}
                                                 <div className="pt-2">
@@ -2806,20 +2784,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 </div>
 
                                                 {/* Middle Column: Screenshots & Video */}
-                                                <div className="space-y-4 flex flex-col justify-between">
-                                                  <div className="space-y-2">
-                                                    <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                      <Image
-                                                        size={12}
-                                                        className="text-amber-500"
-                                                      />{" "}
-                                                      {t("moderationQueue.detail.screenshots")}
-                                                    </h4>
-                                                    {displayItem.screenshots &&
-                                                    displayItem.screenshots
-                                                      .length > 0 ? (
+                                                <div className="space-y-4 flex flex-col">
+                                                  {((displayItem.screenshots && displayItem.screenshots.length > 0) || (displayItem.mediaUrls && displayItem.mediaUrls.length > 0)) && (
+                                                    <div className="space-y-2">
+                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                        <Image
+                                                          size={12}
+                                                          className="text-amber-500"
+                                                        />{" "}
+                                                        {t("moderationQueue.detail.screenshots")}
+                                                      </h4>
                                                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                        {displayItem.screenshots.map(
+                                                        {[...(displayItem.screenshots || []), ...(displayItem.mediaUrls || [])].map(
                                                           (url, index) => (
                                                             <div
                                                               key={index}
@@ -2850,29 +2826,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                           ),
                                                         )}
                                                       </div>
-                                                    ) : (
-                                                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
-                                                        <Image
-                                                          size={24}
-                                                          className="mb-1 text-slate-350 dark:text-slate-650"
-                                                        />
-                                                        <span className="text-[10px]">
-                                                          {t("moderationQueue.detail.noScreenshotsUploaded")}
-                                                        </span>
-                                                      </div>
-                                                    )}
-                                                  </div>
+                                                    </div>
+                                                  )}
 
                                                   {/* Video Demo */}
-                                                  <div className="space-y-2">
-                                                    <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                      <Video
-                                                        size={12}
-                                                        className="text-amber-500"
-                                                      />{" "}
-                                                      {t("moderationQueue.detail.videoDemo")}
-                                                    </h4>
-                                                    {displayItem.videoUrl ? (
+                                                  {displayItem.videoUrl && (
+                                                    <div className="space-y-2">
+                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                        <Video
+                                                          size={12}
+                                                          className="text-amber-500"
+                                                        />{" "}
+                                                        {t("moderationQueue.detail.videoDemo")}
+                                                      </h4>
                                                       <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
                                                         <video
                                                           src={
@@ -2882,18 +2848,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                           className="w-full h-full object-contain"
                                                         />
                                                       </div>
-                                                    ) : (
-                                                      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
-                                                        <Video
-                                                          size={24}
-                                                          className="mb-1 text-slate-350 dark:text-slate-650"
-                                                        />
-                                                        <span className="text-[10px]">
-                                                          {t("moderationQueue.detail.noDemoVideo")}
-                                                        </span>
-                                                      </div>
-                                                    )}
-                                                  </div>
+                                                    </div>
+                                                  )}
                                                 </div>
 
                                                 {/* Right Column: Specifications, Creator Details & License info */}

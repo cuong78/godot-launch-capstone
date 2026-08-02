@@ -1,8 +1,10 @@
 package com.godotlaunch.backend.service.impl;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
@@ -21,9 +25,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.godotlaunch.backend.config.SourceProcessingClient;
 import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.CreateAssetRequest;
+import com.godotlaunch.backend.dto.request.UpdateAssetRequest;
+import com.godotlaunch.backend.dto.response.AssetResponse;
 import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Role;
 import com.godotlaunch.backend.entity.User;
+import com.godotlaunch.backend.entity.Category;
+import com.godotlaunch.backend.entity.Tag;
+import com.godotlaunch.backend.entity.enums.ItemStatus;
+import com.godotlaunch.backend.entity.enums.AuditAction;
+import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.CategoryRepository;
@@ -275,5 +286,236 @@ class AssetServiceImplTest {
 
         assertEquals(fileUrl, asset.getFileUrl());
         verify(asyncVirusScanService).scanAndProcessAsset(asset.getId(), objectKey);
+    }
+
+    @Test
+    void getAssetById_ShouldReturnAssetResponse_WhenAssetExists() {
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+
+        AssetResponse response = assetService.getAssetById(asset.getId(), developerUser.getEmail());
+
+        assertEquals(asset.getId(), response.getId());
+    }
+
+    @Test
+    void updateAsset_ShouldModifyAssetDetails_WhenOwnerRequests() {
+        UpdateAssetRequest request = new UpdateAssetRequest();
+        request.setTitle("New Asset Title");
+        request.setPrice(new java.math.BigDecimal("99.99"));
+
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AssetResponse response = assetService.updateAsset(asset.getId(), request, developerUser.getEmail());
+
+        assertEquals("New Asset Title", response.getTitle());
+        assertEquals(0, response.getPrice().compareTo(new java.math.BigDecimal("99.99")));
+    }
+
+    @Test
+    void removeAsset_ShouldSoftDeleteAssetAndLogAudit_WhenOwnerRequests() {
+        asset.setStatus(ItemStatus.active);
+        asset.setTitle("To Be Deleted");
+
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assetService.removeAsset(asset.getId(), developerUser.getEmail());
+
+        assertEquals(ItemStatus.removed, asset.getStatus());
+        verify(seaweedFsService).deleteObject("marketplace/items/" + asset.getId() + "/project.zip");
+        verify(auditLogService).publishAuto(
+                eq(AuditAction.marketplace_item_removed),
+                eq(AuditTarget.marketplace_item),
+                eq(asset.getId()),
+                eq("active"),
+                eq("removed"),
+                anyString()
+        );
+    }
+
+    @Test
+    void uploadItemFile_ShouldUploadAndTriggerReview() {
+        org.springframework.web.multipart.MultipartFile file = org.mockito.Mockito.mock(org.springframework.web.multipart.MultipartFile.class);
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(seaweedFsService.uploadWithKey(eq(file), anyString())).thenReturn("http://seaweedfs/zip");
+        when(assetRepository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assetService.uploadItemFile(asset.getId(), file, developerUser.getEmail());
+
+        assertEquals("http://seaweedfs/zip", asset.getFileUrl());
+        verify(asyncVirusScanService).scanAndProcessAsset(eq(asset.getId()), anyString());
+        verify(aiReviewService).reviewAssetAsync(asset.getId());
+    }
+
+    @Test
+    void uploadItemMedia_ShouldUploadThumbnail_WhenValid() {
+        org.springframework.web.multipart.MultipartFile file = org.mockito.Mockito.mock(org.springframework.web.multipart.MultipartFile.class);
+        when(file.getSize()).thenReturn(5L * 1024L * 1024L);
+        when(file.getOriginalFilename()).thenReturn("thumb.png");
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(seaweedFsService.uploadWithKey(eq(file), anyString())).thenReturn("http://seaweedfs/thumb.png");
+        when(assetRepository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        String key = assetService.uploadItemMedia(asset.getId(), "thumbnail", file, developerUser.getEmail());
+
+        assertThat(key).contains("marketplace/items/");
+        assertEquals("http://seaweedfs/thumb.png", asset.getThumbnailUrl());
+        verify(mediaRepository).save(any());
+    }
+
+    @Test
+    void uploadItemMedia_ShouldThrowException_WhenMediaFileTooLarge() {
+        org.springframework.web.multipart.MultipartFile file = org.mockito.Mockito.mock(org.springframework.web.multipart.MultipartFile.class);
+        when(file.getSize()).thenReturn(20L * 1024L * 1024L);
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> assetService.uploadItemMedia(asset.getId(), "thumbnail", file, developerUser.getEmail())
+        );
+
+        assertEquals(ErrorCode.MEDIA_FILE_TOO_LARGE, exception.getErrorCode());
+    }
+
+    @Test
+    void deleteAssetMedia_ShouldDeleteMediaAndStorageObject() {
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+
+        com.godotlaunch.backend.entity.Media media = new com.godotlaunch.backend.entity.Media();
+        media.setMediaUrl("http://storage.local/godotlaunch/marketplace/items/123/media/test.png");
+        when(mediaRepository.findByAsset_IdOrderByCreatedAtDesc(asset.getId())).thenReturn(List.of(media));
+
+        assetService.deleteAssetMedia(asset.getId(), "http://storage.local/godotlaunch/marketplace/items/123/media/test.png", developerUser.getEmail());
+
+        verify(mediaRepository).delete(media);
+        verify(seaweedFsService).deleteObject("marketplace/items/123/media/test.png");
+    }
+
+    @Test
+    void approveAsset_ShouldSetActiveAndSendEmail() {
+        asset.setStatus(ItemStatus.pending);
+        asset.setTitle("Asset Title");
+
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assetService.approveAsset(asset.getId());
+
+        assertEquals(ItemStatus.active, asset.getStatus());
+        verify(emailService).sendAssetStatusNotification(
+                eq(developerUser.getEmail()),
+                eq("Asset Title"),
+                eq("APPROVED"),
+                anyString()
+        );
+        verify(auditLogService).publishAuto(
+                eq(AuditAction.game_published),
+                eq(AuditTarget.marketplace_item),
+                eq(asset.getId()),
+                eq("pending"),
+                eq("active"),
+                anyString()
+        );
+    }
+
+    @Test
+    void approveAsset_ShouldThrowException_WhenNotPending() {
+        asset.setStatus(ItemStatus.active);
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+
+        assertThrows(IllegalStateException.class, () -> assetService.approveAsset(asset.getId()));
+    }
+
+    @Test
+    void rejectAsset_ShouldSetRejectedAndCleanupZip() {
+        asset.setStatus(ItemStatus.pending);
+        asset.setTitle("Rejected Pack");
+
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assetService.rejectAsset(asset.getId(), "Inappropriate content");
+
+        assertEquals(ItemStatus.rejected, asset.getStatus());
+        verify(seaweedFsService).deleteObject("marketplace/items/" + asset.getId() + "/project.zip");
+        verify(emailService).sendAssetStatusNotification(
+                eq(developerUser.getEmail()),
+                eq("Rejected Pack"),
+                eq("REJECTED"),
+                eq("Inappropriate content")
+        );
+    }
+
+    @Test
+    void getAssetById_ShouldAllowPrivateFields_WhenAdmin() {
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(seaweedFsService.resolvePublicUrl("pending")).thenReturn("http://resolved/pending.zip");
+
+        AssetResponse response = assetService.getAssetById(asset.getId(), adminUser.getEmail());
+
+        assertEquals("http://resolved/pending.zip", response.getFileUrl());
+    }
+
+    @Test
+    void getAssetById_ShouldNotAllowPrivateFields_WhenOtherUser() {
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findByEmail(otherDeveloperUser.getEmail())).thenReturn(Optional.of(otherDeveloperUser));
+
+        AssetResponse response = assetService.getAssetById(asset.getId(), otherDeveloperUser.getEmail());
+
+        assertThat(response.getFileUrl()).isNull();
+    }
+
+    @Test
+    void rejectAsset_ShouldThrowException_WhenNotPending() {
+        asset.setStatus(ItemStatus.active);
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+
+        assertThrows(IllegalStateException.class, () -> assetService.rejectAsset(asset.getId(), "Reason"));
+    }
+
+    @Test
+    void removeAsset_ShouldSuccess_WhenAdmin() {
+        asset.setStatus(ItemStatus.active);
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assetService.removeAsset(asset.getId(), adminUser.getEmail());
+
+        assertEquals(ItemStatus.removed, asset.getStatus());
+        verify(seaweedFsService).deleteObject("marketplace/items/" + asset.getId() + "/project.zip");
+    }
+
+    @Test
+    void removeAsset_ShouldSuccess_WhenOwner() {
+        asset.setStatus(ItemStatus.active);
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assetService.removeAsset(asset.getId(), developerUser.getEmail());
+
+        assertEquals(ItemStatus.removed, asset.getStatus());
+    }
+
+    @Test
+    void removeAsset_ShouldThrowException_WhenUnauthorized() {
+        asset.setStatus(ItemStatus.active);
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findByEmail(otherDeveloperUser.getEmail())).thenReturn(Optional.of(otherDeveloperUser));
+
+        assertThrows(AppException.class, () ->
+                assetService.removeAsset(asset.getId(), otherDeveloperUser.getEmail())
+        );
     }
 }

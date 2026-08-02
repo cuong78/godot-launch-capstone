@@ -141,14 +141,22 @@ public class PayOSPaymentGateway implements PaymentGateway {
             return PaymentStatus.PENDING;
         }
 
-        return switch (status) {
-            case PAID -> PaymentStatus.PAID;
-            case PROCESSING, UNDERPAID -> PaymentStatus.PROCESSING;
-            case CANCELLED -> PaymentStatus.CANCELLED;
-            case FAILED -> PaymentStatus.FAILED;
-            case EXPIRED -> PaymentStatus.EXPIRED;
-            case PENDING -> PaymentStatus.PENDING;
-        };
+        switch (status.name()) {
+            case "PAID":
+                return PaymentStatus.PAID;
+            case "PROCESSING":
+            case "UNDERPAID":
+                return PaymentStatus.PROCESSING;
+            case "CANCELLED":
+                return PaymentStatus.CANCELLED;
+            case "FAILED":
+                return PaymentStatus.FAILED;
+            case "EXPIRED":
+                return PaymentStatus.EXPIRED;
+            case "PENDING":
+            default:
+                return PaymentStatus.PENDING;
+        }
     }
 
     private String truncate(String value, int limit, String fallback) {

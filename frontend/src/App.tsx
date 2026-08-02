@@ -1167,6 +1167,7 @@ export default function App() {
             currentUser={currentUser}
             showToast={showToast}
             ownedProductIds={ownedProductIds}
+            purchaseOrderPayments={purchaseOrderPayments}
             handleCategoryClick={handleCategoryClick}
             handleTagClick={handleTagClick}
           />
