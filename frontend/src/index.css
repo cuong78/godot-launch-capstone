@@ -234,6 +234,17 @@ select {
   mask-image: linear-gradient(to bottom, black, transparent 72%);
 }
 
+/* Quiet, opaque canvas for data-heavy creator tools. */
+.dashboard-workspace-background {
+  background: #f6f8fb;
+}
+
+.dark .dashboard-workspace-background {
+  background:
+    linear-gradient(180deg, rgba(56, 189, 248, 0.025), transparent 220px),
+    #090d14;
+}
+
 @keyframes launch-ambient-drift {
   from {
     transform: translate3d(-1.5%, -1%, 0) scale(1);

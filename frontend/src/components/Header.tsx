@@ -324,7 +324,7 @@ export function Header({
       id="godotlaunch-navbar"
       className="launch-chrome sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 text-slate-900 shadow-[0_10px_30px_rgba(148,163,184,0.14)] backdrop-blur-xl dark:border-slate-700/50 dark:bg-night-950/92 dark:text-white dark:shadow-[0_14px_38px_rgba(0,0,0,0.34)]"
     >
-      <div className="flex w-full min-w-0 items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 lg:px-8 xl:gap-6">
+      <div className="mx-auto flex w-full max-w-[1440px] min-w-0 items-center justify-between gap-2 px-5 py-3 sm:gap-3 sm:px-8 lg:px-12 xl:gap-6">
         {/* Brand */}
         <div
           className="flex shrink-0 cursor-pointer items-center gap-2.5"
@@ -656,7 +656,7 @@ export function Header({
       </div>
 
       {/* Mobile Navigation bar strips */}
-      <div className="launch-mobile-nav flex max-w-full justify-start gap-1 overflow-x-auto border-t border-slate-200/80 bg-white/92 px-3 py-2 text-xs dark:border-slate-700/40 dark:bg-night-900/95 lg:hidden sm:justify-center">
+      <div className="launch-mobile-nav mx-auto flex w-full max-w-[1440px] justify-start gap-1 overflow-x-auto border-t border-slate-200/80 bg-white/92 px-5 py-2 text-xs dark:border-slate-700/40 dark:bg-night-900/95 sm:justify-center sm:px-8 lg:hidden">
         <button
           onClick={() => setCurrentScreen("marketplace")}
           className={`launch-nav-link shrink-0 rounded px-2.5 py-1.5 font-medium ${currentScreen === "marketplace" ? "launch-nav-active border-slate-200 bg-slate-100 font-bold text-slate-900 shadow-sm dark:border-transparent dark:bg-night-800 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}

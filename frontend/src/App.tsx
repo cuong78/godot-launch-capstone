@@ -245,6 +245,7 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
   const displayScreen = currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen;
   const isCheckoutModalOpen = currentScreen === 'checkout';
+  const usesDashboardWorkspaceBackground = displayScreen === 'dashboard';
   const usesSolidStorefrontBackground =
     displayScreen === 'explore' || displayScreen === 'marketplace';
   const isAdminManagedScreen =
@@ -996,7 +997,9 @@ export default function App() {
       
       {/* 3D Voxel Nature Environment Background — ẩn riêng ở trang developer-onboarding (landing dùng nền tối riêng) */}
       {displayScreen !== 'developer-onboarding' && (
-        usesSolidStorefrontBackground ? (
+        usesDashboardWorkspaceBackground ? (
+          <div className="dashboard-workspace-background fixed inset-0 z-0 pointer-events-none" />
+        ) : usesSolidStorefrontBackground ? (
           <div className="storefront-solid-background fixed inset-0 z-0 pointer-events-none" />
         ) : (
           <>
@@ -1058,7 +1061,9 @@ export default function App() {
             ? 'w-full max-w-none px-0 py-0'
             : displayScreen === 'developer-onboarding'
             ? 'w-full max-w-none px-0 py-0'
-            : displayScreen === 'marketplace' || displayScreen === 'detail'
+            : displayScreen === 'dashboard' || displayScreen === 'marketplace'
+            ? 'mx-auto w-full max-w-[1440px] px-5 py-6 sm:px-8 lg:px-12'
+            : displayScreen === 'detail'
             ? 'w-full max-w-none px-4 py-6 sm:px-6 lg:px-8'
             : 'mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8'
         }`}

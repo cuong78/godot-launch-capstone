@@ -18,6 +18,8 @@ import {
   Trash2,
   WalletCards,
   TrendingUp,
+  Boxes,
+  ReceiptText,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
@@ -36,6 +38,13 @@ import { marketplaceApi } from "../api/marketplaceApi";
 import { walletApi } from "../api/walletApi";
 import { SignaturePad } from "../components/SignaturePad";
 import { ContractViewerModal } from "../components/ContractViewerModal";
+import { DeveloperDashboardHeader } from "../components/developer-dashboard/DeveloperDashboardHeader";
+import { DashboardMetricGrid } from "../components/developer-dashboard/DashboardMetricGrid";
+import {
+  DashboardSidebar,
+  DashboardWorkspaceId,
+  DashboardWorkspaceItem,
+} from "../components/developer-dashboard/DashboardSidebar";
 import { PaymentDetailPage } from "./PaymentDetailPage";
 
 interface DashboardPageProps {
@@ -60,8 +69,7 @@ const getContractStatusLabel = (status: string, t: (key: string) => string) => {
     case "pending":
       return {
         text: t("dashboard:contracts.status.awaitingYourSign"),
-        colorClass:
-          "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse",
+        colorClass: "bg-amber-500/10 text-amber-500 border-amber-500/20",
       };
     case "cancelled":
       return {
@@ -128,6 +136,12 @@ const formatCurrencyValue = (
   return `${value.toLocaleString(locale)} ${t("dashboard:table.currencyVnd")}`;
 };
 
+const formatRevenueMetricValue = (
+  value: number | undefined,
+  locale: string,
+  t: (key: string) => string,
+) => `${(value ?? 0).toLocaleString(locale)} ${t("dashboard:table.currencyVnd")}`;
+
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentUser,
   projectRepositories,
@@ -146,9 +160,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [i18n.language, i18n.resolvedLanguage]);
 
   // Tab control: 'my-games' | 'marketplace-items' | 'sales' | 'payment-center'
-  const [activeTab, setActiveTab] = useState<
-    "my-games" | "marketplace-items" | "sales" | "payment-center"
-  >("my-games");
+  const [activeTab, setActiveTab] =
+    useState<DashboardWorkspaceId>("my-games");
 
   // Game & Asset status filters
   const [gameStatusFilter, setGameStatusFilter] = useState<string>("all");
@@ -461,192 +474,269 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       return bTime - aTime;
     });
 
+  const workspaceItems: DashboardWorkspaceItem[] = [
+    {
+      id: "my-games",
+      label: t("dashboard:tabs.publishedGames"),
+      count: myGames.length,
+      icon: Gamepad2,
+    },
+    {
+      id: "marketplace-items",
+      label: t("dashboard:tabs.marketplaceAssets"),
+      count: myMarketplaceItems.length,
+      icon: Boxes,
+    },
+    {
+      id: "sales",
+      label: t("dashboard:tabs.soldOrders"),
+      count: salesStats?.totalUnitsSold ?? 0,
+      icon: TrendingUp,
+    },
+    {
+      id: "payment-center",
+      label: t("dashboard:tabs.purchasedOrders"),
+      count: purchasedPayments.length,
+      icon: ReceiptText,
+    },
+  ];
+
+  const dashboardMetrics = [
+    {
+      id: "revenue",
+      label: t("dashboard:stats.revenue"),
+      value: formatRevenueMetricValue(salesStats?.totalRevenue, locale, t),
+      hint: t("dashboard:stats.revenueHint"),
+      icon: WalletCards,
+      primary: true,
+      loading: isLoadingSales,
+    },
+    {
+      id: "units-sold",
+      label: t("dashboard:stats.unitsSold"),
+      value: salesStats?.totalUnitsSold ?? 0,
+      hint: t("dashboard:stats.unitsSoldHint"),
+      icon: ShoppingBag,
+      loading: isLoadingSales,
+    },
+    {
+      id: "games",
+      label: t("dashboard:stats.publishedGames"),
+      value: myGames.length,
+      hint: t("dashboard:stats.publishedGamesHint"),
+      icon: Gamepad2,
+      loading: isLoadingGames,
+    },
+    {
+      id: "assets",
+      label: t("dashboard:stats.marketplaceItems"),
+      value: myMarketplaceItems.length,
+      hint: t("dashboard:stats.marketplaceItemsHint"),
+      icon: Boxes,
+      loading: isLoadingMarketplace,
+    },
+  ];
+
   return (
     <>
-      <div className="space-y-6 animate-fade-in py-2">
-        {/* Quick counters grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-              {t("dashboard:stats.revenue")}
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] text-emerald-500 font-bold font-mono">
-                +12%
-              </span>
-              <span className="text-2xl font-display font-bold dark:text-white">
-                {formatCurrencyValue(salesStats?.totalRevenue, locale, t)}
-              </span>
-            </div>
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">
-              {t("dashboard:stats.revenueHint")}
-            </p>
-          </div>
+      <div className="space-y-7 animate-fade-in py-2">
+        <DeveloperDashboardHeader
+          title={t("dashboard:overview.title")}
+          description={t("dashboard:overview.subtitle")}
+          actionLabel={t("dashboard:overview.deployAsset")}
+          onAction={() => {
+            setCurrentScreen("upload");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
 
-          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-              {t("dashboard:stats.unitsSold")}
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-display font-bold dark:text-white">
-                {salesStats?.totalUnitsSold ?? 0}
-              </span>
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                {t("dashboard:stats.unitsLabel")}
-              </span>
-            </div>
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">
-              {t("dashboard:stats.unitsSoldHint")}
-            </p>
-          </div>
+        <DashboardMetricGrid metrics={dashboardMetrics} />
 
-          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-              {t("dashboard:stats.publishedGames")}
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-display font-bold dark:text-white">
-                {t("dashboard:stats.gamesCount", { count: myGames.length })}
-              </span>
-            </div>
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">
-              {t("dashboard:stats.publishedGamesHint")}
-            </p>
-          </div>
+        <section
+          className="grid min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_16px_42px_rgba(15,23,42,0.06)] dark:border-slate-800/80 dark:bg-[#101720] dark:shadow-[0_22px_54px_rgba(0,0,0,0.22)] md:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[224px_minmax(0,1fr)]"
+          ref={dashboardWorkspaceRef}
+        >
+          <DashboardSidebar
+            activeWorkspace={activeTab}
+            items={workspaceItems}
+            navigationLabel={t("dashboard:workspace.navigationLabel")}
+            mobileLabel={t("dashboard:workspace.mobileLabel")}
+            onChange={setActiveTab}
+          />
 
-          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-              {t("dashboard:stats.marketplaceItems")}
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-display font-bold dark:text-white">
-                {t("dashboard:stats.itemsCount", {
-                  count: myMarketplaceItems.length,
-                })}
-              </span>
-            </div>
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">
-              {t("dashboard:stats.marketplaceItemsHint")}
-            </p>
-          </div>
-        </div>
-
-        {/* Split row: Reusable DataTable and Sidebar developer logs list */}
-        <div className="grid grid-cols-1 gap-8" ref={dashboardWorkspaceRef}>
-          {/* Left Column: Switchable tabs for Real Games vs Mock Git Repos */}
-          <div className="space-y-6">
-            {/* Tab headers */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800/60 gap-1.5 max-w-full overflow-x-auto [&>button]:flex-1 [&>button]:justify-center">
-              <button
-                onClick={() => setActiveTab("my-games")}
-                className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === "my-games" ? "border-sky-500 text-sky-500" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"}`}
-              >
-                <Gamepad2 size={14} />{" "}
-                {t("dashboard:tabs.publishedGames", { count: myGames.length })}
-              </button>
-              <button
-                onClick={() => setActiveTab("marketplace-items")}
-                className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === "marketplace-items" ? "border-sky-500 text-sky-500" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"}`}
-              >
-                <ShoppingBag size={14} />{" "}
-                {t("dashboard:tabs.marketplaceAssets", {
-                  count: myMarketplaceItems.length,
-                })}
-              </button>
-              <button
-                onClick={() => setActiveTab("sales")}
-                className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === "sales" ? "border-sky-500 text-sky-500" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"}`}
-              >
-                <TrendingUp size={14} />{" "}
-                {t("dashboard:tabs.soldOrders", {
-                  count: salesStats?.totalUnitsSold ?? 0,
-                })}
-              </button>
-              <button
-                onClick={() => setActiveTab("payment-center")}
-                className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-studio shrink-0 flex items-center gap-1.5 cursor-pointer ${activeTab === "payment-center" ? "border-sky-500 text-sky-500" : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"}`}
-              >
-                <WalletCards size={14} />{" "}
-                {t("dashboard:tabs.purchasedOrders", {
-                  count: purchasedPayments.length,
-                })}
-              </button>
-            </div>
+          <div className="min-w-0">
 
             {/* Tab 1: Developer's Real Uploaded Games */}
             {activeTab === "my-games" && (
-              <div className="space-y-4">
-                {/* Game Status Filter Chips */}
-                <div className="dark-depth-card flex flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/60 sm:flex-row sm:items-center">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {t("dashboard:filters.gameStatus")}
+              <div>
+                <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-800/80 sm:px-6">
+                  <div>
+                    <h2 className="font-display text-lg font-semibold tracking-[-0.025em] text-slate-950 dark:text-slate-50">
+                      {t("dashboard:workspace.gameTitle")}
+                    </h2>
+                    <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      {t("dashboard:workspace.gameSubtitle")}
+                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {gameFilterOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setGameStatusFilter(option.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 cursor-pointer ${
-                          gameStatusFilter === option.value
-                            ? "bg-sky-500/10 text-sky-500 border-sky-500/30 font-semibold"
-                            : "bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+
+                  <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <span className="shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-500">
+                      {t("dashboard:filters.gameStatus")}
+                    </span>
+                    <div className="flex max-w-full gap-2 overflow-x-auto pb-1 lg:justify-end">
+                      {gameFilterOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setGameStatusFilter(option.value)}
+                          aria-pressed={gameStatusFilter === option.value}
+                          className={`min-h-9 shrink-0 rounded-lg border px-3 text-xs font-medium transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 ${
+                            gameStatusFilter === option.value
+                              ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:border-sky-400/25 dark:bg-sky-400/10 dark:text-sky-300"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:bg-slate-800/70 dark:hover:text-slate-200"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {isLoadingGames ? (
-                  <div className="dark-depth-card flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-12 text-sm text-slate-500 dark:border-slate-850 dark:bg-slate-900">
-                    <RefreshCw className="animate-spin" size={18} />{" "}
-                    {t("dashboard:table.loadingGames")}
+                  <div className="px-5 py-6 sm:px-6" role="status">
+                    <span className="sr-only">
+                      {t("dashboard:table.loadingGames")}
+                    </span>
+                    <div className="space-y-3">
+                      {[0, 1, 2].map((row) => (
+                        <div
+                          key={row}
+                          className="grid min-h-16 animate-pulse grid-cols-[32px_minmax(0,1fr)] items-center gap-3 rounded-xl border border-slate-200/70 px-3 dark:border-slate-800/70 sm:grid-cols-[32px_minmax(180px,1.4fr)_minmax(100px,0.8fr)_minmax(120px,1fr)_100px]"
+                        >
+                          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800" />
+                          <div className="space-y-2">
+                            <div className="h-3 w-2/5 rounded bg-slate-200 dark:bg-slate-800" />
+                            <div className="h-2.5 w-3/5 rounded bg-slate-100 dark:bg-slate-800/70" />
+                          </div>
+                          <div className="hidden h-3 w-2/3 rounded bg-slate-100 dark:bg-slate-800 sm:block" />
+                          <div className="hidden h-3 w-3/4 rounded bg-slate-100 dark:bg-slate-800 sm:block" />
+                          <div className="hidden h-6 w-20 rounded-full bg-slate-100 dark:bg-slate-800 sm:block" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : gamesError ? (
-                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                    {t("dashboard:table.errorGames", { message: gamesError })}
+                  <div className="m-5 flex flex-col gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] p-5 sm:m-6 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <AlertTriangle
+                        size={18}
+                        className="mt-0.5 shrink-0 text-rose-500"
+                        aria-hidden="true"
+                      />
+                      <p className="text-sm leading-6 text-rose-700 dark:text-rose-300">
+                        {t("dashboard:table.errorGames", {
+                          message: gamesError,
+                        })}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void fetchMyGames()}
+                      className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-rose-500/25 px-3 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 dark:text-rose-300"
+                    >
+                      <RefreshCw size={15} aria-hidden="true" />
+                      {t("dashboard:table.retry")}
+                    </button>
+                  </div>
+                ) : filteredGames.length === 0 ? (
+                  <div className="px-6 py-14 sm:py-16">
+                    <div className="mx-auto max-w-md text-center">
+                      <Gamepad2
+                        size={24}
+                        strokeWidth={1.7}
+                        className="mx-auto text-slate-400 dark:text-slate-600"
+                        aria-hidden="true"
+                      />
+                      <h3 className="mt-4 font-display text-base font-semibold text-slate-900 dark:text-slate-100">
+                        {myGames.length === 0
+                          ? t("dashboard:table.emptyGamesTitle")
+                          : t("dashboard:table.emptyGamesFilteredTitle")}
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                        {myGames.length === 0
+                          ? t("dashboard:table.emptyGames")
+                          : t("dashboard:table.emptyGamesFiltered")}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (myGames.length === 0) {
+                            setCurrentScreen("upload");
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                            return;
+                          }
+                          setGameStatusFilter("all");
+                        }}
+                        className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                      >
+                        {myGames.length === 0
+                          ? t("dashboard:overview.deployAsset")
+                          : t("dashboard:table.clearFilter")}
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
-                          <th className="p-3 w-10"></th>
-                          <th className="p-3">
+                        <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-[#0c121a] dark:text-slate-500">
+                          <th className="h-12 w-14 px-4"></th>
+                          <th className="h-12 px-4">
                             {t("dashboard:table.headers.details")}
                           </th>
-                          <th className="p-3">
+                          <th className="h-12 px-4">
                             {t("dashboard:table.headers.category")}
                           </th>
-                          <th className="p-3">
+                          <th className="h-12 px-4">
                             {t("dashboard:table.headers.publishingType")}
                           </th>
-                          <th className="p-3">
+                          <th className="h-12 px-4 text-right">
                             {t("dashboard:table.headers.proposedPrice")}
                           </th>
-                          <th className="p-3 text-center">
+                          <th className="h-12 px-4 text-right">
                             {t("dashboard:table.headers.status")}
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                      <tbody className="divide-y divide-slate-100 text-sm dark:divide-slate-800/70">
                         {filteredGames.length > 0 ? (
                           filteredGames.map((game) => (
                             <React.Fragment key={game.id}>
                               <tr
-                                className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? "bg-slate-50/50 dark:bg-slate-950/20" : ""}`}
+                                className={`transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/55 ${expandedGameId === game.id ? "bg-sky-500/[0.035] dark:bg-sky-400/[0.035]" : ""}`}
                               >
-                                <td className="p-3 w-10 text-center">
+                                <td className="w-14 px-4 py-4 text-center">
                                   <button
+                                    type="button"
                                     onClick={() =>
                                       setExpandedGameId(
                                         expandedGameId === game.id
                                           ? null
-                                          : game.id,
+                                        : game.id,
                                       )
                                     }
-                                    className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
+                                    aria-expanded={expandedGameId === game.id}
+                                    aria-label={
+                                      expandedGameId === game.id
+                                        ? t(
+                                            "dashboard:table.actions.hideDetails",
+                                          )
+                                        : t(
+                                            "dashboard:table.actions.viewDetails",
+                                          )
+                                    }
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:hover:bg-slate-800 dark:hover:text-white"
                                     title={
                                       expandedGameId === game.id
                                         ? t(
@@ -664,39 +754,45 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     )}
                                   </button>
                                 </td>
-                                <td className="p-3">
-                                  <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                    {game.title}
-                                    <span className="text-[9px] font-mono bg-slate-105 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-550 dark:text-slate-400 font-semibold border border-slate-200 dark:border-slate-700/80">
+                                <td className="min-w-60 px-4 py-4">
+                                  <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
+                                    <span className="min-w-0 truncate">
+                                      {game.title}
+                                    </span>
+                                    <span className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-500 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-400">
                                       v{game.version || "1.0.0"}
                                     </span>
                                     <button
+                                      type="button"
                                       onClick={() =>
                                         setExpandedGameId(
                                           expandedGameId === game.id
                                             ? null
-                                            : game.id,
+                                          : game.id,
                                         )
                                       }
-                                      className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer"
+                                      aria-label={t(
+                                        "dashboard:table.actions.quickPreview",
+                                      )}
+                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-sky-500/10 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:hover:text-sky-400"
                                       title={t(
                                         "dashboard:table.actions.quickPreview",
                                       )}
                                     >
-                                      <Eye size={12} />
+                                      <Eye size={15} />
                                     </button>
                                   </div>
-                                  <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                                  <div className="mt-1 max-w-[260px] truncate font-mono text-[11px] text-slate-500 dark:text-slate-500">
                                     ID: {game.id}
                                   </div>
                                 </td>
-                                <td className="p-3 text-slate-600 dark:text-slate-350">
+                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
                                   {game.categoryName ||
                                     t("dashboard:table.unassigned")}
                                 </td>
-                                <td className="p-3">
+                                <td className="px-4 py-4">
                                   <span
-                                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                                    className={`inline-block rounded-md border px-2 py-1 text-[11px] font-semibold ${
                                       game.publishingType === "full_acquisition"
                                         ? "bg-amber-450/10 text-amber-500 border-amber-500/20"
                                         : game.publishingType ===
@@ -710,15 +806,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       : t("dashboard:table.marketplaceListing")}
                                   </span>
                                 </td>
-                                <td className="p-3 font-mono font-semibold dark:text-amber-400">
+                                <td className="px-4 py-4 text-right font-mono font-semibold tabular-nums text-slate-800 dark:text-slate-200">
                                   {formatCurrencyValue(
                                     game.priceProposed,
                                     locale,
                                     t,
                                   )}
                                 </td>
-                                <td className="p-3 text-center">
-                                  <div className="flex flex-col items-center gap-1.5 justify-center">
+                                <td className="px-4 py-4 text-right">
+                                  <div className="flex flex-col items-end justify-center gap-2">
                                     {(() => {
                                       const contract = [...contracts]
                                         .reverse()
@@ -735,7 +831,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           );
                                         return (
                                           <span
-                                            className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusInfo.colorClass}`}
+                                            className={`inline-block rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusInfo.colorClass}`}
                                           >
                                             {statusInfo.text}
                                           </span>
@@ -743,13 +839,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       }
                                       return (
                                         <span
-                                          className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                          className={`inline-block rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
                                             game.status?.toLowerCase() ===
                                             "published"
                                               ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                                               : game.status?.toLowerCase() ===
                                                   "pending"
-                                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse"
+                                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
                                                 : game.status?.toLowerCase() ===
                                                     "rejected"
                                                   ? "bg-rose-500/10 text-rose-500 border-rose-500/20"
@@ -778,9 +874,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 setViewerMode("sign-developer");
                                                 setIsViewerOpen(true);
                                               }}
-                                              className="flex items-center gap-1 px-2.5 py-1 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded text-[10px] transition-studio cursor-pointer animate-pulse whitespace-nowrap shadow-sm"
+                                              className="inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-amber-300/80 bg-amber-300 px-2.5 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
                                             >
-                                              <PenTool size={10} />
+                                              <PenTool size={13} />
                                               {t(
                                                 "dashboard:table.actions.signContract",
                                               )}
@@ -797,9 +893,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 setViewerMode("view");
                                                 setIsViewerOpen(true);
                                               }}
-                                              className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded text-[10px] transition-studio cursor-pointer whitespace-nowrap shadow-sm"
+                                              className="inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300"
                                             >
-                                              <FileText size={10} />
+                                              <FileText size={13} />
                                               {t(
                                                 "dashboard:table.actions.viewContract",
                                               )}
@@ -822,19 +918,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 <tr>
                                   <td
                                     colSpan={6}
-                                    className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60"
+                                    className="border-y border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-800/80 dark:bg-[#0c121a] sm:p-6"
                                   >
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
+                                    <div className="grid grid-cols-1 gap-8 text-slate-700 dark:text-slate-300 xl:grid-cols-[minmax(240px,0.85fr)_minmax(0,1.6fr)]">
                                       {/* Left Column: Thumbnail, Description, ZIP */}
-                                      <div className="space-y-4">
+                                      <div className="space-y-5">
                                         <div>
-                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
-                                            <Image size={12} />{" "}
+                                          <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                            <Image size={14} aria-hidden="true" />
                                             {t(
                                               "dashboard:table.coverThumbnail",
                                             )}
                                           </h4>
-                                          <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
+                                          <div className="group relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-900 dark:border-slate-800/80">
                                             {game.thumbnailUrl ? (
                                               <img
                                                 src={game.thumbnailUrl}
@@ -844,10 +940,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             ) : (
                                               <div className="flex flex-col items-center justify-center text-slate-500">
                                                 <Image
-                                                  size={32}
-                                                  className="mb-2 text-slate-650"
+                                                  size={24}
+                                                  className="mb-2 text-slate-600"
                                                 />
-                                                <span className="text-[10px] font-mono">
+                                                <span className="text-xs">
                                                   {t(
                                                     "dashboard:table.noThumbnail",
                                                   )}
@@ -857,13 +953,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           </div>
                                         </div>
 
-                                        <div className="space-y-1.5">
-                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                                        <div className="space-y-2">
+                                          <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                                             {t(
                                               "dashboard:table.detailedDescription",
                                             )}
                                           </h4>
-                                          <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-955/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                          <p className="max-h-36 overflow-y-auto text-sm leading-6 text-slate-600 dark:text-slate-300">
                                             {game.description ||
                                               t(
                                                 "dashboard:table.noDescription",
@@ -877,7 +973,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             download
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-sky-500/25 bg-sky-500/10 px-4 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:text-sky-300"
                                           >
                                             <Download size={14} />{" "}
                                             {t(
@@ -885,7 +981,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             )}
                                           </a>
                                         ) : (
-                                          <div className="text-center py-2.5 px-4 bg-slate-550/10 border border-slate-500/20 text-slate-550 rounded-xl text-xs font-semibold">
+                                          <div className="rounded-lg border border-slate-200 bg-slate-100/70 px-4 py-2.5 text-center text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900/60">
                                             {t("dashboard:table.noZip")}
                                           </div>
                                         )}
@@ -907,8 +1003,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 "[HỦY HỢP ĐỒNG]",
                                               );
                                             return (
-                                              <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-1">
-                                                <span className="font-bold flex items-center gap-1.5 text-xs">
+                                              <div className="space-y-1.5 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] p-4 text-rose-500">
+                                                <span className="flex items-center gap-2 text-xs font-semibold">
                                                   <AlertTriangle size={14} />
                                                   {isDeveloperCancelled
                                                     ? t(
@@ -918,7 +1014,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                         "dashboard:table.gameRejected",
                                                       )}
                                                 </span>
-                                                <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">
+                                                <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
                                                   {isDeveloperCancelled
                                                     ? t(
                                                         "dashboard:table.contractCancelledHint",
@@ -942,17 +1038,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             );
                                           if (contract) {
                                             return (
-                                              <div className="p-4 bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
-                                                <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                              <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                                                <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                                                   <FileCheck
-                                                    size={12}
+                                                    size={14}
                                                     className="text-sky-500"
                                                   />{" "}
                                                   {t(
                                                     "dashboard:table.publishingContract",
                                                   )}
                                                 </span>
-                                                <div className="flex justify-between items-center text-xs">
+                                                <div className="flex items-center justify-between gap-3 text-xs">
                                                   <span className="text-slate-500">
                                                     {t(
                                                       "dashboard:table.statusLabel",
@@ -966,7 +1062,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       );
                                                     return (
                                                       <span
-                                                        className={`font-bold uppercase tracking-wider ${
+                                                        className={`font-semibold ${
                                                           contract.status ===
                                                           "signed"
                                                             ? "text-emerald-500"
@@ -993,7 +1089,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       );
                                                       setIsViewerOpen(true);
                                                     }}
-                                                    className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded-lg text-xs transition-studio cursor-pointer"
+                                                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-amber-300/80 bg-amber-300 px-4 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
                                                   >
                                                     <PenTool size={14} />{" "}
                                                     {t(
@@ -1011,7 +1107,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       setViewerMode("view");
                                                       setIsViewerOpen(true);
                                                     }}
-                                                    className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer"
+                                                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300"
                                                   >
                                                     <FileText size={14} />{" "}
                                                     {t(
@@ -1027,18 +1123,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       </div>
 
                                       {/* Middle & Right Column: Screenshots & Video */}
-                                      <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
-                                        <div className="space-y-2">
-                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                      <div className="flex min-w-0 flex-col justify-between gap-6">
+                                        <div className="space-y-3">
+                                          <h4 className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                                             <Image
-                                              size={12}
+                                              size={14}
                                               className="text-sky-500"
                                             />{" "}
                                             {t("dashboard:table.screenshots")}
                                           </h4>
                                           {game.screenshots &&
                                           game.screenshots.length > 0 ? (
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                                               {game.screenshots.map(
                                                 (url, index) => (
                                                   <div
@@ -1049,14 +1145,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       );
                                                       setIsOpenLightbox(true);
                                                     }}
-                                                    className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-sky-550/55 transition-studio"
+                                                    className="group relative aspect-video cursor-pointer overflow-hidden rounded-lg border border-slate-200 transition-colors hover:border-sky-500/50 focus-within:border-sky-500 dark:border-slate-800"
                                                   >
                                                     <img
                                                       src={url}
                                                       alt={`Screenshot ${index + 1}`}
-                                                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                                                      className="h-full w-full object-cover"
                                                     />
-                                                    <div className="absolute inset-0 bg-slate-950/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-slate-950/45 opacity-0 transition-opacity group-hover:opacity-100">
                                                       <Eye
                                                         size={16}
                                                         className="text-white"
@@ -1067,12 +1163,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               )}
                                             </div>
                                           ) : (
-                                            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
+                                            <div className="flex min-h-28 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-6 text-slate-500 dark:border-slate-800 dark:bg-slate-900/45 dark:text-slate-400">
                                               <Image
-                                                size={24}
-                                                className="mb-1 text-slate-350 dark:text-slate-650"
+                                                size={20}
+                                                className="mb-2 text-slate-400 dark:text-slate-600"
                                               />
-                                              <span className="text-[10px]">
+                                              <span className="text-xs">
                                                 {t(
                                                   "dashboard:table.noScreenshots",
                                                 )}
@@ -1082,16 +1178,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                         </div>
 
                                         {/* Video Gameplay */}
-                                        <div className="space-y-2">
-                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                        <div className="space-y-3">
+                                          <h4 className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
                                             <Video
-                                              size={12}
+                                              size={14}
                                               className="text-sky-500"
                                             />{" "}
                                             {t("dashboard:table.videoDemo")}
                                           </h4>
                                           {game.videoUrl ? (
-                                            <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 max-h-56">
+                                            <div className="relative max-h-60 aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800">
                                               <video
                                                 src={game.videoUrl}
                                                 controls
@@ -1099,12 +1195,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               />
                                             </div>
                                           ) : (
-                                            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
+                                            <div className="flex min-h-28 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-6 text-slate-500 dark:border-slate-800 dark:bg-slate-900/45 dark:text-slate-400">
                                               <Video
-                                                size={24}
-                                                className="mb-1 text-slate-350 dark:text-slate-650"
+                                                size={20}
+                                                className="mb-2 text-slate-400 dark:text-slate-600"
                                               />
-                                              <span className="text-[10px]">
+                                              <span className="text-xs">
                                                 {t("dashboard:table.noVideo")}
                                               </span>
                                             </div>
@@ -1384,7 +1480,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               />
             )}
           </div>
-        </div>
+        </section>
       </div>
 
       {/* Screenshot Lightbox Modal */}

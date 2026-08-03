@@ -1,10 +1,22 @@
 {
   "overview": {
     "badge": "OFFICIAL DEVROOM CONTROL PANEL",
-    "title": "Welcome Back, Indie Creator",
-    "subtitle": "Check recent downloads, live dashboard trends, and community logs",
-    "deployAsset": "Deploy Asset",
+    "title": "Developer dashboard",
+    "subtitle": "Manage your games, assets, contracts, and sales performance.",
+    "deployAsset": "Upload product",
     "syncRepository": "Sync Repository"
+  },
+  "workspace": {
+    "navigationLabel": "Manage",
+    "mobileLabel": "Choose a management area",
+    "gameTitle": "My games",
+    "gameSubtitle": "Track publishing status, contracts, and content for each game.",
+    "assetTitle": "Assets",
+    "assetSubtitle": "Manage the assets you have submitted to the Creator Marketplace.",
+    "salesTitle": "Sales performance",
+    "salesSubtitle": "Track units sold and your net revenue by product.",
+    "purchaseTitle": "My purchases",
+    "purchaseSubtitle": "Track payment status and your available downloads."
   },
   "stats": {
     "revenue": "Net Revenue",
@@ -12,18 +24,18 @@
     "unitsSold": "Products Sold",
     "unitsSoldHint": "Total game and resource purchases by customers",
     "unitsLabel": "orders",
-    "publishedGames": "Published Games",
-    "publishedGamesHint": "Total games published to the platform",
-    "marketplaceItems": "Marketplace Assets",
-    "marketplaceItemsHint": "Products currently listed on the Creator Marketplace",
+    "publishedGames": "Total games",
+    "publishedGamesHint": "All games you have submitted to the platform",
+    "marketplaceItems": "Total assets",
+    "marketplaceItemsHint": "All assets submitted to the Creator Marketplace",
     "gamesCount": "{{count}} game",
     "itemsCount": "{{count}} items"
   },
   "tabs": {
-    "publishedGames": "Publish Game To Store ({{count}})",
-    "marketplaceAssets": "Marketplace ({{count}})",
-    "soldOrders": "Sold Orders ({{count}})",
-    "purchasedOrders": "Management Order ({{count}})"
+    "publishedGames": "My games",
+    "marketplaceAssets": "Assets",
+    "soldOrders": "Sales performance",
+    "purchasedOrders": "My purchases"
   },
   "filters": {
     "gameStatus": "Game Status:",
@@ -55,6 +67,7 @@
     },
     "actions": {
       "viewDetails": "View details",
+      "hideDetails": "Hide details",
       "signContract": "Sign contract",
       "viewContract": "View contract",
       "removeProduct": "Remove product",
@@ -74,7 +87,11 @@
     "errorGames": "Error loading games: {{message}}",
     "errorAssets": "Error loading assets: {{message}}",
     "errorSales": "Error loading sales data: {{message}}",
-    "emptyGames": "You have not uploaded any games or assets yet. Click \"Deploy Asset\" above to get started!",
+    "retry": "Try again",
+    "clearFilter": "Clear filter",
+    "emptyGamesTitle": "No games yet",
+    "emptyGamesFilteredTitle": "No matching results",
+    "emptyGames": "Games you submit for publishing will appear here.",
     "emptyGamesFiltered": "No games found with the selected status.",
     "emptyAssets": "You have not listed any assets on the Creator Marketplace yet. Click \"Deploy Asset\" above to get started!",
     "emptyAssetsFiltered": "No assets found with the selected status.",

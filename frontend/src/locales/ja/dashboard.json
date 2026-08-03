@@ -1,10 +1,22 @@
 {
   "overview": {
     "badge": "OFFICIAL DEVROOM CONTROL PANEL",
-    "title": "おかえりなさい、 Indie Creator",
-    "subtitle": "最近のダウンロード、ライブダッシュボードの傾向、コミュニティログを確認します",
-    "deployAsset": "アセットを公開",
+    "title": "開発者ダッシュボード",
+    "subtitle": "ゲーム、アセット、契約、販売実績を一元管理できます。",
+    "deployAsset": "商品をアップロード",
     "syncRepository": "リポジトリ同期"
+  },
+  "workspace": {
+    "navigationLabel": "管理",
+    "mobileLabel": "管理エリアを選択",
+    "gameTitle": "マイゲーム",
+    "gameSubtitle": "各ゲームの公開状況、契約、コンテンツを確認できます。",
+    "assetTitle": "アセット",
+    "assetSubtitle": "Creator Marketplaceに提出したアセットを管理します。",
+    "salesTitle": "販売実績",
+    "salesSubtitle": "商品ごとの販売数と純収益を確認します。",
+    "purchaseTitle": "購入履歴",
+    "purchaseSubtitle": "支払い状況とダウンロード可能な商品を確認します。"
   },
   "stats": {
     "revenue": "純収益",
@@ -12,18 +24,18 @@
     "unitsSold": "販売済み商品",
     "unitsSoldHint": "顧客によるゲームとリソースの購入総数",
     "unitsLabel": "件",
-    "publishedGames": "公開済みゲーム",
-    "publishedGamesHint": "プラットフォームに公開済みのゲーム総数",
-    "marketplaceItems": "マーケットプレイスアセット",
-    "marketplaceItemsHint": "Creator Marketplaceに出品中の商品",
+    "publishedGames": "ゲーム総数",
+    "publishedGamesHint": "プラットフォームに提出したすべてのゲーム",
+    "marketplaceItems": "アセット総数",
+    "marketplaceItemsHint": "Creator Marketplaceに提出したすべてのアセット",
     "gamesCount": "{{count}}本のゲーム",
     "itemsCount": "{{count}}件"
   },
   "tabs": {
-    "publishedGames": "ストアにゲームを公開（{{count}}）",
-    "marketplaceAssets": "マーケットプレイス（{{count}}）",
-    "soldOrders": "販売済み注文（{{count}}）",
-    "purchasedOrders": "注文管理（{{count}}）"
+    "publishedGames": "マイゲーム",
+    "marketplaceAssets": "アセット",
+    "soldOrders": "販売実績",
+    "purchasedOrders": "購入履歴"
   },
   "filters": {
     "gameStatus": "ゲームの状態:",
@@ -55,6 +67,7 @@
     },
     "actions": {
       "viewDetails": "詳細を見る",
+      "hideDetails": "詳細を閉じる",
       "signContract": "契約に署名",
       "viewContract": "契約を表示",
       "removeProduct": "商品を削除",
@@ -74,7 +87,11 @@
     "errorGames": "ゲーム読み込みエラー: {{message}}",
     "errorAssets": "アセット読み込みエラー: {{message}}",
     "errorSales": "売上データ読み込みエラー: {{message}}",
-    "emptyGames": "まだゲームやアセットをアップロードしていません。上の \"アセットを公開\" をクリックして始めましょう。",
+    "retry": "再試行",
+    "clearFilter": "フィルターを解除",
+    "emptyGamesTitle": "ゲームはまだありません",
+    "emptyGamesFilteredTitle": "一致する結果がありません",
+    "emptyGames": "公開申請したゲームがここに表示されます。",
     "emptyGamesFiltered": "選択した状態に一致するゲームはありません。",
     "emptyAssets": "まだCreator Marketplaceにアセットを出品していません。上の \"アセットを公開\" をクリックして始めましょう。",
     "emptyAssetsFiltered": "選択した状態に一致するアセットはありません。",

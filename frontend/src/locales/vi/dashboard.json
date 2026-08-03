@@ -1,10 +1,22 @@
 {
   "overview": {
     "badge": "OFFICIAL DEVROOM CONTROL PANEL",
-    "title": "Chào lại, Indie Creator",
-    "subtitle": "Theo dõi lượt tải xuống gần đây, xu hướng dashboard thời gian thực và nhật ký cộng đồng",
-    "deployAsset": "Đăng tải tài nguyên",
+    "title": "Bảng điều khiển nhà phát triển",
+    "subtitle": "Quản lý game, tài nguyên, hợp đồng và theo dõi hiệu suất bán hàng.",
+    "deployAsset": "Đăng tải sản phẩm",
     "syncRepository": "Đồng bộ kho"
+  },
+  "workspace": {
+    "navigationLabel": "Quản lý",
+    "mobileLabel": "Chọn khu vực quản lý",
+    "gameTitle": "Game của tôi",
+    "gameSubtitle": "Theo dõi trạng thái phát hành, hợp đồng và nội dung của từng game.",
+    "assetTitle": "Tài nguyên",
+    "assetSubtitle": "Quản lý các tài nguyên bạn đã gửi lên Creator Marketplace.",
+    "salesTitle": "Hiệu suất bán",
+    "salesSubtitle": "Theo dõi số lượng sản phẩm đã bán và doanh thu thực nhận.",
+    "purchaseTitle": "Đơn mua của tôi",
+    "purchaseSubtitle": "Theo dõi trạng thái thanh toán và quyền tải xuống của bạn."
   },
   "stats": {
     "revenue": "Tổng Doanh Thu (Thực Nhận)",
@@ -12,18 +24,18 @@
     "unitsSold": "Sản Phẩm Đã Bán",
     "unitsSoldHint": "Tổng lượt game và tài nguyên khách hàng đã mua",
     "unitsLabel": "đơn hàng",
-    "publishedGames": "Game Đã Phát Hành",
-    "publishedGamesHint": "Tổng số game đã đăng tải lên hệ thống",
-    "marketplaceItems": "Tài Nguyên Đang Bán",
-    "marketplaceItemsHint": "Sản phẩm hiện có trên Creator Marketplace",
+    "publishedGames": "Tổng game",
+    "publishedGamesHint": "Tất cả game bạn đã gửi lên hệ thống",
+    "marketplaceItems": "Tổng tài nguyên",
+    "marketplaceItemsHint": "Tất cả tài nguyên đã gửi lên Creator Marketplace",
     "gamesCount": "{{count}} game",
     "itemsCount": "{{count}} items"
   },
   "tabs": {
-    "publishedGames": "Publish Game To Store ({{count}})",
-    "marketplaceAssets": "Marketplace ({{count}})",
-    "soldOrders": "Đơn Hàng Đã Bán ({{count}})",
-    "purchasedOrders": "Management Order ({{count}})"
+    "publishedGames": "Game của tôi",
+    "marketplaceAssets": "Tài nguyên",
+    "soldOrders": "Hiệu suất bán",
+    "purchasedOrders": "Đơn mua của tôi"
   },
   "filters": {
     "gameStatus": "Trạng thái game:",
@@ -55,6 +67,7 @@
     },
     "actions": {
       "viewDetails": "Xem chi tiết",
+      "hideDetails": "Ẩn chi tiết",
       "signContract": "Ký hợp đồng",
       "viewContract": "Xem hợp đồng",
       "removeProduct": "Xóa sản phẩm",
@@ -74,7 +87,11 @@
     "errorGames": "Lỗi tải game: {{message}}",
     "errorAssets": "Lỗi tải tài nguyên: {{message}}",
     "errorSales": "Lỗi tải dữ liệu doanh số: {{message}}",
-    "emptyGames": "Bạn chưa đăng tải game hoặc tài nguyên nào. Nhấn \"Đăng tải tài nguyên\" ở trên để bắt đầu!",
+    "retry": "Thử lại",
+    "clearFilter": "Xóa bộ lọc",
+    "emptyGamesTitle": "Chưa có game nào",
+    "emptyGamesFilteredTitle": "Không có kết quả phù hợp",
+    "emptyGames": "Game bạn gửi để xuất bản sẽ xuất hiện tại đây.",
     "emptyGamesFiltered": "Không tìm thấy game phù hợp với trạng thái đã chọn.",
     "emptyAssets": "Bạn chưa niêm yết tài nguyên nào trên Creator Marketplace. Nhấn \"Đăng tải tài nguyên\" ở trên để bắt đầu!",
     "emptyAssetsFiltered": "Không tìm thấy tài nguyên phù hợp với trạng thái đã chọn.",
