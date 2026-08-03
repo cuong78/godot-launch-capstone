@@ -48,7 +48,11 @@
     "draft": "下書き",
     "active": "有効",
     "pending": "保留中",
-    "removed": "削除済み"
+    "removed": "削除済み",
+    "productType": "製品タイプ:",
+    "allProducts": "すべて",
+    "productGame": "ゲーム",
+    "productAsset": "アセット"
   },
   "table": {
     "headers": {
@@ -99,9 +103,11 @@
     "coverThumbnail": "カバーサムネイル",
     "detailedDescription": "詳細説明",
     "downloadGameZip": "ゲームZIPをダウンロード",
+    "downloadAsset": "アセットファイルをダウンロード",
     "noThumbnail": "サムネイルなし",
     "noDescription": "詳細説明はありません。",
     "noZip": "ゲームZIPパッケージはまだアップロードされていません",
+    "noAssetZip": "アセットパッケージはまだアップロードされていません",
     "screenshots": "スクリーンショット",
     "videoDemo": "ゲームプレイ動画",
     "noScreenshots": "スクリーンショットはまだありません",

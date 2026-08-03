@@ -23,6 +23,7 @@ import {
   Check,
   Search,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
@@ -216,13 +217,16 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   }, [tagQuery, t]);
 
   useEffect(() => {
-    const closeTagPicker = (event: MouseEvent) => {
-      if (!tagPickerRef.current?.contains(event.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagPickerRef.current && !tagPickerRef.current.contains(event.target as Node)) {
         setIsTagDropdownOpen(false);
       }
+      if (publishDropdownRef.current && !publishDropdownRef.current.contains(event.target as Node)) {
+        setIsPublishDropdownOpen(false);
+      }
     };
-    document.addEventListener("mousedown", closeTagPicker);
-    return () => document.removeEventListener("mousedown", closeTagPicker);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const toggleTag = (tag: TagResponse) => {
@@ -1106,21 +1110,80 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
                 {publishingType !== "marketplace_listing" && (
                   <div className="flex flex-col gap-1.5 mt-2">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                    <label className="text-xs font-semibold text-slate-655 dark:text-slate-400">
                       {t("form.contractModel")}
                     </label>
-                    <select
-                      value={publishingType}
-                      onChange={(e) => setPublishingType(e.target.value as any)}
-                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
-                    >
-                      <option value="full_acquisition">
-                        {t("form.fullAcquisitionOption")}
-                      </option>
-                      <option value="co_publishing">
-                        {t("form.coPublishingOption")}
-                      </option>
-                    </select>
+                    <div className="relative" ref={publishDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsPublishDropdownOpen(!isPublishDropdownOpen)}
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none flex items-center justify-between transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 cursor-pointer"
+                        aria-haspopup="listbox"
+                        aria-expanded={isPublishDropdownOpen}
+                      >
+                        <span className="truncate">
+                          {publishingType === "full_acquisition"
+                            ? t("form.fullAcquisitionOption")
+                            : t("form.coPublishingOption")}
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className={`text-slate-400 transition-transform duration-205 ${
+                            isPublishDropdownOpen ? "rotate-180 text-sky-500" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {isPublishDropdownOpen && (
+                        <ul
+                          className="absolute left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white p-1 shadow-2xl dark:bg-slate-950"
+                          role="listbox"
+                        >
+                          <li role="option" aria-selected={publishingType === "full_acquisition"}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPublishingType("full_acquisition");
+                                setIsPublishDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${
+                                publishingType === "full_acquisition"
+                                  ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 font-semibold"
+                                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                              }`}
+                            >
+                              <span className="truncate">
+                                {t("form.fullAcquisitionOption")}
+                              </span>
+                              {publishingType === "full_acquisition" && (
+                                <Check size={14} className="text-sky-500 shrink-0" />
+                              )}
+                            </button>
+                          </li>
+                          <li role="option" aria-selected={publishingType === "co_publishing"}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPublishingType("co_publishing");
+                                setIsPublishDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${
+                                publishingType === "co_publishing"
+                                  ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 font-semibold"
+                                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                              }`}
+                            >
+                              <span className="truncate">
+                                {t("form.coPublishingOption")}
+                              </span>
+                              {publishingType === "co_publishing" && (
+                                <Check size={14} className="text-sky-500 shrink-0" />
+                              )}
+                            </button>
+                          </li>
+                        </ul>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       {publishingType === "full_acquisition"
                         ? t("form.fullAcquisitionHint")
@@ -1331,9 +1394,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
             {/* 2. Thumbnail image */}
             {(publishProgram === "game" || publishProgram === "marketplace") && (
-              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Image size={16} className="text-amber-500" /> {t("artifacts.thumbnailLabel")}
+              <div className="space-y-2.5 pt-2 border-t border-[rgba(96,119,148,0.15)]">
+                <label className="text-sm font-bold text-[#b1bdcc] flex items-center gap-1.5">
+                  <Image size={16} className="text-[#fbbf24]" /> {t("artifacts.thumbnailLabel")}
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -1353,27 +1416,32 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     id="thumb-input"
                   />
                   <label
-                  htmlFor="thumb-input"
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
-                >
+                    htmlFor="thumb-input"
+                    className="px-4 py-2 bg-transparent hover:bg-[#0e1520] border border-[rgba(96,119,148,0.34)] rounded-md text-xs font-semibold text-[#f4f7fb] cursor-pointer flex items-center gap-1.5 transition-all active:scale-[0.98]"
+                  >
                     <Upload size={14} /> {t("artifacts.selectThumbnail")}
                   </label>
                   <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
                     {thumbnailFile ? thumbnailFile.name : t("artifacts.noImageChosen")}
                   </span>
                 </div>
-                {uploadStatus["thumbnail"] === "uploading" && (
-                  <div className="space-y-1.5 mt-1.5">
-                    <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>{t("status.uploading")}</span>
-                      <span>{uploadProgress["thumbnail"]}%</span>
-                    </div>
-                    <div className="w-full bg-slate-155 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-sky-500 h-full rounded-full transition-all duration-355"
-                        style={{ width: `${uploadProgress["thumbnail"]}%` }}
-                      ></div>
-                    </div>
+                {thumbnailFile && (
+                  <div className="mt-2 relative w-20 h-20 animate-fade-in">
+                    <img
+                      src={URL.createObjectURL(thumbnailFile)}
+                      alt="Thumbnail preview"
+                      className="w-20 h-20 object-cover rounded border border-[rgba(96,119,148,0.34)]"
+                    />
+                    {uploadStatus["thumbnail"] === "uploading" && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded">
+                        ${uploadProgress["thumbnail"]}%
+                      </span>
+                    )}
+                    {uploadStatus["thumbnail"] === "failed" && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-rose-955/60 text-rose-500 text-[10px] rounded font-semibold">
+                        Err
+                      </span>
+                    )}
                   </div>
                 )}
                 {uploadStatus["thumbnail"] === "completed" && (
@@ -1381,14 +1449,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     <CheckCircle2 size={13} /> {t("status.uploadComplete")}
                   </span>
                 )}
-                {uploadStatus["thumbnail"] === "failed" && (
-                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={13} /> {t("status.uploadFailed")}
-                  </span>
-                )}
               </div>
             )}
-
             {/* 3. Screenshots (Multiple) */}
             {publishProgram === "game" && (
               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -1424,66 +1486,41 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 </div>
 
                 {screenshots.length > 0 && (
-                  <div className="space-y-2.5 mt-3 bg-slate-50 dark:bg-slate-955/20 p-3 rounded-xl border border-slate-200/50 dark:border-slate-850">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {screenshots.map((file, idx) => {
                       const key = getFileKey(file);
                       return (
-                        <div
-                          key={idx}
-                          className="flex flex-col gap-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-2.5 rounded-lg shadow-sm"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="font-mono text-slate-650 dark:text-slate-300 truncate max-w-sm">
-                              {file.name}
-                            </span>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {uploadStatus[key] === "completed" && (
-                                <span className="text-emerald-500 font-semibold flex items-center gap-1">
-                                  <CheckCircle2 size={12} /> {t("artifacts.uploaded")}
-                                </span>
-                              )}
-                              {uploadStatus[key] === "uploading" && (
-                                <div className="flex items-center gap-1 text-sky-500 font-bold font-mono">
-                                  <RefreshCw
-                                    size={11}
-                                    className="animate-spin"
-                                  />{" "}
-                                  {uploadProgress[key]}%
-                                </div>
-                              )}
-                              {uploadStatus[key] === "failed" && (
-                                <span className="text-rose-500 font-semibold flex items-center gap-1">
-                                  <AlertTriangle size={12} /> {t("artifacts.failed")}
-                                </span>
-                              )}
-                              {uploadStatus[key] === "idle" && (
-                                <button
-                                  onClick={() =>
-                                    uploadFileToStorage(file, "screenshot", key)
-                                  }
-                                  className="px-2 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 font-bold rounded text-[10px] transition-colors"
-                                >
-                                  {t("artifacts.upload")}
-                                </button>
-                              )}
-                              <button
-                                onClick={() => removeScreenshot(idx)}
-                                aria-label={t("artifacts.removeScreenshotAria", {
-                                  name: file.name,
-                                })}
-                                className="p-1 hover:bg-rose-500/10 hover:text-rose-500 text-slate-400 rounded transition-colors"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
+                        <div key={idx} className="relative animate-fade-in">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt="Screenshot preview"
+                            className="w-20 h-20 object-cover rounded border border-[rgba(96,119,148,0.34)]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeScreenshot(idx)}
+                            className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs z-10 hover:bg-rose-600 transition-colors"
+                          >
+                            ×
+                          </button>
                           {uploadStatus[key] === "uploading" && (
-                            <div className="w-full bg-slate-100 dark:bg-slate-955 h-1.5 rounded-full overflow-hidden">
-                              <div
-                                className="bg-sky-500 h-full rounded-full transition-all duration-350"
-                                style={{ width: `${uploadProgress[key]}%` }}
-                              ></div>
-                            </div>
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded">
+                              ${uploadProgress[key]}%
+                            </span>
+                          )}
+                          {uploadStatus[key] === "failed" && (
+                            <span className="absolute inset-0 flex items-center justify-center bg-rose-955/60 text-rose-500 text-[10px] rounded font-semibold">
+                              Err
+                            </span>
+                          )}
+                          {uploadStatus[key] === "idle" && (
+                            <button
+                              type="button"
+                              onClick={() => uploadFileToStorage(file, "screenshot", key)}
+                              className="absolute inset-0 flex items-center justify-center bg-sky-955/80 text-[#38bdf8] text-[10px] font-bold rounded hover:bg-sky-900/90 transition-colors"
+                            >
+                              Upload
+                            </button>
                           )}
                         </div>
                       );
@@ -1494,10 +1531,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             )}
 
             {/* 4. Video upload */}
-            {publishProgram === "game" && (
-              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Video size={16} className="text-amber-500" /> {t("artifacts.videoLabel")}
+            {(publishProgram === "game" || publishProgram === "marketplace") && (
+              <div className="space-y-2.5 pt-2 border-t border-[rgba(96,119,148,0.15)]">
+                <label className="text-sm font-bold text-[#b1bdcc] flex items-center gap-1.5">
+                  <Video size={16} className="text-[#fbbf24]" /> {t("artifacts.videoLabel")}
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -1512,27 +1549,32 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     id="video-input"
                   />
                   <label
-                  htmlFor="video-input"
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
-                >
+                    htmlFor="video-input"
+                    className="px-4 py-2 bg-transparent hover:bg-[#0e1520] border border-[rgba(96,119,148,0.34)] rounded-md text-xs font-semibold text-[#f4f7fb] cursor-pointer flex items-center gap-1.5 transition-all active:scale-[0.98]"
+                  >
                     <Upload size={14} /> {t("artifacts.selectVideo")}
                   </label>
                   <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
                     {videoFile ? videoFile.name : t("artifacts.noVideoChosen")}
                   </span>
                 </div>
-                {uploadStatus["video"] === "uploading" && (
-                  <div className="space-y-1.5 mt-1.5">
-                    <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>{t("status.uploading")}</span>
-                      <span>{uploadProgress["video"]}%</span>
-                    </div>
-                    <div className="w-full bg-slate-155 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-sky-500 h-full rounded-full transition-all duration-355"
-                        style={{ width: `${uploadProgress["video"]}%` }}
-                      ></div>
-                    </div>
+                {videoFile && (
+                  <div className="mt-2 relative max-w-xs animate-fade-in">
+                    <video
+                      src={URL.createObjectURL(videoFile)}
+                      className="w-48 h-28 object-cover rounded border border-[rgba(96,119,148,0.34)] bg-black"
+                      controls
+                    />
+                    {uploadStatus["video"] === "uploading" && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded">
+                        ${uploadProgress["video"]}%
+                      </span>
+                    )}
+                    {uploadStatus["video"] === "failed" && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-rose-955/60 text-rose-500 text-[10px] rounded font-semibold">
+                        Err
+                      </span>
+                    )}
                   </div>
                 )}
                 {uploadStatus["video"] === "completed" && (
@@ -1540,14 +1582,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     <CheckCircle2 size={13} /> {t("status.uploadComplete")}
                   </span>
                 )}
-                {uploadStatus["video"] === "failed" && (
-                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={13} /> {t("status.uploadFailed")}
-                  </span>
-                )}
               </div>
             )}
-
             {/* 5. Web Demo ZIP (Optional) */}
             {publishProgram === "game" && gameId && publishingType === "marketplace_listing" && (
               <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">

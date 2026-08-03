@@ -48,7 +48,11 @@
     "draft": "Draft",
     "active": "Active",
     "pending": "Pending",
-    "removed": "Removed"
+    "removed": "Removed",
+    "productType": "Product Type:",
+    "allProducts": "All",
+    "productGame": "Game",
+    "productAsset": "Asset"
   },
   "table": {
     "headers": {
@@ -99,9 +103,11 @@
     "coverThumbnail": "Cover Thumbnail",
     "detailedDescription": "Detailed Description",
     "downloadGameZip": "Download Game ZIP",
+    "downloadAsset": "Download Asset File",
     "noThumbnail": "No thumbnail",
     "noDescription": "No detailed description provided.",
     "noZip": "No Game ZIP package uploaded yet",
+    "noAssetZip": "No Asset package uploaded yet",
     "screenshots": "Screenshots",
     "videoDemo": "Video Gameplay Demo",
     "noScreenshots": "No screenshots uploaded yet",

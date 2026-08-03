@@ -695,6 +695,18 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleAuthorClick = (authorName: string) => {
+    const matchingAsset = assets.find(a => a.author && a.author.toLowerCase() === authorName.toLowerCase());
+    if (matchingAsset) {
+      setCatalogType(matchingAsset.itemType === 'asset' ? 'asset' : 'game');
+    }
+    setSearchText(authorName);
+    setSelectedCategories([]);
+    setSelectedTags([]);
+    setCurrentScreen('marketplace');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Add Item to Cart
   const handleAddToCart = (asset: Asset, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -945,7 +957,8 @@ export default function App() {
       if (searchText) {
         const matchesSearch = item.title.toLowerCase().includes(searchText.toLowerCase()) || 
                               item.description.toLowerCase().includes(searchText.toLowerCase()) ||
-                              item.tag.toLowerCase().includes(searchText.toLowerCase());
+                              item.tag.toLowerCase().includes(searchText.toLowerCase()) ||
+                              (item.author && item.author.toLowerCase().includes(searchText.toLowerCase()));
         if (!matchesSearch) return false;
       }
       
@@ -1175,6 +1188,7 @@ export default function App() {
             purchaseOrderPayments={purchaseOrderPayments}
             handleCategoryClick={handleCategoryClick}
             handleTagClick={handleTagClick}
+            handleAuthorClick={handleAuthorClick}
           />
         )}
 

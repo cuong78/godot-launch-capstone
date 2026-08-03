@@ -18,8 +18,6 @@ import {
   Trash2,
   WalletCards,
   TrendingUp,
-  Boxes,
-  ReceiptText,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
@@ -38,10 +36,9 @@ import { marketplaceApi } from "../api/marketplaceApi";
 import { walletApi } from "../api/walletApi";
 import { SignaturePad } from "../components/SignaturePad";
 import { ContractViewerModal } from "../components/ContractViewerModal";
-import { DeveloperDashboardHeader } from "../components/developer-dashboard/DeveloperDashboardHeader";
-import { DashboardMetricGrid } from "../components/developer-dashboard/DashboardMetricGrid";
-import {
-  DashboardSidebar,
+import { DashboardFilterSelect } from "../components/developer-dashboard/DashboardFilterSelect";
+import { DashboardSidebar } from "../components/developer-dashboard/DashboardSidebar";
+import type {
   DashboardWorkspaceId,
   DashboardWorkspaceItem,
 } from "../components/developer-dashboard/DashboardSidebar";
@@ -69,7 +66,8 @@ const getContractStatusLabel = (status: string, t: (key: string) => string) => {
     case "pending":
       return {
         text: t("dashboard:contracts.status.awaitingYourSign"),
-        colorClass: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+        colorClass:
+          "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse",
       };
     case "cancelled":
       return {
@@ -136,12 +134,6 @@ const formatCurrencyValue = (
   return `${value.toLocaleString(locale)} ${t("dashboard:table.currencyVnd")}`;
 };
 
-const formatRevenueMetricValue = (
-  value: number | undefined,
-  locale: string,
-  t: (key: string) => string,
-) => `${(value ?? 0).toLocaleString(locale)} ${t("dashboard:table.currencyVnd")}`;
-
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentUser,
   projectRepositories,
@@ -166,12 +158,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   // Game & Asset status filters
   const [gameStatusFilter, setGameStatusFilter] = useState<string>("all");
   const [assetStatusFilter, setAssetStatusFilter] = useState<string>("all");
+  const [marketplaceTypeFilter, setMarketplaceTypeFilter] = useState<
+    "all" | "game" | "asset"
+  >("all");
 
   // Real Game list state
   const [myGames, setMyGames] = useState<GameResponse[]>([]);
   const [isLoadingGames, setIsLoadingGames] = useState<boolean>(false);
   const [gamesError, setGamesError] = useState<string | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+  const [expandedMarketplaceId, setExpandedMarketplaceId] = useState<string | null>(null);
   const [activeScreenshotUrl, setActiveScreenshotUrl] = useState<string | null>(
     null,
   );
@@ -398,26 +394,95 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [currentUser]);
 
   const gameFilterOptions = [
-    { label: t("dashboard:filters.all"), value: "all" },
+    {
+      label: t("dashboard:filters.all"),
+      value: "all",
+      tone: "neutral" as const,
+    },
     {
       label: t("dashboard:filters.publishedSigned"),
       value: "published_signed",
+      tone: "success" as const,
     },
-    { label: t("dashboard:filters.pendingSigning"), value: "pending_signing" },
-    { label: t("dashboard:filters.negotiating"), value: "negotiating" },
-    { label: t("dashboard:filters.rejected"), value: "rejected" },
-    { label: t("dashboard:filters.draft"), value: "draft" },
+    {
+      label: t("dashboard:filters.pendingSigning"),
+      value: "pending_signing",
+      tone: "warning" as const,
+    },
+    {
+      label: t("dashboard:filters.negotiating"),
+      value: "negotiating",
+      tone: "info" as const,
+    },
+    {
+      label: t("dashboard:filters.rejected"),
+      value: "rejected",
+      tone: "danger" as const,
+    },
+    {
+      label: t("dashboard:filters.draft"),
+      value: "draft",
+      tone: "neutral" as const,
+    },
   ];
 
   const assetFilterOptions = [
-    { label: t("dashboard:filters.all"), value: "all" },
-    { label: t("dashboard:filters.active"), value: "active" },
-    { label: t("dashboard:filters.pending"), value: "pending" },
-    { label: t("dashboard:filters.rejected"), value: "rejected" },
-    { label: t("dashboard:filters.removed"), value: "removed" },
+    {
+      label: t("dashboard:filters.all"),
+      value: "all",
+      tone: "neutral" as const,
+    },
+    {
+      label: t("dashboard:filters.active"),
+      value: "active",
+      tone: "success" as const,
+    },
+    {
+      label: t("dashboard:filters.pending"),
+      value: "pending",
+      tone: "warning" as const,
+    },
+    {
+      label: t("dashboard:filters.rejected"),
+      value: "rejected",
+      tone: "danger" as const,
+    },
+    {
+      label: t("dashboard:filters.removed"),
+      value: "removed",
+      tone: "neutral" as const,
+    },
   ];
 
-  const filteredGames = myGames
+  const marketplaceTypeFilterOptions = [
+    {
+      label: t("dashboard:filters.allProducts"),
+      value: "all" as const,
+      tone: "neutral" as const,
+    },
+    {
+      label: t("dashboard:filters.productGame"),
+      value: "game" as const,
+      tone: "info" as const,
+    },
+    {
+      label: t("dashboard:filters.productAsset"),
+      value: "asset" as const,
+      tone: "warning" as const,
+    },
+  ];
+
+  // Store games: games not listed as marketplace_listing
+  const storeGames = myGames.filter(
+    (game) => game.publishingType !== "marketplace_listing"
+  );
+
+  // Marketplace games: games listed as marketplace_listing
+  const marketplaceGames = myGames.filter(
+    (game) => game.publishingType === "marketplace_listing"
+  );
+
+  const filteredGames = storeGames
     .filter((game) => {
       if (gameStatusFilter === "all") return true;
 
@@ -453,19 +518,47 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       return true;
     })
     .sort((a, b) => {
-      const groupA = (a.publishingType === 'full_acquisition' || a.publishingType === 'co_publishing') ? 'store' : 'marketplace';
-      const groupB = (b.publishingType === 'full_acquisition' || b.publishingType === 'co_publishing') ? 'store' : 'marketplace';
-      if (groupA !== groupB) {
-        return groupA === 'marketplace' ? -1 : 1;
-      }
       const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return bTime - aTime;
     });
 
-  const filteredMarketplaceItems = myMarketplaceItems
+  const combinedMarketplaceItems = [
+    ...myMarketplaceItems.map((item) => ({
+      id: item.id,
+      title: item.title,
+      type: "asset" as const,
+      categoryName: item.categoryName,
+      price: item.price,
+      status: item.status, // active, pending, rejected, removed
+      createdAt: item.createdAt,
+      originalItem: item,
+    })),
+    ...marketplaceGames.map((game) => ({
+      id: game.id,
+      title: game.title,
+      type: "game" as const,
+      categoryName: game.categoryName,
+      price: game.priceProposed || 0,
+      status: game.status?.toLowerCase() === "published" ? "active" : game.status?.toLowerCase() || "pending", // map published to active
+      createdAt: game.createdAt,
+      originalItem: game,
+    })),
+  ];
+
+  const filteredMarketplaceItems = combinedMarketplaceItems
     .filter((item) => {
+      // 1. Filter by product type
+      if (marketplaceTypeFilter === "game" && item.type !== "game") return false;
+      if (marketplaceTypeFilter === "asset" && item.type !== "asset") return false;
+
+      // 2. Filter by status
       if (assetStatusFilter === "all") return true;
+
+      // Map active to published for games
+      if (assetStatusFilter === "active") {
+        return item.status === "active" || item.status === "published";
+      }
       return item.status === assetStatusFilter;
     })
     .sort((a, b) => {
@@ -478,14 +571,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     {
       id: "my-games",
       label: t("dashboard:tabs.publishedGames"),
-      count: myGames.length,
+      count: storeGames.length,
       icon: Gamepad2,
     },
     {
       id: "marketplace-items",
       label: t("dashboard:tabs.marketplaceAssets"),
-      count: myMarketplaceItems.length,
-      icon: Boxes,
+      count: combinedMarketplaceItems.length,
+      icon: ShoppingBag,
     },
     {
       id: "sales",
@@ -497,63 +590,89 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       id: "payment-center",
       label: t("dashboard:tabs.purchasedOrders"),
       count: purchasedPayments.length,
-      icon: ReceiptText,
-    },
-  ];
-
-  const dashboardMetrics = [
-    {
-      id: "revenue",
-      label: t("dashboard:stats.revenue"),
-      value: formatRevenueMetricValue(salesStats?.totalRevenue, locale, t),
-      hint: t("dashboard:stats.revenueHint"),
       icon: WalletCards,
-      primary: true,
-      loading: isLoadingSales,
-    },
-    {
-      id: "units-sold",
-      label: t("dashboard:stats.unitsSold"),
-      value: salesStats?.totalUnitsSold ?? 0,
-      hint: t("dashboard:stats.unitsSoldHint"),
-      icon: ShoppingBag,
-      loading: isLoadingSales,
-    },
-    {
-      id: "games",
-      label: t("dashboard:stats.publishedGames"),
-      value: myGames.length,
-      hint: t("dashboard:stats.publishedGamesHint"),
-      icon: Gamepad2,
-      loading: isLoadingGames,
-    },
-    {
-      id: "assets",
-      label: t("dashboard:stats.marketplaceItems"),
-      value: myMarketplaceItems.length,
-      hint: t("dashboard:stats.marketplaceItemsHint"),
-      icon: Boxes,
-      loading: isLoadingMarketplace,
     },
   ];
 
   return (
     <>
-      <div className="space-y-7 animate-fade-in py-2">
-        <DeveloperDashboardHeader
-          title={t("dashboard:overview.title")}
-          description={t("dashboard:overview.subtitle")}
-          actionLabel={t("dashboard:overview.deployAsset")}
-          onAction={() => {
-            setCurrentScreen("upload");
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        />
+      <div className="space-y-6 animate-fade-in py-2">
+        {/* Quick counters grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
+            <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
+              {t("dashboard:stats.revenue")}
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] text-emerald-500 font-bold font-sans">
+                +12%
+              </span>
+              <span className="text-2xl font-sans font-bold dark:text-white">
+                {(salesStats?.totalRevenue ?? 0).toLocaleString(locale)}
+              </span>
+              <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
+                VND
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
+              {t("dashboard:stats.revenueHint")}
+            </p>
+          </div>
 
-        <DashboardMetricGrid metrics={dashboardMetrics} />
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
+            <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
+              {t("dashboard:stats.unitsSold")}
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-sans font-bold dark:text-white">
+                {salesStats?.totalUnitsSold ?? 0}
+              </span>
+              <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
+                {t("dashboard:stats.unitsLabel").toLowerCase()}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
+              {t("dashboard:stats.unitsSoldHint")}
+            </p>
+          </div>
+
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
+            <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
+              {t("dashboard:stats.publishedGames")}
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-sans font-bold dark:text-white">
+                {storeGames.length}
+              </span>
+              <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
+                {t("dashboard:table.game").toLowerCase()}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
+              {t("dashboard:stats.publishedGamesHint")}
+            </p>
+          </div>
+
+          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
+            <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
+              {t("dashboard:stats.marketplaceItems")}
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-sans font-bold dark:text-white">
+                {combinedMarketplaceItems.length}
+              </span>
+              <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
+                {t("dashboard:table.resource").toLowerCase()}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
+              {t("dashboard:stats.marketplaceItemsHint")}
+            </p>
+          </div>
+        </div>
 
         <section
-          className="grid min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_16px_42px_rgba(15,23,42,0.06)] dark:border-slate-800/80 dark:bg-[#101720] dark:shadow-[0_22px_54px_rgba(0,0,0,0.22)] md:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[224px_minmax(0,1fr)]"
+          className="grid min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white dark:border-slate-800/80 dark:bg-[#101720] md:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[224px_minmax(0,1fr)]"
           ref={dashboardWorkspaceRef}
         >
           <DashboardSidebar
@@ -568,183 +687,77 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* Tab 1: Developer's Real Uploaded Games */}
             {activeTab === "my-games" && (
-              <div>
-                <div className="border-b border-slate-200/80 px-5 py-5 dark:border-slate-800/80 sm:px-6">
-                  <div>
-                    <h2 className="font-display text-lg font-semibold tracking-[-0.025em] text-slate-950 dark:text-slate-50">
+              <div className="space-y-5 p-4 sm:p-6">
+                <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">
                       {t("dashboard:workspace.gameTitle")}
                     </h2>
-                    <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
                       {t("dashboard:workspace.gameSubtitle")}
                     </p>
                   </div>
-
-                  <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <span className="shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-500">
-                      {t("dashboard:filters.gameStatus")}
-                    </span>
-                    <div className="flex max-w-full gap-2 overflow-x-auto pb-1 lg:justify-end">
-                      {gameFilterOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => setGameStatusFilter(option.value)}
-                          aria-pressed={gameStatusFilter === option.value}
-                          className={`min-h-9 shrink-0 rounded-lg border px-3 text-xs font-medium transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 ${
-                            gameStatusFilter === option.value
-                              ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:border-sky-400/25 dark:bg-sky-400/10 dark:text-sky-300"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:bg-slate-800/70 dark:hover:text-slate-200"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                  <DashboardFilterSelect
+                    label={t("dashboard:filters.gameStatus")}
+                    value={gameStatusFilter}
+                    options={gameFilterOptions}
+                    onChange={setGameStatusFilter}
+                  />
+                </header>
 
                 {isLoadingGames ? (
-                  <div className="px-5 py-6 sm:px-6" role="status">
-                    <span className="sr-only">
-                      {t("dashboard:table.loadingGames")}
-                    </span>
-                    <div className="space-y-3">
-                      {[0, 1, 2].map((row) => (
-                        <div
-                          key={row}
-                          className="grid min-h-16 animate-pulse grid-cols-[32px_minmax(0,1fr)] items-center gap-3 rounded-xl border border-slate-200/70 px-3 dark:border-slate-800/70 sm:grid-cols-[32px_minmax(180px,1.4fr)_minmax(100px,0.8fr)_minmax(120px,1fr)_100px]"
-                        >
-                          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800" />
-                          <div className="space-y-2">
-                            <div className="h-3 w-2/5 rounded bg-slate-200 dark:bg-slate-800" />
-                            <div className="h-2.5 w-3/5 rounded bg-slate-100 dark:bg-slate-800/70" />
-                          </div>
-                          <div className="hidden h-3 w-2/3 rounded bg-slate-100 dark:bg-slate-800 sm:block" />
-                          <div className="hidden h-3 w-3/4 rounded bg-slate-100 dark:bg-slate-800 sm:block" />
-                          <div className="hidden h-6 w-20 rounded-full bg-slate-100 dark:bg-slate-800 sm:block" />
-                        </div>
-                      ))}
-                    </div>
+                  <div className="dark-depth-card flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-12 text-sm text-slate-500 dark:border-slate-855 dark:bg-slate-900">
+                    <RefreshCw className="animate-spin" size={18} />{" "}
+                    {t("dashboard:table.loadingGames")}
                   </div>
                 ) : gamesError ? (
-                  <div className="m-5 flex flex-col gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] p-5 sm:m-6 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <AlertTriangle
-                        size={18}
-                        className="mt-0.5 shrink-0 text-rose-500"
-                        aria-hidden="true"
-                      />
-                      <p className="text-sm leading-6 text-rose-700 dark:text-rose-300">
-                        {t("dashboard:table.errorGames", {
-                          message: gamesError,
-                        })}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void fetchMyGames()}
-                      className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-rose-500/25 px-3 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 dark:text-rose-300"
-                    >
-                      <RefreshCw size={15} aria-hidden="true" />
-                      {t("dashboard:table.retry")}
-                    </button>
-                  </div>
-                ) : filteredGames.length === 0 ? (
-                  <div className="px-6 py-14 sm:py-16">
-                    <div className="mx-auto max-w-md text-center">
-                      <Gamepad2
-                        size={24}
-                        strokeWidth={1.7}
-                        className="mx-auto text-slate-400 dark:text-slate-600"
-                        aria-hidden="true"
-                      />
-                      <h3 className="mt-4 font-display text-base font-semibold text-slate-900 dark:text-slate-100">
-                        {myGames.length === 0
-                          ? t("dashboard:table.emptyGamesTitle")
-                          : t("dashboard:table.emptyGamesFilteredTitle")}
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                        {myGames.length === 0
-                          ? t("dashboard:table.emptyGames")
-                          : t("dashboard:table.emptyGamesFiltered")}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (myGames.length === 0) {
-                            setCurrentScreen("upload");
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                            return;
-                          }
-                          setGameStatusFilter("all");
-                        }}
-                        className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-                      >
-                        {myGames.length === 0
-                          ? t("dashboard:overview.deployAsset")
-                          : t("dashboard:table.clearFilter")}
-                      </button>
-                    </div>
+                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-505 rounded-xl text-xs font-semibold">
+                    {t("dashboard:table.errorGames", { message: gamesError })}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-[#0c121a] dark:text-slate-500">
-                          <th className="h-12 w-14 px-4"></th>
-                          <th className="h-12 px-4">
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-sans">
+                          <th className="p-3 w-10"></th>
+                          <th className="p-3">
                             {t("dashboard:table.headers.details")}
                           </th>
-                          <th className="h-12 px-4">
+                          <th className="p-3 w-40">
                             {t("dashboard:table.headers.category")}
                           </th>
-                          <th className="h-12 px-4">
+                          <th className="p-3 w-48">
                             {t("dashboard:table.headers.publishingType")}
                           </th>
-                          <th className="h-12 px-4 text-right">
+                          <th className="p-3 w-36">
                             {t("dashboard:table.headers.proposedPrice")}
                           </th>
-                          <th className="h-12 px-4 text-right">
+                          <th className="p-3 w-40 text-center">
                             {t("dashboard:table.headers.status")}
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 text-sm dark:divide-slate-800/70">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 text-xs">
                         {filteredGames.length > 0 ? (
                           filteredGames.map((game) => (
                             <React.Fragment key={game.id}>
                               <tr
-                                className={`transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/55 ${expandedGameId === game.id ? "bg-sky-500/[0.035] dark:bg-sky-400/[0.035]" : ""}`}
+                                className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? "bg-slate-50/50 dark:bg-slate-950/20" : ""}`}
                               >
-                                <td className="w-14 px-4 py-4 text-center">
+                                <td className="p-3 w-10 text-center">
                                   <button
-                                    type="button"
                                     onClick={() =>
                                       setExpandedGameId(
                                         expandedGameId === game.id
                                           ? null
-                                        : game.id,
+                                          : game.id,
                                       )
                                     }
-                                    aria-expanded={expandedGameId === game.id}
-                                    aria-label={
-                                      expandedGameId === game.id
-                                        ? t(
-                                            "dashboard:table.actions.hideDetails",
-                                          )
-                                        : t(
-                                            "dashboard:table.actions.viewDetails",
-                                          )
-                                    }
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:hover:bg-slate-800 dark:hover:text-white"
+                                    className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
                                     title={
                                       expandedGameId === game.id
-                                        ? t(
-                                            "dashboard:table.actions.hideDetails",
-                                          )
-                                        : t(
-                                            "dashboard:table.actions.viewDetails",
-                                          )
+                                        ? t("dashboard:table.actions.hideDetails")
+                                        : t("dashboard:table.actions.viewDetails")
                                     }
                                   >
                                     {expandedGameId === game.id ? (
@@ -754,67 +767,53 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                     )}
                                   </button>
                                 </td>
-                                <td className="min-w-60 px-4 py-4">
-                                  <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
-                                    <span className="min-w-0 truncate">
-                                      {game.title}
-                                    </span>
-                                    <span className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-500 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-400">
+                                <td className="p-3">
+                                  <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    {game.title}
+                                    <span className="text-[9px] font-sans bg-slate-100 dark:bg-slate-800/60 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700/60">
                                       v{game.version || "1.0.0"}
                                     </span>
                                     <button
-                                      type="button"
                                       onClick={() =>
                                         setExpandedGameId(
                                           expandedGameId === game.id
                                             ? null
-                                          : game.id,
+                                            : game.id,
                                         )
                                       }
-                                      aria-label={t(
-                                        "dashboard:table.actions.quickPreview",
-                                      )}
-                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-sky-500/10 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:hover:text-sky-400"
-                                      title={t(
-                                        "dashboard:table.actions.quickPreview",
-                                      )}
+                                      className="text-slate-400 hover:text-sky-500 transition-colors cursor-pointer"
+                                      title={t("dashboard:table.actions.quickPreview")}
                                     >
-                                      <Eye size={15} />
+                                      <Eye size={12} />
                                     </button>
                                   </div>
-                                  <div className="mt-1 max-w-[260px] truncate font-mono text-[11px] text-slate-500 dark:text-slate-500">
+                                  <div className="font-sans text-[10px] text-slate-400 dark:text-slate-300 mt-0.5">
                                     ID: {game.id}
                                   </div>
                                 </td>
-                                <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
-                                  {game.categoryName ||
-                                    t("dashboard:table.unassigned")}
+                                <td className="p-3 w-40 text-slate-600 dark:text-slate-350">
+                                  {game.categoryName || t("dashboard:table.unassigned")}
                                 </td>
-                                <td className="px-4 py-4">
+                                <td className="p-3 w-48">
                                   <span
-                                    className={`inline-block rounded-md border px-2 py-1 text-[11px] font-semibold ${
+                                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium font-sans border ${
                                       game.publishingType === "full_acquisition"
-                                        ? "bg-amber-450/10 text-amber-500 border-amber-500/20"
-                                        : game.publishingType ===
-                                            "co_publishing"
-                                          ? "bg-sky-450/10 text-sky-500 border-sky-500/20"
-                                          : "bg-slate-100 dark:bg-slate-955 text-slate-500 border-slate-205 dark:border-slate-800"
+                                        ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/40"
+                                        : game.publishingType === "co_publishing"
+                                          ? "bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800/40"
+                                          : "bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60"
                                     }`}
                                   >
                                     {game.publishingType
-                                      ? game.publishingType.toUpperCase()
+                                      ? game.publishingType.toUpperCase().replace("_", " ")
                                       : t("dashboard:table.marketplaceListing")}
                                   </span>
                                 </td>
-                                <td className="px-4 py-4 text-right font-mono font-semibold tabular-nums text-slate-800 dark:text-slate-200">
-                                  {formatCurrencyValue(
-                                    game.priceProposed,
-                                    locale,
-                                    t,
-                                  )}
+                                <td className="p-3 w-36 font-sans font-semibold dark:text-amber-400">
+                                  {formatCurrencyValue(game.priceProposed, locale, t)}
                                 </td>
-                                <td className="px-4 py-4 text-right">
-                                  <div className="flex flex-col items-end justify-center gap-2">
+                                <td className="p-3 w-40 text-center">
+                                  <div className="flex flex-col items-center gap-1.5 justify-center">
                                     {(() => {
                                       const contract = [...contracts]
                                         .reverse()
@@ -824,14 +823,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             c.status !== "cancelled",
                                         );
                                       if (contract) {
-                                        const statusInfo =
-                                          getContractStatusLabel(
-                                            contract.status,
-                                            t,
-                                          );
+                                        const statusInfo = getContractStatusLabel(contract.status, t);
                                         return (
                                           <span
-                                            className={`inline-block rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusInfo.colorClass}`}
+                                            className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border font-sans ${statusInfo.colorClass}`}
                                           >
                                             {statusInfo.text}
                                           </span>
@@ -839,17 +834,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       }
                                       return (
                                         <span
-                                          className={`inline-block rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                                            game.status?.toLowerCase() ===
-                                            "published"
-                                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                                              : game.status?.toLowerCase() ===
-                                                  "pending"
-                                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                                                : game.status?.toLowerCase() ===
-                                                    "rejected"
-                                                  ? "bg-rose-500/10 text-rose-500 border-rose-500/20"
-                                                  : "bg-slate-500/10 text-slate-500 border-slate-500/20"
+                                          className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border font-sans ${
+                                            game.status?.toLowerCase() === "published"
+                                              ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-250/20"
+                                              : game.status?.toLowerCase() === "pending"
+                                                ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400 border-amber-250/20 animate-pulse"
+                                                : game.status?.toLowerCase() === "rejected"
+                                                  ? "bg-rose-50 dark:bg-rose-955/30 text-rose-600 dark:text-rose-400 border-rose-250/20"
+                                                  : "bg-slate-55/10 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-205/50 dark:border-slate-800/50"
                                           }`}
                                         >
                                           {getGameStatusLabel(game.status, t)}
@@ -874,9 +866,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 setViewerMode("sign-developer");
                                                 setIsViewerOpen(true);
                                               }}
-                                              className="inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-amber-300/80 bg-amber-300 px-2.5 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+                                              className="flex items-center gap-1 px-2.5 py-1 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded text-[10px] transition-studio cursor-pointer animate-pulse whitespace-nowrap shadow-sm"
                                             >
-                                              <PenTool size={13} />
+                                              <PenTool size={10} />
                                               {t(
                                                 "dashboard:table.actions.signContract",
                                               )}
@@ -893,9 +885,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 setViewerMode("view");
                                                 setIsViewerOpen(true);
                                               }}
-                                              className="inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300"
+                                              className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded text-[10px] transition-studio cursor-pointer whitespace-nowrap shadow-sm"
                                             >
-                                              <FileText size={13} />
+                                              <FileText size={10} />
                                               {t(
                                                 "dashboard:table.actions.viewContract",
                                               )}
@@ -918,19 +910,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                 <tr>
                                   <td
                                     colSpan={6}
-                                    className="border-y border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-800/80 dark:bg-[#0c121a] sm:p-6"
+                                    className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60"
                                   >
-                                    <div className="grid grid-cols-1 gap-8 text-slate-700 dark:text-slate-300 xl:grid-cols-[minmax(240px,0.85fr)_minmax(0,1.6fr)]">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
                                       {/* Left Column: Thumbnail, Description, ZIP */}
-                                      <div className="space-y-5">
+                                      <div className="space-y-4">
                                         <div>
-                                          <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                            <Image size={14} aria-hidden="true" />
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
+                                            <Image size={12} />{" "}
                                             {t(
                                               "dashboard:table.coverThumbnail",
                                             )}
                                           </h4>
-                                          <div className="group relative flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-900 dark:border-slate-800/80">
+                                          <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
                                             {game.thumbnailUrl ? (
                                               <img
                                                 src={game.thumbnailUrl}
@@ -940,10 +932,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             ) : (
                                               <div className="flex flex-col items-center justify-center text-slate-500">
                                                 <Image
-                                                  size={24}
-                                                  className="mb-2 text-slate-600"
+                                                  size={32}
+                                                  className="mb-2 text-slate-650"
                                                 />
-                                                <span className="text-xs">
+                                                <span className="text-[10px] font-mono">
                                                   {t(
                                                     "dashboard:table.noThumbnail",
                                                   )}
@@ -953,13 +945,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                          <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                        <div className="space-y-1.5">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
                                             {t(
                                               "dashboard:table.detailedDescription",
                                             )}
                                           </h4>
-                                          <p className="max-h-36 overflow-y-auto text-sm leading-6 text-slate-600 dark:text-slate-300">
+                                          <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-955/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
                                             {game.description ||
                                               t(
                                                 "dashboard:table.noDescription",
@@ -973,7 +965,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             download
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-sky-500/25 bg-sky-500/10 px-4 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 dark:text-sky-300"
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
                                           >
                                             <Download size={14} />{" "}
                                             {t(
@@ -981,7 +973,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             )}
                                           </a>
                                         ) : (
-                                          <div className="rounded-lg border border-slate-200 bg-slate-100/70 px-4 py-2.5 text-center text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900/60">
+                                          <div className="text-center py-2.5 px-4 bg-slate-550/10 border border-slate-500/20 text-slate-550 rounded-xl text-xs font-semibold">
                                             {t("dashboard:table.noZip")}
                                           </div>
                                         )}
@@ -1003,8 +995,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 "[HỦY HỢP ĐỒNG]",
                                               );
                                             return (
-                                              <div className="space-y-1.5 rounded-xl border border-rose-500/20 bg-rose-500/[0.06] p-4 text-rose-500">
-                                                <span className="flex items-center gap-2 text-xs font-semibold">
+                                              <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-1">
+                                                <span className="font-bold flex items-center gap-1.5 text-xs">
                                                   <AlertTriangle size={14} />
                                                   {isDeveloperCancelled
                                                     ? t(
@@ -1014,7 +1006,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                         "dashboard:table.gameRejected",
                                                       )}
                                                 </span>
-                                                <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+                                                <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">
                                                   {isDeveloperCancelled
                                                     ? t(
                                                         "dashboard:table.contractCancelledHint",
@@ -1038,17 +1030,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             );
                                           if (contract) {
                                             return (
-                                              <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
-                                                <span className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                              <div className="p-4 bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
+                                                <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
                                                   <FileCheck
-                                                    size={14}
+                                                    size={12}
                                                     className="text-sky-500"
                                                   />{" "}
                                                   {t(
                                                     "dashboard:table.publishingContract",
                                                   )}
                                                 </span>
-                                                <div className="flex items-center justify-between gap-3 text-xs">
+                                                <div className="flex justify-between items-center text-xs">
                                                   <span className="text-slate-500">
                                                     {t(
                                                       "dashboard:table.statusLabel",
@@ -1062,7 +1054,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       );
                                                     return (
                                                       <span
-                                                        className={`font-semibold ${
+                                                        className={`font-bold uppercase tracking-wider ${
                                                           contract.status ===
                                                           "signed"
                                                             ? "text-emerald-500"
@@ -1089,7 +1081,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       );
                                                       setIsViewerOpen(true);
                                                     }}
-                                                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-amber-300/80 bg-amber-300 px-4 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+                                                    className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-amber-400 hover:bg-amber-550 text-slate-950 font-bold rounded-lg text-xs transition-studio cursor-pointer"
                                                   >
                                                     <PenTool size={14} />{" "}
                                                     {t(
@@ -1107,7 +1099,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       setViewerMode("view");
                                                       setIsViewerOpen(true);
                                                     }}
-                                                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-emerald-300"
+                                                    className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-emerald-500 hover:bg-emerald-450 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer"
                                                   >
                                                     <FileText size={14} />{" "}
                                                     {t(
@@ -1123,18 +1115,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                       </div>
 
                                       {/* Middle & Right Column: Screenshots & Video */}
-                                      <div className="flex min-w-0 flex-col justify-between gap-6">
-                                        <div className="space-y-3">
-                                          <h4 className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                      <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
                                             <Image
-                                              size={14}
+                                              size={12}
                                               className="text-sky-500"
                                             />{" "}
                                             {t("dashboard:table.screenshots")}
                                           </h4>
                                           {game.screenshots &&
                                           game.screenshots.length > 0 ? (
-                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                               {game.screenshots.map(
                                                 (url, index) => (
                                                   <div
@@ -1145,14 +1137,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                       );
                                                       setIsOpenLightbox(true);
                                                     }}
-                                                    className="group relative aspect-video cursor-pointer overflow-hidden rounded-lg border border-slate-200 transition-colors hover:border-sky-500/50 focus-within:border-sky-500 dark:border-slate-800"
+                                                    className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-sky-550/55 transition-studio"
                                                   >
                                                     <img
                                                       src={url}
                                                       alt={`Screenshot ${index + 1}`}
-                                                      className="h-full w-full object-cover"
+                                                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                                                     />
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-slate-950/45 opacity-0 transition-opacity group-hover:opacity-100">
+                                                    <div className="absolute inset-0 bg-slate-950/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                       <Eye
                                                         size={16}
                                                         className="text-white"
@@ -1163,12 +1155,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               )}
                                             </div>
                                           ) : (
-                                            <div className="flex min-h-28 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-6 text-slate-500 dark:border-slate-800 dark:bg-slate-900/45 dark:text-slate-400">
+                                            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                               <Image
-                                                size={20}
-                                                className="mb-2 text-slate-400 dark:text-slate-600"
+                                                size={24}
+                                                className="mb-1 text-slate-350 dark:text-slate-650"
                                               />
-                                              <span className="text-xs">
+                                              <span className="text-[10px]">
                                                 {t(
                                                   "dashboard:table.noScreenshots",
                                                 )}
@@ -1178,16 +1170,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                         </div>
 
                                         {/* Video Gameplay */}
-                                        <div className="space-y-3">
-                                          <h4 className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
                                             <Video
-                                              size={14}
+                                              size={12}
                                               className="text-sky-500"
                                             />{" "}
                                             {t("dashboard:table.videoDemo")}
                                           </h4>
                                           {game.videoUrl ? (
-                                            <div className="relative max-h-60 aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800">
+                                            <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 max-h-56">
                                               <video
                                                 src={game.videoUrl}
                                                 controls
@@ -1195,12 +1187,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               />
                                             </div>
                                           ) : (
-                                            <div className="flex min-h-28 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-6 text-slate-500 dark:border-slate-800 dark:bg-slate-900/45 dark:text-slate-400">
+                                            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
                                               <Video
-                                                size={20}
-                                                className="mb-2 text-slate-400 dark:text-slate-600"
+                                                size={24}
+                                                className="mb-1 text-slate-350 dark:text-slate-650"
                                               />
-                                              <span className="text-xs">
+                                              <span className="text-[10px]">
                                                 {t("dashboard:table.noVideo")}
                                               </span>
                                             </div>
@@ -1235,28 +1227,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* Tab 2: Developer's Real Marketplace Items */}
             {activeTab === "marketplace-items" && (
-              <div className="space-y-4">
-                {/* Asset Status Filter Chips */}
-                <div className="dark-depth-card flex flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/60 sm:flex-row sm:items-center">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {t("dashboard:filters.assetStatus")}
+              <div className="space-y-5 p-4 sm:p-6">
+                <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">
+                      {t("dashboard:workspace.assetTitle")}
+                    </h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      {t("dashboard:workspace.assetSubtitle")}
+                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {assetFilterOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setAssetStatusFilter(option.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 cursor-pointer ${
-                          assetStatusFilter === option.value
-                            ? "bg-sky-500/10 text-sky-500 border-sky-500/30 font-semibold"
-                            : "bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+                  <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+                    <DashboardFilterSelect<"all" | "game" | "asset">
+                      label={t("dashboard:filters.productType")}
+                      value={marketplaceTypeFilter}
+                      options={marketplaceTypeFilterOptions}
+                      onChange={setMarketplaceTypeFilter}
+                    />
+                    <DashboardFilterSelect
+                      label={t("dashboard:filters.assetStatus")}
+                      value={assetStatusFilter}
+                      options={assetFilterOptions}
+                      onChange={setAssetStatusFilter}
+                    />
                   </div>
-                </div>
+                </header>
 
                 {isLoadingMarketplace ? (
                   <div className="dark-depth-card flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-12 text-sm text-slate-500 dark:border-slate-855 dark:bg-slate-900">
@@ -1264,7 +1259,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     {t("dashboard:table.loadingAssets")}
                   </div>
                 ) : marketplaceError ? (
-                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-505 rounded-xl text-xs font-semibold">
                     {t("dashboard:table.errorAssets", {
                       message: marketplaceError,
                     })}
@@ -1273,91 +1268,257 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/80 dark:bg-slate-900/45 backdrop-blur-md">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-display font-mono">
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-955/20 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase font-sans">
+                          <th className="p-3 w-10"></th>
                           <th className="p-3">
                             {t("dashboard:table.headers.details")}
                           </th>
-                          <th className="p-3">
+                          <th className="p-3 w-32">
                             {t("dashboard:table.headers.productType")}
                           </th>
-                          <th className="p-3">
+                          <th className="p-3 w-40">
                             {t("dashboard:table.headers.category")}
                           </th>
-                          <th className="p-3">
+                          <th className="p-3 w-36">
                             {t("dashboard:table.headers.price")}
                           </th>
-                          <th className="p-3 text-center">
+                          <th className="p-3 w-40 text-center">
                             {t("dashboard:table.headers.status")}
                           </th>
-                          <th className="p-3 text-center">
+                          <th className="p-3 w-24 text-center">
                             {t("dashboard:table.headers.actions")}
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 text-xs">
                         {filteredMarketplaceItems.length > 0 ? (
                           filteredMarketplaceItems.map((item) => (
-                            <tr
-                              key={item.id}
-                              className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors"
-                            >
-                              <td className="p-3">
-                                <div className="font-semibold text-slate-800 dark:text-slate-100">
-                                  {item.title}
-                                </div>
-                                <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                                  ID: {item.id}
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono border bg-amber-450/10 text-amber-500 border-amber-500/20">
-                                  {t("dashboard:table.resourceAsset")}
-                                </span>
-                              </td>
-                              <td className="p-3 text-slate-600 dark:text-slate-350">
-                                {item.categoryName ||
-                                  t("dashboard:table.unassigned")}
-                              </td>
-                              <td className="p-3 font-mono font-semibold dark:text-amber-400">
-                                {formatCurrencyValue(item.price, locale, t)}
-                              </td>
-                              <td className="p-3 text-center">
-                                <span
-                                  className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                                    item.status === "active"
-                                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                                      : item.status === "pending"
-                                        ? "bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse"
-                                        : item.status === "rejected"
-                                          ? "bg-rose-500/10 text-rose-505 border-rose-500/20"
-                                          : "bg-slate-500/10 text-slate-500 border-slate-500/20"
-                                  }`}
-                                >
-                                  {getMarketplaceStatusLabel(item.status, t)}
-                                </span>
-                              </td>
-                              <td className="p-3 text-center">
-                                <button
-                                  onClick={() =>
-                                    handleDeleteMarketplaceItem(item.id)
-                                  }
-                                  className="p-1.5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded transition-colors cursor-pointer"
-                                  title={t(
-                                    "dashboard:table.actions.removeProduct",
+                            <React.Fragment key={item.id}>
+                              <tr
+                                className={`hover:bg-slate-50/40 dark:hover:bg-slate-955/5 transition-colors ${expandedMarketplaceId === item.id ? "bg-slate-50/50 dark:bg-slate-955/20" : ""}`}
+                              >
+                                <td className="p-3 w-10 text-center">
+                                  <button
+                                    onClick={() =>
+                                      setExpandedMarketplaceId(
+                                        expandedMarketplaceId === item.id
+                                          ? null
+                                          : item.id,
+                                      )
+                                    }
+                                    className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-studio cursor-pointer"
+                                    title={
+                                      expandedMarketplaceId === item.id
+                                        ? t("dashboard:table.actions.hideDetails")
+                                        : t("dashboard:table.actions.viewDetails")
+                                    }
+                                  >
+                                    {expandedMarketplaceId === item.id ? (
+                                      <ChevronUp size={16} />
+                                    ) : (
+                                      <ChevronDown size={16} />
+                                    )}
+                                  </button>
+                                </td>
+                                <td className="p-3">
+                                  <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    {item.title}
+                                    {item.type === "game" && item.originalItem.version && (
+                                      <span className="text-[9px] font-sans bg-slate-100 dark:bg-slate-800/60 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700/60">
+                                        v{item.originalItem.version}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="font-sans text-[10px] text-slate-400 dark:text-slate-300 mt-0.5">
+                                    ID: {item.id}
+                                  </div>
+                                </td>
+                                <td className="p-3 w-32">
+                                  {item.type === "game" ? (
+                                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-sans border bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800/40">
+                                      {t("dashboard:table.game")}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-sans border bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60">
+                                      {t("dashboard:table.resourceAsset")}
+                                    </span>
                                   )}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </td>
-                            </tr>
+                                </td>
+                                <td className="p-3 w-40 text-slate-600 dark:text-slate-350">
+                                  {item.categoryName || t("dashboard:table.unassigned")}
+                                </td>
+                                <td className="p-3 w-36 font-sans font-semibold dark:text-amber-400">
+                                  {formatCurrencyValue(item.price, locale, t)}
+                                </td>
+                                <td className="p-3 w-40 text-center">
+                                  <span
+                                    className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border font-sans ${
+                                      item.status === "active" || item.status === "published"
+                                        ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40"
+                                        : item.status === "pending"
+                                          ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400 border border-amber-250/20 animate-pulse"
+                                          : item.status === "rejected"
+                                            ? "bg-rose-50 dark:bg-rose-955/30 text-rose-600 dark:text-rose-400 border border-rose-250/20"
+                                            : "bg-slate-55/10 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-205/50 dark:border-slate-800/50"
+                                    }`}
+                                  >
+                                    {item.type === "game"
+                                      ? getGameStatusLabel(item.status, t)
+                                      : getMarketplaceStatusLabel(item.status, t)}
+                                  </span>
+                                </td>
+                                <td className="p-3 w-24 text-center">
+                                  {item.type === "asset" ? (
+                                    <button
+                                      onClick={() => handleDeleteMarketplaceItem(item.id)}
+                                      className="p-1.5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                      title={t("dashboard:table.actions.removeProduct")}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  ) : (
+                                    <span className="text-slate-400 dark:text-slate-600 text-xs font-sans">-</span>
+                                  )}
+                                </td>
+                              </tr>
+
+                              {/* Expanded detail sub-row */}
+                              {expandedMarketplaceId === item.id && (
+                                <tr>
+                                  <td
+                                    colSpan={7}
+                                    className="p-6 bg-slate-50/10 dark:bg-slate-955/10 border-t border-b border-slate-200/50 dark:border-slate-800/60"
+                                  >
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-350">
+                                      {/* Left Column: Thumbnail, Description, ZIP */}
+                                      <div className="space-y-4">
+                                        <div>
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
+                                            <Image size={12} /> {t("dashboard:table.coverThumbnail")}
+                                          </h4>
+                                          <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
+                                            {item.originalItem.thumbnailUrl ? (
+                                              <img
+                                                src={item.originalItem.thumbnailUrl}
+                                                alt={item.title}
+                                                className="object-cover w-full h-full"
+                                              />
+                                            ) : (
+                                              <div className="flex flex-col items-center justify-center text-slate-500">
+                                                <Image size={32} className="mb-2 text-slate-650" />
+                                                <span className="text-[10px] font-mono">
+                                                  {t("dashboard:table.noThumbnail")}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                                            {t("dashboard:table.detailedDescription")}
+                                          </h4>
+                                          <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-955/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                            {item.originalItem.description || t("dashboard:table.noDescription")}
+                                          </p>
+                                        </div>
+
+                                        {item.originalItem.fileUrl ? (
+                                          <a
+                                            href={item.originalItem.fileUrl}
+                                            download
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                          >
+                                            <Download size={14} />{" "}
+                                            {item.type === "game"
+                                              ? t("dashboard:table.downloadGameZip")
+                                              : t("dashboard:table.downloadAsset")}
+                                          </a>
+                                        ) : (
+                                          <div className="text-center py-2.5 px-4 bg-slate-550/10 border border-slate-500/20 text-slate-550 rounded-xl text-xs font-semibold">
+                                            {item.type === "game"
+                                              ? t("dashboard:table.noZip")
+                                              : t("dashboard:table.noAssetZip")}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Middle & Right Column: Screenshots & Video */}
+                                      <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                            <Image size={12} className="text-sky-500" /> {t("dashboard:table.screenshots")}
+                                          </h4>
+                                          {item.originalItem.screenshots && item.originalItem.screenshots.length > 0 ? (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                              {item.originalItem.screenshots.map((url: string, index: number) => (
+                                                <div
+                                                  key={index}
+                                                  onClick={() => {
+                                                    setActiveScreenshotUrl(url);
+                                                    setIsOpenLightbox(true);
+                                                  }}
+                                                  className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-sky-550/55 transition-studio"
+                                                >
+                                                  <img
+                                                    src={url}
+                                                    alt={`Screenshot ${index + 1}`}
+                                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                                                  />
+                                                  <div className="absolute inset-0 bg-slate-950/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Eye size={16} className="text-white" />
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
+                                              <Image size={24} className="mb-1 text-slate-350 dark:text-slate-655" />
+                                              <span className="text-[10px]">
+                                                {t("dashboard:table.noScreenshots")}
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Video Gameplay */}
+                                        <div className="space-y-2">
+                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                            <Video size={12} className="text-sky-500" /> {t("dashboard:table.videoDemo")}
+                                          </h4>
+                                          {item.originalItem.videoUrl ? (
+                                            <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 max-h-56">
+                                              <video
+                                                src={item.originalItem.videoUrl}
+                                                controls
+                                                className="w-full h-full object-contain"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-8 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
+                                              <Video size={24} className="mb-1 text-slate-350 dark:text-slate-655" />
+                                              <span className="text-[10px]">
+                                                {t("dashboard:table.noVideo")}
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           ))
                         ) : (
                           <tr>
                             <td
-                              colSpan={6}
+                              colSpan={7}
                               className="bg-slate-100/50 p-8 text-center font-medium text-slate-500 dark:bg-slate-955/20 dark:text-slate-400"
                             >
-                              {myMarketplaceItems.length === 0
+                              {combinedMarketplaceItems.length === 0
                                 ? t("dashboard:table.emptyAssets")
                                 : t("dashboard:table.emptyAssetsFiltered")}
                             </td>
@@ -1372,7 +1533,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* Tab: Sales / Products Sold (seller-side) */}
             {activeTab === "sales" && (
-              <div className="space-y-4">
+              <div className="space-y-5 p-4 sm:p-6">
+                <header>
+                  <h2 className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">
+                    {t("dashboard:workspace.salesTitle")}
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    {t("dashboard:workspace.salesSubtitle")}
+                  </p>
+                </header>
                 {isLoadingSales && (
                   <div className="dark-depth-card flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-12 text-sm text-slate-500 dark:border-slate-850 dark:bg-slate-900">
                     <RefreshCw className="animate-spin" size={18} />{" "}
@@ -1464,20 +1633,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* Tab 4: Payment Center */}
             {activeTab === "payment-center" && (
-              <PaymentDetailPage
-                payments={purchasedPayments}
-                selectedOrderId={selectedPaymentOrderId}
-                setSelectedOrderId={setSelectedPaymentOrderId}
-                isRefreshing={isRefreshingPayments}
-                onBackToMarketplace={() => {
-                  setCurrentScreen("marketplace");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                onRefreshPayments={onRefreshPayments}
-                onCancelPayment={onCancelPayment}
-                setCurrentScreen={setCurrentScreen}
-                variant="dashboard"
-              />
+              <div className="space-y-5 p-4 sm:p-6">
+                <header>
+                  <h2 className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">
+                    {t("dashboard:workspace.purchaseTitle")}
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    {t("dashboard:workspace.purchaseSubtitle")}
+                  </p>
+                </header>
+                <PaymentDetailPage
+                  payments={purchasedPayments}
+                  selectedOrderId={selectedPaymentOrderId}
+                  setSelectedOrderId={setSelectedPaymentOrderId}
+                  isRefreshing={isRefreshingPayments}
+                  onBackToMarketplace={() => {
+                    setCurrentScreen("marketplace");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  onRefreshPayments={onRefreshPayments}
+                  onCancelPayment={onCancelPayment}
+                  setCurrentScreen={setCurrentScreen}
+                  variant="dashboard"
+                />
+              </div>
             )}
           </div>
         </section>
