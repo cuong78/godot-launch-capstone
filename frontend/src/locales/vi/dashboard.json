@@ -36,7 +36,11 @@
     "draft": "Bản nháp",
     "active": "Đang hoạt động",
     "pending": "Đang chờ",
-    "removed": "Đã xóa"
+    "removed": "Đã xóa",
+    "productType": "Loại sản phẩm:",
+    "allProducts": "Tất cả",
+    "productGame": "Game",
+    "productAsset": "Tài nguyên"
   },
   "table": {
     "headers": {
@@ -82,9 +86,11 @@
     "coverThumbnail": "Ảnh bìa",
     "detailedDescription": "Mô tả chi tiết",
     "downloadGameZip": "Tải xuống file game ZIP",
+    "downloadAsset": "Tải xuống file tài nguyên",
     "noThumbnail": "Chưa có ảnh bìa",
     "noDescription": "Chưa có mô tả chi tiết.",
     "noZip": "Chưa có gói ZIP game được tải lên.",
+    "noAssetZip": "Chưa có file tài nguyên được tải lên.",
     "screenshots": "Ảnh chụp màn hình",
     "videoDemo": "Video demo gameplay",
     "noScreenshots": "Chưa có ảnh chụp màn hình",

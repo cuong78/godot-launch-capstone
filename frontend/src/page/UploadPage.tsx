@@ -23,6 +23,7 @@ import {
   Check,
   Search,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
@@ -216,13 +217,16 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   }, [tagQuery, t]);
 
   useEffect(() => {
-    const closeTagPicker = (event: MouseEvent) => {
-      if (!tagPickerRef.current?.contains(event.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagPickerRef.current && !tagPickerRef.current.contains(event.target as Node)) {
         setIsTagDropdownOpen(false);
       }
+      if (publishDropdownRef.current && !publishDropdownRef.current.contains(event.target as Node)) {
+        setIsPublishDropdownOpen(false);
+      }
     };
-    document.addEventListener("mousedown", closeTagPicker);
-    return () => document.removeEventListener("mousedown", closeTagPicker);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const toggleTag = (tag: TagResponse) => {
@@ -1106,21 +1110,80 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
 
                 {publishingType !== "marketplace_listing" && (
                   <div className="flex flex-col gap-1.5 mt-2">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                    <label className="text-xs font-semibold text-slate-655 dark:text-slate-400">
                       {t("form.contractModel")}
                     </label>
-                    <select
-                      value={publishingType}
-                      onChange={(e) => setPublishingType(e.target.value as any)}
-                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
-                    >
-                      <option value="full_acquisition">
-                        {t("form.fullAcquisitionOption")}
-                      </option>
-                      <option value="co_publishing">
-                        {t("form.coPublishingOption")}
-                      </option>
-                    </select>
+                    <div className="relative" ref={publishDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsPublishDropdownOpen(!isPublishDropdownOpen)}
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none flex items-center justify-between transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 cursor-pointer"
+                        aria-haspopup="listbox"
+                        aria-expanded={isPublishDropdownOpen}
+                      >
+                        <span className="truncate">
+                          {publishingType === "full_acquisition"
+                            ? t("form.fullAcquisitionOption")
+                            : t("form.coPublishingOption")}
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className={`text-slate-400 transition-transform duration-205 ${
+                            isPublishDropdownOpen ? "rotate-180 text-sky-500" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {isPublishDropdownOpen && (
+                        <ul
+                          className="absolute left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white p-1 shadow-2xl dark:bg-slate-950"
+                          role="listbox"
+                        >
+                          <li role="option" aria-selected={publishingType === "full_acquisition"}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPublishingType("full_acquisition");
+                                setIsPublishDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${
+                                publishingType === "full_acquisition"
+                                  ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 font-semibold"
+                                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                              }`}
+                            >
+                              <span className="truncate">
+                                {t("form.fullAcquisitionOption")}
+                              </span>
+                              {publishingType === "full_acquisition" && (
+                                <Check size={14} className="text-sky-500 shrink-0" />
+                              )}
+                            </button>
+                          </li>
+                          <li role="option" aria-selected={publishingType === "co_publishing"}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPublishingType("co_publishing");
+                                setIsPublishDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${
+                                publishingType === "co_publishing"
+                                  ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 font-semibold"
+                                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                              }`}
+                            >
+                              <span className="truncate">
+                                {t("form.coPublishingOption")}
+                              </span>
+                              {publishingType === "co_publishing" && (
+                                <Check size={14} className="text-sky-500 shrink-0" />
+                              )}
+                            </button>
+                          </li>
+                        </ul>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       {publishingType === "full_acquisition"
                         ? t("form.fullAcquisitionHint")
