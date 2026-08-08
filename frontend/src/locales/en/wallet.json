@@ -1,7 +1,7 @@
 {
   "cards.availableBalance": "Available Balance",
   "cards.availableDescription": "Funds that can be withdrawn to your bank account immediately.",
-  "cards.pendingDescription": "Revenue under verification hold from recent transactions.",
+  "cards.pendingDescription": "Total amount in withdrawal requests currently pending (within the hold period before automatic payout).",
   "cards.pendingWithdrawal": "Pending Hold",
   "cards.revenueDescription": "Total accumulated earnings from asset sales (pre-commission).",
   "cards.totalRevenue": "Total Revenue",
@@ -33,7 +33,7 @@
   "form.pendingReserve": "• Pending holds reserve: {{amount}}",
   "form.submit": "Submit Withdrawal Request",
   "form.submitting": "Processing...",
-  "form.subtitle": "Your requested funds will be processed manually by admin within 24h.",
+  "form.subtitle": "Your requested funds are held for a set period, then transferred automatically by the system.",
   "form.title": "Withdraw Funds",
   "history.columns.amount": "Amount",
   "history.columns.created": "Created",
@@ -95,7 +95,7 @@
   "transactions.subtitle": "Audit logs of all wallet balance change events",
   "transactions.title": "Transaction Ledger",
   "workflow.step1": "1. Submit Request: Fill in payout amount and correct bank details.",
-  "workflow.step2": "2. Admin Check: Audit parameters review transactions for validity.",
-  "workflow.step3": "3. Paid: Cash is transferred directly to your bank account.",
+  "workflow.step2": "2. Hold Period: The system holds the request for a set number of days.",
+  "workflow.step3": "3. Paid: Once the hold period ends, the system automatically transfers the funds to your bank account.",
   "workflow.title": "Withdrawal Workflow"
 }

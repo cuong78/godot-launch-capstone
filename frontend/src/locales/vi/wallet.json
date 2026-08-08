@@ -1,7 +1,7 @@
 {
   "cards.availableBalance": "Số dư khả dụng",
   "cards.availableDescription": "Số dư thực tế bạn có thể rút về tài khoản ngân hàng bất kỳ lúc nào.",
-  "cards.pendingDescription": "Doanh thu tạm giữ từ các đơn hàng gần đây, sẽ khả dụng sau thời gian đối soát.",
+  "cards.pendingDescription": "Tổng số tiền trong các yêu cầu rút tiền đang chờ xử lý (đang trong thời gian giữ trước khi tự động chuyển khoản).",
   "cards.pendingWithdrawal": "Đang chờ xử lý",
   "cards.revenueDescription": "Tổng doanh thu tích lũy từ trước đến nay của bạn (chưa trừ phí hoa hồng).",
   "cards.totalRevenue": "Tổng doanh thu",
@@ -33,7 +33,7 @@
   "form.pendingReserve": "• Số dư tạm giữ/đang xử lý: {{amount}}",
   "form.submit": "Gửi yêu cầu rút tiền",
   "form.submitting": "Đang xử lý...",
-  "form.subtitle": "Số tiền rút sẽ được chuyển khoản thủ công bởi Admin trong vòng 24h làm việc.",
+  "form.subtitle": "Số tiền rút sẽ được giữ trong một khoảng thời gian trước khi hệ thống tự động chuyển khoản.",
   "form.title": "Yêu cầu rút tiền",
   "history.columns.amount": "Số tiền",
   "history.columns.created": "Ngày tạo",
@@ -95,7 +95,7 @@
   "transactions.subtitle": "Lịch sử chi tiết tất cả các biến động số dư ví của bạn",
   "transactions.title": "Biến động số dư",
   "workflow.step1": "1. Gửi yêu cầu: Điền đúng số tiền và thông tin tài khoản ngân hàng nhận tiền.",
-  "workflow.step2": "2. Admin đối soát: Ban quản trị duyệt tính hợp lệ của doanh thu và giao dịch.",
-  "workflow.step3": "3. Nhận tiền: Tiền sẽ được chuyển trực tiếp vào tài khoản ngân hàng của bạn.",
+  "workflow.step2": "2. Thời gian giữ: Hệ thống giữ khoản rút trong một số ngày quy định trước khi xử lý.",
+  "workflow.step3": "3. Nhận tiền: Hết thời gian giữ, hệ thống tự động chuyển khoản vào tài khoản ngân hàng của bạn.",
   "workflow.title": "Quy trình rút tiền"
 }
