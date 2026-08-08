@@ -17,7 +17,9 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
   const { currentLanguage, changeLanguage, languages } = useLanguage();
   const [isOpen, setIsOpen] = React.useState(false);
   const [loadingLanguage, setLoadingLanguage] = React.useState<string | null>(null);
+
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const activeLanguage = languages.find((language) => language.code === currentLanguage) ?? languages[0];
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -46,7 +48,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
     <img
       src={flagSrc}
       alt={languageName}
-      className={`w-6 rounded-[3px] object-cover ring-1 ring-black/10 ${className}`}
+      className={`shrink-0 rounded-[4px] object-cover ring-1 ring-black/10 dark:ring-white/15 ${className}`}
     />
   );
 
@@ -128,6 +130,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
                     isLoading ? 'opacity-60' : ''
                   }`}
                 >
+                  {renderFlag(language.flag, language.name, 'mr-3 h-[18px] w-7')}
                   <span className="flex-1">{language.name}</span>
                   {isActive && <Check size={19} strokeWidth={2.25} className="text-sky-400" />}
                 </button>
