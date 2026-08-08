@@ -17,8 +17,4 @@ public class UpdateProfileRequest {
 
     @Size(min = 6, message = "Password must be at least 6 characters if specified.")
     private String password;
-
-    private String bankName;
-    private String bankAccount;
-    private String bankAccountHolder;
 }

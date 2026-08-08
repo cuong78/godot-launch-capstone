@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   ArrowUpDown,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -129,6 +130,7 @@ export const AdminPaymentVerificationPanel: React.FC<
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshingDetail, setIsRefreshingDetail] = useState(false);
   const [sortOption, setSortOption] = useState<PaymentSortOption>('all');
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
 
   const fetchPayments = useCallback(async () => {
@@ -254,19 +256,56 @@ export const AdminPaymentVerificationPanel: React.FC<
               <ArrowUpDown size={14} />
               {t('paymentVerification.sort')}
             </span>
-            <select
-              value={sortOption}
-              onChange={(event) =>
-                setSortOption(event.target.value as PaymentSortOption)
-              }
-              className="bg-transparent text-sm font-semibold text-slate-700 outline-none dark:text-slate-200"
-            >
-              <option value="all">{t('paymentVerification.sortAll')}</option>
-              <option value="PAID">{getPaymentStatusLabel('PAID')}</option>
-              <option value="PENDING">{getPaymentStatusLabel('PENDING')}</option>
-              <option value="CANCELLED">{getPaymentStatusLabel('CANCELLED')}</option>
-              <option value="EXPIRED">{getPaymentStatusLabel('EXPIRED')}</option>
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                className="flex items-center gap-2 font-semibold text-slate-700 outline-none dark:text-slate-200"
+              >
+                <span>
+                  {sortOption === 'all' ? t('paymentVerification.sortAll') : getPaymentStatusLabel(sortOption)}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`text-slate-500 transition-transform duration-200 ${sortDropdownOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {sortDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setSortDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-40 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-950/95">
+                    {[
+                      { value: 'all', label: t('paymentVerification.sortAll') },
+                      { value: 'PAID', label: getPaymentStatusLabel('PAID') },
+                      { value: 'PENDING', label: getPaymentStatusLabel('PENDING') },
+                      { value: 'CANCELLED', label: getPaymentStatusLabel('CANCELLED') },
+                      { value: 'EXPIRED', label: getPaymentStatusLabel('EXPIRED') },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setSortOption(opt.value as PaymentSortOption);
+                          setCurrentPage(0);
+                          setSortDropdownOpen(false);
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                          sortOption === opt.value
+                            ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                            : 'text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

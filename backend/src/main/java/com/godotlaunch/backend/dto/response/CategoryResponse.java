@@ -15,5 +15,13 @@ public class CategoryResponse {
     private String description;
     private UUID parentId;
     private String type;
+    private String defaultName;
+    private String nameVi;
+    private String nameEn;
+    private String nameJa;
+    private String defaultDescription;
+    private String descriptionVi;
+    private String descriptionEn;
+    private String descriptionJa;
     private Instant createdAt;
 }

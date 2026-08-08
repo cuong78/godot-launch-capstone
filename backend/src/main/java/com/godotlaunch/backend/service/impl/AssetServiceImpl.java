@@ -503,7 +503,7 @@ public class AssetServiceImpl implements AssetService {
                 .status(item.getStatus())
                 .tags(item.getTags() == null ? java.util.List.of() :
                         item.getTags().stream()
-                                .map(com.godotlaunch.backend.entity.Tag::getName)
+                                .map(com.godotlaunch.backend.utils.TranslationUtils::resolveTagName)
                                 .toList())
                 .mediaUrls(assetImgs)
                 .thumbnailUrl(thumbUrl)

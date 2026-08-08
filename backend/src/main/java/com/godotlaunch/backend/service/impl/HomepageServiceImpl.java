@@ -5,6 +5,7 @@ import com.godotlaunch.backend.entity.*;
 import com.godotlaunch.backend.entity.enums.*;
 import com.godotlaunch.backend.repository.*;
 import com.godotlaunch.backend.service.*;
+import com.godotlaunch.backend.utils.TranslationUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -86,12 +87,12 @@ public class HomepageServiceImpl implements HomepageService {
         return HomepageProductResponse.builder().id(game.getId()).itemType("GAME").title(game.getTitle()).description(game.getDescription())
                 .thumbnailUrl(game.getThumbnailUrl()).price(game.getPriceProposed()).creatorName(game.getCreator().getFullName())
                 .categoryName(game.getCategory() == null ? null : game.getCategory().getName())
-                .tags(game.getTags().stream().map(Tag::getName).sorted().toList()).popularity(game.getDownloadCount()).createdAt(game.getCreatedAt()).build();
+                .tags(game.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(game.getDownloadCount()).createdAt(game.getCreatedAt()).build();
     }
     private HomepageProductResponse mapAsset(Asset asset) {
         return HomepageProductResponse.builder().id(asset.getId()).itemType("ASSET").title(asset.getTitle()).description(asset.getDescription())
                 .thumbnailUrl(asset.getThumbnailUrl()).price(asset.getPrice()).creatorName(asset.getSeller().getFullName())
                 .categoryName(asset.getCategory() == null ? null : asset.getCategory().getName())
-                .tags(asset.getTags().stream().map(Tag::getName).sorted().toList()).popularity(0).createdAt(asset.getCreatedAt()).build();
+                .tags(asset.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(0).createdAt(asset.getCreatedAt()).build();
     }
 }

@@ -1,24 +1,19 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowDownToLine,
   ArrowLeft,
-  Check,
-  ChevronDown,
   Clock3,
   Landmark,
-  Pencil,
   ReceiptText,
   RefreshCw,
   TrendingUp,
   Wallet2,
-  X,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
 import { walletApi } from "../api/walletApi";
 import { paymentApi } from "../api/paymentApi";
-import { userApi } from "../api/userApi";
 import { useAuth } from "../hooks/useAuth";
 import {
   CreateWithdrawalRequest,
@@ -129,31 +124,11 @@ const getStatusMeta = (status: WithdrawalStatus, t: any) => {
   }
 };
 
-const WITHDRAWAL_BANK_OPTIONS = [
-  { label: "Vietcombank", keyword: "VIETCOMBANK", code: "970436" },
-  { label: "VCB", keyword: "VCB", code: "970436" },
-  { label: "BIDV", keyword: "BIDV", code: "970418" },
-  { label: "VietinBank", keyword: "VIETINBANK", code: "970415" },
-  { label: "Agribank", keyword: "AGRIBANK", code: "970405" },
-  { label: "Techcombank", keyword: "TECHCOMBANK", code: "970407" },
-  { label: "MBBank", keyword: "MBBANK", code: "970422" },
-  { label: "MB", keyword: "MB", code: "970422" },
-  { label: "ACB", keyword: "ACB", code: "970416" },
-  { label: "Sacombank", keyword: "SACOMBANK", code: "970403" },
-  { label: "VPBank", keyword: "VPBANK", code: "970432" },
-  { label: "TPBank", keyword: "TPBANK", code: "970423" },
-  { label: "OCB", keyword: "OCB", code: "970448" },
-  { label: "SHB", keyword: "SHB", code: "970443" },
-  { label: "HDBank", keyword: "HDBANK", code: "970437" },
-] as const;
-
-
-
 export const WalletPage: React.FC<{
   setCurrentScreen: (screen: ScreenType) => void;
 }> = ({ setCurrentScreen }) => {
   const { t, i18n } = useTranslation(["wallet"]);
-  const { currentUser, updateUser } = useAuth();
+  const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === "admin";
   const isCustomer = currentUser?.role === "customer";
   const canTopUp = isCustomer || currentUser?.role === "developer";
@@ -166,16 +141,10 @@ export const WalletPage: React.FC<{
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
   const [amount, setAmount] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
-  const [bankAccount, setBankAccount] = useState("");
-  const [accountHolder, setAccountHolder] = useState("");
   const [note, setNote] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isEditingBankInfo, setIsEditingBankInfo] = useState(false);
-  const [isSavingBankInfo, setIsSavingBankInfo] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -191,55 +160,10 @@ export const WalletPage: React.FC<{
   const [activeRightTab, setActiveRightTab] = useState<"topup" | "withdraw">(
     "topup",
   );
-  const bankDropdownRef = useRef<HTMLDivElement | null>(null);
-  const selectedBankOption = WITHDRAWAL_BANK_OPTIONS.find(
-    (option) => option.label.toLowerCase() === bankName.trim().toLowerCase(),
-  );
-
-  useEffect(() => {
-    if (currentUser) {
-      if (currentUser.bankName) setBankName(currentUser.bankName);
-      if (currentUser.bankAccount) setBankAccount(currentUser.bankAccount);
-      if (currentUser.bankAccountHolder)
-        setAccountHolder(currentUser.bankAccountHolder);
-    }
-  }, [currentUser]);
-
-  const handleSaveBankInfo = async () => {
-    if (!bankName.trim() || !bankAccount.trim() || !accountHolder.trim()) {
-      setFormError(t("wallet:messages.missingBankInfo"));
-      return;
-    }
-    setIsSavingBankInfo(true);
-    setFormError(null);
-    setSuccessMessage(null);
-    try {
-      const response = await userApi.updateProfile({
-        fullName: currentUser?.fullName || "",
-        avatarUrl: currentUser?.avatarUrl,
-        bankName: bankName.trim(),
-        bankAccount: bankAccount.trim(),
-        bankAccountHolder: accountHolder.trim(),
-      });
-      if (response.success && response.data) {
-        updateUser(response.data);
-        setIsEditingBankInfo(false);
-        setSuccessMessage(t("wallet:messages.bankInfoUpdated"));
-      } else {
-        setFormError(
-          response.message || t("wallet:messages.updateBankInfoFailed"),
-        );
-      }
-    } catch (error: any) {
-      setFormError(
-        error.response?.data?.message ||
-          error.message ||
-          t("wallet:messages.updateBankInfoFailed"),
-      );
-    } finally {
-      setIsSavingBankInfo(false);
-    }
-  };
+  const bankName = currentUser?.bankName?.trim() || "";
+  const bankAccount = currentUser?.bankAccount?.trim() || "";
+  const accountHolder = currentUser?.bankAccountHolder?.trim() || "";
+  const hasVerifiedBankInfo = Boolean(bankName && bankAccount && accountHolder);
 
   const loadWalletSummary = async () => {
     setIsLoadingSummary(true);
@@ -409,20 +333,6 @@ export const WalletPage: React.FC<{
     loadTransactions();
   }, [page]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        bankDropdownRef.current &&
-        !bankDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsBankDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canUseSelfServiceWithdrawal) {
@@ -460,27 +370,6 @@ export const WalletPage: React.FC<{
 
     setIsSubmitting(true);
     try {
-      if (
-        payload.bankName !== currentUser?.bankName ||
-        payload.bankAccount !== currentUser?.bankAccount ||
-        payload.accountHolder !== currentUser?.bankAccountHolder
-      ) {
-        try {
-          const profileRes = await userApi.updateProfile({
-            fullName: currentUser?.fullName || "",
-            avatarUrl: currentUser?.avatarUrl,
-            bankName: payload.bankName,
-            bankAccount: payload.bankAccount,
-            bankAccountHolder: payload.accountHolder,
-          });
-          if (profileRes.success && profileRes.data) {
-            updateUser(profileRes.data);
-          }
-        } catch (e) {
-          console.warn("Failed to sync updated bank profile", e);
-        }
-      }
-
       const response = await walletApi.createDeveloperWithdrawal(payload);
       if (response.success) {
         setSuccessMessage(
@@ -491,8 +380,6 @@ export const WalletPage: React.FC<{
             : t("wallet:messages.successWithoutReference"),
         );
         setAmount("");
-        setIsEditingBankInfo(false);
-        setIsBankDropdownOpen(false);
         setNote("");
         await Promise.all([loadWalletSummary(), loadWithdrawals()]);
       } else {
@@ -1177,182 +1064,31 @@ export const WalletPage: React.FC<{
                     }
                     required
                   />
-                  {currentUser?.bankName && currentUser?.bankAccount && !isEditingBankInfo ? (
+                  {hasVerifiedBankInfo ? (
                     <div className="p-3 bg-sky-500/5 border border-sky-500/15 rounded-lg space-y-1 relative">
-                      <div className="flex items-center justify-between">
-                        <div className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-                          {t("wallet:form.bankNameLabel")}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBankName(currentUser.bankName || "");
-                            setBankAccount(currentUser.bankAccount || "");
-                            setAccountHolder(currentUser.bankAccountHolder || "");
-                            setIsEditingBankInfo(true);
-                          }}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors cursor-pointer"
-                        >
-                          <Pencil size={12} />
-                          {t("wallet:form.editBankInfo")}
-                        </button>
+                      <div className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+                        {t("wallet:form.bankNameLabel")}
                       </div>
                       <div className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                        {currentUser.bankName}
+                        {bankName}
                       </div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400">
                         {t("wallet:form.accountNumberLabel")}:{" "}
                         <span className="font-semibold font-mono">
-                          {currentUser.bankAccount}
+                          {bankAccount}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400">
                         {t("wallet:form.accountHolderLabel")}:{" "}
                         <span className="font-semibold">
-                          {currentUser.bankAccountHolder}
+                          {accountHolder}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <>
-                      {currentUser?.bankName && currentUser?.bankAccount && isEditingBankInfo && (
-                        <div className="flex items-center justify-between pb-1">
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                            {t("wallet:form.editBankInfoTitle")}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsEditingBankInfo(false);
-                              if (currentUser?.bankName) setBankName(currentUser.bankName);
-                              if (currentUser?.bankAccount) setBankAccount(currentUser.bankAccount);
-                              if (currentUser?.bankAccountHolder) setAccountHolder(currentUser.bankAccountHolder);
-                            }}
-                            className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer"
-                          >
-                            <X size={13} />
-                            {t("wallet:form.cancelEditBankInfo")}
-                          </button>
-                        </div>
-                      )}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                          {t("wallet:form.bankNameLabel")}
-                        </label>
-                        <div className="relative" ref={bankDropdownRef}>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsBankDropdownOpen((current) => !current)
-                            }
-                            className="dark-depth-inset group flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-sky-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-600"
-                            aria-label={t("wallet:form.bankDropdownButton")}
-                            aria-expanded={isBankDropdownOpen}
-                          >
-                            <div className="min-w-0">
-                              <div
-                                className={`truncate text-sm font-semibold ${
-                                  selectedBankOption || bankName
-                                    ? "text-slate-800 dark:text-slate-100"
-                                    : "text-slate-400 dark:text-slate-500"
-                                }`}
-                              >
-                                {selectedBankOption
-                                  ? selectedBankOption.label
-                                  : bankName || t("wallet:form.bankNamePlaceholder")}
-                              </div>
-                            </div>
-                            <div className="ml-3 inline-flex items-center gap-2">
-                              {selectedBankOption && (
-                                <span className="rounded text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80">
-                                  BIN {selectedBankOption.code}
-                                </span>
-                              )}
-                              <ChevronDown
-                                size={14}
-                                className={`text-slate-400 transition-transform ${
-                                  isBankDropdownOpen ? "rotate-180" : ""
-                                }`}
-                              />
-                            </div>
-                          </button>
-
-                          {isBankDropdownOpen && (
-                            <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
-                              <div className="max-h-60 overflow-y-auto p-1.5">
-                                {WITHDRAWAL_BANK_OPTIONS.map((option) => {
-                                  const isSelected =
-                                    bankName.trim().toLowerCase() ===
-                                    option.label.toLowerCase();
-                                  return (
-                                    <button
-                                      key={`${option.keyword}-${option.code}`}
-                                      type="button"
-                                      onClick={() => {
-                                        setBankName(option.label);
-                                        setIsBankDropdownOpen(false);
-                                      }}
-                                      className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors ${
-                                        isSelected
-                                          ? "bg-sky-500/10 text-sky-500 font-bold"
-                                          : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-semibold">
-                                          {option.label}
-                                        </span>
-                                        <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                                          BIN {option.code}
-                                        </span>
-                                      </div>
-                                      {isSelected && (
-                                        <Check
-                                          size={14}
-                                          className="text-sky-500"
-                                        />
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <Input
-                        label={t("wallet:form.accountNumberLabel")}
-                        placeholder={t(
-                          "wallet:form.accountNumberPlaceholder",
-                        )}
-                        value={bankAccount}
-                        onChange={(e) => setBankAccount(e.target.value)}
-                        required
-                      />
-                      <Input
-                        label={t("wallet:form.accountHolderLabel")}
-                        placeholder={t(
-                          "wallet:form.accountHolderPlaceholder",
-                        )}
-                        value={accountHolder}
-                        onChange={(e) => setAccountHolder(e.target.value)}
-                        required
-                      />
-                      {isEditingBankInfo && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleSaveBankInfo}
-                          disabled={isSavingBankInfo}
-                          className="w-full border-sky-500/30 text-sky-600 hover:bg-sky-500/10 dark:text-sky-400 font-semibold"
-                        >
-                          {isSavingBankInfo
-                            ? t("wallet:form.savingBankInfo")
-                            : t("wallet:form.saveBankInfo")}
-                        </Button>
-                      )}
-                    </>
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+                      {t("wallet:messages.missingBankInfo")}
+                    </div>
                   )}
                   <TextArea
                     label={t("wallet:form.noteLabel")}
@@ -1366,7 +1102,7 @@ export const WalletPage: React.FC<{
                     variant="primary"
                     size="md"
                     className="w-full"
-                    disabled={isSubmitting || isLoadingSummary}
+                    disabled={isSubmitting || isLoadingSummary || !hasVerifiedBankInfo}
                   >
                     {isSubmitting
                       ? t("wallet:form.submitting")

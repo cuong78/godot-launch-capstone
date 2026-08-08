@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.dto.request.BankSetupRequest;
 import com.godotlaunch.backend.dto.request.KycConfirmRequest;
 import com.godotlaunch.backend.dto.request.KycOcrRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
@@ -123,12 +124,12 @@ class KycControllerTest {
     }
 
     @Test
-    @DisplayName("Should confirm KYC and upgrade role to developer when all 3 conditions met")
-    void shouldConfirmKyc_AndUpgradeRoleToDeveloper() {
+    @DisplayName("Should confirm identity KYC without saving bank or upgrading role")
+    void shouldConfirmIdentityKyc_WithoutSavingBankOrUpgradingRole() {
         // Arrange
         KycConfirmRequest request = new KycConfirmRequest();
-        request.setDocumentType("CCCD");
-        request.setFullName("Nguyen Van A");
+        request.setDocumentType("cccd");
+        request.setFullName("Nguyễn Văn Đạt");
         request.setIdNumber("012345678901");
         request.setAddress("Hanoi, Vietnam");
         request.setDateOfBirth("01/01/1990");
@@ -137,9 +138,7 @@ class KycControllerTest {
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
         when(bannedIdentityRepository.existsByKycIdNumber("012345678901")).thenReturn(false);
         when(userRepository.existsByKycIdNumberAndIdNot("012345678901", userId)).thenReturn(false);
-        when(roleRepository.findByName("developer")).thenReturn(Optional.of(developerRole));
         when(userRepository.save(any(User.class))).thenReturn(mockUser);
-        when(authService.refreshSession(mockUser)).thenReturn("new-developer-jwt-token");
 
         // Act
         ResponseEntity<ApiResponse<KycStatusResponse>> result = kycController.confirmKyc(request, principal);
@@ -147,11 +146,191 @@ class KycControllerTest {
         // Assert
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody().getData().isKycVerified()).isTrue();
-        assertThat(result.getBody().getData().getToken()).isEqualTo("new-developer-jwt-token");
-        assertThat(mockUser.getRole()).isEqualTo(developerRole);
+        assertThat(result.getBody().getData().getToken()).isNull();
+        assertThat(mockUser.getRole()).isEqualTo(customerRole);
+        assertThat(mockUser.getBankName()).isNull();
+        assertThat(mockUser.getBankAccount()).isNull();
+        assertThat(mockUser.getBankAccountHolder()).isNull();
 
         verify(userRepository, times(1)).save(mockUser);
-        verify(authService, times(1)).refreshSession(mockUser);
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    @DisplayName("Should require complete bank information at payout setup")
+    void shouldThrowException_WhenBankInfoIsMissing() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankSetupRequest request = validBankRequest();
+        request.setBankAccountHolder(" ");
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+
+        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BANK_INFO_REQUIRED);
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Should reject a bank holder that does not match the KYC name")
+    void shouldThrowException_WhenBankHolderDoesNotMatchKycName() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankSetupRequest request = validBankRequest();
+        request.setBankAccountHolder("TRAN VAN B");
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+
+        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BANK_NAME_MISMATCH);
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Should reject an invalid bank account format")
+    void shouldThrowException_WhenBankAccountFormatIsInvalid() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankSetupRequest request = validBankRequest();
+        request.setBankAccount("ABC 123");
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+
+        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BANK_ACCOUNT_INVALID);
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Should reject a bank outside the supported payout list")
+    void shouldThrowException_WhenBankNameIsInvalid() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankSetupRequest request = validBankRequest();
+        request.setBankName("Unknown Bank");
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+
+        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BANK_NAME_INVALID);
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Should reject a bank account from the banned identity list")
+    void shouldThrowException_WhenBankAccountIsBanned() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankSetupRequest request = validBankRequest();
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(bannedIdentityRepository.existsByBankAccount("19034567890123")).thenReturn(true);
+
+        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.IDENTITY_BANNED);
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Should reject a bank account already used by another user")
+    void shouldThrowException_WhenBankAccountIsDuplicate() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankSetupRequest request = validBankRequest();
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(userRepository.existsByBankAccountAndIdNot("19034567890123", userId)).thenReturn(true);
+
+        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BANK_ACCOUNT_DUPLICATE);
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Should set bank once and upgrade role after all onboarding checks")
+    void shouldSetupBank_AndUpgradeRoleToDeveloper() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankSetupRequest request = validBankRequest();
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(roleRepository.findByName("developer")).thenReturn(Optional.of(developerRole));
+        when(userRepository.save(any(User.class))).thenReturn(mockUser);
+        when(authService.refreshSession(mockUser)).thenReturn("new-developer-jwt-token");
+
+        ResponseEntity<ApiResponse<KycStatusResponse>> result = kycController.setupBank(request, principal);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
+        assertThat(result.getBody().getData().getToken()).isEqualTo("new-developer-jwt-token");
+        assertThat(mockUser.getRole()).isEqualTo(developerRole);
+        assertThat(mockUser.getBankName()).isEqualTo("Vietcombank");
+        assertThat(mockUser.getBankAccount()).isEqualTo("19034567890123");
+        assertThat(mockUser.getBankAccountHolder()).isEqualTo("NGUYEN VAN DAT");
+
+        verify(userRepository).save(mockUser);
+        verify(authService).refreshSession(mockUser);
+    }
+
+    @Test
+    @DisplayName("Should reject bank setup when KYC is not complete")
+    void shouldThrowException_WhenKycIsNotComplete() {
+        BankSetupRequest request = validBankRequest();
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+
+        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.KYC_VERIFY_REQUIRED);
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Should reject changing bank after it has already been set")
+    void shouldThrowException_WhenBankIsAlreadySet() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        mockUser.setBankName("Vietcombank");
+        mockUser.setBankAccount("19034567890123");
+        mockUser.setBankAccountHolder("NGUYEN VAN DAT");
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+
+        assertThatThrownBy(() -> kycController.setupBank(validBankRequest(), principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BANK_INFO_ALREADY_SET);
+
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
@@ -236,5 +415,23 @@ class KycControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().getData().getIdNumber()).isEqualTo("012345678901");
+    }
+
+    private KycConfirmRequest validKycRequest() {
+        KycConfirmRequest request = new KycConfirmRequest();
+        request.setDocumentType("cccd");
+        request.setFullName("Nguyễn Văn Đạt");
+        request.setIdNumber("012345678901");
+        request.setAddress("Hanoi, Vietnam");
+        request.setDateOfBirth("01/01/1990");
+        return request;
+    }
+
+    private BankSetupRequest validBankRequest() {
+        BankSetupRequest request = new BankSetupRequest();
+        request.setBankName("Vietcombank");
+        request.setBankAccount("19034567890123");
+        request.setBankAccountHolder("NGUYEN VAN DAT");
+        return request;
     }
 }

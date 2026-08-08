@@ -4,8 +4,31 @@ import { BannerResponse } from './bannerApi';
 
 export type HomepageSectionType = 'RECENT_RELEASES' | 'FREE_CONTENT' | 'COLLECTION';
 
-export interface ContentTag { id: string; name: string; slug: string }
-export interface ContentCategory { id: string; name: string; slug: string; description?: string; parentId?: string; type: string }
+export interface ContentTag {
+  id: string;
+  name: string;
+  defaultName?: string;
+  nameVi?: string;
+  nameEn?: string;
+  nameJa?: string;
+  slug: string;
+}
+export interface ContentCategory {
+  id: string;
+  name: string;
+  defaultName?: string;
+  nameVi?: string;
+  nameEn?: string;
+  nameJa?: string;
+  slug: string;
+  description?: string;
+  defaultDescription?: string;
+  descriptionVi?: string;
+  descriptionEn?: string;
+  descriptionJa?: string;
+  parentId?: string;
+  type: string;
+}
 export interface ContentCollection {
   id: string; title: string; slug: string; description?: string;
   maxItems: number; active: boolean; tags: ContentTag[]; categories: ContentCategory[];

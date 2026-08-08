@@ -9,11 +9,19 @@ import java.util.UUID;
 public class CategoryRequest {
     @NotBlank(message = "Category name is required")
     private String name;
+
+    private String nameVi;
+    private String nameEn;
+    private String nameJa;
     
     @NotBlank(message = "Slug is required")
     private String slug;
     
     private String description;
+
+    private String descriptionVi;
+    private String descriptionEn;
+    private String descriptionJa;
 
     private UUID parentId;
 
