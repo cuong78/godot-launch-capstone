@@ -170,11 +170,6 @@
   "overview": {
     "platformSnapshot": "プラットフォーム概要",
     "commissionRate": "手数料率",
-    "announcementBanner": "お知らせバナー",
-    "noActiveAnnouncementBanner": "有効なお知らせバナーはありません。",
-    "maintenanceMode": "メンテナンスモード",
-    "maintenanceEnabled": "プラットフォーム保護のため有効です。",
-    "maintenanceDisabled": "無効です。ストアフロントの導線は利用可能です。",
     "actionRequiredBadge": "対応が必要"
   },
   "overviewCards": {
@@ -241,14 +236,12 @@
     "save": "プラットフォーム設定を保存",
     "commissionLabel": "プラットフォーム手数料率 (%)",
     "commissionHelper": "各 marketplace 取引からプラットフォームが保持する割合",
-    "maintenanceStatusLabel": "システムメンテナンス状態",
-    "maintenanceToggleActive": "有効 - サイトロック中",
-    "maintenanceToggleInactive": "無効 - オンライン",
-    "bannerLabel": "サイト全体のアラートバナーテキスト",
-    "bannerPlaceholder": "バナーを無効にするには空欄にします",
-    "bannerHelperText": "全ユーザー画面の上部に表示されるバナーテキスト",
-    "maintenanceWarningTitle": "警告: メンテナンスモードが有効です。",
-    "maintenanceWarningDescription": "この設定により、管理者以外のユーザーはチェックアウト、ファイルアップロード、リポジトリ同期ができなくなります。慎重に使用してください。"
+    "withdrawalHoldDaysLabel": "出金保留期間（日数）",
+    "withdrawalHoldDaysHelper": "出金申請が自動的に振り込まれるまでのクーリングオフ期間",
+    "refundDeadlineDaysLabel": "返金期限（日数）",
+    "refundDeadlineDaysHelper": "著作権侵害の紛争でseller が返金しなければならない日数（超過すると自動的に禁止されます）",
+    "dailyMaintenanceTimeLabel": "日次タスク実行時刻（ベトナム時間、HH:mm:ss）",
+    "dailyMaintenanceTimeHelper": "自動出金・返金強制タスクを1日1回実行する時刻（Asia/Ho_Chi_Minh）"
   },
   "contract": {
     "defaultBuyerRepresentative": "GodotLaunch運営",
