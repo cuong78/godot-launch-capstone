@@ -16,4 +16,7 @@ workspace.xml
 *.json
 !frontend/src/locales/**/*.json
 
+# CodeGraph local runtime data (daemon pid, db, cache) — machine-specific
+.codegraph/
+
 
