@@ -9,7 +9,6 @@ import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -22,6 +21,10 @@ import java.util.UUID;
  * trạng thái pending đủ withdrawalHoldDays (cooling-off, admin config được),
  * tự động tạo payout order — trừ khi seller đang có dispute open nhắm vào,
  * trường hợp đó giữ vô thời hạn cho tới khi dispute được resolve.
+ *
+ * Không dùng @Scheduled cố định — được SchedulingConfig đăng ký chạy 1
+ * lần/ngày tại giờ admin cấu hình (DynamicDailyCronTrigger, giờ VN), đọc lại
+ * DB mỗi lần lên lịch nên đổi giờ không cần restart app.
  */
 @Component
 @RequiredArgsConstructor
@@ -33,7 +36,6 @@ public class WithdrawalAutoPayoutScheduler {
     private final PlatformSettingsService platformSettingsService;
     private final WithdrawalRequestService withdrawalRequestService;
 
-    @Scheduled(fixedDelayString = "${app.withdrawal.auto-payout-interval-ms:1800000}")
     public void autoApproveEligibleWithdrawals() {
         short holdDays = platformSettingsService.getWithdrawalHoldDays();
         Instant cutoff = Instant.now().minus(holdDays, ChronoUnit.DAYS);
@@ -48,6 +50,14 @@ public class WithdrawalAutoPayoutScheduler {
 
             if (hasOpenDispute) {
                 log.info("Withdrawal {} held: seller {} has an open dispute", withdrawal.getId(), sellerId);
+                continue;
+            }
+
+            if (withdrawal.getUser().getLockedForDispute() != null) {
+                // Seller đang bị khóa role chờ hoàn tiền TH3 (post-payout dispute) —
+                // giữ toàn bộ withdrawal khác của họ, không chỉ khoản liên quan dispute.
+                log.info("Withdrawal {} held: seller {} is locked pending refund confirmation",
+                        withdrawal.getId(), sellerId);
                 continue;
             }
 

@@ -4,6 +4,7 @@ import com.godotlaunch.backend.dto.request.UpdatePlatformSettingsRequest;
 import com.godotlaunch.backend.dto.response.PlatformSettingsResponse;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
 
 public interface PlatformSettingsService {
 
@@ -14,4 +15,8 @@ public interface PlatformSettingsService {
     BigDecimal getPlatformCommissionRate();
 
     short getWithdrawalHoldDays();
+
+    short getRefundDeadlineDays();
+
+    LocalTime getDailyMaintenanceTime();
 }

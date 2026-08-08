@@ -14,7 +14,12 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.DisputeRepository;
 import com.godotlaunch.backend.repository.GameRepository;
+import com.godotlaunch.backend.repository.RoleRepository;
+import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.repository.WalletRepository;
+import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.service.PlatformSettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,6 +55,21 @@ class DisputeServiceImplTest {
 
     @Mock
     private FaceServiceClient faceServiceClient;
+
+    @Mock
+    private RoleRepository roleRepository;
+
+    @Mock
+    private WalletRepository walletRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private PlatformSettingsService platformSettingsService;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private DisputeServiceImpl disputeService;

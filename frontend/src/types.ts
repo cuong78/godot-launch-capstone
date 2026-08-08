@@ -324,6 +324,9 @@ export interface ApiResponse<T> {
 export interface PlatformSettingsResponse {
   commissionRate: number;
   withdrawalHoldDays: number;
+  refundDeadlineDays: number;
+  /** "HH:mm:ss", giờ Việt Nam — giờ chạy job maintenance hàng ngày */
+  dailyMaintenanceTime: string;
   maintenanceMode: boolean;
   announcementBanner?: string | null;
   updatedAt?: string | null;
@@ -332,6 +335,8 @@ export interface PlatformSettingsResponse {
 export interface UpdatePlatformSettingsRequest {
   commissionRate: number;
   withdrawalHoldDays: number;
+  refundDeadlineDays: number;
+  dailyMaintenanceTime: string;
   maintenanceMode: boolean;
   announcementBanner?: string | null;
 }

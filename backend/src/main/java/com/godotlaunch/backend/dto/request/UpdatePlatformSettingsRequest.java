@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -28,6 +29,14 @@ public class UpdatePlatformSettingsRequest {
     @Min(value = 0, message = "Withdrawal hold days must be at least 0")
     @Max(value = 30, message = "Withdrawal hold days must not exceed 30")
     private Short withdrawalHoldDays;
+
+    @NotNull(message = "Refund deadline days is required")
+    @Min(value = 1, message = "Refund deadline days must be at least 1")
+    @Max(value = 30, message = "Refund deadline days must not exceed 30")
+    private Short refundDeadlineDays;
+
+    @NotNull(message = "Daily maintenance time is required")
+    private LocalTime dailyMaintenanceTime;
 
     @NotNull(message = "Maintenance mode is required")
     private Boolean maintenanceMode;

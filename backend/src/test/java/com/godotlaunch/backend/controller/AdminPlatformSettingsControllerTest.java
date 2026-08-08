@@ -35,6 +35,8 @@ class AdminPlatformSettingsControllerTest {
     void setUp() {
         settingsResponse = new PlatformSettingsResponse(
                 new BigDecimal("10.00"),
+                (short) 5,
+                (short) 5,
                 false,
                 "Welcome to Godot Launch!",
                 null
@@ -67,6 +69,8 @@ class AdminPlatformSettingsControllerTest {
 
         PlatformSettingsResponse updatedResponse = new PlatformSettingsResponse(
                 new BigDecimal("15.00"),
+                (short) 5,
+                (short) 5,
                 true,
                 "Maintenance starting soon",
                 null

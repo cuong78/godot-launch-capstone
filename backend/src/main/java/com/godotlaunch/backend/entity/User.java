@@ -106,6 +106,15 @@ public class User {
     @Column(name = "bank_account_holder", length = 200)
     private String bankAccountHolder;
 
+    /**
+     * Không null = tài khoản đang bị khóa quyền developer chờ hoàn tiền
+     * cho dispute này (TH3: seller đạo nhái, tiền đã rời platform).
+     * Xem DisputeServiceImpl.lockSellerForRefund()/confirmRefund().
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "locked_for_dispute_id")
+    private Dispute lockedForDispute;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 

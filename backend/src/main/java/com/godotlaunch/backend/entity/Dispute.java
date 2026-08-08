@@ -59,6 +59,8 @@ public class Dispute {
     @Column(name = "refund_deadline")
     private Instant refundDeadline;
 
+    @Column(name = "refund_confirmed_at")
+    private Instant refundConfirmedAt;
 
     @Column(name = "resolved_at")
     private Instant resolvedAt;

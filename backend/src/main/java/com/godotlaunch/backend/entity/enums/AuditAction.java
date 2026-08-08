@@ -20,6 +20,8 @@ public enum AuditAction {
     withdrawal_completed,
     withdrawal_approved,
     withdrawal_rejected,
+    dispute_refund_confirmed,
+    dispute_seller_locked,
     marketplace_item_removed,
     review_removed,
     chat_removed,

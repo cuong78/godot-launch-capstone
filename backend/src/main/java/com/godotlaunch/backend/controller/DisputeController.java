@@ -66,4 +66,14 @@ public class DisputeController {
         DisputeResponse res = disputeService.resolveDispute(id, request, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(res, "Đã phán xử khiếu nại."));
     }
+
+    @PostMapping("/{id}/confirm-refund")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Xác nhận seller đã hoàn tiền (admin)", description = "Trừ ví seller, cộng ví reporter đúng refundAmount, mở lại quyền developer nếu đang bị khóa vì dispute này.")
+    public ResponseEntity<ApiResponse<DisputeResponse>> confirmRefund(
+            @PathVariable UUID id,
+            Principal principal) {
+        DisputeResponse res = disputeService.confirmRefund(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(res, "Đã xác nhận hoàn tiền."));
+    }
 }

@@ -14,6 +14,12 @@ public interface DisputeService {
     /** Admin xử lý dispute theo cây quyết định (TH1/2/3). */
     DisputeResponse resolveDispute(UUID disputeId, ResolveDisputeRequest request, String adminEmail);
 
+    /** Admin xác nhận seller đã nạp đủ refundAmount vào ví — trả tiền cho reporter, mở lại role. */
+    DisputeResponse confirmRefund(UUID disputeId, String adminEmail);
+
+    /** Gọi từ scheduler khi seller quá hạn refundDeadline mà chưa hoàn tiền — ban vĩnh viễn. */
+    void banOverdueSeller(UUID disputeId);
+
     List<DisputeResponse> getAllDisputes();
     List<DisputeResponse> getMyReportedDisputes(String email);
     DisputeResponse getDispute(UUID disputeId);

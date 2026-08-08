@@ -12,6 +12,7 @@ import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.WithdrawalRequest;
 import com.godotlaunch.backend.entity.enums.WithdrawalStatus;
 import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.repository.DisputeRepository;
 import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
@@ -19,6 +20,8 @@ import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.repository.PayoutGateway;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.service.PlatformSettingsService;
+import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,6 +73,15 @@ class WithdrawalRequestServiceImplTest {
 
     @Mock
     private EncryptionUtils encryptionUtils;
+
+    @Mock
+    private DisputeRepository disputeRepository;
+
+    @Mock
+    private WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
+
+    @Mock
+    private PlatformSettingsService platformSettingsService;
 
     @InjectMocks
     private WithdrawalRequestServiceImpl withdrawalRequestService;
@@ -129,7 +141,6 @@ class WithdrawalRequestServiceImplTest {
 
     @Test
     void approveWithdrawal_ShouldCreatePayoutAndMoveToProcessing_WithoutChangingWallet() {
-        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
         when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
         when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
@@ -186,7 +197,6 @@ class WithdrawalRequestServiceImplTest {
 
     @Test
     void approveWithdrawal_ShouldRejectWhenPayoutBalanceIsInsufficient() {
-        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
         when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(payoutGateway.getBalance()).thenReturn(
                 PayoutGatewayBalanceResponse.builder()
@@ -216,7 +226,6 @@ class WithdrawalRequestServiceImplTest {
 
     @Test
     void approveWithdrawal_ShouldReconcileWithPayOS_WhenCreatePayoutFailsButPayoutAlreadyExists() {
-        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
         when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
         when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
@@ -259,7 +268,6 @@ class WithdrawalRequestServiceImplTest {
 
     @Test
     void approveWithdrawal_ShouldRethrowOriginalError_WhenCreatePayoutFailsAndNoPayoutFound() {
-        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
         when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(payoutGateway.getBalance()).thenReturn(
                 PayoutGatewayBalanceResponse.builder()
@@ -495,31 +503,6 @@ class WithdrawalRequestServiceImplTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(withdrawal.getId());
-    }
-
-    @Test
-    void markWithdrawalProcessing_ShouldSetStatus() {
-        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
-        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
-        when(withdrawalRequestRepository.save(any(WithdrawalRequest.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
-        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
-
-        WithdrawalDetailResponse response = withdrawalRequestService.markWithdrawalProcessing(withdrawal.getId(), adminUser.getEmail());
-
-        assertThat(response.getStatus()).isEqualTo(WithdrawalStatus.processing);
-    }
-
-    @Test
-    void markWithdrawalProcessing_ShouldThrowException_WhenNotPending() {
-        withdrawal.setStatus(WithdrawalStatus.approved);
-        when(userRepository.findByEmail(adminUser.getEmail())).thenReturn(Optional.of(adminUser));
-        when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
-
-        assertThrows(AppException.class, () ->
-                withdrawalRequestService.markWithdrawalProcessing(withdrawal.getId(), adminUser.getEmail())
-        );
     }
 
     @Test

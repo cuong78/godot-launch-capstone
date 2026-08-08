@@ -13,6 +13,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "platform_settings")
@@ -31,6 +32,17 @@ public class PlatformSettings {
 
     @Column(name = "withdrawal_hold_days", nullable = false)
     private Short withdrawalHoldDays = 5;
+
+    @Column(name = "refund_deadline_days", nullable = false)
+    private Short refundDeadlineDays = 5;
+
+    /**
+     * Giờ chạy 2 job maintenance hàng ngày (WithdrawalAutoPayoutScheduler,
+     * DisputeRefundEnforcementScheduler) — luôn hiểu là giờ Việt Nam
+     * (Asia/Ho_Chi_Minh), xem DynamicDailyCronTrigger.
+     */
+    @Column(name = "daily_maintenance_time", nullable = false)
+    private LocalTime dailyMaintenanceTime = LocalTime.of(2, 0, 0);
 
     @Column(name = "maintenance_mode", nullable = false)
     private boolean maintenanceMode;

@@ -28,6 +28,7 @@ import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.repository.PayoutGateway;
+import com.godotlaunch.backend.scheduler.WithdrawalPayoutSyncScheduler;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
@@ -88,6 +89,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final EncryptionUtils encryptionUtils;
     private final WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
     private final PlatformSettingsService platformSettingsService;
+    private final WithdrawalPayoutSyncScheduler withdrawalPayoutSyncScheduler;
 
     @Override
     @Transactional(readOnly = true)
@@ -299,6 +301,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                         ? "Admin created a PayOS payout order and moved the withdrawal into processing."
                         : "System auto-created a PayOS payout order after the cooling-off period elapsed."
         );
+
+        // Withdrawal vừa chuyển sang processing — đảm bảo vòng lặp poll PayOS đang chạy
+        // (tự bật nếu đang tắt, no-op nếu đã chạy sẵn cho withdrawal khác).
+        withdrawalPayoutSyncScheduler.ensureRunning();
 
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);

@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -16,6 +17,8 @@ public class PlatformSettingsResponse {
 
     private BigDecimal commissionRate;
     private Short withdrawalHoldDays;
+    private Short refundDeadlineDays;
+    private LocalTime dailyMaintenanceTime;
     private boolean maintenanceMode;
     private String announcementBanner;
     private Instant updatedAt;

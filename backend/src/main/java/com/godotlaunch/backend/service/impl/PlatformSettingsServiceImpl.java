@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalTime;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,10 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     private static final BigDecimal MAX_COMMISSION_RATE = new BigDecimal("100.00");
     private static final short DEFAULT_WITHDRAWAL_HOLD_DAYS = 5;
     private static final short MAX_WITHDRAWAL_HOLD_DAYS = 30;
+    private static final short DEFAULT_REFUND_DEADLINE_DAYS = 5;
+    private static final short MIN_REFUND_DEADLINE_DAYS = 1;
+    private static final short MAX_REFUND_DEADLINE_DAYS = 30;
+    private static final LocalTime DEFAULT_DAILY_MAINTENANCE_TIME = LocalTime.of(2, 0, 0);
     private static final String DEFAULT_ANNOUNCEMENT = "GodotLaunch Matrix Engine Upgrade is complete!";
 
     private final PlatformSettingsRepository platformSettingsRepository;
@@ -41,6 +46,8 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     public PlatformSettingsResponse updatePlatformSettings(UpdatePlatformSettingsRequest request) {
         BigDecimal normalizedRate = normalizeCommissionRate(request.getCommissionRate());
         short normalizedHoldDays = normalizeWithdrawalHoldDays(request.getWithdrawalHoldDays());
+        short normalizedRefundDeadlineDays = normalizeRefundDeadlineDays(request.getRefundDeadlineDays());
+        LocalTime normalizedDailyMaintenanceTime = normalizeDailyMaintenanceTime(request.getDailyMaintenanceTime());
 
         PlatformSettings settings = platformSettingsRepository.findById(SETTINGS_ID)
                 .orElseGet(() -> {
@@ -51,6 +58,8 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
 
         settings.setCommissionRate(normalizedRate);
         settings.setWithdrawalHoldDays(normalizedHoldDays);
+        settings.setRefundDeadlineDays(normalizedRefundDeadlineDays);
+        settings.setDailyMaintenanceTime(normalizedDailyMaintenanceTime);
         settings.setMaintenanceMode(Boolean.TRUE.equals(request.getMaintenanceMode()));
         settings.setAnnouncementBanner(normalizeAnnouncement(request.getAnnouncementBanner()));
 
@@ -75,10 +84,30 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
                 .orElse(DEFAULT_WITHDRAWAL_HOLD_DAYS);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public short getRefundDeadlineDays() {
+        return platformSettingsRepository.findById(SETTINGS_ID)
+                .map(PlatformSettings::getRefundDeadlineDays)
+                .filter(days -> days != null)
+                .orElse(DEFAULT_REFUND_DEADLINE_DAYS);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LocalTime getDailyMaintenanceTime() {
+        return platformSettingsRepository.findById(SETTINGS_ID)
+                .map(PlatformSettings::getDailyMaintenanceTime)
+                .filter(time -> time != null)
+                .orElse(DEFAULT_DAILY_MAINTENANCE_TIME);
+    }
+
     private PlatformSettingsResponse buildDefaultResponse() {
         return new PlatformSettingsResponse(
                 DEFAULT_COMMISSION_RATE,
                 DEFAULT_WITHDRAWAL_HOLD_DAYS,
+                DEFAULT_REFUND_DEADLINE_DAYS,
+                DEFAULT_DAILY_MAINTENANCE_TIME,
                 false,
                 DEFAULT_ANNOUNCEMENT,
                 null
@@ -89,6 +118,8 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
         return new PlatformSettingsResponse(
                 settings.getCommissionRate() != null ? settings.getCommissionRate() : DEFAULT_COMMISSION_RATE,
                 settings.getWithdrawalHoldDays() != null ? settings.getWithdrawalHoldDays() : DEFAULT_WITHDRAWAL_HOLD_DAYS,
+                settings.getRefundDeadlineDays() != null ? settings.getRefundDeadlineDays() : DEFAULT_REFUND_DEADLINE_DAYS,
+                settings.getDailyMaintenanceTime() != null ? settings.getDailyMaintenanceTime() : DEFAULT_DAILY_MAINTENANCE_TIME,
                 settings.isMaintenanceMode(),
                 settings.getAnnouncementBanner(),
                 settings.getUpdatedAt()
@@ -113,6 +144,24 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
         }
 
         return withdrawalHoldDays;
+    }
+
+    private short normalizeRefundDeadlineDays(Short refundDeadlineDays) {
+        if (refundDeadlineDays == null
+                || refundDeadlineDays < MIN_REFUND_DEADLINE_DAYS
+                || refundDeadlineDays > MAX_REFUND_DEADLINE_DAYS) {
+            throw new AppException(ErrorCode.REFUND_DEADLINE_DAYS_INVALID);
+        }
+
+        return refundDeadlineDays;
+    }
+
+    private LocalTime normalizeDailyMaintenanceTime(LocalTime dailyMaintenanceTime) {
+        if (dailyMaintenanceTime == null) {
+            throw new AppException(ErrorCode.DAILY_MAINTENANCE_TIME_INVALID);
+        }
+        // Bỏ phần nano-giây (nếu client gửi lên) — chỉ giữ độ chính xác tới giây.
+        return dailyMaintenanceTime.withNano(0);
     }
 
     private String normalizeAnnouncement(String announcementBanner) {

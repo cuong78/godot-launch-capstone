@@ -414,6 +414,12 @@
     "resolveCta": "Resolve",
     "resolvedBadge": "Resolved",
     "resolveError": "Failed to resolve the dispute.",
+    "refundPendingBadge": "Awaiting refund",
+    "refundConfirmedBadge": "Refund confirmed",
+    "confirmRefundCta": "Confirm refund received",
+    "confirmRefundConfirming": "Confirming...",
+    "confirmRefundError": "Failed to confirm the refund.",
+    "confirmRefundSuccess": "Refund confirmed — developer access has been restored.",
     "status": {
       "open": "New",
       "investigating": "Investigating",

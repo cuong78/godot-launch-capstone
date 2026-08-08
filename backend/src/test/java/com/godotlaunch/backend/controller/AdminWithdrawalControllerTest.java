@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.controller;
 
-import com.godotlaunch.backend.dto.request.ApproveWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.RejectWithdrawalRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalDetailResponse;
@@ -67,35 +66,12 @@ class AdminWithdrawalControllerTest {
     }
 
     @Test
-    @DisplayName("shouldApproveWithdrawal_WhenAdminApproves")
-    void shouldApproveWithdrawal_WhenAdminApproves() {
-        ApproveWithdrawalRequest request = new ApproveWithdrawalRequest();
-        when(principal.getName()).thenReturn(adminEmail);
-        when(withdrawalRequestService.approveWithdrawal(withdrawalId, request, adminEmail)).thenReturn(detailResponse);
-
-        ResponseEntity<ApiResponse<WithdrawalDetailResponse>> response = adminWithdrawalController.approveWithdrawal(withdrawalId, request, principal);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    }
-
-    @Test
     @DisplayName("shouldSyncWithdrawal_WhenRequested")
     void shouldSyncWithdrawal_WhenRequested() {
         when(principal.getName()).thenReturn(adminEmail);
         when(withdrawalRequestService.syncWithdrawalStatus(withdrawalId, adminEmail)).thenReturn(detailResponse);
 
         ResponseEntity<ApiResponse<WithdrawalDetailResponse>> response = adminWithdrawalController.syncWithdrawal(withdrawalId, principal);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    }
-
-    @Test
-    @DisplayName("shouldMarkProcessing_WhenCalled")
-    void shouldMarkProcessing_WhenCalled() {
-        when(principal.getName()).thenReturn(adminEmail);
-        when(withdrawalRequestService.markWithdrawalProcessing(withdrawalId, adminEmail)).thenReturn(detailResponse);
-
-        ResponseEntity<ApiResponse<WithdrawalDetailResponse>> response = adminWithdrawalController.markProcessing(withdrawalId, principal);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }

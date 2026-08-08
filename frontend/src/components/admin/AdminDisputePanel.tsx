@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Loader2, ShieldCheck, Scale, Ban } from 'lucide-react';
+import { AlertTriangle, Loader2, ShieldCheck, Scale, Ban, BadgeDollarSign } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { disputeApi, DisputeResponse, ResolveDisputePayload } from '../../api/disputeApi';
 
@@ -26,6 +26,8 @@ export default function AdminDisputePanel() {
   const [disputes, setDisputes] = useState<DisputeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<DisputeResponse | null>(null);
+  const [confirmingRefundId, setConfirmingRefundId] = useState<string | null>(null);
+  const [refundError, setRefundError] = useState<string | null>(null);
 
   const formatDate = (value: string) => {
     const parsed = new Date(value);
@@ -55,6 +57,23 @@ export default function AdminDisputePanel() {
 
   useEffect(() => { load(); }, []);
 
+  const handleConfirmRefund = async (disputeId: string) => {
+    setConfirmingRefundId(disputeId);
+    setRefundError(null);
+    try {
+      const res = await disputeApi.confirmRefund(disputeId);
+      if (res.success) {
+        await load();
+      } else {
+        setRefundError(res.message || t('disputePanel.confirmRefundError'));
+      }
+    } catch (err: any) {
+      setRefundError(err.response?.data?.message || t('disputePanel.confirmRefundError'));
+    } finally {
+      setConfirmingRefundId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -68,17 +87,32 @@ export default function AdminDisputePanel() {
 
   return (
     <div className="space-y-4">
+      {refundError && (
+        <div className="rounded-lg bg-rose-400/10 px-3 py-2 text-xs text-rose-400">{refundError}</div>
+      )}
+
       {disputes.length === 0 ? (
         <p className="py-8 text-center text-sm text-slate-500 dark:text-white/40">{t('disputePanel.empty')}</p>
       ) : (
         <div className="space-y-2">
           {disputes.map((d) => {
             const statusColor = STATUS_COLOR[d.status] || STATUS_COLOR.open;
+            const awaitingRefund = d.status === 'resolved_seller_fault' && !d.refundConfirmedAt;
             return (
               <div key={d.id} className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${statusColor}`}>{getStatusText(d.status)}</span>
+                    {awaitingRefund && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-orange-500/15 text-orange-400 border-orange-500/30">
+                        {t('disputePanel.refundPendingBadge')}
+                      </span>
+                    )}
+                    {d.status === 'resolved_seller_fault' && d.refundConfirmedAt && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                        {t('disputePanel.refundConfirmedBadge')}
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500 dark:text-white/40">{formatDate(d.createdAt)}</span>
                   </div>
                   <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
@@ -96,6 +130,18 @@ export default function AdminDisputePanel() {
                     className="shrink-0 bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold px-3 py-2 rounded-lg"
                   >
                     {t('disputePanel.resolveCta')}
+                  </button>
+                ) : awaitingRefund ? (
+                  <button
+                    onClick={() => handleConfirmRefund(d.id)}
+                    disabled={confirmingRefundId === d.id}
+                    className="shrink-0 flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    {confirmingRefundId === d.id ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('disputePanel.confirmRefundConfirming')}</>
+                    ) : (
+                      <><BadgeDollarSign className="w-3.5 h-3.5" /> {t('disputePanel.confirmRefundCta')}</>
+                    )}
                   </button>
                 ) : (
                   <span className="shrink-0 text-emerald-400 text-xs flex items-center gap-1">

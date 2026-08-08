@@ -76,6 +76,8 @@ class PlatformSettingsServiceImplTest {
         // Arrange
         UpdatePlatformSettingsRequest request = new UpdatePlatformSettingsRequest();
         request.setCommissionRate(new BigDecimal("12.50"));
+        request.setWithdrawalHoldDays((short) 5);
+        request.setRefundDeadlineDays((short) 5);
         request.setMaintenanceMode(true);
         request.setAnnouncementBanner("  Scheduled maintenance  ");
 

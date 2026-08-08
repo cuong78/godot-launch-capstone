@@ -18,6 +18,7 @@ export interface DisputeResponse {
   resolutionNote: string | null;
   refundAmount: number | null;
   refundDeadline: string | null;
+  refundConfirmedAt: string | null;
   createdAt: string;
   resolvedAt: string | null;
 }
@@ -59,6 +60,10 @@ export const disputeApi = {
   },
   resolve: async (id: string, payload: ResolveDisputePayload): Promise<ApiResponse<DisputeResponse>> => {
     const res = await api.post(`/api/v1/disputes/${id}/resolve`, payload);
+    return res.data;
+  },
+  confirmRefund: async (id: string): Promise<ApiResponse<DisputeResponse>> => {
+    const res = await api.post(`/api/v1/disputes/${id}/confirm-refund`);
     return res.data;
   },
 };

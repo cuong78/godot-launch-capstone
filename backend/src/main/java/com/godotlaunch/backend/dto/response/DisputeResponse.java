@@ -24,6 +24,7 @@ public class DisputeResponse {
     private String resolutionNote;
     private BigDecimal refundAmount;
     private Instant refundDeadline;
+    private Instant refundConfirmedAt;
     private Instant createdAt;
     private Instant resolvedAt;
 }

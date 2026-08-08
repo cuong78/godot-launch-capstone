@@ -1066,6 +1066,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const applyPlatformSettings = (settings: PlatformSettingsResponse) => {
     setCommission(Number(settings.commissionRate) || 0);
     setWithdrawalHoldDays(Number(settings.withdrawalHoldDays) || 0);
+    setRefundDeadlineDays(Number(settings.refundDeadlineDays) || 0);
+    setDailyMaintenanceTime(settings.dailyMaintenanceTime || "02:00:00");
     setMaintenance(Boolean(settings.maintenanceMode));
     setAnnouncement(settings.announcementBanner || "");
   };
@@ -1094,6 +1096,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // Platform settings state
   const [commission, setCommission] = useState(10);
   const [withdrawalHoldDays, setWithdrawalHoldDays] = useState(5);
+  const [refundDeadlineDays, setRefundDeadlineDays] = useState(5);
+  const [dailyMaintenanceTime, setDailyMaintenanceTime] = useState("02:00:00");
   const [maintenance, setMaintenance] = useState(false);
   const [announcement, setAnnouncement] = useState(
     "GodotLaunch Matrix Engine Upgrade is complete!",
@@ -1352,6 +1356,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const response = await platformSettingsApi.updatePlatformSettings({
         commissionRate: commission,
         withdrawalHoldDays,
+        refundDeadlineDays,
+        dailyMaintenanceTime,
         maintenanceMode: maintenance,
         announcementBanner: announcement.trim() || null,
       });
@@ -3465,6 +3471,32 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             setWithdrawalHoldDays(parseInt(e.target.value, 10) || 0)
                           }
                           helperText="Cooling-off period before a withdrawal is auto-paid out"
+                          required
+                        />
+
+                        <Input
+                          label="Refund Deadline (days)"
+                          type="number"
+                          min="1"
+                          max="30"
+                          step="1"
+                          value={refundDeadlineDays}
+                          onChange={(e) =>
+                            setRefundDeadlineDays(parseInt(e.target.value, 10) || 0)
+                          }
+                          helperText="Days a seller has to refund a copyright-theft dispute before being auto-banned"
+                          required
+                        />
+
+                        <Input
+                          label="Daily Maintenance Time (Vietnam time, HH:mm:ss)"
+                          type="time"
+                          step={1}
+                          value={dailyMaintenanceTime}
+                          onChange={(e) =>
+                            setDailyMaintenanceTime(e.target.value || "02:00:00")
+                          }
+                          helperText="Once-daily run time for auto-payout and refund enforcement jobs (Asia/Ho_Chi_Minh)"
                           required
                         />
 

@@ -414,6 +414,12 @@
     "resolveCta": "Phán xử",
     "resolvedBadge": "Đã xử lý",
     "resolveError": "Phán xử thất bại.",
+    "refundPendingBadge": "Đang chờ hoàn tiền",
+    "refundConfirmedBadge": "Đã hoàn tiền",
+    "confirmRefundCta": "Xác nhận đã hoàn tiền",
+    "confirmRefundConfirming": "Đang xác nhận...",
+    "confirmRefundError": "Xác nhận hoàn tiền thất bại.",
+    "confirmRefundSuccess": "Đã xác nhận hoàn tiền — quyền developer được mở lại.",
     "status": {
       "open": "Mới",
       "investigating": "Đang điều tra",

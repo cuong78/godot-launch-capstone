@@ -414,6 +414,12 @@
     "resolveCta": "裁定",
     "resolvedBadge": "処理済み",
     "resolveError": "紛争の裁定に失敗しました。",
+    "refundPendingBadge": "返金待ち",
+    "refundConfirmedBadge": "返金確認済み",
+    "confirmRefundCta": "返金受領を確認",
+    "confirmRefundConfirming": "確認中...",
+    "confirmRefundError": "返金の確認に失敗しました。",
+    "confirmRefundSuccess": "返金を確認しました — developer権限が復元されました。",
     "status": {
       "open": "新規",
       "investigating": "調査中",
