@@ -48,87 +48,7 @@ interface CategoryNode extends CategoryResponse {
   children: CategoryNode[];
 }
 
-const CATEGORY_LABEL_KEYS: Record<string, string> = {
-  action: "filters.categories.action",
-  adventure: "filters.categories.adventure",
-  strategy: "filters.categories.strategy",
-  casual: "filters.categories.casual",
-  platformer: "filters.categories.platformer",
-  racing: "filters.categories.racing",
-  simulation: "filters.categories.simulation",
-  sports: "filters.categories.sports",
-  puzzle: "filters.categories.puzzle",
-  shooter: "filters.categories.shooter",
-  fighting: "filters.categories.fighting",
-  "action-adventure": "filters.categories.actionAdventure",
-  rpg: "filters.categories.rpg",
-  "city builder": "filters.categories.cityBuilder",
-  "city-builder": "filters.categories.cityBuilder",
-  "card game": "filters.categories.cardGame",
-  "card-game": "filters.categories.cardGame",
-  "2d assets": "filters.categories.twoDAssets",
-  "2d-assets": "filters.categories.twoDAssets",
-  "sprites & characters": "filters.categories.spritesCharacters",
-  "2d-sprites": "filters.categories.spritesCharacters",
-  "tilesets & environments": "filters.categories.tilesetsEnvironments",
-  "2d-tilesets": "filters.categories.tilesetsEnvironments",
-  "ui kits & icons": "filters.categories.uiKitsIcons",
-  "ui-kits": "filters.categories.uiKitsIcons",
-  "backgrounds & parallax": "filters.categories.backgroundsParallax",
-  "2d-backgrounds": "filters.categories.backgroundsParallax",
-  "3d assets": "filters.categories.threeDAssets",
-  "3d-assets": "filters.categories.threeDAssets",
-  "3d characters": "filters.categories.threeDCharacters",
-  "3d-characters": "filters.categories.threeDCharacters",
-  "3d props & objects": "filters.categories.threeDPropsObjects",
-  "3d-props": "filters.categories.threeDPropsObjects",
-  "3d environments & modular": "filters.categories.threeDEnvironmentsModular",
-  "3d-environments": "filters.categories.threeDEnvironmentsModular",
-  "3d vehicles": "filters.categories.threeDVehicles",
-  "3d-vehicles": "filters.categories.threeDVehicles",
-  "templates & source code": "filters.categories.templatesSourceCode",
-  templates: "filters.categories.templatesSourceCode",
-  "full game templates": "filters.categories.fullGameTemplates",
-  "game-templates": "filters.categories.fullGameTemplates",
-  "gameplay systems": "filters.categories.gameplaySystems",
-  "gameplay-systems": "filters.categories.gameplaySystems",
-  "multiplayer & network": "filters.categories.multiplayerNetwork",
-  "multiplayer-network": "filters.categories.multiplayerNetwork",
-  "plugins & add-ons": "filters.categories.pluginsAddons",
-  plugins: "filters.categories.pluginsAddons",
-  "editor helpers": "filters.categories.editorHelpers",
-  "editor-helpers": "filters.categories.editorHelpers",
-  "runtime scripts & nodes": "filters.categories.runtimeScriptsNodes",
-  "runtime-scripts": "filters.categories.runtimeScriptsNodes",
-  "integration tools": "filters.categories.integrationTools",
-  "integration-tools": "filters.categories.integrationTools",
-  "materials & shaders": "filters.categories.materialsShaders",
-  "materials-shaders": "filters.categories.materialsShaders",
-  "pbr materials": "filters.categories.pbrMaterials",
-  "pbr-materials": "filters.categories.pbrMaterials",
-  "godot shaders": "filters.categories.godotShaders",
-  "godot-shaders": "filters.categories.godotShaders",
-  "textures & patterns": "filters.categories.texturesPatterns",
-  "textures-patterns": "filters.categories.texturesPatterns",
-  "audio & music": "filters.categories.audioMusic",
-  "audio-music": "filters.categories.audioMusic",
-  "sound effects": "filters.categories.soundEffects",
-  sfx: "filters.categories.soundEffects",
-  "music tracks": "filters.categories.musicTracks",
-  "music-tracks": "filters.categories.musicTracks",
-  "ambient & background noise": "filters.categories.ambientBackgroundNoise",
-  "ambient-noise": "filters.categories.ambientBackgroundNoise",
-  "vfx & animations": "filters.categories.vfxAnimations",
-  "vfx-animations": "filters.categories.vfxAnimations",
-  "3d particle effects": "filters.categories.particleEffects3d",
-  "3d-vfx": "filters.categories.particleEffects3d",
-  "2d particle effects": "filters.categories.particleEffects2d",
-  "2d-vfx": "filters.categories.particleEffects2d",
-  "rigged animations": "filters.categories.riggedAnimations",
-  "rigged-animations": "filters.categories.riggedAnimations",
-};
 
-const normalizeCategoryValue = (value: string) => value.toLowerCase().trim();
 
 const CategoryTreeItem: React.FC<{
   node: CategoryNode;
@@ -309,7 +229,11 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
       }
     };
     loadCategories();
-  }, []);
+  }, [i18n.language]);
+
+  React.useEffect(() => {
+    setSelectedTags([]);
+  }, [i18n.language, setSelectedTags]);
 
   const activeCategories = catalogType === "game" ? gameCategories : assetCategories;
   const targetItemType = catalogType === "game" ? "source_code" : "asset";
@@ -320,74 +244,11 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     () => [...gameCategories, ...assetCategories],
     [gameCategories, assetCategories],
   );
-
   const getCategoryLabel = React.useCallback(
     (category: Pick<CategoryResponse, "name" | "slug"> | string) => {
-      const rawName = typeof category === "string" ? category : category.name;
-      const normalizedName = normalizeCategoryValue(rawName);
-      const resolvedCategory =
-        typeof category === "string"
-          ? allCategories.find((item) => {
-              const itemName = normalizeCategoryValue(item.name);
-              const itemSlug = normalizeCategoryValue(item.slug);
-
-              return itemName === normalizedName || itemSlug === normalizedName;
-            })
-          : category;
-      const normalizedSlug = normalizeCategoryValue(
-        resolvedCategory?.slug || rawName,
-      );
-      const exactLabelKey =
-        CATEGORY_LABEL_KEYS[normalizedSlug] || CATEGORY_LABEL_KEYS[normalizedName];
-
-      if (exactLabelKey) {
-        return t(exactLabelKey);
-      }
-
-      if (
-        normalizedSlug.includes("audio") ||
-        normalizedName.includes("audio") ||
-        normalizedName.includes("sound") ||
-        normalizedName.includes("sfx")
-      ) {
-        return t("filters.categories.audioSfx");
-      }
-
-      if (
-        normalizedSlug.includes("script") ||
-        normalizedSlug.includes("plugin") ||
-        normalizedName.includes("script") ||
-        normalizedName.includes("plugin")
-      ) {
-        return t("filters.categories.scriptsPlugins");
-      }
-
-      if (
-        normalizedSlug.includes("shader") ||
-        normalizedSlug.includes("vfx") ||
-        normalizedName.includes("shader") ||
-        normalizedName.includes("vfx")
-      ) {
-        return t("filters.categories.shadersVfx");
-      }
-
-      if (
-        normalizedSlug.includes("3d") ||
-        normalizedName.includes("3d")
-      ) {
-        return t("filters.categories.threeDModels");
-      }
-
-      if (
-        normalizedSlug.includes("2d") ||
-        normalizedName.includes("2d")
-      ) {
-        return t("filters.categories.twoDAssets");
-      }
-
-      return rawName;
+      return typeof category === "string" ? category : category.name;
     },
-    [allCategories, t],
+    [],
   );
 
   const getToggleCategoryLabel = React.useCallback(

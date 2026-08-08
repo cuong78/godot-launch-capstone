@@ -7,6 +7,7 @@ import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.CategoryRepository;
 import com.godotlaunch.backend.service.CategoryService;
+import com.godotlaunch.backend.utils.TranslationUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,8 +33,14 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category category = new Category();
         category.setName(request.getName());
+        category.setNameVi(request.getNameVi());
+        category.setNameEn(request.getNameEn());
+        category.setNameJa(request.getNameJa());
         category.setSlug(request.getSlug());
         category.setDescription(request.getDescription());
+        category.setDescriptionVi(request.getDescriptionVi());
+        category.setDescriptionEn(request.getDescriptionEn());
+        category.setDescriptionJa(request.getDescriptionJa());
         category.setType(request.getType());
 
         if (request.getParentId() != null) {
@@ -66,8 +73,14 @@ public class CategoryServiceImpl implements CategoryService {
         });
 
         category.setName(request.getName());
+        category.setNameVi(request.getNameVi());
+        category.setNameEn(request.getNameEn());
+        category.setNameJa(request.getNameJa());
         category.setSlug(request.getSlug());
         category.setDescription(request.getDescription());
+        category.setDescriptionVi(request.getDescriptionVi());
+        category.setDescriptionEn(request.getDescriptionEn());
+        category.setDescriptionJa(request.getDescriptionJa());
         category.setType(request.getType());
 
         if (request.getParentId() != null) {
@@ -132,14 +145,6 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private CategoryResponse mapEntityToResponse(Category category) {
-        return CategoryResponse.builder()
-                .id(category.getId())
-                .name(category.getName())
-                .slug(category.getSlug())
-                .description(category.getDescription())
-                .parentId(category.getParent() != null ? category.getParent().getId() : null)
-                .type(category.getType())
-                .createdAt(category.getCreatedAt())
-                .build();
+        return TranslationUtils.mapCategory(category);
     }
 }

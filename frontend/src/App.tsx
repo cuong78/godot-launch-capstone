@@ -220,7 +220,7 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
 };
 
 export default function App() {
-  const { t } = useTranslation(['shared']);
+  const { t, i18n } = useTranslation(['shared']);
   const initialRoute = pathToScreen(window.location.pathname);
   const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
   const [checkoutOriginScreen, setCheckoutOriginScreen] = useState<ScreenType>(
@@ -427,7 +427,7 @@ export default function App() {
       }
     };
     loadCategories();
-  }, []);
+  }, [i18n.language]);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState<'popular' | 'price-low' | 'price-high'>('popular');
 
@@ -633,7 +633,7 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [currentScreen]);
+  }, [currentScreen, i18n.language]);
 
   // Fetch published games from backend storage
   useEffect(() => {
@@ -659,7 +659,7 @@ export default function App() {
     if (currentScreen === 'marketplace' || currentScreen === 'explore' || currentScreen === 'detail') {
       fetchPublishedGames();
     }
-  }, [currentScreen]);
+  }, [currentScreen, i18n.language]);
 
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);

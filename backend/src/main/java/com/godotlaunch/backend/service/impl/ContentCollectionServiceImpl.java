@@ -7,6 +7,7 @@ import com.godotlaunch.backend.entity.*;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.*;
 import com.godotlaunch.backend.service.*;
+import com.godotlaunch.backend.utils.TranslationUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,9 @@ public class ContentCollectionServiceImpl implements ContentCollectionService {
 
     @Override @Transactional
     public ContentCollectionResponse create(ContentCollectionRequest request) {
-        if (collectionRepository.existsBySlug(request.getSlug())) throw new AppException(ErrorCode.COLLECTION_SLUG_EXISTS);
+        if (collectionRepository.existsBySlug(request.getSlug().trim())) {
+            throw new AppException(ErrorCode.COLLECTION_SLUG_EXISTS);
+        }
         ContentCollection collection = new ContentCollection();
         apply(collection, request);
         ContentCollectionResponse response = map(collectionRepository.save(collection));
@@ -39,8 +42,10 @@ public class ContentCollectionServiceImpl implements ContentCollectionService {
     public ContentCollectionResponse update(UUID id, ContentCollectionRequest request) {
         ContentCollection collection = collectionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.COLLECTION_NOT_FOUND));
-        collectionRepository.findBySlug(request.getSlug()).ifPresent(found -> {
-            if (!found.getId().equals(id)) throw new AppException(ErrorCode.COLLECTION_SLUG_EXISTS);
+        collectionRepository.findBySlug(request.getSlug().trim()).ifPresent(found -> {
+            if (!found.getId().equals(id)) {
+                throw new AppException(ErrorCode.COLLECTION_SLUG_EXISTS);
+            }
         });
         apply(collection, request);
         ContentCollectionResponse response = map(collectionRepository.save(collection));
@@ -50,7 +55,9 @@ public class ContentCollectionServiceImpl implements ContentCollectionService {
 
     @Override @Transactional
     public void delete(UUID id) {
-        if (!collectionRepository.existsById(id)) throw new AppException(ErrorCode.COLLECTION_NOT_FOUND);
+        if (!collectionRepository.existsById(id)) {
+            throw new AppException(ErrorCode.COLLECTION_NOT_FOUND);
+        }
         collectionRepository.deleteById(id);
         homepageService.invalidateCache();
     }
@@ -58,9 +65,10 @@ public class ContentCollectionServiceImpl implements ContentCollectionService {
     private void apply(ContentCollection entity, ContentCollectionRequest request) {
         entity.setTitle(request.getTitle().trim());
         entity.setSlug(request.getSlug().trim());
-        entity.setDescription(request.getDescription());
+        entity.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
         entity.setMaxItems(request.getMaxItems());
         entity.setActive(request.isActive());
+        
         Set<UUID> tagIds = request.getTagIds() == null ? Set.of() : request.getTagIds();
         Set<UUID> categoryIds = request.getCategoryIds() == null ? Set.of() : request.getCategoryIds();
         List<Tag> tags = tagRepository.findAllById(tagIds);
@@ -75,10 +83,8 @@ public class ContentCollectionServiceImpl implements ContentCollectionService {
         return ContentCollectionResponse.builder()
                 .id(entity.getId()).title(entity.getTitle()).slug(entity.getSlug()).description(entity.getDescription())
                 .maxItems(entity.getMaxItems()).active(entity.isActive())
-                .tags(entity.getTags().stream().map(tag -> TagResponse.builder().id(tag.getId()).name(tag.getName()).slug(tag.getSlug()).build()).toList())
-                .categories(entity.getCategories().stream().map(category -> CategoryResponse.builder()
-                        .id(category.getId()).name(category.getName()).slug(category.getSlug()).description(category.getDescription())
-                        .parentId(category.getParent() == null ? null : category.getParent().getId()).type(category.getType()).createdAt(category.getCreatedAt()).build()).toList())
+                .tags(entity.getTags().stream().map(TranslationUtils::mapTag).toList())
+                .categories(entity.getCategories().stream().map(TranslationUtils::mapCategory).toList())
                 .createdAt(entity.getCreatedAt()).updatedAt(entity.getUpdatedAt()).build();
     }
 }

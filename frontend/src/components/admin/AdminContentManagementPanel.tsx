@@ -31,8 +31,14 @@ type Tab = 'layout' | 'banners' | 'collections' | 'tags' | 'categories';
 type CategoryForm = {
   id: string;
   name: string;
+  nameVi: string;
+  nameEn: string;
+  nameJa: string;
   slug: string;
   description: string;
+  descriptionVi: string;
+  descriptionEn: string;
+  descriptionJa: string;
   type: string;
   parentId: string;
 };
@@ -50,8 +56,14 @@ const createEmptyCollection = (): ContentCollectionPayload => ({
 const createEmptyCategory = (): CategoryForm => ({
   id: '',
   name: '',
+  nameVi: '',
+  nameEn: '',
+  nameJa: '',
   slug: '',
   description: '',
+  descriptionVi: '',
+  descriptionEn: '',
+  descriptionJa: '',
   type: 'asset',
   parentId: '',
 });
@@ -134,7 +146,7 @@ export const AdminContentManagementPanel: React.FC = () => {
   const [editingCollection, setEditingCollection] = React.useState<string | null>(null);
   const [collectionForm, setCollectionForm] = React.useState<ContentCollectionPayload>(createEmptyCollection);
   const [newSectionCollectionId, setNewSectionCollectionId] = React.useState('');
-  const [tagForm, setTagForm] = React.useState({ id: '', name: '', slug: '' });
+  const [tagForm, setTagForm] = React.useState({ id: '', name: '', nameVi: '', nameEn: '', nameJa: '', slug: '' });
   const [categoryForm, setCategoryForm] = React.useState<CategoryForm>(createEmptyCategory);
   const [tagSearch, setTagSearch] = React.useState('');
   const [categorySearch, setCategorySearch] = React.useState('');
@@ -265,10 +277,16 @@ export const AdminContentManagementPanel: React.FC = () => {
     setBusyKey('tag-save');
     setError('');
     try {
-      const payload = { name: tagForm.name.trim(), slug: tagForm.slug.trim() || slugify(tagForm.name) };
+      const payload = { 
+        name: tagForm.name.trim(),
+        nameVi: tagForm.nameVi.trim() || undefined,
+        nameEn: tagForm.nameEn.trim() || undefined,
+        nameJa: tagForm.nameJa.trim() || undefined,
+        slug: tagForm.slug.trim() || slugify(tagForm.name) 
+      };
       if (tagForm.id) await contentApi.updateTag(tagForm.id, payload);
       else await contentApi.createTag(payload);
-      setTagForm({ id: '', name: '', slug: '' });
+      setTagForm({ id: '', name: '', nameVi: '', nameEn: '', nameJa: '', slug: '' });
       await load();
     } catch (err: any) {
       setError(getErrorMessage(err, t('contentPanel.errors.saveTag')));
@@ -278,7 +296,14 @@ export const AdminContentManagementPanel: React.FC = () => {
   };
 
   const editTag = (item: ContentTag) => {
-    setTagForm({ id: item.id, name: item.name, slug: item.slug });
+    setTagForm({
+      id: item.id,
+      name: item.defaultName ?? item.name,
+      nameVi: item.nameVi ?? '',
+      nameEn: item.nameEn ?? '',
+      nameJa: item.nameJa ?? '',
+      slug: item.slug
+    });
     window.requestAnimationFrame(() => document.getElementById('tag-editor')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   };
 
@@ -288,7 +313,7 @@ export const AdminContentManagementPanel: React.FC = () => {
     setError('');
     try {
       await contentApi.deleteTag(item.id);
-      if (tagForm.id === item.id) setTagForm({ id: '', name: '', slug: '' });
+      if (tagForm.id === item.id) setTagForm({ id: '', name: '', nameVi: '', nameEn: '', nameJa: '', slug: '' });
       await load();
     } catch (err: any) {
       setError(getErrorMessage(err, t('contentPanel.errors.deleteTag')));
@@ -304,8 +329,14 @@ export const AdminContentManagementPanel: React.FC = () => {
     try {
       const payload = {
         name: categoryForm.name.trim(),
+        nameVi: categoryForm.nameVi.trim() || undefined,
+        nameEn: categoryForm.nameEn.trim() || undefined,
+        nameJa: categoryForm.nameJa.trim() || undefined,
         slug: categoryForm.slug.trim() || slugify(categoryForm.name),
         description: categoryForm.description.trim(),
+        descriptionVi: categoryForm.descriptionVi.trim() || undefined,
+        descriptionEn: categoryForm.descriptionEn.trim() || undefined,
+        descriptionJa: categoryForm.descriptionJa.trim() || undefined,
         type: categoryForm.type,
         parentId: categoryForm.parentId || undefined,
       };
@@ -323,9 +354,15 @@ export const AdminContentManagementPanel: React.FC = () => {
   const editCategory = (item: ContentCategory) => {
     setCategoryForm({
       id: item.id,
-      name: item.name,
+      name: item.defaultName ?? item.name,
+      nameVi: item.nameVi ?? '',
+      nameEn: item.nameEn ?? '',
+      nameJa: item.nameJa ?? '',
       slug: item.slug,
-      description: item.description ?? '',
+      description: item.defaultDescription ?? item.description ?? '',
+      descriptionVi: item.descriptionVi ?? '',
+      descriptionEn: item.descriptionEn ?? '',
+      descriptionJa: item.descriptionJa ?? '',
       type: item.type,
       parentId: item.parentId ?? '',
     });
@@ -728,38 +765,79 @@ export const AdminContentManagementPanel: React.FC = () => {
               {tagForm.id && (
                 <button
                   type="button"
-                  onClick={() => setTagForm({ id: '', name: '', slug: '' })}
+                  onClick={() => setTagForm({ id: '', name: '', nameVi: '', nameEn: '', nameJa: '', slug: '' })}
                   className={iconButtonClass}
                 >
                   <X size={15} />
                 </button>
               )}
             </div>
-            <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-              <input
-                required
-                className={inputClass}
-                placeholder={t('contentPanel.tags.namePlaceholder')}
-                value={tagForm.name}
-                onChange={(event) =>
-                  setTagForm({
-                    ...tagForm,
-                    name: event.target.value,
-                    slug: tagForm.id
-                      ? tagForm.slug
-                      : slugify(event.target.value),
-                  })
-                }
-              />
-              <input
-                required
-                className={inputClass}
-                placeholder={t('contentPanel.tags.slugPlaceholder')}
-                value={tagForm.slug}
-                onChange={(event) =>
-                  setTagForm({ ...tagForm, slug: event.target.value })
-                }
-              />
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 items-end">
+              <label className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500">Tên Tag (Mặc định)</span>
+                <input
+                  required
+                  className={inputClass}
+                  placeholder={t('contentPanel.tags.namePlaceholder')}
+                  value={tagForm.name}
+                  onChange={(event) =>
+                    setTagForm({
+                      ...tagForm,
+                      name: event.target.value,
+                      slug: tagForm.id
+                        ? tagForm.slug
+                        : slugify(event.target.value),
+                    })
+                  }
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500">Tên Tag (VI)</span>
+                <input
+                  className={inputClass}
+                  placeholder="Tiếng Việt"
+                  value={tagForm.nameVi}
+                  onChange={(event) =>
+                    setTagForm({ ...tagForm, nameVi: event.target.value })
+                  }
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500">Tên Tag (EN)</span>
+                <input
+                  className={inputClass}
+                  placeholder="Tiếng Anh"
+                  value={tagForm.nameEn}
+                  onChange={(event) =>
+                    setTagForm({ ...tagForm, nameEn: event.target.value })
+                  }
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500">Tên Tag (JA)</span>
+                <input
+                  className={inputClass}
+                  placeholder="Tiếng Nhật"
+                  value={tagForm.nameJa}
+                  onChange={(event) =>
+                    setTagForm({ ...tagForm, nameJa: event.target.value })
+                  }
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500">Slug</span>
+                <input
+                  required
+                  className={inputClass}
+                  placeholder={t('contentPanel.tags.slugPlaceholder')}
+                  value={tagForm.slug}
+                  onChange={(event) =>
+                    setTagForm({ ...tagForm, slug: event.target.value })
+                  }
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex justify-end">
               <button
                 disabled={busyKey === 'tag-save'}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-400 disabled:opacity-50 dark:text-slate-950"
@@ -785,11 +863,16 @@ export const AdminContentManagementPanel: React.FC = () => {
                     : ''
                 }`}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <strong className="block truncate text-sm text-slate-900 dark:text-white">
                     {item.name}
                   </strong>
-                  <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 flex flex-wrap gap-1 text-[9px] font-semibold">
+                    {item.nameVi && <span className="rounded bg-sky-500/10 px-1 py-0.5 text-sky-600 dark:text-sky-400">VI: {item.nameVi}</span>}
+                    {item.nameEn && <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-emerald-600 dark:text-emerald-400">EN: {item.nameEn}</span>}
+                    {item.nameJa && <span className="rounded bg-purple-500/10 px-1 py-0.5 text-purple-600 dark:text-purple-400">JA: {item.nameJa}</span>}
+                  </div>
+                  <span className="block truncate text-xs text-slate-500 dark:text-slate-400 mt-1">
                     /{item.slug}
                   </span>
                 </div>
@@ -866,10 +949,10 @@ export const AdminContentManagementPanel: React.FC = () => {
                 </button>
               )}
             </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <label className="space-y-1.5">
                 <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                  {t('contentPanel.categories.fields.name')}
+                  {t('contentPanel.categories.fields.name')} (Mặc định)
                 </span>
                 <input
                   required
@@ -886,6 +969,55 @@ export const AdminContentManagementPanel: React.FC = () => {
                   }
                 />
               </label>
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Tên Category (VI)
+                </span>
+                <input
+                  className={inputClass}
+                  placeholder="Tiếng Việt"
+                  value={categoryForm.nameVi}
+                  onChange={(event) =>
+                    setCategoryForm({
+                      ...categoryForm,
+                      nameVi: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Tên Category (EN)
+                </span>
+                <input
+                  className={inputClass}
+                  placeholder="Tiếng Anh"
+                  value={categoryForm.nameEn}
+                  onChange={(event) =>
+                    setCategoryForm({
+                      ...categoryForm,
+                      nameEn: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Tên Category (JA)
+                </span>
+                <input
+                  className={inputClass}
+                  placeholder="Tiếng Nhật"
+                  value={categoryForm.nameJa}
+                  onChange={(event) =>
+                    setCategoryForm({
+                      ...categoryForm,
+                      nameJa: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
               <label className="space-y-1.5">
                 <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                   {t('contentPanel.categories.fields.slug')}
@@ -956,22 +1088,76 @@ export const AdminContentManagementPanel: React.FC = () => {
                 </select>
               </label>
             </div>
-            <label className="mt-3 block space-y-1.5">
-              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                {t('contentPanel.categories.fields.description')}
-              </span>
-              <textarea
-                rows={2}
-                className={inputClass}
-                value={categoryForm.description}
-                onChange={(event) =>
-                  setCategoryForm({
-                    ...categoryForm,
-                    description: event.target.value,
-                  })
-                }
-              />
-            </label>
+            
+            <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  {t('contentPanel.categories.fields.description')} (Mặc định)
+                </span>
+                <textarea
+                  rows={2}
+                  className={inputClass}
+                  value={categoryForm.description}
+                  onChange={(event) =>
+                    setCategoryForm({
+                      ...categoryForm,
+                      description: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Mô tả Category (VI)
+                </span>
+                <textarea
+                  rows={2}
+                  className={inputClass}
+                  placeholder="Tiếng Việt"
+                  value={categoryForm.descriptionVi}
+                  onChange={(event) =>
+                    setCategoryForm({
+                      ...categoryForm,
+                      descriptionVi: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Mô tả Category (EN)
+                </span>
+                <textarea
+                  rows={2}
+                  className={inputClass}
+                  placeholder="Tiếng Anh"
+                  value={categoryForm.descriptionEn}
+                  onChange={(event) =>
+                    setCategoryForm({
+                      ...categoryForm,
+                      descriptionEn: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Mô tả Category (JA)
+                </span>
+                <textarea
+                  rows={2}
+                  className={inputClass}
+                  placeholder="Tiếng Nhật"
+                  value={categoryForm.descriptionJa}
+                  onChange={(event) =>
+                    setCategoryForm({
+                      ...categoryForm,
+                      descriptionJa: event.target.value,
+                    })
+                  }
+                />
+              </label>
+            </div>
             <div className="mt-3 flex justify-end">
               <button
                 disabled={busyKey === 'category-save'}

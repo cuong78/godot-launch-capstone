@@ -508,7 +508,7 @@ public class GameServiceImpl implements GameService {
                 .fileUrl(getPresignedGetUrl(fileUrl))
                 .webDemoUrl(getWebDemoProxyUrl(game.getId(), game.getWebDemoUrl()))
                 .version(versionNumber)
-                .tags(game.getTags() == null ? java.util.List.of() : game.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList())
+                .tags(game.getTags() == null ? java.util.List.of() : game.getTags().stream().map(com.godotlaunch.backend.utils.TranslationUtils::resolveTagName).toList())
                 .githubRepoUrl(game.getGithubRepoUrl())
                 .githubBranch(game.getGithubBranch())
                 .createdAt(game.getCreatedAt())

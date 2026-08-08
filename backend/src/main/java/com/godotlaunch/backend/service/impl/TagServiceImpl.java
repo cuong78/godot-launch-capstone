@@ -7,6 +7,7 @@ import com.godotlaunch.backend.entity.Tag;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.TagRepository;
 import com.godotlaunch.backend.service.TagService;
+import com.godotlaunch.backend.utils.TranslationUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -24,14 +25,25 @@ public class TagServiceImpl implements TagService {
     }
     @Override @Transactional public TagResponse create(TagRequest request) {
         if (repository.existsByName(request.getName()) || repository.existsBySlug(request.getSlug())) throw new AppException(ErrorCode.TAG_ALREADY_EXISTS);
-        Tag tag = new Tag(); tag.setName(request.getName().trim()); tag.setSlug(request.getSlug().trim()); return map(repository.save(tag));
+        Tag tag = new Tag();
+        tag.setName(request.getName().trim());
+        tag.setNameVi(request.getNameVi() != null ? request.getNameVi().trim() : null);
+        tag.setNameEn(request.getNameEn() != null ? request.getNameEn().trim() : null);
+        tag.setNameJa(request.getNameJa() != null ? request.getNameJa().trim() : null);
+        tag.setSlug(request.getSlug().trim());
+        return map(repository.save(tag));
     }
     @Override @Transactional public TagResponse update(UUID id, TagRequest request) {
         Tag tag = repository.findById(id).orElseThrow(() -> new AppException(ErrorCode.TAG_NOT_FOUND));
         repository.findByName(request.getName()).ifPresent(found -> { if (!found.getId().equals(id)) throw new AppException(ErrorCode.TAG_ALREADY_EXISTS); });
         repository.findBySlug(request.getSlug()).ifPresent(found -> { if (!found.getId().equals(id)) throw new AppException(ErrorCode.TAG_ALREADY_EXISTS); });
-        tag.setName(request.getName().trim()); tag.setSlug(request.getSlug().trim()); return map(repository.save(tag));
+        tag.setName(request.getName().trim());
+        tag.setNameVi(request.getNameVi() != null ? request.getNameVi().trim() : null);
+        tag.setNameEn(request.getNameEn() != null ? request.getNameEn().trim() : null);
+        tag.setNameJa(request.getNameJa() != null ? request.getNameJa().trim() : null);
+        tag.setSlug(request.getSlug().trim());
+        return map(repository.save(tag));
     }
     @Override @Transactional public void delete(UUID id) { if (!repository.existsById(id)) throw new AppException(ErrorCode.TAG_NOT_FOUND); repository.deleteById(id); }
-    private TagResponse map(Tag tag) { return TagResponse.builder().id(tag.getId()).name(tag.getName()).slug(tag.getSlug()).build(); }
+    private TagResponse map(Tag tag) { return TranslationUtils.mapTag(tag); }
 }

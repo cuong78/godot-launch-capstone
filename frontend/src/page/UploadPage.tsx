@@ -78,7 +78,7 @@ const getFileKey = (file: File): string => {
 
 export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const { requireFaceVerify } = useFaceVerify();
-  const { t } = useTranslation(["upload"]);
+  const { t, i18n } = useTranslation(["upload"]);
 
   // Step State
   const [step, setStep] = useState<1 | 2>(1);
@@ -184,7 +184,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       }
     };
     loadCategories();
-  }, []);
+  }, [i18n.language]);
 
   useEffect(() => {
     let ignoreResult = false;
@@ -214,7 +214,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       ignoreResult = true;
       window.clearTimeout(timeoutId);
     };
-  }, [tagQuery, t]);
+  }, [tagQuery, t, i18n.language]);
+
+  useEffect(() => {
+    setSelectedTags([]);
+  }, [i18n.language]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

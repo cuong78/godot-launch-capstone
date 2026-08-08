@@ -11,4 +11,8 @@ public class TagResponse {
     private UUID id;
     private String name;
     private String slug;
+    private String defaultName;
+    private String nameVi;
+    private String nameEn;
+    private String nameJa;
 }
