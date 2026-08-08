@@ -45,6 +45,7 @@ import { gameApi } from './api/gameApi';
 import { marketplaceApi } from './api/marketplaceApi';
 import { paymentApi } from './api/paymentApi';
 import { orderApi } from './api/orderApi';
+import { cartApi } from './api/cartApi';
 import { dispatchAdminNavigation } from './utils/adminNavigation';
 
 // Seed Images loaded from assets folder management
@@ -452,6 +453,48 @@ export default function App() {
     }
   }, [selectedPaymentOrderId]);
 
+  // Load Cart from Server when user logs in
+  useEffect(() => {
+    if (!currentUser) {
+      setCart([]);
+      return;
+    }
+
+    if (currentUser.role === 'admin') {
+      setCart([]);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadCartFromServer = async () => {
+      try {
+        const response = await cartApi.getCart();
+        if (response.success && response.data && !isCancelled) {
+          const mappedCart = response.data.map(item => {
+            if (item.asset) {
+              return mapMarketplaceItemToAsset(item.asset, t);
+            } else if (item.game) {
+              return mapGameToAsset(item.game);
+            }
+            return null;
+          }).filter((item): item is Asset => item !== null);
+          setCart(mappedCart);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Failed to load cart from backend:', error);
+        }
+      }
+    };
+
+    loadCartFromServer();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentUser?.id, t]);
+
   const syncTrackedPayment = useCallback((payment: PaymentResponse) => {
     setPaymentOrders(prev => {
       const existingIndex = prev.findIndex(item => item.id === payment.id);
@@ -708,7 +751,7 @@ export default function App() {
   };
 
   // Add Item to Cart
-  const handleAddToCart = (asset: Asset, e?: React.MouseEvent) => {
+  const handleAddToCart = async (asset: Asset, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!currentUser) {
       showToast(t('app.toast.loginRequiredAddToCart'), "warning");
@@ -720,19 +763,37 @@ export default function App() {
       showToast(t('app.toast.ownedAlready'), "warning");
       return;
     }
-    setCart(prev => {
-      if (prev.some(item => item.id === asset.id)) {
-        return prev;
+
+    if (cart.some(item => item.id === asset.id)) {
+      setIsCartOpen(true);
+      return;
+    }
+
+    try {
+      const itemType = asset.itemType === 'source_code' ? 'source_code' : 'asset';
+      const response = await cartApi.addToCart({ itemId: asset.id, itemType });
+      if (response.success) {
+        setCart(prev => [...prev, asset]);
+        setIsCartOpen(true);
+      } else {
+        showToast(response.message || "Failed to add item to cart", "error");
       }
-      return [...prev, asset];
-    });
-    setIsCartOpen(true);
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Failed to add item to cart";
+      showToast(errMsg, "error");
+    }
   };
 
   // Remove Item from Cart
-  const handleRemoveFromCart = (id: string, e?: React.MouseEvent) => {
+  const handleRemoveFromCart = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setCart(prev => prev.filter(item => item.id !== id));
+    try {
+      await cartApi.removeFromCart(id);
+      setCart(prev => prev.filter(item => item.id !== id));
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Failed to remove item from cart";
+      showToast(errMsg, "error");
+    }
   };
 
   const handleBuyNow = (asset: Asset) => {
@@ -873,6 +934,11 @@ export default function App() {
       }
 
       showToast(t('app.toast.buySuccess'), "success");
+      try {
+        await cartApi.clearCart();
+      } catch (e) {
+        console.warn("Failed to clear cart on server", e);
+      }
       setCart([]);
       setIsCartOpen(false);
 
