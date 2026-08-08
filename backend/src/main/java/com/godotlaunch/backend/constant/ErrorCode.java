@@ -24,6 +24,13 @@ public enum ErrorCode {
     FACE_VERIFY_REQUIRED(HttpStatus.FORBIDDEN, "Bạn cần xác thực khuôn mặt trước khi đăng tải lên Marketplace lần đầu tiên."),
     KYC_ID_NUMBER_DUPLICATE(HttpStatus.CONFLICT, "Số CCCD/Passport này đã được xác thực bởi một tài khoản khác trong hệ thống."),
     KYC_IMAGE_DUPLICATE(HttpStatus.CONFLICT, "Ảnh giấy tờ này đã được sử dụng để xác thực bởi một tài khoản khác trong hệ thống."),
+    KYC_VERIFY_REQUIRED(HttpStatus.BAD_REQUEST, "Bạn cần hoàn tất xác minh KYC trước khi thiết lập tài khoản ngân hàng."),
+    BANK_INFO_REQUIRED(HttpStatus.BAD_REQUEST, "Vui lòng nhập đầy đủ thông tin ngân hàng."),
+    BANK_NAME_INVALID(HttpStatus.BAD_REQUEST, "Ngân hàng đã chọn không được hỗ trợ."),
+    BANK_ACCOUNT_INVALID(HttpStatus.BAD_REQUEST, "Số tài khoản ngân hàng phải gồm từ 6 đến 30 chữ số."),
+    BANK_NAME_MISMATCH(HttpStatus.BAD_REQUEST, "Tên chủ tài khoản ngân hàng phải khớp với tên trên giấy tờ tùy thân."),
+    BANK_ACCOUNT_DUPLICATE(HttpStatus.CONFLICT, "Số tài khoản ngân hàng này đã được sử dụng bởi một tài khoản khác trong hệ thống."),
+    BANK_INFO_ALREADY_SET(HttpStatus.CONFLICT, "Thông tin ngân hàng đã được thiết lập và không thể tự chỉnh sửa."),
     
     // 403 Forbidden
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "You do not have permission to execute this operation."),

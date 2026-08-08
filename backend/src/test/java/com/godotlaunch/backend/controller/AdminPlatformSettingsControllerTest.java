@@ -1,24 +1,27 @@
 package com.godotlaunch.backend.controller;
 
-import com.godotlaunch.backend.dto.request.UpdatePlatformSettingsRequest;
-import com.godotlaunch.backend.dto.response.ApiResponse;
-import com.godotlaunch.backend.dto.response.PlatformSettingsResponse;
-import com.godotlaunch.backend.service.PlatformSettingsService;
+import java.math.BigDecimal;
+import java.time.LocalTime;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.math.BigDecimal;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.godotlaunch.backend.dto.request.UpdatePlatformSettingsRequest;
+import com.godotlaunch.backend.dto.response.ApiResponse;
+import com.godotlaunch.backend.dto.response.PlatformSettingsResponse;
+import com.godotlaunch.backend.service.PlatformSettingsService;
 
 @ExtendWith(MockitoExtension.class)
 class AdminPlatformSettingsControllerTest {
@@ -37,6 +40,7 @@ class AdminPlatformSettingsControllerTest {
                 new BigDecimal("10.00"),
                 (short) 5,
                 (short) 5,
+                LocalTime.of(2, 0),
                 false,
                 "Welcome to Godot Launch!",
                 null
@@ -71,6 +75,7 @@ class AdminPlatformSettingsControllerTest {
                 new BigDecimal("15.00"),
                 (short) 5,
                 (short) 5,
+                LocalTime.of(2, 0),
                 true,
                 "Maintenance starting soon",
                 null

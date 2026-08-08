@@ -542,6 +542,141 @@ select {
     0 1px 0 rgba(255, 255, 255, 0.018);
 }
 
+/* Become Developer: editorial surfaces with a complete light/dark pairing. */
+.developer-landing-canvas {
+  color: #0f172a;
+  background: #f7f9fc;
+}
+
+.dark .developer-landing-canvas {
+  color: #f8fafc;
+  background: #080c13;
+}
+
+.developer-landing-hero {
+  border-bottom: 1px solid rgba(203, 213, 225, 0.82);
+  background:
+    radial-gradient(circle at 82% 28%, rgba(245, 158, 11, 0.13), transparent 28%),
+    radial-gradient(circle at 12% 88%, rgba(14, 165, 233, 0.1), transparent 30%),
+    linear-gradient(145deg, #ffffff 0%, #f4f7fb 54%, #eef4fb 100%);
+}
+
+.dark .developer-landing-hero {
+  border-bottom-color: rgba(96, 119, 148, 0.28);
+  background:
+    radial-gradient(circle at 82% 28%, rgba(251, 191, 36, 0.1), transparent 28%),
+    radial-gradient(circle at 12% 88%, rgba(56, 189, 248, 0.08), transparent 30%),
+    linear-gradient(145deg, #0b111a 0%, #080c13 56%, #0c131e 100%);
+}
+
+.developer-landing-grid {
+  opacity: 0.55;
+  background-image:
+    linear-gradient(rgba(100, 116, 139, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.055) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+.dark .developer-landing-grid {
+  opacity: 0.42;
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.035) 1px, transparent 1px);
+}
+
+.developer-hero-art::before {
+  content: "";
+  position: absolute;
+  inset: 8% 5%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.13), rgba(255, 255, 255, 0) 68%);
+  filter: blur(12px);
+}
+
+.dark .developer-hero-art::before {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.11), rgba(8, 12, 19, 0) 68%);
+}
+
+.developer-feature-section {
+  border-top: 1px solid rgba(203, 213, 225, 0.72);
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.developer-feature-section-alt {
+  background: #f1f5f9;
+}
+
+.dark .developer-feature-section {
+  border-top-color: rgba(96, 119, 148, 0.25);
+  background: #090e16;
+}
+
+.dark .developer-feature-section-alt {
+  background: #0c121c;
+}
+
+.developer-feature-media {
+  border-color: rgba(203, 213, 225, 0.82);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.76) 68%),
+    #f8fafc;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 20px 48px rgba(15, 23, 42, 0.075);
+}
+
+.dark .developer-feature-media {
+  border-color: rgba(96, 119, 148, 0.3);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(30, 41, 59, 0.72), rgba(14, 21, 32, 0.72) 68%),
+    #0e1520;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 22px 52px rgba(0, 0, 0, 0.28);
+}
+
+.developer-onboarding-canvas {
+  background:
+    radial-gradient(circle at 12% 4%, rgba(14, 165, 233, 0.07), transparent 26%),
+    linear-gradient(180deg, #f7f9fc 0%, #f1f5f9 100%);
+}
+
+.dark .developer-onboarding-canvas {
+  background:
+    radial-gradient(circle at 12% 4%, rgba(56, 189, 248, 0.055), transparent 27%),
+    linear-gradient(180deg, #080c13 0%, #090e16 100%);
+}
+
+.developer-onboarding-surface {
+  border-color: rgba(203, 213, 225, 0.82);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 18px 46px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(18px) saturate(1.06);
+}
+
+.dark .developer-onboarding-surface {
+  border-color: rgba(96, 119, 148, 0.32);
+  background: rgba(14, 21, 32, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 22px 52px rgba(0, 0, 0, 0.3);
+}
+
+.developer-onboarding-inset {
+  border-color: rgba(203, 213, 225, 0.78);
+  background: rgba(248, 250, 252, 0.86);
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.035);
+}
+
+.dark .developer-onboarding-inset {
+  border-color: rgba(82, 105, 133, 0.3);
+  background: rgba(7, 12, 19, 0.62);
+  box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.24);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dark .storefront-solid-background::before {
     animation: none;

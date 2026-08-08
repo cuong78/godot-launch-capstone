@@ -1,0 +1,15 @@
+export const BANK_OPTIONS = [
+  'Vietcombank',
+  'BIDV',
+  'VietinBank',
+  'Agribank',
+  'Techcombank',
+  'MBBank',
+  'ACB',
+  'Sacombank',
+  'VPBank',
+  'TPBank',
+  'OCB',
+  'SHB',
+  'HDBank',
+] as const;

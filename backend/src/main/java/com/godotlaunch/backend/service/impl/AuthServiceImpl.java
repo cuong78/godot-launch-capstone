@@ -412,8 +412,8 @@ public class AuthServiceImpl implements AuthService {
 
             // 4. Find or Link User
             // Lưu ý: KHÔNG còn tự nâng role lên developer ở bước link GitHub nữa.
-            // Role chỉ được nâng khi đủ cả 3 điều kiện (GitHub + Face Verify + KYC),
-            // xem KycController.confirmKyc(). User cũ đã là developer/admin từ trước
+            // Role chỉ được nâng sau GitHub + Face Verify + KYC + payout hợp lệ,
+            // xem KycController.setupBank(). User cũ đã là developer/admin từ trước
             // giữ nguyên role (không có bước hạ cấp).
             User user = userRepository.findByGithubId(githubId)
                     .orElseGet(() -> {

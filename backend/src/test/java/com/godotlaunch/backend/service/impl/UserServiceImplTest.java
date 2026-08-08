@@ -192,6 +192,9 @@ public class UserServiceImplTest {
     @DisplayName("Should update current user profile")
     void shouldUpdateMyProfile_Successfully() {
         // Arrange
+        mockUser.setBankName("Vietcombank");
+        mockUser.setBankAccount("19034567890123");
+        mockUser.setBankAccountHolder("TEST USER");
         UpdateProfileRequest req = new UpdateProfileRequest();
         req.setFullName("New Full Name");
         req.setAvatarUrl("http://avatar/new.png");
@@ -208,6 +211,9 @@ public class UserServiceImplTest {
         assertThat(result).isNotNull();
         assertThat(mockUser.getFullName()).isEqualTo("New Full Name");
         assertThat(mockUser.getAvatarUrl()).isEqualTo("http://avatar/new.png");
+        assertThat(mockUser.getBankName()).isEqualTo("Vietcombank");
+        assertThat(mockUser.getBankAccount()).isEqualTo("19034567890123");
+        assertThat(mockUser.getBankAccountHolder()).isEqualTo("TEST USER");
     }
 
     @Test

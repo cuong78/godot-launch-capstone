@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.dto.request.BankSetupRequest;
 import com.godotlaunch.backend.dto.request.KycConfirmRequest;
 import com.godotlaunch.backend.dto.request.KycOcrRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
@@ -24,16 +25,20 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.security.Principal;
+import java.text.Normalizer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import com.godotlaunch.backend.service.SeaweedFsService;
 import com.godotlaunch.backend.util.ByteArrayMultipartFile;
@@ -44,6 +49,11 @@ import com.godotlaunch.backend.util.ByteArrayMultipartFile;
 @Slf4j
 @Tag(name = "Developer KYC API", description = "Tier 2 KYC — OCR giấy tờ tùy thân trước khi ký hợp đồng lần đầu")
 public class KycController {
+
+    private static final Set<String> SUPPORTED_BANK_NAMES = Set.of(
+            "Vietcombank", "BIDV", "VietinBank", "Agribank", "Techcombank",
+            "MBBank", "ACB", "Sacombank", "VPBank", "TPBank", "OCB", "SHB", "HDBank"
+    );
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -130,13 +140,9 @@ public class KycController {
             return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "KYC đã được xác thực trước đó."));
         }
 
-        // Chặn danh tính đã bị cấm (dispute resolve → ban) đăng ký/xác thực
-        // lại bằng CCCD hoặc số tài khoản ngân hàng khác — kiểm tra TRƯỚC
-        // check trùng thông thường bên dưới, vì đây là chặn cứng vĩnh viễn.
+        // Chặn danh tính giấy tờ đã bị cấm trước các kiểm tra trùng thông thường.
         String normalizedIdNumber = request.getIdNumber().trim();
-        boolean isBankBanned = request.getBankAccount() != null && !request.getBankAccount().isBlank()
-                && bannedIdentityRepository.existsByBankAccount(request.getBankAccount().trim());
-        if (bannedIdentityRepository.existsByKycIdNumber(normalizedIdNumber) || isBankBanned) {
+        if (bannedIdentityRepository.existsByKycIdNumber(normalizedIdNumber)) {
             throw new AppException(ErrorCode.IDENTITY_BANNED);
         }
 
@@ -192,8 +198,66 @@ public class KycController {
 
         user.setKycVerified(true);
         user.setKycVerifiedAt(Instant.now());
+        userRepository.save(user);
+        return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "Xác thực KYC thành công."));
+    }
 
-        // Đủ cả 3 điều kiện (GitHub linked + Face verified + KYC verified) -> nâng role.
+    @PostMapping("/bank")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Thiết lập thông tin ngân hàng sau KYC",
+        description = "Bước cuối của become-developer. Chỉ lưu một lần; tên chủ tài khoản phải khớp tên KYC."
+    )
+    public ResponseEntity<ApiResponse<KycStatusResponse>> setupBank(
+            @Valid @RequestBody BankSetupRequest request,
+            Principal principal) {
+
+        User user = findUser(principal);
+        requireGithubLinkedOrDeveloper(user);
+
+        if (!user.isKycVerified() || !StringUtils.hasText(user.getKycFullName())) {
+            throw new AppException(ErrorCode.KYC_VERIFY_REQUIRED);
+        }
+
+        // Không cho endpoint onboarding trở thành đường sửa ngân hàng sau khi đã lưu.
+        if (StringUtils.hasText(user.getBankName())
+                || StringUtils.hasText(user.getBankAccount())
+                || StringUtils.hasText(user.getBankAccountHolder())) {
+            throw new AppException(ErrorCode.BANK_INFO_ALREADY_SET);
+        }
+
+        if (!StringUtils.hasText(request.getBankName())
+                || !StringUtils.hasText(request.getBankAccount())
+                || !StringUtils.hasText(request.getBankAccountHolder())) {
+            throw new AppException(ErrorCode.BANK_INFO_REQUIRED);
+        }
+
+        String bankName = request.getBankName().trim();
+        String bankAccount = request.getBankAccount().trim();
+        String bankAccountHolder = request.getBankAccountHolder().trim();
+
+        if (!SUPPORTED_BANK_NAMES.contains(bankName)) {
+            throw new AppException(ErrorCode.BANK_NAME_INVALID);
+        }
+        if (!bankAccount.matches("\\d{6,30}")) {
+            throw new AppException(ErrorCode.BANK_ACCOUNT_INVALID);
+        }
+        if (!normalizeNameForCompare(user.getKycFullName())
+                .equals(normalizeNameForCompare(bankAccountHolder))) {
+            throw new AppException(ErrorCode.BANK_NAME_MISMATCH);
+        }
+        if (bannedIdentityRepository.existsByBankAccount(bankAccount)) {
+            throw new AppException(ErrorCode.IDENTITY_BANNED);
+        }
+        if (userRepository.existsByBankAccountAndIdNot(bankAccount, user.getId())) {
+            throw new AppException(ErrorCode.BANK_ACCOUNT_DUPLICATE);
+        }
+
+        user.setBankName(bankName);
+        user.setBankAccount(bankAccount);
+        user.setBankAccountHolder(bankAccountHolder);
+
+        // Chỉ hoàn tất nâng role sau bước payout hợp lệ, không nâng ở bước KYC.
         boolean justUpgraded = false;
         if (user.getGithubId() != null && user.isFaceVerified()
                 && !"developer".equalsIgnoreCase(user.getRole().getName())
@@ -205,9 +269,11 @@ public class KycController {
         }
 
         userRepository.save(user);
-
         String newToken = justUpgraded ? authService.refreshSession(user) : null;
-        return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user, newToken), "Xác thực KYC thành công."));
+        return ResponseEntity.ok(ApiResponse.success(
+                toStatusResponse(user, newToken),
+                "Thiết lập thông tin ngân hàng thành công."
+        ));
     }
 
     private String cleanBase64(String base64) {
@@ -284,6 +350,14 @@ public class KycController {
             } catch (DateTimeParseException ignored) {}
         }
         return null;
+    }
+
+    private String normalizeNameForCompare(String name) {
+        String normalized = Normalizer.normalize(name == null ? "" : name, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replace('Đ', 'D')
+                .replace('đ', 'd');
+        return normalized.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", "");
     }
 
     private String extractDetail(String body) {

@@ -21,7 +21,7 @@ public class KycStatusResponse {
     private String bankName;
     private String bankAccount;
     private String bankAccountHolder;
-    // Chỉ có giá trị khi lần confirm này vừa nâng role lên developer (đủ 3 điều kiện
-    // become-developer) — frontend dùng để refresh session ngay, không cần đăng nhập lại.
+    // Chỉ có giá trị khi bước thiết lập ngân hàng vừa hoàn tất nâng role developer.
+    // Frontend dùng để refresh session ngay, không cần đăng nhập lại.
     private String token;
 }

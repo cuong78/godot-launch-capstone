@@ -26,10 +26,4 @@ public class KycConfirmRequest {
     private String frontImageBase64;
 
     private String backImageBase64;
-
-    private String bankName;
-
-    private String bankAccount;
-
-    private String bankAccountHolder;
 }

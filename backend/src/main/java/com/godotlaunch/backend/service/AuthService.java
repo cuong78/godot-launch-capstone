@@ -25,6 +25,6 @@ public interface AuthService {
     void logout(String email);
 
     // Tạo session/JWT mới phản ánh đúng role hiện tại — dùng khi role user thay đổi
-    // giữa phiên (VD: vừa đủ điều kiện lên developer ở KycController.confirmKyc()).
+    // giữa phiên (VD: vừa đủ điều kiện lên developer ở KycController.setupBank()).
     String refreshSession(User user);
 }
