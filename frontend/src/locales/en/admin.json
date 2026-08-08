@@ -170,11 +170,6 @@
   "overview": {
     "platformSnapshot": "Platform Snapshot",
     "commissionRate": "Commission rate",
-    "announcementBanner": "Announcement banner",
-    "noActiveAnnouncementBanner": "No active announcement banner.",
-    "maintenanceMode": "Maintenance mode",
-    "maintenanceEnabled": "Enabled for platform protection.",
-    "maintenanceDisabled": "Disabled. Storefront flows remain open.",
     "actionRequiredBadge": "Action required"
   },
   "overviewCards": {
@@ -241,14 +236,12 @@
     "save": "Save platform configuration",
     "commissionLabel": "Platform commission rate (%)",
     "commissionHelper": "Percentage kept by the platform from each marketplace transaction",
-    "maintenanceStatusLabel": "System maintenance status",
-    "maintenanceToggleActive": "ACTIVE - Site Locked",
-    "maintenanceToggleInactive": "INACTIVE - Online",
-    "bannerLabel": "Site-Wide Alert Header Banner Text",
-    "bannerPlaceholder": "Leave blank to disable banner",
-    "bannerHelperText": "Banner text displayed at the top of all user screens",
-    "maintenanceWarningTitle": "Warning: Maintenance mode is active.",
-    "maintenanceWarningDescription": "This locks non-admin users out of performing checkouts, uploading files, or syncing repositories. Use with care."
+    "withdrawalHoldDaysLabel": "Withdrawal Hold Period (days)",
+    "withdrawalHoldDaysHelper": "Cooling-off period before a withdrawal is auto-paid out",
+    "refundDeadlineDaysLabel": "Refund Deadline (days)",
+    "refundDeadlineDaysHelper": "Days a seller has to refund a copyright-theft dispute before being auto-banned",
+    "dailyMaintenanceTimeLabel": "Daily Maintenance Time (Vietnam time, HH:mm:ss)",
+    "dailyMaintenanceTimeHelper": "Once-daily run time for auto-payout and refund enforcement jobs (Asia/Ho_Chi_Minh)"
   },
   "contract": {
     "defaultBuyerRepresentative": "GodotLaunch management board",

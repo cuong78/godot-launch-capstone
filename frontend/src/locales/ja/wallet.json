@@ -1,7 +1,7 @@
 {
   "cards.availableBalance": "利用可能残高",
   "cards.availableDescription": "銀行口座へ即時出金申請できる残高です。",
-  "cards.pendingDescription": "取引の整合性確認のため一時的に保留されている売上残高です。",
+  "cards.pendingDescription": "処理待ちの出金申請の合計金額です（自動振込までの保留期間中）。",
   "cards.pendingWithdrawal": "保留残高",
   "cards.revenueDescription": "アセット売上の累計総利益（手数料引去前）です。",
   "cards.totalRevenue": "総利益",
@@ -33,7 +33,7 @@
   "form.pendingReserve": "• 保留中/処理中の残高: {{amount}}",
   "form.submit": "出金申請を送信",
   "form.submitting": "処理中...",
-  "form.subtitle": "出金申請は、管理者が24営業時間内に手動で口座振込処理を行います。",
+  "form.subtitle": "出金申請は一定期間保留された後、システムが自動的に口座振込処理を行います。",
   "form.title": "出金申請",
   "history.columns.amount": "金額",
   "history.columns.created": "申請日",
@@ -95,7 +95,7 @@
   "transactions.subtitle": "ウォレット残高変動の履歴と監査ログ",
   "transactions.title": "取引残高台帳",
   "workflow.step1": "1. 申請送信: 出金金額と正確な口座情報を入力して送信します。",
-  "workflow.step2": "2. 管理者審査: 管理者が売上履歴を確認し、申請を承認します。",
-  "workflow.step3": "3. 振込完了: 申請口座に銀行振込が行われ残高が清算されます。",
+  "workflow.step2": "2. 保留期間: システムが定められた日数、申請を保留します。",
+  "workflow.step3": "3. 振込完了: 保留期間終了後、システムが自動的に口座へ振込を行います。",
   "workflow.title": "出金ワークフロー"
 }

@@ -170,11 +170,6 @@
   "overview": {
     "platformSnapshot": "Tổng quan nền tảng",
     "commissionRate": "Tỷ lệ hoa hồng",
-    "announcementBanner": "Banner thông báo",
-    "noActiveAnnouncementBanner": "Hiện không có banner thông báo nào.",
-    "maintenanceMode": "Chế độ bảo trì",
-    "maintenanceEnabled": "Đã bật để bảo vệ nền tảng.",
-    "maintenanceDisabled": "Đã tắt. Các luồng storefront vẫn hoạt động.",
     "actionRequiredBadge": "Cần xử lý"
   },
   "overviewCards": {
@@ -241,14 +236,12 @@
     "save": "Lưu cấu hình nền tảng",
     "commissionLabel": "Tỷ lệ hoa hồng nền tảng (%)",
     "commissionHelper": "Phần trăm nền tảng giữ lại từ mỗi giao dịch marketplace",
-    "maintenanceStatusLabel": "Trạng thái bảo trì hệ thống",
-    "maintenanceToggleActive": "ĐANG BẬT - ĐÃ KHÓA SITE",
-    "maintenanceToggleInactive": "ĐANG TẮT - TRỰC TUYẾN",
-    "bannerLabel": "Nội dung banner cảnh báo toàn hệ thống",
-    "bannerPlaceholder": "Để trống nếu muốn tắt banner",
-    "bannerHelperText": "Nội dung banner hiển thị ở đầu tất cả màn hình người dùng",
-    "maintenanceWarningTitle": "Cảnh báo: chế độ bảo trì đang bật.",
-    "maintenanceWarningDescription": "Tính năng này sẽ chặn người dùng không phải admin checkout, upload file hoặc đồng bộ repository. Hãy sử dụng cẩn thận."
+    "withdrawalHoldDaysLabel": "Thời gian giữ tiền rút (ngày)",
+    "withdrawalHoldDaysHelper": "Thời gian chờ trước khi yêu cầu rút tiền được tự động chuyển khoản",
+    "refundDeadlineDaysLabel": "Hạn hoàn tiền (ngày)",
+    "refundDeadlineDaysHelper": "Số ngày seller phải hoàn tiền tranh chấp bản quyền trước khi bị tự động cấm",
+    "dailyMaintenanceTimeLabel": "Giờ chạy tác vụ hàng ngày (giờ Việt Nam, HH:mm:ss)",
+    "dailyMaintenanceTimeHelper": "Giờ chạy hàng ngày cho tác vụ tự động rút tiền và cưỡng chế hoàn tiền (Asia/Ho_Chi_Minh)"
   },
   "contract": {
     "defaultBuyerRepresentative": "Ban quản trị GodotLaunch",

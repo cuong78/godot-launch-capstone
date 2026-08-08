@@ -85,4 +85,4 @@ if ($LASTEXITCODE -eq 0 -and $runningRedisContainer.Trim() -eq $RedisContainerNa
     Write-Host "Redis container is not running; homepage cache invalidation was skipped." -ForegroundColor DarkGray
 }
 
-Write-Host "Local images are not uploaded by this runner. Run .\upload_game_images.ps1 separately from the repository root if needed." -ForegroundColor DarkGray
+Write-Host "Local images are not uploaded by this runner. Run .\upload_game_images.ps1 and .\upload_banner_images.ps1 separately from the repository root if needed." -ForegroundColor DarkGray
