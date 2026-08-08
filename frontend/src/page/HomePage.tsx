@@ -482,31 +482,25 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         {heroSlides.length > 1 && (
-          <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center sm:bottom-5">
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/14 bg-black/38 px-3.5 py-2 backdrop-blur-xl shadow-[0_12px_28px_rgba(0,0,0,0.28)]">
-              <span className="min-w-5 font-mono text-[10px] font-bold tracking-[0.12em] text-white">
-                {String(activeHeroSlide + 1).padStart(2, '0')}
-              </span>
-              <span className="h-3 w-px bg-white/16" />
+          <div className="absolute inset-x-0 bottom-5 z-20 flex justify-center sm:bottom-6">
+            <div className="inline-flex items-center gap-2.5">
               {heroSlides.map((slide, index) => (
                 <button
                   key={slide.id}
                   type="button"
                   aria-label={t('home:hero.slideAria', { index: index + 1 })}
                   onClick={() => setActiveHeroSlide(index)}
-                  className="inline-flex h-3 items-center justify-center rounded-full transition-all duration-300"
+                  className="group/dot inline-flex h-3 items-center justify-center rounded-full py-1"
                 >
                   <span
-                    className={`block h-2.5 w-2.5 rounded-full transition-colors duration-300 ${
-                      index === activeHeroSlide ? 'bg-white' : 'bg-white/35 hover:bg-white/55'
+                    className={`block rounded-full transition-all duration-300 ease-out ${
+                      index === activeHeroSlide
+                        ? 'h-2 w-6 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.35)]'
+                        : 'h-2 w-2 bg-white/45 group-hover/dot:bg-white/70'
                     }`}
                   />
                 </button>
               ))}
-              <span className="h-3 w-px bg-white/16" />
-              <span className="min-w-5 font-mono text-[10px] tracking-[0.12em] text-white/45">
-                {String(heroSlides.length).padStart(2, '0')}
-              </span>
             </div>
           </div>
         )}

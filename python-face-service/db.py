@@ -18,14 +18,15 @@ def get_connection():
 
 def find_duplicate_face(embedding: list[float], threshold: float) -> bool:
     """
-    Query pgvector: tìm embedding nào có cosine distance <= threshold.
-    Cosine distance: 0 = identical, 2 = opposite. Người giống nhau thường < 0.5.
+    Query pgvector: tìm embedding nào có Euclidean (L2) distance <= threshold.
+    Embedding do face_recognition (dlib) sinh ra được thiết kế để so bằng L2,
+    không phải cosine — ngưỡng chuẩn của thư viện là 0.6 (tolerance mặc định).
     """
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
     sql = """
         SELECT 1
         FROM embeddings
-        WHERE type = 'face' AND embedding_128 <=> %s::vector <= %s
+        WHERE type = 'face' AND embedding_128 <-> %s::vector <= %s
         LIMIT 1
     """
     with get_connection() as conn:
@@ -67,7 +68,7 @@ def find_banned_face(embedding: list[float], threshold: float) -> bool:
         SELECT 1
         FROM banned_identities
         WHERE face_embedding IS NOT NULL
-          AND face_embedding <=> %s::vector <= %s
+          AND face_embedding <-> %s::vector <= %s
         LIMIT 1
     """
     with get_connection() as conn:
