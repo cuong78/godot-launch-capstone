@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+  import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
@@ -151,9 +151,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return language === "vi" ? "vi-VN" : language === "ja" ? "ja-JP" : "en-US";
   }, [i18n.language, i18n.resolvedLanguage]);
 
+  const isDeveloperOrAdmin = currentUser?.role === "developer" || currentUser?.role === "admin";
+
   // Tab control: 'my-games' | 'marketplace-items' | 'sales' | 'payment-center'
   const [activeTab, setActiveTab] =
-    useState<DashboardWorkspaceId>("my-games");
+    useState<DashboardWorkspaceId>(isDeveloperOrAdmin ? "my-games" : "payment-center");
 
   // Game & Asset status filters
   const [gameStatusFilter, setGameStatusFilter] = useState<string>("all");
@@ -568,26 +570,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     });
 
   const workspaceItems: DashboardWorkspaceItem[] = [
+    ...(isDeveloperOrAdmin
+      ? [
+          {
+            id: "my-games" as const,
+            label: t("dashboard:tabs.publishedGames"),
+            count: storeGames.length,
+            icon: Gamepad2,
+          },
+          {
+            id: "marketplace-items" as const,
+            label: t("dashboard:tabs.marketplaceAssets"),
+            count: combinedMarketplaceItems.length,
+            icon: ShoppingBag,
+          },
+          {
+            id: "sales" as const,
+            label: t("dashboard:tabs.soldOrders"),
+            count: salesStats?.totalUnitsSold ?? 0,
+            icon: TrendingUp,
+          },
+        ]
+      : []),
     {
-      id: "my-games",
-      label: t("dashboard:tabs.publishedGames"),
-      count: storeGames.length,
-      icon: Gamepad2,
-    },
-    {
-      id: "marketplace-items",
-      label: t("dashboard:tabs.marketplaceAssets"),
-      count: combinedMarketplaceItems.length,
-      icon: ShoppingBag,
-    },
-    {
-      id: "sales",
-      label: t("dashboard:tabs.soldOrders"),
-      count: salesStats?.totalUnitsSold ?? 0,
-      icon: TrendingUp,
-    },
-    {
-      id: "payment-center",
+      id: "payment-center" as const,
       label: t("dashboard:tabs.purchasedOrders"),
       count: purchasedPayments.length,
       icon: WalletCards,
@@ -598,78 +604,80 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     <>
       <div className="space-y-6 animate-fade-in py-2">
         {/* Quick counters grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-            <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
-              {t("dashboard:stats.revenue")}
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] text-emerald-500 font-bold font-sans">
-                +12%
+        {isDeveloperOrAdmin && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
+              <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
+                {t("dashboard:stats.revenue")}
               </span>
-              <span className="text-2xl font-sans font-bold dark:text-white">
-                {(salesStats?.totalRevenue ?? 0).toLocaleString(locale)}
-              </span>
-              <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
-                VND
-              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-[10px] text-emerald-500 font-bold font-sans">
+                  +12%
+                </span>
+                <span className="text-2xl font-sans font-bold dark:text-white">
+                  {(salesStats?.totalRevenue ?? 0).toLocaleString(locale)}
+                </span>
+                <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
+                  VND
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
+                {t("dashboard:stats.revenueHint")}
+              </p>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
-              {t("dashboard:stats.revenueHint")}
-            </p>
-          </div>
 
-          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-            <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
-              {t("dashboard:stats.unitsSold")}
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-sans font-bold dark:text-white">
-                {salesStats?.totalUnitsSold ?? 0}
+            <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
+              <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
+                {t("dashboard:stats.unitsSold")}
               </span>
-              <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
-                {t("dashboard:stats.unitsLabel").toLowerCase()}
-              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-sans font-bold dark:text-white">
+                  {salesStats?.totalUnitsSold ?? 0}
+                </span>
+                <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
+                  {t("dashboard:stats.unitsLabel").toLowerCase()}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
+                {t("dashboard:stats.unitsSoldHint")}
+              </p>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
-              {t("dashboard:stats.unitsSoldHint")}
-            </p>
-          </div>
 
-          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-            <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
-              {t("dashboard:stats.publishedGames")}
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-sans font-bold dark:text-white">
-                {storeGames.length}
+            <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
+              <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
+                {t("dashboard:stats.publishedGames")}
               </span>
-              <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
-                {t("dashboard:table.game").toLowerCase()}
-              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-sans font-bold dark:text-white">
+                  {storeGames.length}
+                </span>
+                <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
+                  {t("dashboard:table.game").toLowerCase()}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
+                {t("dashboard:stats.publishedGamesHint")}
+              </p>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
-              {t("dashboard:stats.publishedGamesHint")}
-            </p>
-          </div>
 
-          <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-            <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
-              {t("dashboard:stats.marketplaceItems")}
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-sans font-bold dark:text-white">
-                {combinedMarketplaceItems.length}
+            <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
+              <span className="text-[10px] uppercase font-sans tracking-wider text-slate-550 dark:text-slate-400 font-bold">
+                {t("dashboard:stats.marketplaceItems")}
               </span>
-              <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
-                {t("dashboard:table.resource").toLowerCase()}
-              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-sans font-bold dark:text-white">
+                  {combinedMarketplaceItems.length}
+                </span>
+                <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
+                  {t("dashboard:table.resource").toLowerCase()}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
+                {t("dashboard:stats.marketplaceItemsHint")}
+              </p>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-300 leading-tight">
-              {t("dashboard:stats.marketplaceItemsHint")}
-            </p>
           </div>
-        </div>
+        )}
 
         <section
           className="grid min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white dark:border-slate-800/80 dark:bg-[#101720] md:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[224px_minmax(0,1fr)]"

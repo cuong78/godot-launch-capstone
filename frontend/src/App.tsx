@@ -371,15 +371,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // 1. Disable transitions temporarily to prevent uneven/slow transitions during theme toggle
+    document.documentElement.classList.add('disable-transitions');
+
     document.documentElement.classList.toggle('dark', darkMode);
     document.body.classList.toggle('dark', darkMode);
     document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+
+    // 2. Force a browser reflow to ensure the style changes are applied instantly without animations
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    document.documentElement.offsetHeight;
+
+    // 3. Re-enable transitions in the next frame
+    const timeout = window.setTimeout(() => {
+      document.documentElement.classList.remove('disable-transitions');
+    }, 0);
 
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, darkMode ? 'dark' : 'light');
     } catch (error) {
       console.warn('Failed to store theme preference:', error);
     }
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
   }, [darkMode]);
 
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
@@ -1072,7 +1088,7 @@ export default function App() {
   );
 
   return (
-    <div id="godotlaunch-root" className={`${darkMode ? 'dark bg-transparent text-slate-100' : 'bg-transparent text-slate-800'} min-h-screen flex flex-col font-sans transition-colors duration-300 relative`}>
+    <div id="godotlaunch-root" className={`${darkMode ? 'dark bg-night-950 text-slate-100' : 'bg-slate-50 text-slate-800'} min-h-screen flex flex-col font-sans transition-colors duration-300 relative`}>
       
       {/* 3D Voxel Nature Environment Background — ẩn riêng ở trang developer-onboarding (landing dùng nền tối riêng) */}
       {displayScreen !== 'developer-onboarding' && (

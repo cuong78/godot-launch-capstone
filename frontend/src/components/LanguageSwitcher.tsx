@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../hooks/useLanguage';
@@ -124,12 +125,13 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            className="fixed inset-0 z-40 cursor-default"
-            onClick={() => setIsOpen(false)}
-            aria-label="Close language menu"
-          />
+          {createPortal(
+            <div
+              className="fixed inset-0 z-40 cursor-default bg-transparent"
+              onClick={() => setIsOpen(false)}
+            />,
+            document.body
+          )}
         </>
       )}
     </div>
