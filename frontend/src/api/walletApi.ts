@@ -10,7 +10,6 @@ import {
   WithdrawalResponse,
   WithdrawalDetailResponse,
   CreateWithdrawalRequest,
-  ApproveWithdrawalRequest,
   RejectWithdrawalRequest,
   CreateTopUpRequest,
   PaymentResponse
@@ -74,18 +73,8 @@ export const walletApi = {
     return response.data;
   },
 
-  approveWithdrawal: async (id: string, data?: ApproveWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
-    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/approve`, data ?? {});
-    return response.data;
-  },
-
   syncAdminWithdrawal: async (id: string): Promise<ApiResponse<WithdrawalDetailResponse>> => {
     const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/sync`);
-    return response.data;
-  },
-
-  markWithdrawalProcessing: async (id: string): Promise<ApiResponse<WithdrawalDetailResponse>> => {
-    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/processing`);
     return response.data;
   },
 

@@ -12,4 +12,6 @@ public interface PlatformSettingsService {
     PlatformSettingsResponse updatePlatformSettings(UpdatePlatformSettingsRequest request);
 
     BigDecimal getPlatformCommissionRate();
+
+    short getWithdrawalHoldDays();
 }

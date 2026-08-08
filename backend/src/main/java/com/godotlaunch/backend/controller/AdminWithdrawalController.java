@@ -1,6 +1,5 @@
 package com.godotlaunch.backend.controller;
 
-import com.godotlaunch.backend.dto.request.ApproveWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.RejectWithdrawalRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.WithdrawalDetailResponse;
@@ -49,17 +48,6 @@ public class AdminWithdrawalController {
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal detail retrieved successfully."));
     }
 
-    @PostMapping("/{id}/approve")
-    @Operation(summary = "Create a PayOS payout order for a withdrawal request")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> approveWithdrawal(
-            @PathVariable UUID id,
-            @RequestBody(required = false) ApproveWithdrawalRequest request,
-            Principal principal) {
-        WithdrawalDetailResponse response = withdrawalRequestService.approveWithdrawal(id, request, principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal payout order created successfully."));
-    }
-
     @PostMapping("/{id}/sync")
     @Operation(summary = "Synchronize payout status for a withdrawal request")
     @SecurityRequirement(name = "bearerAuth")
@@ -68,16 +56,6 @@ public class AdminWithdrawalController {
             Principal principal) {
         WithdrawalDetailResponse response = withdrawalRequestService.syncWithdrawalStatus(id, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal payout status synchronized successfully."));
-    }
-
-    @PostMapping("/{id}/processing")
-    @Operation(summary = "Mark withdrawal as processing")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> markProcessing(
-            @PathVariable UUID id,
-            Principal principal) {
-        WithdrawalDetailResponse response = withdrawalRequestService.markWithdrawalProcessing(id, principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal marked as processing."));
     }
 
     @PostMapping("/{id}/reject")

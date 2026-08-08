@@ -21,6 +21,5 @@ public interface WithdrawalRequestService {
     WithdrawalDetailResponse getAdminWithdrawalDetail(UUID id);
     WithdrawalDetailResponse approveWithdrawal(UUID requestId, ApproveWithdrawalRequest request, String adminEmail);
     WithdrawalDetailResponse syncWithdrawalStatus(UUID requestId, String adminEmail);
-    WithdrawalDetailResponse markWithdrawalProcessing(UUID requestId, String adminEmail);
     WithdrawalDetailResponse rejectWithdrawal(UUID requestId, RejectWithdrawalRequest request, String adminEmail);
 }

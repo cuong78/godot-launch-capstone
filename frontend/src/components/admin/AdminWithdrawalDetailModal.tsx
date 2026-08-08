@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   BadgeCheck,
+  Clock,
   Copy,
   Landmark,
   LoaderCircle,
+  RefreshCw,
   ShieldAlert,
   UserRound,
   Wallet2,
@@ -34,12 +36,10 @@ interface AdminWithdrawalDetailModalProps {
   isBusy: boolean;
   isOpen: boolean;
   error?: string | null;
-  completionRemark: string;
   rejectRemark: string;
-  onCompletionRemarkChange: (value: string) => void;
   onRejectRemarkChange: (value: string) => void;
   onClose: () => void;
-  onApprove: () => void;
+  onSync: () => void;
   onReject: () => void;
   statusNotice?: WithdrawalStatusNotice | null;
   payoutProgress?: WithdrawalPayoutProgress | null;
@@ -115,6 +115,16 @@ const getStatusMeta = (status: WithdrawalStatus, t: (key: string) => string) => 
         className: "bg-slate-100 text-slate-700 border border-slate-200",
       };
   }
+};
+
+const formatHoldCountdown = (eligibleAt?: string | null) => {
+  if (!eligibleAt) return null;
+  const target = new Date(eligibleAt).getTime();
+  if (Number.isNaN(target)) return null;
+  const diffMs = target - Date.now();
+  if (diffMs <= 0) return "Sẽ tự động chi trả trong lần quét tiếp theo";
+  const days = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+  return `Còn khoảng ${days} ngày sẽ tự động chi trả`;
 };
 
 const copyToClipboard = async (value?: string | null) => {
@@ -218,12 +228,10 @@ export const AdminWithdrawalDetailModal: React.FC<
   isBusy,
   isOpen,
   error,
-  completionRemark,
   rejectRemark,
-  onCompletionRemarkChange,
   onRejectRemarkChange,
   onClose,
-  onApprove,
+  onSync,
   onReject,
   statusNotice,
   payoutProgress,
@@ -235,9 +243,11 @@ export const AdminWithdrawalDetailModal: React.FC<
   }
 
   const statusMeta = getStatusMeta(withdrawal.status, t);
-  const canCreatePayout =
-    withdrawal.status === "pending" ||
-    (withdrawal.status === "approved" && !withdrawal.payosPayoutId);
+  const canSync = withdrawal.status === "processing";
+  const holdCountdown =
+    withdrawal.status === "pending"
+      ? formatHoldCountdown(withdrawal.autoPayoutEligibleAt)
+      : null;
   const canReject =
     withdrawal.status === "pending" ||
     withdrawal.status === "approved" ||
@@ -278,6 +288,18 @@ export const AdminWithdrawalDetailModal: React.FC<
               >
                 {statusMeta.label}
               </span>
+              {withdrawal.heldByDispute && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/60 dark:text-rose-300">
+                  <ShieldAlert size={12} />
+                  Đang giữ do có khiếu nại
+                </span>
+              )}
+              {!withdrawal.heldByDispute && holdCountdown && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/60 dark:text-sky-300">
+                  <Clock size={12} />
+                  {holdCountdown}
+                </span>
+              )}
               <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                 {withdrawal.transferReference}
               </span>
@@ -573,20 +595,12 @@ export const AdminWithdrawalDetailModal: React.FC<
                 </div>
               )}
 
-              {canCreatePayout && (
-                <div className="mt-4">
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    {t("withdrawal.detail.approvalNote")}
-                  </label>
-                  <textarea
-                    value={completionRemark}
-                    onChange={(event) =>
-                      onCompletionRemarkChange(event.target.value)
-                    }
-                    rows={4}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none focus:border-amber-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-                    placeholder={t("withdrawal.detail.approvalPlaceholder")}
-                  />
+              {withdrawal.status === "pending" && (
+                <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800/70 dark:bg-slate-900/60 dark:text-slate-300">
+                  Yêu cầu này sẽ được hệ thống tự động tạo payout order khi hết
+                  thời gian giữ (cooling-off), trừ khi có khiếu nại đang mở
+                  nhắm vào developer này. Admin chỉ có thể reject để chặn thủ
+                  công nếu phát hiện dấu hiệu bất thường.
                 </div>
               )}
 
@@ -620,14 +634,15 @@ export const AdminWithdrawalDetailModal: React.FC<
               )}
 
               <div className="mt-6 flex flex-wrap gap-3">
-                {canCreatePayout && (
+                {canSync && (
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={onApprove}
+                    icon={<RefreshCw size={14} />}
+                    onClick={onSync}
                     disabled={isBusy}
                   >
-                    {t("withdrawal.detail.createPayoutOrder")}
+                    Sync Payout Status
                   </Button>
                 )}
                 {canReject && (
@@ -640,7 +655,7 @@ export const AdminWithdrawalDetailModal: React.FC<
                     {t("withdrawal.detail.rejectRequest")}
                   </Button>
                 )}
-                {!canCreatePayout && !canReject && (
+                {!canSync && !canReject && (
                   <span className="text-sm text-slate-500 dark:text-slate-400">
                     {t("withdrawal.detail.finalStateReadonly")}
                   </span>

@@ -156,6 +156,8 @@ export interface WithdrawalResponse {
   remark?: string;
   createdAt?: string;
   updatedAt?: string;
+  autoPayoutEligibleAt?: string | null;
+  heldByDispute: boolean;
 }
 
 export interface WithdrawalDetailResponse extends WithdrawalResponse {
@@ -174,11 +176,6 @@ export interface CreateWithdrawalRequest {
   bankAccount: string;
   accountHolder: string;
   note?: string;
-}
-
-export interface ApproveWithdrawalRequest {
-  transferReference?: string;
-  remark?: string;
 }
 
 export interface RejectWithdrawalRequest {
@@ -326,6 +323,7 @@ export interface ApiResponse<T> {
 
 export interface PlatformSettingsResponse {
   commissionRate: number;
+  withdrawalHoldDays: number;
   maintenanceMode: boolean;
   announcementBanner?: string | null;
   updatedAt?: string | null;
@@ -333,6 +331,7 @@ export interface PlatformSettingsResponse {
 
 export interface UpdatePlatformSettingsRequest {
   commissionRate: number;
+  withdrawalHoldDays: number;
   maintenanceMode: boolean;
   announcementBanner?: string | null;
 }

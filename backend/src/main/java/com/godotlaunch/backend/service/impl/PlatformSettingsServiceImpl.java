@@ -22,6 +22,8 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     private static final short SETTINGS_ID = 1;
     private static final BigDecimal DEFAULT_COMMISSION_RATE = new BigDecimal("10.00");
     private static final BigDecimal MAX_COMMISSION_RATE = new BigDecimal("100.00");
+    private static final short DEFAULT_WITHDRAWAL_HOLD_DAYS = 5;
+    private static final short MAX_WITHDRAWAL_HOLD_DAYS = 30;
     private static final String DEFAULT_ANNOUNCEMENT = "GodotLaunch Matrix Engine Upgrade is complete!";
 
     private final PlatformSettingsRepository platformSettingsRepository;
@@ -38,6 +40,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     @Transactional
     public PlatformSettingsResponse updatePlatformSettings(UpdatePlatformSettingsRequest request) {
         BigDecimal normalizedRate = normalizeCommissionRate(request.getCommissionRate());
+        short normalizedHoldDays = normalizeWithdrawalHoldDays(request.getWithdrawalHoldDays());
 
         PlatformSettings settings = platformSettingsRepository.findById(SETTINGS_ID)
                 .orElseGet(() -> {
@@ -47,6 +50,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
                 });
 
         settings.setCommissionRate(normalizedRate);
+        settings.setWithdrawalHoldDays(normalizedHoldDays);
         settings.setMaintenanceMode(Boolean.TRUE.equals(request.getMaintenanceMode()));
         settings.setAnnouncementBanner(normalizeAnnouncement(request.getAnnouncementBanner()));
 
@@ -62,9 +66,19 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
                 .orElse(DEFAULT_COMMISSION_RATE);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public short getWithdrawalHoldDays() {
+        return platformSettingsRepository.findById(SETTINGS_ID)
+                .map(PlatformSettings::getWithdrawalHoldDays)
+                .filter(days -> days != null)
+                .orElse(DEFAULT_WITHDRAWAL_HOLD_DAYS);
+    }
+
     private PlatformSettingsResponse buildDefaultResponse() {
         return new PlatformSettingsResponse(
                 DEFAULT_COMMISSION_RATE,
+                DEFAULT_WITHDRAWAL_HOLD_DAYS,
                 false,
                 DEFAULT_ANNOUNCEMENT,
                 null
@@ -74,6 +88,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     private PlatformSettingsResponse mapToResponse(PlatformSettings settings) {
         return new PlatformSettingsResponse(
                 settings.getCommissionRate() != null ? settings.getCommissionRate() : DEFAULT_COMMISSION_RATE,
+                settings.getWithdrawalHoldDays() != null ? settings.getWithdrawalHoldDays() : DEFAULT_WITHDRAWAL_HOLD_DAYS,
                 settings.isMaintenanceMode(),
                 settings.getAnnouncementBanner(),
                 settings.getUpdatedAt()
@@ -88,6 +103,16 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
         }
 
         return commissionRate.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private short normalizeWithdrawalHoldDays(Short withdrawalHoldDays) {
+        if (withdrawalHoldDays == null
+                || withdrawalHoldDays < 0
+                || withdrawalHoldDays > MAX_WITHDRAWAL_HOLD_DAYS) {
+            throw new AppException(ErrorCode.WITHDRAWAL_HOLD_DAYS_INVALID);
+        }
+
+        return withdrawalHoldDays;
     }
 
     private String normalizeAnnouncement(String announcementBanner) {

@@ -37,4 +37,6 @@ public class WithdrawalResponse {
     private String remark;
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant autoPayoutEligibleAt;
+    private boolean heldByDispute;
 }

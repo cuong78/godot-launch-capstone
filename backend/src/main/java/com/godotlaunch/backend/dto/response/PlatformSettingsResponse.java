@@ -15,6 +15,7 @@ import java.time.Instant;
 public class PlatformSettingsResponse {
 
     private BigDecimal commissionRate;
+    private Short withdrawalHoldDays;
     private boolean maintenanceMode;
     private String announcementBanner;
     private Instant updatedAt;

@@ -2,6 +2,8 @@ package com.godotlaunch.backend.dto.request;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -21,6 +23,11 @@ public class UpdatePlatformSettingsRequest {
     @DecimalMin(value = "0.00", message = "Commission rate must be at least 0")
     @DecimalMax(value = "100.00", message = "Commission rate must not exceed 100")
     private BigDecimal commissionRate;
+
+    @NotNull(message = "Withdrawal hold days is required")
+    @Min(value = 0, message = "Withdrawal hold days must be at least 0")
+    @Max(value = 30, message = "Withdrawal hold days must not exceed 30")
+    private Short withdrawalHoldDays;
 
     @NotNull(message = "Maintenance mode is required")
     private Boolean maintenanceMode;

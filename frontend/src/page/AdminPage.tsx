@@ -1065,6 +1065,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   const applyPlatformSettings = (settings: PlatformSettingsResponse) => {
     setCommission(Number(settings.commissionRate) || 0);
+    setWithdrawalHoldDays(Number(settings.withdrawalHoldDays) || 0);
     setMaintenance(Boolean(settings.maintenanceMode));
     setAnnouncement(settings.announcementBanner || "");
   };
@@ -1092,6 +1093,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   // Platform settings state
   const [commission, setCommission] = useState(10);
+  const [withdrawalHoldDays, setWithdrawalHoldDays] = useState(5);
   const [maintenance, setMaintenance] = useState(false);
   const [announcement, setAnnouncement] = useState(
     "GodotLaunch Matrix Engine Upgrade is complete!",
@@ -1349,6 +1351,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     try {
       const response = await platformSettingsApi.updatePlatformSettings({
         commissionRate: commission,
+        withdrawalHoldDays,
         maintenanceMode: maintenance,
         announcementBanner: announcement.trim() || null,
       });
@@ -3448,6 +3451,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             setCommission(parseFloat(e.target.value) || 0)
                           }
                           helperText={t("settingsPanel.commissionHelper")}
+                          required
+                        />
+
+                        <Input
+                          label="Withdrawal Hold Period (days)"
+                          type="number"
+                          min="0"
+                          max="30"
+                          step="1"
+                          value={withdrawalHoldDays}
+                          onChange={(e) =>
+                            setWithdrawalHoldDays(parseInt(e.target.value, 10) || 0)
+                          }
+                          helperText="Cooling-off period before a withdrawal is auto-paid out"
                           required
                         />
 

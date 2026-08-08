@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.Optional;
@@ -19,6 +20,7 @@ public interface WithdrawalRequestRepository extends JpaRepository<WithdrawalReq
     List<WithdrawalRequest> findByUserIdOrderByCreatedAtDesc(UUID userId);
     List<WithdrawalRequest> findByStatusOrderByCreatedAtDesc(WithdrawalStatus status);
     List<WithdrawalRequest> findAllByOrderByCreatedAtDesc();
+    List<WithdrawalRequest> findByStatusAndCreatedAtBefore(WithdrawalStatus status, Instant cutoff);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT w FROM WithdrawalRequest w WHERE w.id = :id")

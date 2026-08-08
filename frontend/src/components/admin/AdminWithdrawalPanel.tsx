@@ -150,7 +150,6 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
     useState<WithdrawalStatusNotice | null>(null);
   const [payoutProgress, setPayoutProgress] =
     useState<PayoutMonitorState | null>(null);
-  const [completionRemark, setCompletionRemark] = useState("");
   const [rejectRemark, setRejectRemark] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | WithdrawalStatus>(
@@ -279,7 +278,6 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
     setStatusNotice(null);
     setPanelStatusFlash(null);
     setPayoutProgress(null);
-    setCompletionRemark("");
     setRejectRemark("");
     try {
       const [response] = await Promise.all([
@@ -288,7 +286,6 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
       ]);
       if (response.success && response.data) {
         setSelectedWithdrawal(response.data);
-        setCompletionRemark("");
         setIsModalOpen(true);
       } else {
         setDetailError(
@@ -306,25 +303,12 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
     }
   };
 
-  const buildInsufficientPayoutMessage = (
-    balance?: PayoutBalanceResponse | null,
-  ) => {
-    const currentBalance = formatMoney(
-      Number(balance?.balance ?? 0),
-      balance?.currency || selectedWithdrawal?.currency || "VND",
-      t("withdrawal.na"),
-    );
-
-    return t("withdrawal.insufficientMessage", { balance: currentBalance });
-  };
-
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedWithdrawal(null);
     setDetailError(null);
     setStatusNotice(null);
     setPayoutProgress(null);
-    setCompletionRemark("");
     setRejectRemark("");
   }, []);
 
@@ -555,40 +539,20 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
     payoutProgress?.phase,
   ]);
 
-  const handleApprove = async () => {
+  const handleSync = async () => {
     if (!selectedWithdrawal) return;
     setIsBusy(true);
     setDetailError(null);
     setPanelStatusFlash(null);
     try {
-      const latestPayoutBalance = await loadAdminPayoutBalance();
-      if (
-        latestPayoutBalance &&
-        Number(latestPayoutBalance.balance) < Number(selectedWithdrawal.amount)
-      ) {
-        setStatusNotice({
-          title: t("withdrawal.insufficientTitle"),
-          message: buildInsufficientPayoutMessage(latestPayoutBalance),
-          tone: "warning",
-        });
-        return;
-      }
-
-      const response = await walletApi.approveWithdrawal(
-        selectedWithdrawal.id,
-        {
-          remark: completionRemark.trim() || undefined,
-        },
-      );
+      const response = await walletApi.syncAdminWithdrawal(selectedWithdrawal.id);
       if (response.success) {
         const nextDetail = response.data;
 
         const successText =
           nextDetail?.status === "completed"
             ? t("withdrawal.approveCompleted")
-            : nextDetail?.status === "processing"
-              ? t("withdrawal.approveProcessing")
-              : t("withdrawal.approveSuccess");
+            : t("withdrawal.approveProcessing");
 
         if (nextDetail) {
           updateWithdrawalInList(nextDetail);
@@ -603,21 +567,11 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         setDetailError(response.message || t("withdrawal.approveError"));
       }
     } catch (err: any) {
-      if (err.response?.data?.code === "INSUFFICIENT_PAYOUT_BALANCE") {
-        const latestPayoutBalance =
-          adminPayoutBalance ?? (await loadAdminPayoutBalance());
-        setStatusNotice({
-          title: t("withdrawal.insufficientTitle"),
-          message: buildInsufficientPayoutMessage(latestPayoutBalance),
-          tone: "warning",
-        });
-      } else {
-        setDetailError(
-          err.response?.data?.message ||
-            err.message ||
-            t("withdrawal.approveError"),
-        );
-      }
+      setDetailError(
+        err.response?.data?.message ||
+          err.message ||
+          t("withdrawal.approveError"),
+      );
     } finally {
       setIsBusy(false);
     }
@@ -818,12 +772,10 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         isBusy={isBusy}
         isOpen={isModalOpen}
         error={detailError}
-        completionRemark={completionRemark}
         rejectRemark={rejectRemark}
-        onCompletionRemarkChange={setCompletionRemark}
         onRejectRemarkChange={setRejectRemark}
         onClose={closeModal}
-        onApprove={handleApprove}
+        onSync={handleSync}
         onReject={handleReject}
         statusNotice={statusNotice}
         payoutProgress={payoutProgress}

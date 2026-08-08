@@ -18,9 +18,11 @@ import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.WithdrawalRequest;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
+import com.godotlaunch.backend.entity.enums.DisputeStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.entity.enums.WithdrawalStatus;
 import com.godotlaunch.backend.exception.AppException;
+import com.godotlaunch.backend.repository.DisputeRepository;
 import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
@@ -28,6 +30,7 @@ import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.repository.PayoutGateway;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +45,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -78,10 +82,12 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final DisputeRepository disputeRepository;
     private final AuditLogService auditLogService;
     private final PayoutGateway payoutGateway;
     private final EncryptionUtils encryptionUtils;
     private final WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
+    private final PlatformSettingsService platformSettingsService;
 
     @Override
     @Transactional(readOnly = true)
@@ -223,7 +229,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     @Override
     @Transactional
     public WithdrawalDetailResponse approveWithdrawal(UUID requestId, ApproveWithdrawalRequest request, String adminEmail) {
-        User admin = getUserByEmail(adminEmail);
+        // adminEmail == null: gọi tự động bởi WithdrawalAutoPayoutScheduler sau cooling-off period,
+        // không phải hành động admin — không có user để lookup.
         WithdrawalRequest withdrawal = getWithdrawalForUpdate(requestId);
 
         boolean isLegacyApprovedWithoutPayout =
@@ -288,7 +295,9 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                         "payosStatus", Objects.requireNonNullElse(updated.getPayosStatus(), ""),
                         "remark", Objects.requireNonNullElse(updated.getRemark(), "")
                 ),
-                "Admin created a PayOS payout order and moved the withdrawal into processing."
+                adminEmail != null
+                        ? "Admin created a PayOS payout order and moved the withdrawal into processing."
+                        : "System auto-created a PayOS payout order after the cooling-off period elapsed."
         );
 
         Wallet wallet = getOrCreateWallet(updated.getUser());
@@ -303,34 +312,6 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         Wallet wallet = getOrCreateWallet(synchronizedWithdrawal.getUser());
         WalletMetrics metrics = buildWalletMetrics(synchronizedWithdrawal.getUser(), wallet);
         return mapToDetailResponse(synchronizedWithdrawal, wallet, metrics);
-    }
-
-    @Override
-    @Transactional
-    public WithdrawalDetailResponse markWithdrawalProcessing(UUID requestId, String adminEmail) {
-        User admin = getUserByEmail(adminEmail);
-        WithdrawalRequest withdrawal = getWithdrawalForUpdate(requestId);
-
-        if (withdrawal.getStatus() != WithdrawalStatus.pending) {
-            throw new AppException(ErrorCode.INVALID_WITHDRAWAL_STATUS);
-        }
-
-        WithdrawalStatus previousStatus = withdrawal.getStatus();
-        withdrawal.setStatus(WithdrawalStatus.processing);
-
-        WithdrawalRequest updated = withdrawalRequestRepository.save(withdrawal);
-        auditLogService.publishAuto(
-                AuditAction.withdrawal_processing,
-                AuditTarget.withdrawal_request,
-                updated.getId(),
-                Map.of("status", previousStatus.name()),
-                Map.of("status", updated.getStatus().name()),
-                "Admin marked withdrawal as processing."
-        );
-
-        Wallet wallet = getOrCreateWallet(updated.getUser());
-        WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
-        return mapToDetailResponse(updated, wallet, metrics);
     }
 
     @Override
@@ -490,6 +471,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .remark(withdrawal.getRemark())
                 .createdAt(withdrawal.getCreatedAt())
                 .updatedAt(withdrawal.getUpdatedAt())
+                .autoPayoutEligibleAt(computeAutoPayoutEligibleAt(withdrawal))
+                .heldByDispute(isHeldByDispute(withdrawal))
                 .build();
     }
 
@@ -519,6 +502,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .remark(withdrawal.getRemark())
                 .createdAt(withdrawal.getCreatedAt())
                 .updatedAt(withdrawal.getUpdatedAt())
+                .autoPayoutEligibleAt(computeAutoPayoutEligibleAt(withdrawal))
+                .heldByDispute(isHeldByDispute(withdrawal))
                 .walletBalance(metrics.walletBalance())
                 .availableBalance(metrics.availableBalance())
                 .pendingBalance(metrics.pendingBalance())
@@ -527,6 +512,21 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .standardQrImageUrl(standardQrImageUrl)
                 .preferredQrImageUrl(preferredQrImageUrl != null ? preferredQrImageUrl : standardQrImageUrl)
                 .build();
+    }
+
+    private Instant computeAutoPayoutEligibleAt(WithdrawalRequest withdrawal) {
+        if (withdrawal.getStatus() != WithdrawalStatus.pending || withdrawal.getCreatedAt() == null) {
+            return null;
+        }
+        short holdDays = platformSettingsService.getWithdrawalHoldDays();
+        return withdrawal.getCreatedAt().plus(holdDays, ChronoUnit.DAYS);
+    }
+
+    private boolean isHeldByDispute(WithdrawalRequest withdrawal) {
+        if (withdrawal.getStatus() != WithdrawalStatus.pending) {
+            return false;
+        }
+        return disputeRepository.existsByReportedSellerIdAndStatus(withdrawal.getUser().getId(), DisputeStatus.open);
     }
 
     private String buildTransferReference(UUID withdrawalId) {

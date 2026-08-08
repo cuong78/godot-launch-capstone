@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.repository;
 
 import com.godotlaunch.backend.entity.Dispute;
+import com.godotlaunch.backend.entity.enums.DisputeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,4 +15,5 @@ public interface DisputeRepository extends JpaRepository<Dispute, UUID> {
     List<Dispute> findByReportedSellerIdOrderByCreatedAtDesc(UUID sellerId);
     long countByReporterIdAndStatus(UUID reporterId, String status);
     List<Dispute> findAllByOrderByCreatedAtDesc();
+    boolean existsByReportedSellerIdAndStatus(UUID reportedSellerId, DisputeStatus status);
 }

@@ -91,6 +91,7 @@ public enum ErrorCode {
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "Payment amount does not match the order total."),
     PAYMENT_NOT_CANCELLABLE(HttpStatus.BAD_REQUEST, "This payment can no longer be cancelled."),
     PLATFORM_COMMISSION_RATE_INVALID(HttpStatus.BAD_REQUEST, "Platform commission rate must be between 0 and 100."),
+    WITHDRAWAL_HOLD_DAYS_INVALID(HttpStatus.BAD_REQUEST, "Withdrawal hold days must be between 0 and 30."),
     AGREEMENT_VERSION_NOT_FOUND(HttpStatus.BAD_REQUEST, "No active distribution agreement version found."),
     PAYOUT_BALANCE_FETCH_FAILED(HttpStatus.BAD_GATEWAY, "Failed to fetch the PayOS payout account balance."),
     PAYOUT_BALANCE_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "Received an invalid response from the PayOS payout balance API."),

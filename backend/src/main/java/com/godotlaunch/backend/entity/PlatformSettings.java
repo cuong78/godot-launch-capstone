@@ -29,6 +29,9 @@ public class PlatformSettings {
     @Column(name = "commission_rate", nullable = false, precision = 5, scale = 2)
     private BigDecimal commissionRate = BigDecimal.TEN;
 
+    @Column(name = "withdrawal_hold_days", nullable = false)
+    private Short withdrawalHoldDays = 5;
+
     @Column(name = "maintenance_mode", nullable = false)
     private boolean maintenanceMode;
 
