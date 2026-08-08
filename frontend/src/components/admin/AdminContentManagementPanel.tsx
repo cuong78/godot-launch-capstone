@@ -150,6 +150,9 @@ export const AdminContentManagementPanel: React.FC = () => {
   const [categoryForm, setCategoryForm] = React.useState<CategoryForm>(createEmptyCategory);
   const [tagSearch, setTagSearch] = React.useState('');
   const [categorySearch, setCategorySearch] = React.useState('');
+  const [contentTypeOpen, setContentTypeOpen] = React.useState(false);
+  const [parentCategoryOpen, setParentCategoryOpen] = React.useState(false);
+  const [layoutCollectionOpen, setLayoutCollectionOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -547,26 +550,71 @@ export const AdminContentManagementPanel: React.FC = () => {
           ))}
 
           <div className={`${cardClass} flex flex-col gap-3 p-4 sm:flex-row`}>
-            <select
-              className={inputClass}
-              value={newSectionCollectionId}
-              onChange={(event) => setNewSectionCollectionId(event.target.value)}
-            >
-              <option value="">
-                {t('contentPanel.layout.selectCollectionPlaceholder')}
-              </option>
-              {collections
-                .filter(
-                  (item) =>
-                    item.active &&
-                    !sections.some((section) => section.collectionId === item.id),
-                )
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-            </select>
+            <div className="flex-1 relative">
+              <button
+                type="button"
+                onClick={() => setLayoutCollectionOpen(!layoutCollectionOpen)}
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white/92 px-3.5 py-2.5 text-left text-sm text-slate-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/15 dark:border-slate-700/90 dark:bg-slate-950/70 dark:text-white"
+              >
+                <span className="truncate">
+                  {newSectionCollectionId
+                    ? collections.find((c) => c.id === newSectionCollectionId)?.title || newSectionCollectionId
+                    : t('contentPanel.layout.selectCollectionPlaceholder')}
+                </span>
+                <ChevronDown
+                  size={15}
+                  className={`text-slate-500 transition-transform duration-200 ${layoutCollectionOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {layoutCollectionOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setLayoutCollectionOpen(false)}
+                  />
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-950/95">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewSectionCollectionId('');
+                        setLayoutCollectionOpen(false);
+                      }}
+                      className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                        !newSectionCollectionId
+                          ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                          : 'text-slate-700 dark:text-slate-350'
+                      }`}
+                    >
+                      {t('contentPanel.layout.selectCollectionPlaceholder')}
+                    </button>
+                    {collections
+                      .filter(
+                        (item) =>
+                          item.active &&
+                          !sections.some((section) => section.collectionId === item.id),
+                      )
+                      .map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setNewSectionCollectionId(item.id);
+                            setLayoutCollectionOpen(false);
+                          }}
+                          className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                            newSectionCollectionId === item.id
+                              ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                              : 'text-slate-700 dark:text-slate-350'
+                          }`}
+                        >
+                          {item.title}
+                        </button>
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
             <button
               type="button"
               disabled={!newSectionCollectionId}
@@ -1034,59 +1082,157 @@ export const AdminContentManagementPanel: React.FC = () => {
                   }
                 />
               </label>
-              <label className="space-y-1.5">
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+              <div className="flex flex-col gap-1.5 relative">
+                <span className="text-[11px] font-semibold text-slate-650 dark:text-slate-400">
                   {t('contentPanel.categories.fields.type')}
                 </span>
-                <select
-                  className={inputClass}
-                  value={categoryForm.type}
-                  onChange={(event) =>
-                    setCategoryForm({
-                      ...categoryForm,
-                      type: event.target.value,
-                      parentId: '',
-                    })
-                  }
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContentTypeOpen(!contentTypeOpen);
+                    setParentCategoryOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white/92 px-3.5 py-2.5 text-left text-sm text-slate-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/15 dark:border-slate-700/90 dark:bg-slate-950/70 dark:text-white"
                 >
-                  <option value="asset">
-                    {t('contentPanel.categories.typeAssetOption')}
-                  </option>
-                  <option value="game">
-                    {t('contentPanel.categories.typeGameOption')}
-                  </option>
-                </select>
-              </label>
-              <label className="space-y-1.5">
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  <span className="truncate">
+                    {categoryForm.type === 'asset'
+                      ? t('contentPanel.categories.typeAssetOption')
+                      : t('contentPanel.categories.typeGameOption')}
+                  </span>
+                  <ChevronDown
+                    size={15}
+                    className={`text-slate-500 transition-transform duration-200 ${contentTypeOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {contentTypeOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setContentTypeOpen(false)}
+                    />
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-950/95">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryForm({
+                            ...categoryForm,
+                            type: 'asset',
+                            parentId: '',
+                          });
+                          setContentTypeOpen(false);
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                          categoryForm.type === 'asset'
+                            ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                            : 'text-slate-700 dark:text-slate-350'
+                        }`}
+                      >
+                        {t('contentPanel.categories.typeAssetOption')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryForm({
+                            ...categoryForm,
+                            type: 'game',
+                            parentId: '',
+                          });
+                          setContentTypeOpen(false);
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                          categoryForm.type === 'game'
+                            ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                            : 'text-slate-700 dark:text-slate-355'
+                        }`}
+                      >
+                        {t('contentPanel.categories.typeGameOption')}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5 relative">
+                <span className="text-[11px] font-semibold text-slate-650 dark:text-slate-400">
                   {t('contentPanel.categories.fields.parent')}
                 </span>
-                <select
-                  className={inputClass}
-                  value={categoryForm.parentId}
-                  onChange={(event) =>
-                    setCategoryForm({
-                      ...categoryForm,
-                      parentId: event.target.value,
-                    })
-                  }
+                <button
+                  type="button"
+                  onClick={() => {
+                    setParentCategoryOpen(!parentCategoryOpen);
+                    setContentTypeOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white/92 px-3.5 py-2.5 text-left text-sm text-slate-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/15 dark:border-slate-700/90 dark:bg-slate-950/70 dark:text-white"
                 >
-                  <option value="">
-                    {t('contentPanel.categories.noParent')}
-                  </option>
-                  {categoryRows
-                    .filter(
-                      ({ item }) =>
-                        item.type === categoryForm.type &&
-                        item.id !== categoryForm.id,
-                    )
-                    .map(({ item, depth }) => (
-                      <option key={item.id} value={item.id}>
-                        {`${'— '.repeat(depth)}${item.name}`}
-                      </option>
-                    ))}
-                </select>
-              </label>
+                  <span className="truncate">
+                    {categoryForm.parentId
+                      ? (() => {
+                          const parentCat = categories.find((c) => c.id === categoryForm.parentId);
+                          return parentCat ? parentCat.name : categoryForm.parentId;
+                        })()
+                      : t('contentPanel.categories.noParent')}
+                  </span>
+                  <ChevronDown
+                    size={15}
+                    className={`text-slate-500 transition-transform duration-200 ${parentCategoryOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {parentCategoryOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setParentCategoryOpen(false)}
+                    />
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-950/95">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryForm({
+                            ...categoryForm,
+                            parentId: '',
+                          });
+                          setParentCategoryOpen(false);
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                          !categoryForm.parentId
+                            ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                            : 'text-slate-700 dark:text-slate-350'
+                        }`}
+                      >
+                        {t('contentPanel.categories.noParent')}
+                      </button>
+                      {categoryRows
+                        .filter(
+                          ({ item }) =>
+                            item.type === categoryForm.type &&
+                            item.id !== categoryForm.id,
+                        )
+                        .map(({ item, depth }) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setCategoryForm({
+                                ...categoryForm,
+                                parentId: item.id,
+                              });
+                              setParentCategoryOpen(false);
+                            }}
+                            className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                              categoryForm.parentId === item.id
+                                ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                                : 'text-slate-700 dark:text-slate-350'
+                            }`}
+                          >
+                            {`${'— '.repeat(depth)}${item.name}`}
+                          </button>
+                        ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             
             <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">

@@ -2990,7 +2990,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 className="fixed inset-0 z-45"
                                 onClick={() => setIsActionDropdownOpen(false)}
                               />
-                              <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200/80 bg-white/95 py-1.5 shadow-xl backdrop-blur-md divide-y divide-slate-105 animate-fade-in dark:divide-slate-800/40 dark:border-slate-800/80 dark:bg-slate-900/95">
+                              <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white/95 shadow-xl backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/95">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2998,7 +2998,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     setCurrentPage(0);
                                     setIsActionDropdownOpen(false);
                                   }}
-                                  className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-amber-400 hover:text-slate-950 ${!filterAction ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold" : "text-slate-700 dark:text-slate-300"}`}
+                                  className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 first:rounded-t-xl last:rounded-b-xl ${
+                                    !filterAction
+                                      ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold"
+                                      : "text-slate-750 dark:text-slate-300"
+                                  }`}
                                 >
                                   {t("audit.allActions")}
                                 </button>
@@ -3011,7 +3015,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                       setCurrentPage(0);
                                       setIsActionDropdownOpen(false);
                                     }}
-                                    className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-amber-400 hover:text-slate-950 ${filterAction === act.value ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold" : "text-slate-700 dark:text-slate-300"}`}
+                                    className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 first:rounded-t-xl last:rounded-b-xl ${
+                                      filterAction === act.value
+                                        ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold"
+                                        : "text-slate-750 dark:text-slate-300"
+                                    }`}
                                   >
                                     {act.label}
                                   </button>
@@ -3053,7 +3061,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                 className="fixed inset-0 z-45"
                                 onClick={() => setIsTargetDropdownOpen(false)}
                               />
-                              <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200/80 bg-white/95 py-1.5 shadow-xl backdrop-blur-md divide-y divide-slate-105 animate-fade-in dark:divide-slate-800/40 dark:border-slate-800/80 dark:bg-slate-900/95">
+                              <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white/95 shadow-xl backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/95">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -3061,7 +3069,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                     setCurrentPage(0);
                                     setIsTargetDropdownOpen(false);
                                   }}
-                                  className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-amber-400 hover:text-slate-950 ${!filterTargetType ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold" : "text-slate-700 dark:text-slate-300"}`}
+                                  className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 first:rounded-t-xl last:rounded-b-xl ${
+                                    !filterTargetType
+                                      ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold"
+                                      : "text-slate-750 dark:text-slate-300"
+                                  }`}
                                 >
                                   {t("audit.allTargets")}
                                 </button>
@@ -3074,7 +3086,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                       setCurrentPage(0);
                                       setIsTargetDropdownOpen(false);
                                     }}
-                                    className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-amber-400 hover:text-slate-950 ${filterTargetType === t.value ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold" : "text-slate-700 dark:text-slate-300"}`}
+                                    className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 first:rounded-t-xl last:rounded-b-xl ${
+                                      filterTargetType === t.value
+                                        ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold"
+                                        : "text-slate-750 dark:text-slate-300"
+                                    }`}
                                   >
                                     {t.label}
                                   </button>
