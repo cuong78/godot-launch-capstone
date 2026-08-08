@@ -292,9 +292,6 @@ export interface UpdateProfileRequest {
   fullName: string;
   avatarUrl?: string;
   password?: string;
-  bankName?: string;
-  bankAccount?: string;
-  bankAccountHolder?: string;
 }
 
 export interface SignInRequest {

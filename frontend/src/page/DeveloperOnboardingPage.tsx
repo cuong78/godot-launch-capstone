@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Github, ScanFace, FileText, Sparkles, Loader2, CreditCard, ClipboardCheck, ArrowLeft, ArrowRight, LogOut, CheckCircle2 } from 'lucide-react';
+import { Check, Github, ScanFace, FileText, Sparkles, Loader2, ArrowLeft, ArrowRight, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { FaceVerifyModal } from '../components/FaceVerifyModal';
 import KycOcrModal from '../components/KycOcrModal';
@@ -12,29 +12,14 @@ import { kycApi } from '../api/kycApi';
 import { agreementApi } from '../api/agreementApi';
 import { useAuth } from '../hooks/useAuth';
 import { ScreenType } from '../types';
+import { BANK_OPTIONS } from '../utils/bankOptions';
 
 interface DeveloperOnboardingPageProps {
   setCurrentScreen: (screen: ScreenType) => void;
 }
 
-const BANK_OPTIONS = [
-  "Vietcombank",
-  "BIDV",
-  "VietinBank",
-  "Agribank",
-  "Techcombank",
-  "MBBank",
-  "ACB",
-  "Sacombank",
-  "VPBank",
-  "TPBank",
-  "OCB",
-  "SHB",
-  "HDBank"
-];
-
 export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = ({ setCurrentScreen }) => {
-  const { currentUser, updateUser } = useAuth();
+  const { loginWithToken } = useAuth();
   const { t } = useTranslation(['developer']);
   
   // Trạng thái các bước xác minh
@@ -61,8 +46,10 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
   const [showKycModal, setShowKycModal] = useState(false);
   const [isLinkingGithub, setIsLinkingGithub] = useState(false);
   const [isSavingPayout, setIsSavingPayout] = useState(false);
+  const [payoutError, setPayoutError] = useState<string | null>(null);
 
   // Payout bank form
+  const [kycFullName, setKycFullName] = useState('');
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [bankAccountHolder, setBankAccountHolder] = useState('');
@@ -90,6 +77,10 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
         kycRes.status === 'fulfilled' && kycRes.value.success && kycRes.value.data
           ? kycRes.value.data.kycVerified
           : false;
+      const kycBank =
+        kycRes.status === 'fulfilled' && kycRes.value.success
+          ? kycRes.value.data
+          : null;
       const agreementOk =
         agreementStatusRes.status === 'fulfilled' && agreementStatusRes.value.success && agreementStatusRes.value.data
           ? agreementStatusRes.value.data.accepted
@@ -100,8 +91,12 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
       setKycVerified(kycOk);
       setAgreementAccepted(agreementOk);
 
-      const hasBank = !!currentUser?.bankName && !!currentUser?.bankAccount;
+      const hasBank = !!kycBank?.bankName && !!kycBank?.bankAccount && !!kycBank?.bankAccountHolder;
       setPayoutSaved(hasBank);
+      setKycFullName(kycBank?.fullName ?? '');
+      setBankName(kycBank?.bankName ?? '');
+      setBankAccount(kycBank?.bankAccount ?? '');
+      setBankAccountHolder(kycBank?.bankAccountHolder ?? '');
 
       if (linked || faceOk || kycOk || hasBank || agreementOk) {
         setHasStarted(true);
@@ -165,18 +160,6 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
     }
   };
 
-  // Đồng bộ hóa thông tin ngân hàng từ user profile
-  useEffect(() => {
-    if (currentUser) {
-      if (currentUser.bankName) setBankName(currentUser.bankName);
-      if (currentUser.bankAccount) setBankAccount(currentUser.bankAccount);
-      if (currentUser.bankAccountHolder) setBankAccountHolder(currentUser.bankAccountHolder);
-      if (currentUser.bankName && currentUser.bankAccount) {
-        setPayoutSaved(true);
-      }
-    }
-  }, [currentUser]);
-
   // Điều hướng thông minh đến bước chưa hoàn thành (Chỉ chạy 1 lần khi load status xong)
   useEffect(() => {
     if (!isLoadingStatus && hasStarted && !hasInitialNavigated) {
@@ -217,38 +200,72 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
     }
   };
 
+  const normalizeNameForCompare = (value: string) => value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/Đ/g, 'D')
+    .replace(/đ/g, 'd')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+
   const handleSavePayout = async () => {
-    if (!bankName.trim() || !bankAccount.trim() || !bankAccountHolder.trim()) {
-      setError(t('onboarding.errors.bankInfoRequired'));
+    const normalizedBankName = bankName.trim();
+    const normalizedBankAccount = bankAccount.trim();
+    const normalizedHolder = bankAccountHolder.trim();
+
+    setPayoutError(null);
+    if (!normalizedBankName || !normalizedBankAccount || !normalizedHolder) {
+      setPayoutError(t('onboarding.payout.errors.required'));
       return;
     }
+    if (!/^\d{6,30}$/.test(normalizedBankAccount)) {
+      setPayoutError(t('onboarding.payout.errors.invalidAccount'));
+      return;
+    }
+    if (!kycFullName) {
+      setPayoutError(t('onboarding.payout.errors.missingKycName'));
+      return;
+    }
+    if (normalizeNameForCompare(kycFullName) !== normalizeNameForCompare(normalizedHolder)) {
+      setPayoutError(t('onboarding.payout.errors.holderMismatch'));
+      return;
+    }
+
     setIsSavingPayout(true);
-    setError(null);
     try {
-      const res = await userApi.updateProfile({
-        fullName: currentUser?.fullName || '',
-        bankName: bankName.trim(),
-        bankAccount: bankAccount.trim(),
-        bankAccountHolder: bankAccountHolder.trim(),
+      const res = await kycApi.setupBank({
+        bankName: normalizedBankName,
+        bankAccount: normalizedBankAccount,
+        bankAccountHolder: normalizedHolder,
       });
-      if (res.success && res.data) {
-        setPayoutSaved(true);
-        updateUser(res.data);
-      } else {
-        setError(res.message || t('onboarding.errors.savePayout'));
+      if (!res.success || !res.data) {
+        setPayoutError(res.message || t('onboarding.payout.errors.saveFailed'));
+        return;
+      }
+
+      setBankName(res.data.bankName ?? normalizedBankName);
+      setBankAccount(res.data.bankAccount ?? normalizedBankAccount);
+      setBankAccountHolder(res.data.bankAccountHolder ?? normalizedHolder);
+      setPayoutSaved(true);
+
+      if (res.data.token) {
+        try {
+          await loginWithToken(res.data.token);
+        } catch (tokenErr) {
+          console.error('Failed to apply refreshed developer session token', tokenErr);
+        }
       }
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          t('onboarding.errors.savePayoutFailed'),
+      setPayoutError(
+        err?.response?.data?.message ||
+          err?.message ||
+          t('onboarding.payout.errors.saveFailed'),
       );
     } finally {
       setIsSavingPayout(false);
     }
   };
 
-  const isDeveloper = currentUser?.role === 'developer' || currentUser?.role === 'admin';
   const allDone = githubLinked && faceVerified && kycVerified && payoutSaved;
 
   const showLanding = !isLoadingStatus && !hasStarted && !allDone;
@@ -276,7 +293,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
   if (isLoadingStatus) {
     return (
-      <div className="flex h-[70vh] flex-col items-center justify-center gap-3 bg-slate-100 text-slate-500 dark:bg-night-950 dark:text-slate-400">
+      <div className="developer-onboarding-canvas flex h-[70vh] flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
         <Loader2 size={36} className="animate-spin text-amber-500" />
         <p className="text-sm font-semibold tracking-wide">{t('onboarding.loadingStatus')}</p>
       </div>
@@ -288,11 +305,12 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/70 px-4 py-10 text-slate-950 dark:bg-night-950 dark:text-white sm:px-6 lg:px-8">
+    <div className="developer-onboarding-canvas min-h-screen px-4 py-8 text-slate-950 dark:text-white sm:px-6 sm:py-10 lg:px-8">
       <div className="mx-auto max-w-4xl animate-fade-in">
         
         {/* PROGRESS BAR (Giao diện giống FAB Unreal Engine) */}
-        <div className="dark-depth-card relative mb-12 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white/88 p-6 shadow-[0_18px_48px_rgba(148,163,184,0.16)] dark:border-slate-700/60 dark:bg-night-850 dark:shadow-2xl">
+        <div className="developer-onboarding-surface relative mb-8 overflow-x-auto rounded-[22px] border p-5 sm:mb-10 sm:p-6">
+          <div className="flex min-w-[620px] items-center justify-between sm:min-w-0">
           {stepConfigs.map((step, idx) => {
             const isCompleted = step.done;
             const isActive = activeStep === step.id;
@@ -346,10 +364,11 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               </React.Fragment>
             );
           })}
+          </div>
         </div>
 
         {/* CONTAINER NỘI DUNG CHÍNH */}
-        <div className="dark-depth-card relative min-h-[420px] rounded-3xl border border-slate-200/80 bg-white/92 p-8 shadow-[0_22px_60px_rgba(148,163,184,0.18)] dark:border-slate-700/60 dark:bg-night-850 dark:shadow-3xl">
+        <div className="developer-onboarding-surface relative min-h-[420px] rounded-[24px] border p-5 sm:p-8">
           {error && (
             <div className="mb-6 rounded-xl border border-rose-300/50 bg-rose-50 p-4 text-sm text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
               {error}
@@ -384,7 +403,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                     <p className="text-sm text-slate-600 dark:text-slate-400">{t('onboarding.agreement.description')}</p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-white/5 dark:bg-black/40">
+                  <div className="developer-onboarding-inset rounded-2xl border p-4">
                     {isLoadingAgreement ? (
                       <div className="flex items-center justify-center gap-2 py-8 text-xs text-slate-500 dark:text-slate-400">
                         <Loader2 size={16} className="animate-spin" /> {t('onboarding.agreement.loading')}
@@ -398,7 +417,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                     )}
                   </div>
 
-                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white/90 p-4 transition hover:bg-slate-50 dark:border-white/5 dark:bg-slate-900/30 dark:hover:bg-slate-900/50">
+                  <label className="developer-onboarding-inset flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition hover:border-amber-400/45 dark:hover:border-amber-400/25">
                     <input
                       type="checkbox"
                       checked={agreementAccepted}
@@ -434,15 +453,15 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                   </div>
 
                   {githubLinked ? (
-                    <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
-                      <CheckCircle2 className="w-12 h-12 text-lime-500" />
-                      <div className="text-sm font-semibold text-lime-400">{t('onboarding.github.linkedTitle')}</div>
+                    <div className="mx-auto flex max-w-md animate-fade-in flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                      <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                      <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{t('onboarding.github.linkedTitle')}</div>
                       <div className="text-xs text-slate-600 dark:text-slate-400">{t('onboarding.github.linkedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
                       <div className="flex justify-center">
-                        <div className="rounded-full border border-slate-200 bg-slate-100 p-6 dark:border-white/5 dark:bg-slate-900">
+                        <div className="developer-onboarding-inset rounded-full border p-6">
                           <Github className="w-16 h-16 text-slate-900 dark:text-white" />
                         </div>
                       </div>
@@ -450,8 +469,8 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                         {t('onboarding.github.permissionHint')}
                       </p>
                       <Button
-                        variant="primary"
-                        className="bg-white hover:bg-slate-200 text-black font-bold flex items-center justify-center gap-2 mx-auto"
+                        variant="outline"
+                        className="mx-auto flex items-center justify-center gap-2 border-slate-300 bg-white/75 font-bold text-slate-900 hover:border-slate-400 hover:bg-white dark:border-slate-700 dark:bg-slate-900/65 dark:text-white dark:hover:bg-slate-800"
                         onClick={handleLinkGitHub}
                         disabled={isLinkingGithub}
                       >
@@ -480,15 +499,15 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                   </div>
 
                   {faceVerified ? (
-                    <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
-                      <CheckCircle2 className="w-12 h-12 text-lime-500" />
-                      <div className="text-sm font-semibold text-lime-400">{t('onboarding.face.verifiedTitle')}</div>
+                    <div className="mx-auto flex max-w-md animate-fade-in flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                      <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                      <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{t('onboarding.face.verifiedTitle')}</div>
                       <div className="text-xs text-slate-600 dark:text-slate-400">{t('onboarding.face.verifiedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
                       <div className="flex justify-center">
-                        <div className="rounded-full border border-slate-200 bg-slate-100 p-6 dark:border-white/5 dark:bg-slate-900">
+                        <div className="developer-onboarding-inset rounded-full border p-6">
                           <ScanFace className="w-16 h-16 text-amber-500" />
                         </div>
                       </div>
@@ -517,15 +536,15 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                   </div>
 
                   {kycVerified ? (
-                    <div className="mx-auto max-w-md rounded-2xl border border-lime-900/50 bg-lime-950/15 p-6 flex flex-col items-center gap-3 animate-fade-in">
-                      <CheckCircle2 className="w-12 h-12 text-lime-500" />
-                      <div className="text-sm font-semibold text-lime-400">{t('onboarding.kyc.verifiedTitle')}</div>
+                    <div className="mx-auto flex max-w-md animate-fade-in flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                      <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                      <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{t('onboarding.kyc.verifiedTitle')}</div>
                       <div className="text-xs text-slate-600 dark:text-slate-400">{t('onboarding.kyc.verifiedDescription')}</div>
                     </div>
                   ) : (
                     <div className="mx-auto max-w-md space-y-4">
                       <div className="flex justify-center">
-                        <div className="rounded-full border border-slate-200 bg-slate-100 p-6 dark:border-white/5 dark:bg-slate-900">
+                        <div className="developer-onboarding-inset rounded-full border p-6">
                           <FileText className="w-16 h-16 text-amber-500" />
                         </div>
                       </div>
@@ -553,65 +572,120 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                     <p className="text-sm text-slate-600 dark:text-slate-400">{t('onboarding.payout.description')}</p>
                   </div>
 
-                  <div className="dark-depth-inset mx-auto max-w-xl space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-6 dark:border-slate-700/55 dark:bg-night-950/70">
-                    <div>
-                      <label className="mb-1 block text-xs text-slate-500 dark:text-white/50">{t('onboarding.payout.bankName')}</label>
-                      <select
-                        value={bankName}
-                        onChange={(e) => setBankName(e.target.value)}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
-                      >
-                        <option value="" disabled className="bg-white text-slate-400 dark:bg-night-950 dark:text-slate-400">{t('onboarding.payout.bankPlaceholder')}</option>
-                        {BANK_OPTIONS.map((bank) => (
-                          <option key={bank} value={bank} className="bg-white text-slate-900 dark:bg-night-950 dark:text-white">{bank}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-xs text-slate-500 dark:text-white/50">{t('onboarding.payout.bankAccount')}</label>
-                      <input
-                        type="text"
-                        value={bankAccount}
-                        onChange={(e) => setBankAccount(e.target.value)}
-                        placeholder={t('onboarding.payout.bankAccountPlaceholder')}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-xs text-slate-500 dark:text-white/50">{t('onboarding.payout.bankHolder')}</label>
-                      <input
-                        type="text"
-                        value={bankAccountHolder}
-                        onChange={(e) => setBankAccountHolder(e.target.value.toUpperCase())}
-                        placeholder={t('onboarding.payout.bankHolderPlaceholder')}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
-                      />
-                    </div>
-
+                  <div className="developer-onboarding-inset mx-auto max-w-xl space-y-4 rounded-2xl border p-5 sm:p-6">
                     {payoutSaved ? (
-                      <div className="rounded-xl border border-lime-900/50 bg-lime-950/20 px-4 py-3 text-xs text-lime-400 font-semibold flex items-center gap-2 animate-fade-in">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        <span>{t('onboarding.payout.saved')}</span>
-                      </div>
+                      <>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-xl border border-slate-200/90 bg-white/80 p-4 dark:border-slate-700/70 dark:bg-slate-900/55">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/40">
+                              {t('onboarding.payout.bankName')}
+                            </div>
+                            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{bankName}</div>
+                          </div>
+                          <div className="rounded-xl border border-slate-200/90 bg-white/80 p-4 dark:border-slate-700/70 dark:bg-slate-900/55">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/40">
+                              {t('onboarding.payout.bankAccount')}
+                            </div>
+                            <div className="mt-1 font-mono text-sm font-semibold text-slate-900 dark:text-white">{bankAccount}</div>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/90 bg-white/80 p-4 dark:border-slate-700/70 dark:bg-slate-900/55">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/40">
+                            {t('onboarding.payout.bankHolder')}
+                          </div>
+                          <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{bankAccountHolder}</div>
+                        </div>
+                        <div className="flex animate-fade-in items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <span>{t('onboarding.payout.saved')}</span>
+                        </div>
+                      </>
                     ) : (
-                      <Button
-                        variant="primary"
-                        onClick={handleSavePayout}
-                        disabled={isSavingPayout}
-                        className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold flex items-center justify-center gap-2"
-                      >
-                        {isSavingPayout ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" /> {t('onboarding.payout.saving')}
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard size={18} /> {t('onboarding.payout.action')}
-                          </>
+                      <div className="space-y-4">
+                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+                          {t('onboarding.payout.hint', { name: kycFullName })}
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+                            {t('onboarding.payout.bankName')} <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={bankName}
+                            onChange={(event) => {
+                              setBankName(event.target.value);
+                              setPayoutError(null);
+                            }}
+                            disabled={isSavingPayout}
+                            className="w-full rounded-xl border border-slate-300 bg-white/90 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-white dark:[color-scheme:dark]"
+                          >
+                            <option value="" disabled>{t('onboarding.payout.bankPlaceholder')}</option>
+                            {BANK_OPTIONS.map((bank) => (
+                              <option key={bank} value={bank}>{bank}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+                            {t('onboarding.payout.bankAccount')} <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            value={bankAccount}
+                            onChange={(event) => {
+                              setBankAccount(event.target.value);
+                              setPayoutError(null);
+                            }}
+                            placeholder={t('onboarding.payout.bankAccountPlaceholder')}
+                            maxLength={30}
+                            disabled={isSavingPayout}
+                            className="w-full rounded-xl border border-slate-300 bg-white/90 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-white dark:placeholder:text-slate-600"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+                            {t('onboarding.payout.bankHolder')} <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            autoComplete="off"
+                            value={bankAccountHolder}
+                            onChange={(event) => {
+                              setBankAccountHolder(event.target.value.toUpperCase());
+                              setPayoutError(null);
+                            }}
+                            placeholder={t('onboarding.payout.bankHolderPlaceholder')}
+                            maxLength={200}
+                            disabled={isSavingPayout}
+                            className="w-full rounded-xl border border-slate-300 bg-white/90 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-white dark:placeholder:text-slate-600"
+                          />
+                        </div>
+
+                        {payoutError && (
+                          <div className="flex items-start gap-2 rounded-xl border border-rose-300/50 bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>{payoutError}</span>
+                          </div>
                         )}
-                      </Button>
+
+                        <Button
+                          variant="primary"
+                          className="w-full bg-amber-500 font-bold text-black hover:bg-amber-400"
+                          onClick={handleSavePayout}
+                          disabled={isSavingPayout}
+                        >
+                          {isSavingPayout ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              {t('onboarding.payout.saving')}
+                            </span>
+                          ) : t('onboarding.payout.save')}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -622,19 +696,19 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
         {/* BOTTOM NAVIGATION BAR */}
         {!allDone && (
-          <div className="dark-depth-card mt-8 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white/88 p-5 shadow-[0_18px_48px_rgba(148,163,184,0.14)] animate-fade-in dark:border-slate-700/60 dark:bg-night-850 dark:shadow-2xl">
+          <div className="developer-onboarding-surface mt-6 flex animate-fade-in flex-col gap-4 rounded-[22px] border p-4 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <button
               onClick={() => setCurrentScreen('explore')}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-white sm:w-auto"
             >
               <LogOut size={16} /> {t('onboarding.actions.exit')}
             </button>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 disabled={activeStep === 1}
                 onClick={() => setActiveStep((prev) => Math.max(1, prev - 1))}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-white sm:flex-none"
               >
                 <ArrowLeft size={16} /> {t('onboarding.actions.back')}
               </button>
@@ -642,7 +716,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
               <button
                 disabled={!isStepCompleted(activeStep) || activeStep === 5}
                 onClick={() => setActiveStep((prev) => Math.min(5, prev + 1))}
-                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-extrabold shadow-lg shadow-amber-500/10"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-2.5 text-sm font-extrabold text-black shadow-lg shadow-amber-500/10 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-30 sm:flex-none"
               >
                 {t('onboarding.actions.continue')} <ArrowRight size={16} />
               </button>
@@ -668,7 +742,9 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
       {showKycModal && (
         <KycOcrModal
-          onSuccess={() => {
+          onSuccess={(status) => {
+            setKycFullName(status.fullName);
+            setPayoutError(null);
             setShowKycModal(false);
             loadStatus();
             setActiveStep(5);

@@ -21,6 +21,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     // chỉ được gắn với đúng 1 user. Loại trừ chính user đang confirm (cho
     // phép họ tự sửa lại thông tin KYC của mình).
     boolean existsByKycIdNumberAndIdNot(String kycIdNumber, UUID id);
+    boolean existsByBankAccountAndIdNot(String bankAccount, UUID id);
     List<User> findByFullNameContainingIgnoreCaseAndStatus(String fullName, String status);
     List<User> findByRole_NameIgnoreCase(String roleName);
 

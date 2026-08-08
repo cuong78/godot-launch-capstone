@@ -20,8 +20,7 @@ export interface KycStatus {
   bankName: string | null;
   bankAccount: string | null;
   bankAccountHolder: string | null;
-  // Chỉ có giá trị khi lần confirm này vừa nâng role lên developer (đủ 3 điều kiện
-  // become-developer) — dùng để refresh session ngay, không cần đăng nhập lại.
+  // Chỉ có giá trị khi bước thiết lập ngân hàng vừa nâng role developer.
   token?: string | null;
 }
 
@@ -33,9 +32,12 @@ export interface KycConfirmPayload {
   address?: string;
   frontImageBase64?: string;
   backImageBase64?: string;
-  bankName?: string;
-  bankAccount?: string;
-  bankAccountHolder?: string;
+}
+
+export interface BankSetupPayload {
+  bankName: string;
+  bankAccount: string;
+  bankAccountHolder: string;
 }
 
 export const kycApi = {
@@ -51,6 +53,11 @@ export const kycApi = {
 
   confirm: async (payload: KycConfirmPayload): Promise<ApiResponse<KycStatus>> => {
     const res = await api.post('/api/developer/kyc/confirm', payload);
+    return res.data;
+  },
+
+  setupBank: async (payload: BankSetupPayload): Promise<ApiResponse<KycStatus>> => {
+    const res = await api.post('/api/developer/kyc/bank', payload);
     return res.data;
   },
 };

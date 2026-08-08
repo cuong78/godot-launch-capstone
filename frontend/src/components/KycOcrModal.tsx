@@ -2,7 +2,6 @@ import { useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Upload, CheckCircle, AlertCircle, Loader2, X, FileText, Edit3 } from 'lucide-react';
 import { kycApi, KycOcrResult, KycConfirmPayload } from '../api/kycApi';
-import { useAuth } from '../hooks/useAuth';
 
 type Step = 'upload' | 'processing' | 'review' | 'submitting' | 'success';
 type DocType = 'cccd' | 'passport';
@@ -13,9 +12,6 @@ interface Props {
     idNumber: string;
     address: string | null;
     dateOfBirth: string | null;
-    bankName: string;
-    bankAccount: string;
-    bankAccountHolder: string;
   }) => void;
   onClose: () => void;
   // Cho phép caller tùy chỉnh nội dung theo ngữ cảnh gọi (become-developer, ký hợp đồng...).
@@ -32,7 +28,6 @@ export default function KycOcrModal({
   successDescription,
 }: Props) {
   const { t } = useTranslation(['shared']);
-  const { loginWithToken } = useAuth();
   const [step, setStep] = useState<Step>('upload');
   const [docType, setDocType] = useState<DocType>('cccd');
   const [frontPreviewUrl, setFrontPreviewUrl] = useState<string | null>(null);
@@ -46,9 +41,6 @@ export default function KycOcrModal({
     idNumber: '',
     dateOfBirth: '',
     address: '',
-    bankName: '',
-    bankAccount: '',
-    bankAccountHolder: '',
   });
   const [error, setError] = useState<string | null>(null);
   const frontInputRef = useRef<HTMLInputElement>(null);
@@ -61,9 +53,6 @@ export default function KycOcrModal({
     idNumber: t('kyc.field.idNumber'),
     dateOfBirth: t('kyc.field.dateOfBirth'),
     address: t('kyc.field.address'),
-    bankName: t('kyc.field.bankName'),
-    bankAccount: t('kyc.field.bankAccount'),
-    bankAccountHolder: t('kyc.field.bankAccountHolder'),
   };
 
   const handleFileChange = (side: 'front' | 'back') => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,17 +126,6 @@ export default function KycOcrModal({
         backImageBase64: backBase64 || undefined
       });
       if (res.success) {
-        // Nếu lần confirm này vừa nâng role lên developer (đủ 3 điều kiện become-developer),
-        // backend trả kèm token mới — áp dụng ngay để refresh session, không cần đăng nhập lại.
-        // Với luồng ký hợp đồng cũ, token luôn null (user đã là developer từ trước) nên đây là no-op.
-        if (res.data?.token) {
-          try {
-            await loginWithToken(res.data.token);
-          } catch (tokenErr) {
-            console.error('Failed to apply refreshed session token', tokenErr);
-          }
-        }
-
         setStep('success');
         setTimeout(() => {
           onSuccess({
@@ -155,9 +133,6 @@ export default function KycOcrModal({
             idNumber: form.idNumber,
             address: form.address || null,
             dateOfBirth: form.dateOfBirth || null,
-            bankName: form.bankName,
-            bankAccount: form.bankAccount,
-            bankAccountHolder: form.bankAccountHolder,
           });
         }, 1500);
       } else {
@@ -183,7 +158,7 @@ export default function KycOcrModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="dark-depth-card w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700/70 dark:bg-night-850">
+      <div className="dark-depth-card max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700/70 dark:bg-night-850">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-white/10">
           <div className="flex items-center gap-3">
@@ -373,8 +348,6 @@ export default function KycOcrModal({
                   )}
                 </div>
               ))}
-
-
 
               {error && (
                 <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 rounded-xl px-4 py-3">

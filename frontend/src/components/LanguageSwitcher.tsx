@@ -16,6 +16,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
   const { currentLanguage, changeLanguage, languages } = useLanguage();
   const [isOpen, setIsOpen] = React.useState(false);
   const [loadingLanguage, setLoadingLanguage] = React.useState<string | null>(null);
+  const activeLanguage = languages.find((language) => language.code === currentLanguage) ?? languages[0];
 
   const handleLanguageChange = async (languageCode: string) => {
     try {
@@ -33,7 +34,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
     <img
       src={flagSrc}
       alt={languageName}
-      className={`w-6 rounded-[3px] object-cover ring-1 ring-black/10 ${className}`}
+      className={`shrink-0 rounded-[4px] object-cover ring-1 ring-black/10 dark:ring-white/15 ${className}`}
     />
   );
 
@@ -56,7 +57,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
               } ${loadingLanguage ? 'cursor-not-allowed opacity-60' : ''}`}
               title={language.name}
             >
-              {renderFlag(language.flag, language.name, 'h-4')}
+              {renderFlag(language.flag, language.name, 'h-4 w-6')}
               <span className="hidden sm:inline">{language.code.toUpperCase()}</span>
             </button>
           );
@@ -78,22 +79,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
         title={t('language')}
         aria-expanded={isOpen}
       >
-        <svg
-          width="21"
-          height="21"
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden="true"
-          className="shrink-0"
-        >
-          <circle cx="12" cy="12" r="8.75" stroke="currentColor" strokeWidth="1.7" />
-          <path
-            d="M3.55 12h16.9M12 3.25c2.2 2.35 3.35 5.25 3.35 8.75S14.2 18.4 12 20.75M12 3.25C9.8 5.6 8.65 8.5 8.65 12S9.8 18.4 12 20.75"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-          />
-        </svg>
+        {renderFlag(activeLanguage.flag, activeLanguage.name, 'h-4 w-6')}
       </button>
 
       {isOpen && (
@@ -116,6 +102,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
                       isLoading ? 'opacity-60' : ''
                     }`}
                   >
+                    {renderFlag(language.flag, language.name, 'mr-3 h-[18px] w-7')}
                     <span className="flex-1">{language.name}</span>
                     {isActive && <Check size={19} strokeWidth={2.25} className="text-sky-400" />}
                   </button>

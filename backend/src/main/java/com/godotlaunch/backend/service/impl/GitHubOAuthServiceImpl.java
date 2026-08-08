@@ -178,8 +178,8 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
 
             // STEP 5: Update current user
             // Lưu ý: KHÔNG còn tự nâng role lên developer ở đây nữa — role chỉ được
-            // nâng khi đủ cả 3 điều kiện (GitHub + Face Verify + KYC), xem
-            // KycController.confirmKyc(). Role vẫn là customer sau bước link này
+            // nâng sau GitHub + Face Verify + KYC + payout hợp lệ, xem
+            // KycController.setupBank(). Role vẫn là customer sau bước link này
             // (prepareLinkSession() ở trên đã đảm bảo chỉ customer mới gọi tới đây).
             currentUser.setGithubId(profile.getId());
             currentUser.setGithubUsername(profile.getLogin());
@@ -191,7 +191,7 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
             // STEP 6: Clear session
             session.removeAttribute("github_linking_user_email");
 
-            // STEP 7: Issue new JWT with role=developer
+            // STEP 7: Issue new JWT with the current role (customer during onboarding)
             String sessionSecret = UUID.randomUUID().toString();
             currentUser.setSessionHash(JwtProvider.hashSessionSecret(sessionSecret));
             userRepository.save(currentUser);
@@ -248,8 +248,8 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
         boolean isNewUser = false;
 
         // Lưu ý: KHÔNG còn tự nâng role lên developer ở các nhánh dưới đây nữa — role
-        // chỉ được nâng khi đủ cả 3 điều kiện (GitHub + Face Verify + KYC), xem
-        // KycController.confirmKyc(). User cũ đã là developer/admin từ trước giữ nguyên
+        // chỉ được nâng sau GitHub + Face Verify + KYC + payout hợp lệ, xem
+        // KycController.setupBank(). User cũ đã là developer/admin từ trước giữ nguyên
         // role (không có bước hạ cấp); user mới/chưa nâng role thì giữ customer.
         if (userByGithub.isPresent()) {
             // CASE 1: github_id exists in DB

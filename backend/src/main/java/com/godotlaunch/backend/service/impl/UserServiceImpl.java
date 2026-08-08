@@ -213,9 +213,6 @@ public class UserServiceImpl implements UserService {
 
         user.setFullName(request.getFullName());
         user.setAvatarUrl(request.getAvatarUrl());
-        user.setBankName(request.getBankName());
-        user.setBankAccount(request.getBankAccount());
-        user.setBankAccountHolder(request.getBankAccountHolder());
 
         if (StringUtils.hasText(request.getPassword())) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
