@@ -62,9 +62,9 @@ export const BecomeDeveloperLanding: React.FC<BecomeDeveloperLandingProps> = ({ 
   ];
 
   return (
-    <div className="animate-fade-in">
+    <div className="min-h-screen bg-slate-50/70 dark:bg-night-950 animate-fade-in">
       {/* Hero section — full-bleed, không khung/border/bo góc, giống bản mẫu Fab */}
-      <section className="relative isolate w-full overflow-hidden bg-[linear-gradient(180deg,#f8fafc_0%,#eff6ff_100%)] dark:bg-night-950">
+      <section className="relative isolate w-full overflow-hidden bg-[linear-gradient(180deg,#f8fafc_0%,#eff6ff_100%)] dark:bg-none dark:bg-night-950">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_38%,rgba(245,158,11,0.14),transparent_34%),radial-gradient(circle_at_10%_85%,rgba(14,165,233,0.12),transparent_30%)] dark:bg-[radial-gradient(circle_at_78%_38%,rgba(251,191,36,0.14),transparent_32%),radial-gradient(circle_at_10%_85%,rgba(56,189,248,0.10),transparent_28%)]" />
 
         <div className="relative z-10 mx-auto flex max-w-[1440px] flex-col items-center gap-12 px-6 py-16 sm:px-10 lg:min-h-[550px] lg:flex-row lg:items-center lg:justify-between lg:px-16 lg:py-20">
@@ -99,7 +99,7 @@ export const BecomeDeveloperLanding: React.FC<BecomeDeveloperLandingProps> = ({ 
       {features.map((feature) => (
         <section
           key={feature.key}
-          className="relative w-full overflow-hidden border-t border-slate-200/80 bg-[linear-gradient(180deg,#f8fafc_0%,#eff6ff_100%)] dark:border-slate-700/50 dark:bg-night-950"
+          className="relative w-full overflow-hidden border-t border-slate-200/80 bg-[linear-gradient(180deg,#f8fafc_0%,#eff6ff_100%)] dark:bg-none dark:border-slate-700/50 dark:bg-night-950"
         >
           <div
             className={`relative z-10 mx-auto flex max-w-[1440px] flex-col items-center gap-10 px-6 py-16 sm:px-10 lg:min-h-[420px] lg:px-16 lg:py-20 ${
