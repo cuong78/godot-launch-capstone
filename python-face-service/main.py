@@ -26,7 +26,7 @@ import requests as _requests
 
 app = FastAPI(title="GodotLaunch Face Service", version="1.0.0")
 
-THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.5"))
+THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.6"))
 # CLIP cosine distance cho ảnh CCCD — ngưỡng chặt hơn face (ảnh giấy tờ ít
 # biến thiên hơn khuôn mặt thật, re-upload cùng ảnh cho ra distance rất nhỏ).
 KYC_IMAGE_THRESHOLD = float(os.getenv("KYC_IMAGE_SIMILARITY_THRESHOLD", "0.1"))
