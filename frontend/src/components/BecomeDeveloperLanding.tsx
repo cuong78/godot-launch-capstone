@@ -62,68 +62,59 @@ export const BecomeDeveloperLanding: React.FC<BecomeDeveloperLandingProps> = ({ 
   ];
 
   return (
-    <div className="developer-landing-canvas animate-fade-in">
-      <section className="developer-landing-hero relative isolate w-full overflow-hidden">
-        <div className="developer-landing-grid pointer-events-none absolute inset-0" aria-hidden="true" />
+    <div className="min-h-screen bg-slate-50/70 dark:bg-night-950 animate-fade-in">
+      {/* Hero section — full-bleed, không khung/border/bo góc, giống bản mẫu Fab */}
+      <section className="relative isolate w-full overflow-hidden bg-[linear-gradient(180deg,#f8fafc_0%,#eff6ff_100%)] dark:bg-none dark:bg-night-950">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_38%,rgba(245,158,11,0.14),transparent_34%),radial-gradient(circle_at_10%_85%,rgba(14,165,233,0.12),transparent_30%)] dark:bg-[radial-gradient(circle_at_78%_38%,rgba(251,191,36,0.14),transparent_32%),radial-gradient(circle_at_10%_85%,rgba(56,189,248,0.10),transparent_28%)]" />
 
-        <div className="relative z-10 mx-auto flex max-w-[1440px] flex-col items-center gap-12 px-6 py-16 sm:px-10 lg:min-h-[620px] lg:flex-row lg:justify-between lg:gap-16 lg:px-16 lg:py-24">
-          <div className="w-full max-w-[620px] text-center lg:text-left">
-            <div className="mb-7 flex items-center justify-center gap-3 lg:justify-start" aria-hidden="true">
-              <span className="h-px w-10 bg-sky-500/70" />
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.65)]" />
-              <span className="h-px w-16 bg-slate-300 dark:bg-slate-700" />
-            </div>
-
-            <h1 className="font-display text-4xl font-black leading-[1.05] tracking-[-0.045em] text-slate-950 dark:text-white sm:text-5xl lg:text-[3.65rem]">
+        <div className="relative z-10 mx-auto flex max-w-[1440px] flex-col items-center gap-12 px-6 py-16 sm:px-10 lg:min-h-[550px] lg:flex-row lg:items-center lg:justify-between lg:px-16 lg:py-20">
+          <div className="w-full max-w-xl space-y-7 text-center lg:text-left">
+            <h1 className="font-display text-4xl font-black leading-[1.05] text-slate-950 dark:text-white sm:text-5xl lg:text-[3.4rem]">
               {t('landing.title')}
             </h1>
 
-            <p className="mx-auto mt-6 max-w-[580px] text-base leading-7 text-slate-600 dark:text-slate-300 lg:mx-0 lg:text-lg lg:leading-8">
+            <p className="text-base leading-relaxed text-slate-600 dark:text-white/70 lg:text-lg">
               {t('landing.description')}
             </p>
 
-            <div className="mt-9 flex justify-center lg:justify-start">
-              <Button variant="primary" size="lg" onClick={onGetStarted} className="min-w-48">
+            <div className="flex flex-col items-stretch gap-3 pt-2 sm:flex-row sm:items-center lg:justify-start justify-center">
+              <Button variant="primary" size="lg" onClick={onGetStarted}>
                 {t('landing.ctaPrimary')}
               </Button>
             </div>
           </div>
 
-          <div className="developer-hero-art relative w-full max-w-xl shrink-0 lg:max-w-[650px]" aria-hidden="true">
-            <span className="absolute inset-[12%] rounded-full border border-sky-400/15" />
-            <span className="absolute inset-[22%] rounded-full border border-amber-400/15" />
+          <div className="w-full max-w-lg shrink-0 lg:max-w-2xl">
             <img
               src={dragonImage}
               alt=""
-              className="relative h-auto w-full object-contain drop-shadow-[0_28px_54px_rgba(15,23,42,0.3)] dark:drop-shadow-[0_32px_64px_rgba(0,0,0,0.58)]"
+              className="h-auto w-full object-contain drop-shadow-[0_24px_48px_rgba(0,0,0,0.45)]"
             />
           </div>
         </div>
       </section>
 
-      {features.map((feature, index) => (
+      {/* Feature sections — mỗi feature 1 section full-width riêng, ảnh/text
+          xen kẽ trái-phải, nền tối liền mạch nối tiếp hero, giống bản mẫu Fab */}
+      {features.map((feature) => (
         <section
           key={feature.key}
-          className={`developer-feature-section relative w-full overflow-hidden ${index % 2 === 1 ? 'developer-feature-section-alt' : ''}`}
+          className="relative w-full overflow-hidden border-t border-slate-200/80 bg-[linear-gradient(180deg,#f8fafc_0%,#eff6ff_100%)] dark:bg-none dark:border-slate-700/50 dark:bg-night-950"
         >
           <div
-            className={`relative z-10 mx-auto flex max-w-[1320px] flex-col items-center gap-12 px-6 py-16 sm:px-10 lg:min-h-[460px] lg:gap-20 lg:px-16 lg:py-20 ${
+            className={`relative z-10 mx-auto flex max-w-[1440px] flex-col items-center gap-10 px-6 py-16 sm:px-10 lg:min-h-[420px] lg:px-16 lg:py-20 ${
               feature.imageAlign === 'left' ? 'lg:flex-row' : 'lg:flex-row-reverse'
             }`}
           >
-            <div className="developer-feature-media relative flex w-full max-w-md shrink-0 items-center justify-center overflow-hidden rounded-[28px] border p-8 sm:p-10 lg:max-w-lg">
-              <span className="absolute left-5 top-4 font-mono text-[11px] font-semibold tracking-[0.18em] text-slate-400 dark:text-slate-500">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <img src={feature.image} alt="" className="relative h-auto max-h-[300px] w-full object-contain drop-shadow-[0_20px_34px_rgba(15,23,42,0.16)] dark:drop-shadow-[0_22px_38px_rgba(0,0,0,0.42)]" />
+            <div className="w-full max-w-md shrink-0 lg:max-w-lg">
+              <img src={feature.image} alt="" className="h-auto w-full object-contain" />
             </div>
 
-            <div className="w-full max-w-xl text-center lg:text-left">
-              <div className="mx-auto mb-5 h-px w-12 bg-sky-500/70 lg:mx-0" aria-hidden="true" />
-              <h2 className="font-display text-2xl font-bold leading-tight tracking-[-0.035em] text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">
+            <div className="w-full max-w-xl space-y-5 text-center lg:text-left">
+              <h2 className="font-display text-2xl font-bold leading-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">
                 {feature.title}
               </h2>
-              <p className="mt-5 text-sm leading-7 text-slate-600 dark:text-slate-300 lg:text-base lg:leading-8">
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-white/70 lg:text-base">
                 {feature.description}
               </p>
             </div>

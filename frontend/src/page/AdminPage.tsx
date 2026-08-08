@@ -1707,32 +1707,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200/85 bg-slate-50/85 p-4 shadow-[0_10px_20px_rgba(148,163,184,0.08)] dark:border-slate-800 dark:bg-slate-950/40 dark:shadow-none">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        {t("overview.announcementBanner")}
-                      </div>
-                      <div className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                        {announcement?.trim() ||
-                          t("overview.noActiveAnnouncementBanner")}
-                      </div>
-                    </div>
-
-                    <div
-                      className={`rounded-2xl border p-4 ${
-                        maintenance
-                          ? "border-amber-400/25 bg-amber-400/10"
-                          : "border-emerald-400/20 bg-emerald-400/10"
-                      }`}
-                    >
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        {t("overview.maintenanceMode")}
-                      </div>
-                      <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
-                        {maintenance
-                          ? t("overview.maintenanceEnabled")
-                          : t("overview.maintenanceDisabled")}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -3461,7 +3435,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         />
 
                         <Input
-                          label="Withdrawal Hold Period (days)"
+                          label={t("settingsPanel.withdrawalHoldDaysLabel")}
                           type="number"
                           min="0"
                           max="30"
@@ -3470,12 +3444,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           onChange={(e) =>
                             setWithdrawalHoldDays(parseInt(e.target.value, 10) || 0)
                           }
-                          helperText="Cooling-off period before a withdrawal is auto-paid out"
+                          helperText={t("settingsPanel.withdrawalHoldDaysHelper")}
                           required
                         />
 
                         <Input
-                          label="Refund Deadline (days)"
+                          label={t("settingsPanel.refundDeadlineDaysLabel")}
                           type="number"
                           min="1"
                           max="30"
@@ -3484,69 +3458,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                           onChange={(e) =>
                             setRefundDeadlineDays(parseInt(e.target.value, 10) || 0)
                           }
-                          helperText="Days a seller has to refund a copyright-theft dispute before being auto-banned"
+                          helperText={t("settingsPanel.refundDeadlineDaysHelper")}
                           required
                         />
 
                         <Input
-                          label="Daily Maintenance Time (Vietnam time, HH:mm:ss)"
+                          label={t("settingsPanel.dailyMaintenanceTimeLabel")}
                           type="time"
                           step={1}
                           value={dailyMaintenanceTime}
                           onChange={(e) =>
                             setDailyMaintenanceTime(e.target.value || "02:00:00")
                           }
-                          helperText="Once-daily run time for auto-payout and refund enforcement jobs (Asia/Ho_Chi_Minh)"
+                          helperText={t("settingsPanel.dailyMaintenanceTimeHelper")}
                           required
                         />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                            {t("settingsPanel.maintenanceStatusLabel")}
-                          </label>
-                          <div className="flex items-center gap-3 pt-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setMaintenance(!maintenance)}
-                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${maintenance ? "bg-amber-400" : "bg-slate-200 dark:bg-slate-800"}`}
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${maintenance ? "translate-x-5" : "translate-x-0"}`}
-                              />
-                            </button>
-                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                              {maintenance
-                                ? t("settingsPanel.maintenanceToggleActive")
-                                : t("settingsPanel.maintenanceToggleInactive")}
-                            </span>
-                          </div>
-                        </div>
                       </div>
-
-                      <Input
-                        label={t("settingsPanel.bannerLabel")}
-                        value={announcement}
-                        onChange={(e) => setAnnouncement(e.target.value)}
-                        placeholder={t("settingsPanel.bannerPlaceholder")}
-                        helperText={t("settingsPanel.bannerHelperText")}
-                      />
-
-                      {maintenance && (
-                        <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg text-amber-500 text-xs font-semibold flex items-start gap-2">
-                          <AlertTriangle
-                            size={16}
-                            className="shrink-0 mt-0.5"
-                          />
-                          <div>
-                            <span className="block font-bold">
-                              {t("settingsPanel.maintenanceWarningTitle")}
-                            </span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal block mt-0.5">
-                              {t("settingsPanel.maintenanceWarningDescription")}
-                            </span>
-                          </div>
-                        </div>
-                      )}
 
                       <div className="flex justify-end pt-2">
                         <Button

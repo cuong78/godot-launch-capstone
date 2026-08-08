@@ -45,6 +45,7 @@ import { gameApi } from './api/gameApi';
 import { marketplaceApi } from './api/marketplaceApi';
 import { paymentApi } from './api/paymentApi';
 import { orderApi } from './api/orderApi';
+import { cartApi } from './api/cartApi';
 import { dispatchAdminNavigation } from './utils/adminNavigation';
 
 // Seed Images loaded from assets folder management
@@ -370,15 +371,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // 1. Disable transitions temporarily to prevent uneven/slow transitions during theme toggle
+    document.documentElement.classList.add('disable-transitions');
+
     document.documentElement.classList.toggle('dark', darkMode);
     document.body.classList.toggle('dark', darkMode);
     document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+
+    // 2. Force a browser reflow to ensure the style changes are applied instantly without animations
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    document.documentElement.offsetHeight;
+
+    // 3. Re-enable transitions in the next frame
+    const timeout = window.setTimeout(() => {
+      document.documentElement.classList.remove('disable-transitions');
+    }, 0);
 
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, darkMode ? 'dark' : 'light');
     } catch (error) {
       console.warn('Failed to store theme preference:', error);
     }
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
   }, [darkMode]);
 
   const [selectedAssetId, setSelectedAssetId] = useState<string>(initialRoute.assetId || 'cyber_interior');
@@ -451,6 +468,48 @@ export default function App() {
       sessionStorage.removeItem(PAYMENT_SELECTED_ORDER_STORAGE_KEY);
     }
   }, [selectedPaymentOrderId]);
+
+  // Load Cart from Server when user logs in
+  useEffect(() => {
+    if (!currentUser) {
+      setCart([]);
+      return;
+    }
+
+    if (currentUser.role === 'admin') {
+      setCart([]);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadCartFromServer = async () => {
+      try {
+        const response = await cartApi.getCart();
+        if (response.success && response.data && !isCancelled) {
+          const mappedCart = response.data.map(item => {
+            if (item.asset) {
+              return mapMarketplaceItemToAsset(item.asset, t);
+            } else if (item.game) {
+              return mapGameToAsset(item.game);
+            }
+            return null;
+          }).filter((item): item is Asset => item !== null);
+          setCart(mappedCart);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Failed to load cart from backend:', error);
+        }
+      }
+    };
+
+    loadCartFromServer();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentUser?.id, t]);
 
   const syncTrackedPayment = useCallback((payment: PaymentResponse) => {
     setPaymentOrders(prev => {
@@ -708,7 +767,7 @@ export default function App() {
   };
 
   // Add Item to Cart
-  const handleAddToCart = (asset: Asset, e?: React.MouseEvent) => {
+  const handleAddToCart = async (asset: Asset, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!currentUser) {
       showToast(t('app.toast.loginRequiredAddToCart'), "warning");
@@ -720,19 +779,37 @@ export default function App() {
       showToast(t('app.toast.ownedAlready'), "warning");
       return;
     }
-    setCart(prev => {
-      if (prev.some(item => item.id === asset.id)) {
-        return prev;
+
+    if (cart.some(item => item.id === asset.id)) {
+      setIsCartOpen(true);
+      return;
+    }
+
+    try {
+      const itemType = asset.itemType === 'source_code' ? 'source_code' : 'asset';
+      const response = await cartApi.addToCart({ itemId: asset.id, itemType });
+      if (response.success) {
+        setCart(prev => [...prev, asset]);
+        setIsCartOpen(true);
+      } else {
+        showToast(response.message || "Failed to add item to cart", "error");
       }
-      return [...prev, asset];
-    });
-    setIsCartOpen(true);
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Failed to add item to cart";
+      showToast(errMsg, "error");
+    }
   };
 
   // Remove Item from Cart
-  const handleRemoveFromCart = (id: string, e?: React.MouseEvent) => {
+  const handleRemoveFromCart = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setCart(prev => prev.filter(item => item.id !== id));
+    try {
+      await cartApi.removeFromCart(id);
+      setCart(prev => prev.filter(item => item.id !== id));
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Failed to remove item from cart";
+      showToast(errMsg, "error");
+    }
   };
 
   const handleBuyNow = (asset: Asset) => {
@@ -873,6 +950,11 @@ export default function App() {
       }
 
       showToast(t('app.toast.buySuccess'), "success");
+      try {
+        await cartApi.clearCart();
+      } catch (e) {
+        console.warn("Failed to clear cart on server", e);
+      }
       setCart([]);
       setIsCartOpen(false);
 
@@ -1006,7 +1088,7 @@ export default function App() {
   );
 
   return (
-    <div id="godotlaunch-root" className={`${darkMode ? 'dark bg-transparent text-slate-100' : 'bg-transparent text-slate-800'} min-h-screen flex flex-col font-sans transition-colors duration-300 relative`}>
+    <div id="godotlaunch-root" className={`${darkMode ? 'dark bg-night-950 text-slate-100' : 'bg-slate-50 text-slate-800'} min-h-screen flex flex-col font-sans transition-colors duration-300 relative`}>
       
       {/* 3D Voxel Nature Environment Background — ẩn riêng ở trang developer-onboarding (landing dùng nền tối riêng) */}
       {displayScreen !== 'developer-onboarding' && (
