@@ -8,8 +8,10 @@ import com.godotlaunch.backend.entity.BannedIdentity;
 import com.godotlaunch.backend.entity.Dispute;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.User;
+import com.godotlaunch.backend.entity.Wallet;
 import com.godotlaunch.backend.entity.enums.DisputeStatus;
 import com.godotlaunch.backend.entity.enums.GameStatus;
+import com.godotlaunch.backend.entity.enums.TxnType;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.DisputeRepository;
@@ -200,6 +202,40 @@ class DisputeServiceImplTest {
 
         assertThat(response.getStatus()).isEqualTo("resolved_inconclusive");
         assertThat(game.getStatus()).isEqualTo(GameStatus.published);
+    }
+
+    @Test
+    @DisplayName("confirmed dispute refund reduces seller revenue and credits restricted funds")
+    void confirmRefund_ShouldMoveFundsWithCorrectSources() {
+        User admin = new User();
+        admin.setEmail("admin@godotlaunch.dev");
+        dispute.setStatus(DisputeStatus.resolved_seller_fault);
+        dispute.setRefundAmount(new BigDecimal("80"));
+
+        Wallet sellerWallet = new Wallet();
+        sellerWallet.setUser(seller);
+        sellerWallet.setBalance(new BigDecimal("100"));
+        sellerWallet.setWithdrawableBalance(new BigDecimal("60"));
+
+        Wallet reporterWallet = new Wallet();
+        reporterWallet.setUser(reporter);
+        reporterWallet.setBalance(new BigDecimal("10"));
+        reporterWallet.setWithdrawableBalance(BigDecimal.ZERO);
+
+        when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
+        when(disputeRepository.findByIdWithLock(disputeId)).thenReturn(Optional.of(dispute));
+        when(walletRepository.findByUserIdWithLock(seller.getId())).thenReturn(Optional.of(sellerWallet));
+        when(walletRepository.findByUserIdWithLock(reporter.getId())).thenReturn(Optional.of(reporterWallet));
+        when(disputeRepository.save(any(Dispute.class))).thenAnswer(i -> i.getArgument(0));
+
+        DisputeResponse response = disputeService.confirmRefund(disputeId, admin.getEmail());
+
+        assertThat(response.getRefundConfirmedAt()).isNotNull();
+        assertThat(sellerWallet.getBalance()).isEqualByComparingTo("20");
+        assertThat(sellerWallet.getWithdrawableBalance()).isZero();
+        assertThat(reporterWallet.getBalance()).isEqualByComparingTo("90");
+        assertThat(reporterWallet.getWithdrawableBalance()).isZero();
+        verify(transactionRepository, times(2)).save(argThat(txn -> txn.getType() == TxnType.refund));
     }
 
     @Test

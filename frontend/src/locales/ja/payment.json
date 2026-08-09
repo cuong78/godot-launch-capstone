@@ -73,7 +73,7 @@
   "checkout.webhookDescription": "銀行振込が完了すると、PayOSからWebhookが即時送信され、ダウンロードが解放されます。",
   "checkout.webhookTitle": "24時間即時決済",
   "checkout.wallet.badge": "ウォレット決済",
-  "checkout.wallet.balanceLabel": "現在のウォレット残高",
+  "checkout.wallet.balanceLabel": "利用可能残高",
   "checkout.wallet.directDebit": "ウォレット残高から直接引き落とし",
   "checkout.wallet.insufficientBalanceDescription": "{{amount}} をチャージするとこの注文を支払えます。",
   "checkout.wallet.insufficientBalanceTitle": "ウォレット残高が不足しています",

@@ -4,6 +4,7 @@ import com.godotlaunch.backend.entity.WithdrawalRequest;
 import com.godotlaunch.backend.entity.enums.WithdrawalStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +21,7 @@ public interface WithdrawalRequestRepository extends JpaRepository<WithdrawalReq
     List<WithdrawalRequest> findByUserIdOrderByCreatedAtDesc(UUID userId);
     List<WithdrawalRequest> findByStatusOrderByCreatedAtDesc(WithdrawalStatus status);
     List<WithdrawalRequest> findAllByOrderByCreatedAtDesc();
+    @EntityGraph(attributePaths = {"user", "user.lockedForDispute"})
     List<WithdrawalRequest> findByStatusAndCreatedAtBefore(WithdrawalStatus status, Instant cutoff);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

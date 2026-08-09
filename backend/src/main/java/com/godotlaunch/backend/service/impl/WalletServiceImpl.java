@@ -14,10 +14,12 @@ import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.service.WalletService;
+import com.godotlaunch.backend.util.WalletBalancePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,9 +46,20 @@ public class WalletServiceImpl implements WalletService {
     public Wallet getOrCreateWallet(User user) {
         Wallet wallet = walletRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
+                    // There is no wallet row to lock yet. Lock the owning user so
+                    // concurrent first-use requests cannot both insert a wallet.
+                    User lockedUser = userRepository.findByIdWithLock(user.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+                    Wallet concurrentlyCreated = walletRepository.findByUserId(lockedUser.getId()).orElse(null);
+                    if (concurrentlyCreated != null) {
+                        return concurrentlyCreated;
+                    }
+
                     Wallet newWallet = new Wallet();
-                    newWallet.setUser(user);
+                    newWallet.setUser(lockedUser);
                     newWallet.setBalance(BigDecimal.ZERO);
+                    newWallet.setWithdrawableBalance(BigDecimal.ZERO);
                     newWallet.setCurrency(DEFAULT_CURRENCY);
                     return walletRepository.save(newWallet);
                 });
@@ -92,21 +105,37 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public void addRevenue(UUID sellerId, UUID buyerId, BigDecimal amount, BigDecimal platformCommission, UUID gameId, String referenceId) {
+        validateRevenueAmounts(amount, platformCommission);
+
         User seller = userRepository.findById(sellerId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         User buyer = buyerId != null ? userRepository.findById(buyerId).orElse(null) : null;
         Game game = gameId != null ? gameRepository.findById(gameId).orElse(null) : null;
 
-        Wallet wallet = getOrCreateWallet(seller);
+        Wallet wallet = walletRepository.findByUserIdWithLock(seller.getId())
+                .orElseGet(() -> {
+                    getOrCreateWallet(seller);
+                    return walletRepository.findByUserIdWithLock(seller.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+                });
         if (!DEFAULT_CURRENCY.equalsIgnoreCase(wallet.getCurrency())) {
             wallet.setCurrency(DEFAULT_CURRENCY);
         }
         BigDecimal netAmount = amount.subtract(platformCommission);
-        if (netAmount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Net amount cannot be negative");
+
+        // The wallet lock serializes retries for the same seller. A stable
+        // external reference therefore makes revenue credit idempotent.
+        if (StringUtils.hasText(referenceId)
+                && transactionRepository.existsByWalletIdAndTypeAndReferenceId(
+                        wallet.getId(),
+                        TxnType.revenue_share,
+                        referenceId.trim()
+                )) {
+            log.info("Skipping duplicate revenue credit for seller {} and reference {}", sellerId, referenceId);
+            return;
         }
 
-        wallet.setBalance(wallet.getBalance().add(netAmount));
+        WalletBalancePolicy.creditSalesRevenue(wallet, netAmount);
         walletRepository.save(wallet);
 
         Transaction txn = new Transaction();
@@ -115,11 +144,24 @@ public class WalletServiceImpl implements WalletService {
         txn.setGame(game);
         txn.setAmount(netAmount);
         txn.setType(TxnType.revenue_share);
-        txn.setReferenceId(referenceId);
+        txn.setReferenceId(StringUtils.hasText(referenceId) ? referenceId.trim() : referenceId);
+        txn.setDescription("Credit seller wallet with net sales revenue");
 
         transactionRepository.save(txn);
         log.info("Successfully added revenue share to seller {}'s wallet: amount={}, commission={}, netAmount={}",
                 sellerId, amount, platformCommission, netAmount);
+    }
+
+    private void validateRevenueAmounts(BigDecimal amount, BigDecimal platformCommission) {
+        if (amount == null || platformCommission == null) {
+            throw new IllegalArgumentException("Sale amount and commission are required");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) < 0 || platformCommission.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Sale amount and commission must be non-negative");
+        }
+        if (platformCommission.compareTo(amount) > 0) {
+            throw new IllegalArgumentException("Net amount cannot be negative");
+        }
     }
 
     private WalletResponse mapToWalletResponse(Wallet wallet) {

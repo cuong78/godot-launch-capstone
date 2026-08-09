@@ -1,5 +1,6 @@
 {
   "card.addToCart": "Add to Cart",
+  "card.owner": "Owner",
   "card.owned": "Owned",
   "card.resource": "Resource",
   "common.free": "FREE",
@@ -118,6 +119,7 @@
   "page.resultsMatch": "{{count}} Results Match",
   "detail.actions.addToCart": "Add To Creators Cart",
   "detail.actions.buyNowBankTransfer": "Buy Now via Bank Transfer",
+  "detail.actions.owner": "Owner",
   "detail.actions.preparingPayment": "Preparing payment...",
   "detail.breadcrumb.explore": "Explore",
   "detail.breadcrumb.marketplace": "Marketplace",

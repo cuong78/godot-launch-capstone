@@ -73,7 +73,7 @@
   "checkout.webhookDescription": "Upon successful bank transfer, PayOS sends an instant webhook to unlock downloads.",
   "checkout.webhookTitle": "Instant Settlement 24/7",
   "checkout.wallet.badge": "Wallet checkout",
-  "checkout.wallet.balanceLabel": "Current wallet balance",
+  "checkout.wallet.balanceLabel": "Available balance",
   "checkout.wallet.directDebit": "Direct wallet debit",
   "checkout.wallet.insufficientBalanceDescription": "You need to top up {{amount}} to pay for this order.",
   "checkout.wallet.insufficientBalanceTitle": "Insufficient wallet balance",

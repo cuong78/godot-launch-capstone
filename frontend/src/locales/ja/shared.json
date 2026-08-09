@@ -28,6 +28,7 @@
   "app.toast.purchasePendingConfirmItem": "Order for {{title}} is waiting for PayOS confirmation.",
   "app.toast.purchaseIncompleteItem": "Payment for {{title}} is not completed yet.",
   "app.toast.loginRequiredAddToCart": "You need to sign in to add items to your cart.",
+  "app.toast.cannotBuyOwnProduct": "この商品の所有者であるため、購入またはカートへの追加はできません。",
   "app.toast.ownedAlready": "You already own this product and cannot purchase it again.",
   "app.toast.loginRequiredBuy": "You need to sign in to make a purchase.",
   "app.toast.onlyMarketplacePaymentSupported": "Only marketplace items support the current payment flow at this time.",

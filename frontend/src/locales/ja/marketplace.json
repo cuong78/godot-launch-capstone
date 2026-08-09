@@ -1,5 +1,6 @@
 {
   "card.addToCart": "カートに追加",
+  "card.owner": "所有者",
   "card.owned": "購入済み",
   "card.resource": "リソース",
   "common.free": "無料",
@@ -118,6 +119,7 @@
   "page.resultsMatch": "{{count}} 件一致",
   "detail.actions.addToCart": "クリエイターカートに追加",
   "detail.actions.buyNowBankTransfer": "銀行振込で今すぐ購入",
+  "detail.actions.owner": "所有者",
   "detail.actions.preparingPayment": "支払いを準備中...",
   "detail.breadcrumb.explore": "探索",
   "detail.breadcrumb.marketplace": "マーケットプレイス",

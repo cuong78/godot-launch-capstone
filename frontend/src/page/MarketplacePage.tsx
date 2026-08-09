@@ -35,6 +35,7 @@ interface MarketplacePageProps {
   handleAddToCart: (asset: Asset) => void;
   setSelectedCategories: (categories: string[]) => void;
   ownedProductIds: Set<string>;
+  creatorOwnedProductIds: Set<string>;
   catalogType: "game" | "asset";
   setCatalogType: React.Dispatch<React.SetStateAction<"game" | "asset">>;
   selectedTags: string[];
@@ -252,6 +253,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   handleAddToCart,
   setSelectedCategories,
   ownedProductIds,
+  creatorOwnedProductIds,
   catalogType,
   setCatalogType,
   selectedTags,
@@ -1072,7 +1074,11 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
                         {/* Hover Actions overlay */}
                         <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                          {ownedProductIds.has(asset.id) ? (
+                          {creatorOwnedProductIds.has(asset.id) ? (
+                            <span className="rounded bg-sky-500 text-white px-2 py-0.5 text-[9px] font-bold tracking-wider shadow-sm uppercase">
+                              {t("card.owner", "OWNER")}
+                            </span>
+                          ) : ownedProductIds.has(asset.id) ? (
                             <span className="rounded bg-emerald-500 text-white px-2 py-0.5 text-[9px] font-bold tracking-wider shadow-sm uppercase">
                               {t("card.owned", "OWNED")}
                             </span>
@@ -1133,7 +1139,15 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                           </div>
                           
                           <div>
-                            {ownedProductIds.has(asset.id) ? (
+                            {creatorOwnedProductIds.has(asset.id) ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="cursor-not-allowed rounded border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wider text-sky-500 opacity-80"
+                              >
+                                {t("card.owner", "OWNER")}
+                              </button>
+                            ) : ownedProductIds.has(asset.id) ? (
                               <span className="text-[9px] font-bold text-emerald-500 tracking-wider">
                                 {t("card.owned", "OWNED")}
                               </span>

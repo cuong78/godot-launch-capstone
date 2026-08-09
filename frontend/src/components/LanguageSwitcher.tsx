@@ -114,7 +114,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
 
           {createPortal(
             <div
-              className="fixed inset-0 z-40 cursor-default bg-transparent"
+              className="fixed inset-0 z-30 cursor-default bg-transparent"
               onClick={() => setIsOpen(false)}
             />,
             document.body

@@ -65,6 +65,7 @@ class WalletServiceImplTest {
         mockWallet.setId(UUID.randomUUID());
         mockWallet.setUser(mockUser);
         mockWallet.setBalance(BigDecimal.ZERO);
+        mockWallet.setWithdrawableBalance(BigDecimal.ZERO);
         mockWallet.setCurrency("VND");
     }
 
@@ -82,6 +83,7 @@ class WalletServiceImplTest {
     @DisplayName("shouldGetOrCreateWallet_WhenDoesNotExist")
     void shouldGetOrCreateWallet_WhenDoesNotExist() {
         when(walletRepository.findByUserId(mockUser.getId())).thenReturn(Optional.empty());
+        when(userRepository.findByIdWithLock(mockUser.getId())).thenReturn(Optional.of(mockUser));
         when(walletRepository.save(any(Wallet.class))).thenReturn(mockWallet);
 
         Wallet result = walletService.getOrCreateWallet(mockUser);
@@ -141,21 +143,45 @@ class WalletServiceImplTest {
         when(userRepository.findById(mockUser.getId())).thenReturn(Optional.of(mockUser));
         when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
         when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
-        when(walletRepository.findByUserId(mockUser.getId())).thenReturn(Optional.of(mockWallet));
+        when(walletRepository.findByUserIdWithLock(mockUser.getId())).thenReturn(Optional.of(mockWallet));
 
         walletService.addRevenue(mockUser.getId(), buyerId, new BigDecimal("100.00"), new BigDecimal("10.00"), gameId, "ref-123");
 
         assertThat(mockWallet.getBalance()).isEqualTo(new BigDecimal("90.00"));
+        assertThat(mockWallet.getWithdrawableBalance()).isEqualTo(new BigDecimal("90.00"));
         verify(walletRepository, times(1)).save(mockWallet);
         verify(transactionRepository, times(1)).save(any(Transaction.class));
     }
 
     @Test
+    @DisplayName("should not credit the same revenue reference twice")
+    void shouldSkipDuplicateRevenueReference() {
+        when(userRepository.findById(mockUser.getId())).thenReturn(Optional.of(mockUser));
+        when(walletRepository.findByUserIdWithLock(mockUser.getId())).thenReturn(Optional.of(mockWallet));
+        when(transactionRepository.existsByWalletIdAndTypeAndReferenceId(
+                mockWallet.getId(),
+                TxnType.revenue_share,
+                "sale-ref-123"
+        )).thenReturn(true);
+
+        walletService.addRevenue(
+                mockUser.getId(),
+                null,
+                new BigDecimal("100.00"),
+                new BigDecimal("10.00"),
+                null,
+                "sale-ref-123"
+        );
+
+        assertThat(mockWallet.getBalance()).isZero();
+        assertThat(mockWallet.getWithdrawableBalance()).isZero();
+        verify(walletRepository, never()).save(mockWallet);
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
+
+    @Test
     @DisplayName("shouldThrowException_WhenNetRevenueIsNegative")
     void shouldThrowException_WhenNetRevenueIsNegative() {
-        when(userRepository.findById(mockUser.getId())).thenReturn(Optional.of(mockUser));
-        when(walletRepository.findByUserId(mockUser.getId())).thenReturn(Optional.of(mockWallet));
-
         assertThatThrownBy(() -> walletService.addRevenue(mockUser.getId(), null, BigDecimal.TEN, new BigDecimal("20.00"), null, "ref-123"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Net amount cannot be negative");

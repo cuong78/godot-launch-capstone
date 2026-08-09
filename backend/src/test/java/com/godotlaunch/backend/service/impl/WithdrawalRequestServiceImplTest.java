@@ -18,6 +18,7 @@ import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.repository.PayoutGateway;
+import com.godotlaunch.backend.scheduler.WithdrawalPayoutSyncScheduler;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
@@ -34,6 +35,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -83,6 +85,9 @@ class WithdrawalRequestServiceImplTest {
     @Mock
     private PlatformSettingsService platformSettingsService;
 
+    @Mock
+    private WithdrawalPayoutSyncScheduler withdrawalPayoutSyncScheduler;
+
     @InjectMocks
     private WithdrawalRequestServiceImpl withdrawalRequestService;
 
@@ -125,6 +130,10 @@ class WithdrawalRequestServiceImplTest {
         wallet.setUser(developerUser);
         wallet.setCurrency("VND");
         wallet.setBalance(new BigDecimal("250000"));
+        wallet.setWithdrawableBalance(new BigDecimal("250000"));
+
+        lenient().when(walletRepository.findByUserIdWithLock(developerUser.getId()))
+                .thenReturn(Optional.of(wallet));
 
         withdrawal = new WithdrawalRequest();
         withdrawal.setId(UUID.randomUUID());
@@ -143,7 +152,7 @@ class WithdrawalRequestServiceImplTest {
     void approveWithdrawal_ShouldCreatePayoutAndMoveToProcessing_WithoutChangingWallet() {
         when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
                 .thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet()))
                 .thenReturn(new BigDecimal("100000"));
@@ -228,7 +237,7 @@ class WithdrawalRequestServiceImplTest {
     void approveWithdrawal_ShouldReconcileWithPayOS_WhenCreatePayoutFailsButPayoutAlreadyExists() {
         when(withdrawalRequestRepository.findByIdWithLock(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
                 .thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet()))
                 .thenReturn(new BigDecimal("100000"));
@@ -351,7 +360,7 @@ class WithdrawalRequestServiceImplTest {
         when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
         when(withdrawalRequestRepository.findById(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
 
         WithdrawalDetailResponse response = withdrawalRequestService.getDeveloperWithdrawalDetail(withdrawal.getId(), developerUser.getEmail());
@@ -423,7 +432,7 @@ class WithdrawalRequestServiceImplTest {
     void createDeveloperWithdrawal_ShouldSucceed_WhenValid() {
         when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
         when(walletRepository.findByUserIdWithLock(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
         when(withdrawalRequestRepository.save(any(WithdrawalRequest.class))).thenAnswer(inv -> {
             WithdrawalRequest w = inv.getArgument(0);
@@ -445,13 +454,93 @@ class WithdrawalRequestServiceImplTest {
 
         assertEquals(WithdrawalStatus.pending, response.getStatus());
         assertEquals(new BigDecimal("50000"), response.getAmount());
+        assertEquals(new BigDecimal("250000"), response.getWithdrawableBalance());
+        assertEquals(BigDecimal.ZERO, response.getRestrictedBalance());
+    }
+
+    @Test
+    void pendingWithdrawal_ShouldReserveRevenueWithoutChangingWallet_AndBlockSecondRequest() {
+        wallet.setBalance(new BigDecimal("100000"));
+        wallet.setWithdrawableBalance(new BigDecimal("100000"));
+        AtomicReference<BigDecimal> pending = new AtomicReference<>(BigDecimal.ZERO);
+
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(walletRepository.findByUserIdWithLock(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
+                .thenReturn(new BigDecimal("100000"));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet()))
+                .thenAnswer(invocation -> pending.get());
+        when(withdrawalRequestRepository.save(any(WithdrawalRequest.class))).thenAnswer(invocation -> {
+            WithdrawalRequest saved = invocation.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(UUID.randomUUID());
+                pending.updateAndGet(current -> current.add(saved.getAmount()));
+            }
+            return saved;
+        });
+
+        CreateWithdrawalRequest firstRequest = new CreateWithdrawalRequest(
+                new BigDecimal("60000"),
+                "MBBank",
+                "123456789",
+                "Dev User",
+                null
+        );
+
+        WithdrawalDetailResponse firstResponse = withdrawalRequestService.createDeveloperWithdrawal(
+                firstRequest,
+                developerUser.getEmail()
+        );
+
+        assertEquals(new BigDecimal("100000"), firstResponse.getWalletBalance());
+        assertEquals(new BigDecimal("100000"), firstResponse.getWithdrawableBalance());
+        assertEquals(new BigDecimal("60000"), firstResponse.getPendingBalance());
+        assertEquals(new BigDecimal("40000"), firstResponse.getAvailableBalance());
+        assertEquals(new BigDecimal("100000"), wallet.getBalance());
+        assertEquals(new BigDecimal("100000"), wallet.getWithdrawableBalance());
+
+        CreateWithdrawalRequest secondRequest = new CreateWithdrawalRequest(
+                new BigDecimal("50000"),
+                "MBBank",
+                "123456789",
+                "Dev User",
+                null
+        );
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> withdrawalRequestService.createDeveloperWithdrawal(secondRequest, developerUser.getEmail())
+        );
+
+        assertEquals(ErrorCode.WITHDRAWAL_EXCEEDS_REVENUE, exception.getErrorCode());
+        assertEquals(new BigDecimal("60000"), pending.get());
+    }
+
+    @Test
+    void terminalWithdrawal_ShouldReleasePendingReservation() {
+        wallet.setBalance(new BigDecimal("100000"));
+        wallet.setWithdrawableBalance(new BigDecimal("100000"));
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
+                .thenReturn(new BigDecimal("100000"));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet()))
+                .thenReturn(new BigDecimal("80000"), BigDecimal.ZERO);
+
+        var pendingSummary = withdrawalRequestService.getDeveloperWalletSummary(developerUser.getEmail());
+        var terminalSummary = withdrawalRequestService.getDeveloperWalletSummary(developerUser.getEmail());
+
+        assertEquals(new BigDecimal("80000"), pendingSummary.getPendingBalance());
+        assertEquals(new BigDecimal("20000"), pendingSummary.getAvailableBalance());
+        assertEquals(BigDecimal.ZERO, terminalSummary.getPendingBalance());
+        assertEquals(new BigDecimal("100000"), terminalSummary.getAvailableBalance());
     }
 
     @Test
     void createDeveloperWithdrawal_ShouldThrowException_WhenInsufficientBalance() {
         when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
         when(walletRepository.findByUserIdWithLock(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("150000"));
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("150000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
 
         CreateWithdrawalRequest request = new CreateWithdrawalRequest(
@@ -465,6 +554,33 @@ class WithdrawalRequestServiceImplTest {
         assertThrows(AppException.class, () ->
                 withdrawalRequestService.createDeveloperWithdrawal(request, developerUser.getEmail())
         );
+    }
+
+    @Test
+    void createDeveloperWithdrawal_ShouldRejectTopUpOnlyBalance() {
+        wallet.setWithdrawableBalance(BigDecimal.ZERO);
+        when(userRepository.findByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(walletRepository.findByUserIdWithLock(developerUser.getId())).thenReturn(Optional.of(wallet));
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet()))
+                .thenReturn(BigDecimal.ZERO);
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet()))
+                .thenReturn(BigDecimal.ZERO);
+
+        CreateWithdrawalRequest request = new CreateWithdrawalRequest(
+                new BigDecimal("100000"),
+                "MB Bank",
+                "0123456789",
+                "Dev User",
+                null
+        );
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> withdrawalRequestService.createDeveloperWithdrawal(request, developerUser.getEmail())
+        );
+
+        assertEquals(ErrorCode.WITHDRAWAL_EXCEEDS_REVENUE, exception.getErrorCode());
+        verify(withdrawalRequestRepository, never()).save(any(WithdrawalRequest.class));
     }
 
     @Test
@@ -496,7 +612,7 @@ class WithdrawalRequestServiceImplTest {
     void getAdminWithdrawalDetail_ShouldReturnDetail() {
         when(withdrawalRequestRepository.findById(withdrawal.getId())).thenReturn(Optional.of(withdrawal));
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
 
         WithdrawalDetailResponse response = withdrawalRequestService.getAdminWithdrawalDetail(withdrawal.getId());
@@ -522,7 +638,7 @@ class WithdrawalRequestServiceImplTest {
 
         when(sync.synchronize(withdrawal.getId(), adminUser.getEmail())).thenReturn(withdrawal);
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
-        when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
+        when(transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("250000"));
         when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(developerUser.getId()), anySet())).thenReturn(new BigDecimal("100000"));
 
         WithdrawalDetailResponse response = withdrawalRequestService.syncWithdrawalStatus(withdrawal.getId(), adminUser.getEmail());

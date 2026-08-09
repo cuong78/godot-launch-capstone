@@ -1,5 +1,6 @@
 export interface Asset {
   id: string;
+  sellerEmail?: string;
   title: string;
   price: number;
   rating: number;
@@ -102,6 +103,8 @@ export interface DeveloperWalletSummaryResponse {
   developerFullName?: string;
   currency: string;
   walletBalance: number;
+  withdrawableBalance: number;
+  restrictedBalance: number;
   availableBalance: number;
   pendingBalance: number;
   totalRevenue: number;
@@ -162,6 +165,8 @@ export interface WithdrawalResponse {
 
 export interface WithdrawalDetailResponse extends WithdrawalResponse {
   walletBalance: number;
+  withdrawableBalance: number;
+  restrictedBalance: number;
   availableBalance: number;
   pendingBalance: number;
   totalRevenue: number;
@@ -313,6 +318,7 @@ export interface GitHubLoginRequest {
 export interface ApiResponse<T> {
   success: boolean;
   status: number;
+  code?: string;
   message: string;
   data: T;
   errors?: Record<string, string>;

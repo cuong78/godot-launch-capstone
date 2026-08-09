@@ -29,6 +29,7 @@ import com.godotlaunch.backend.security.JwtProvider;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.DisputeService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
+import com.godotlaunch.backend.util.WalletBalancePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -117,6 +119,7 @@ public class DisputeServiceImpl implements DisputeService {
         switch (resolution) {
             case "resolved_seller_fault" -> {
                 // TH3: A đạo nhái → A hoàn tiền N ngày (admin config) + ban A hoặc khóa chờ hoàn
+                validateRefundAmount(request.getRefundAmount());
                 int refundDays = platformSettingsService.getRefundDeadlineDays();
                 dispute.setRefundAmount(request.getRefundAmount());
                 dispute.setRefundDeadline(Instant.now().plus(refundDays, ChronoUnit.DAYS));
@@ -165,7 +168,7 @@ public class DisputeServiceImpl implements DisputeService {
     public DisputeResponse confirmRefund(UUID disputeId, String adminEmail) {
         userRepository.findByEmail(adminEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        Dispute dispute = disputeRepository.findById(disputeId)
+        Dispute dispute = disputeRepository.findByIdWithLock(disputeId)
                 .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
 
         if (dispute.getStatus() != DisputeStatus.resolved_seller_fault || dispute.getRefundConfirmedAt() != null) {
@@ -175,18 +178,20 @@ public class DisputeServiceImpl implements DisputeService {
         User seller = dispute.getReportedSeller();
         User reporter = dispute.getReporter();
         BigDecimal refundAmount = dispute.getRefundAmount();
+        validateRefundAmount(refundAmount);
 
-        Wallet sellerWallet = walletRepository.findByUserIdWithLock(seller.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
-        if (sellerWallet.getBalance().compareTo(refundAmount) < 0) {
+        Map<UUID, Wallet> lockedWallets = lockWallets(seller, reporter);
+        Wallet sellerWallet = lockedWallets.get(seller.getId());
+        if (WalletBalancePolicy.balance(sellerWallet).compareTo(refundAmount) < 0) {
             throw new AppException(ErrorCode.REFUND_AMOUNT_NOT_MET);
         }
 
-        Wallet reporterWallet = getOrCreateWallet(reporter);
+        Wallet reporterWallet = lockedWallets.get(reporter.getId());
 
-        sellerWallet.setBalance(sellerWallet.getBalance().subtract(refundAmount));
+        WalletBalancePolicy.debitSellerRefund(sellerWallet, refundAmount);
         walletRepository.save(sellerWallet);
-        reporterWallet.setBalance(reporterWallet.getBalance().add(refundAmount));
+        // Incoming dispute money is restitution, not a new sale.
+        WalletBalancePolicy.creditRestricted(reporterWallet, refundAmount);
         walletRepository.save(reporterWallet);
 
         Transaction outgoing = new Transaction();
@@ -195,6 +200,7 @@ public class DisputeServiceImpl implements DisputeService {
         outgoing.setGame(dispute.getGame());
         outgoing.setAmount(refundAmount.negate());
         outgoing.setType(TxnType.refund);
+        outgoing.setReferenceId("DISPUTE_REFUND:" + dispute.getId());
         outgoing.setDescription("Hoàn tiền tranh chấp bản quyền #" + dispute.getId());
         transactionRepository.save(outgoing);
 
@@ -204,6 +210,7 @@ public class DisputeServiceImpl implements DisputeService {
         incoming.setGame(dispute.getGame());
         incoming.setAmount(refundAmount);
         incoming.setType(TxnType.refund);
+        incoming.setReferenceId("DISPUTE_REFUND:" + dispute.getId());
         incoming.setDescription("Nhận hoàn tiền tranh chấp bản quyền #" + dispute.getId());
         transactionRepository.save(incoming);
 
@@ -239,8 +246,18 @@ public class DisputeServiceImpl implements DisputeService {
     @Override
     @Transactional
     public void banOverdueSeller(UUID disputeId) {
-        Dispute dispute = disputeRepository.findById(disputeId)
+        Dispute dispute = disputeRepository.findByIdWithLock(disputeId)
                 .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
+
+        // Re-check after locking because confirmRefund() may have completed
+        // after the scheduler selected this row but before enforcement began.
+        if (dispute.getStatus() != DisputeStatus.resolved_seller_fault
+                || dispute.getRefundConfirmedAt() != null
+                || dispute.getRefundDeadline() == null
+                || !dispute.getRefundDeadline().isBefore(Instant.now())) {
+            return;
+        }
+
         User seller = dispute.getReportedSeller();
 
         if ("banned".equalsIgnoreCase(seller.getStatus())) {
@@ -352,15 +369,43 @@ public class DisputeServiceImpl implements DisputeService {
         userRepository.save(seller);
     }
 
-    private Wallet getOrCreateWallet(User user) {
+    private Wallet getOrCreateWalletWithLock(User user) {
         return walletRepository.findByUserIdWithLock(user.getId())
                 .orElseGet(() -> {
+                    User lockedUser = userRepository.findByIdWithLock(user.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+                    Wallet concurrentlyCreated = walletRepository.findByUserIdWithLock(lockedUser.getId()).orElse(null);
+                    if (concurrentlyCreated != null) {
+                        return concurrentlyCreated;
+                    }
+
                     Wallet newWallet = new Wallet();
-                    newWallet.setUser(user);
+                    newWallet.setUser(lockedUser);
                     newWallet.setBalance(BigDecimal.ZERO);
+                    newWallet.setWithdrawableBalance(BigDecimal.ZERO);
                     newWallet.setCurrency(DEFAULT_CURRENCY);
                     return walletRepository.save(newWallet);
                 });
+    }
+
+    private void validateRefundAmount(BigDecimal refundAmount) {
+        if (refundAmount == null || refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new AppException(ErrorCode.REFUND_AMOUNT_INVALID);
+        }
+    }
+
+    private Map<UUID, Wallet> lockWallets(User... users) {
+        Map<UUID, User> usersById = new LinkedHashMap<>();
+        for (User user : users) {
+            usersById.put(user.getId(), user);
+        }
+
+        Map<UUID, Wallet> walletsByUserId = new LinkedHashMap<>();
+        usersById.keySet().stream().sorted().forEach(userId ->
+                walletsByUserId.put(userId, getOrCreateWalletWithLock(usersById.get(userId)))
+        );
+        return walletsByUserId;
     }
 
     private void safeNotify(UUID userId, String message) {

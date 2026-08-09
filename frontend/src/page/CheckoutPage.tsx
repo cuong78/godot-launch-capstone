@@ -54,16 +54,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const unsupportedItems = cart.filter((item) => !item.itemType);
   const hasMultipleItems = cart.length > 1;
 
-  const [walletBalance, setWalletBalance] = React.useState<number | null>(null);
+  const [spendableBalance, setSpendableBalance] = React.useState<number | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = React.useState<boolean>(false);
 
   React.useEffect(() => {
-    const fetchWalletBalance = async () => {
+    const fetchSpendableBalance = async () => {
       setIsLoadingWallet(true);
       try {
-        const response = await walletApi.getMyWallet();
+        const response = await walletApi.getDeveloperWalletSummary();
         if (response.success && response.data) {
-          setWalletBalance(response.data.balance);
+          setSpendableBalance(
+            Math.max(
+              Number(response.data.walletBalance) -
+                Number(response.data.pendingBalance),
+              0,
+            ),
+          );
         }
       } catch (err) {
         console.error('Failed to load wallet balance:', err);
@@ -72,7 +78,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       }
     };
 
-    fetchWalletBalance();
+    fetchSpendableBalance();
   }, []);
 
   return (
@@ -211,8 +217,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 <span className="font-mono text-sm font-bold text-slate-800 dark:text-white">
                   {isLoadingWallet ? (
                     <span className="animate-pulse text-slate-500 dark:text-slate-400">{t('payment:checkout.wallet.loadingBalance')}</span>
-                  ) : walletBalance !== null ? (
-                    formatMoney(walletBalance, locale, currency, "0")
+                  ) : spendableBalance !== null ? (
+                    formatMoney(spendableBalance, locale, currency, "0")
                   ) : (
                     "0"
                   )}
@@ -226,11 +232,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </span>
               </div>
 
-              {walletBalance !== null && (
+              {spendableBalance !== null && (
                 <div className="border-t border-slate-200/50 dark:border-slate-800/50 pt-2 flex items-center justify-between text-xs">
                   <span className="text-slate-500">{t('payment:checkout.wallet.remainingBalance')}:</span>
-                  <span className={`font-mono font-bold ${walletBalance - totalAmount >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
-                    {formatMoney(walletBalance - totalAmount, locale, currency, "0")}
+                  <span className={`font-mono font-bold ${spendableBalance - totalAmount >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                    {formatMoney(spendableBalance - totalAmount, locale, currency, "0")}
                   </span>
                 </div>
               )}
@@ -268,20 +274,20 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
             )}
 
-            {walletBalance !== null && walletBalance < totalAmount && (
+            {spendableBalance !== null && spendableBalance < totalAmount && (
               <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-400 flex items-start gap-2">
                 <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold">{t('payment:checkout.wallet.insufficientBalanceTitle')}</p>
                   <p className="mt-1">{t('payment:checkout.wallet.insufficientBalanceDescription', {
-                    amount: formatMoney(totalAmount - walletBalance, locale, currency, "0"),
+                    amount: formatMoney(totalAmount - spendableBalance, locale, currency, "0"),
                   })}</p>
                 </div>
               </div>
             )}
 
             {/* Action buttons */}
-            {walletBalance !== null && walletBalance < totalAmount ? (
+            {spendableBalance !== null && spendableBalance < totalAmount ? (
               <Button
                 variant="primary"
                 size="md"
@@ -298,7 +304,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 className="mt-5 w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-500/10 transition-all duration-300"
                 icon={<ReceiptText size={16} />}
                 onClick={onPlaceOrder}
-                disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder || isLoadingWallet || walletBalance === null}
+                disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder || isLoadingWallet || spendableBalance === null}
               >
                 {isPlacingOrder ? t('payment:checkout.wallet.processingOrder') : t('payment:checkout.wallet.placeOrder')}
               </Button>

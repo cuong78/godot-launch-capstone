@@ -31,6 +31,7 @@ import com.godotlaunch.backend.repository.PaymentGateway;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.PaymentService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
+import com.godotlaunch.backend.util.WalletBalancePolicy;
 import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.repository.GameRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,8 +48,10 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -98,8 +101,7 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.BAD_REQUEST);
         }
 
-        Wallet buyerWallet = walletRepository.findByUserId(buyer.getId())
-                .orElseGet(() -> createWallet(buyer));
+        Wallet buyerWallet = getOrCreateWallet(buyer);
 
         String buyRef = "BUY_ASSET:" + item.getId();
 
@@ -167,8 +169,7 @@ public class PaymentServiceImpl implements PaymentService {
         User buyer = getUserByEmail(buyerEmail);
         validatePurchaserRole(buyer);
 
-        Wallet buyerWallet = walletRepository.findByUserId(buyer.getId())
-                .orElseGet(() -> createWallet(buyer));
+        Wallet buyerWallet = getOrCreateWallet(buyer);
 
         Payment payment = new Payment();
         payment.setWallet(buyerWallet);
@@ -359,25 +360,53 @@ public class PaymentServiceImpl implements PaymentService {
         Wallet wallet = new Wallet();
         wallet.setUser(seller);
         wallet.setBalance(BigDecimal.ZERO);
+        wallet.setWithdrawableBalance(BigDecimal.ZERO);
         wallet.setCurrency(DEFAULT_CURRENCY);
         return walletRepository.save(wallet);
     }
 
-    private Wallet getPlatformWallet() {
-        User platformAdmin = userRepository.findByEmail(PLATFORM_ADMIN_EMAIL)
+    private Wallet getOrCreateWallet(User user) {
+        return walletRepository.findByUserId(user.getId())
+                .orElseGet(() -> {
+                    User lockedUser = userRepository.findByIdWithLock(user.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                    return walletRepository.findByUserId(lockedUser.getId())
+                            .orElseGet(() -> createWallet(lockedUser));
+                });
+    }
+
+    private User getPlatformAdmin() {
+        return userRepository.findByEmail(PLATFORM_ADMIN_EMAIL)
                 .orElseGet(() -> userRepository.findAdminsOrderByCreatedAtAsc(PageRequest.of(0, 1)).stream()
                         .findFirst()
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
+    }
 
-        Wallet platformWallet = walletRepository.findByUserId(platformAdmin.getId())
-                .orElseGet(() -> createWallet(platformAdmin));
+    private Wallet getOrCreateWalletWithLock(User user) {
+        Wallet wallet = walletRepository.findByUserIdWithLock(user.getId())
+                .orElseGet(() -> {
+                    User lockedUser = userRepository.findByIdWithLock(user.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                    return walletRepository.findByUserIdWithLock(lockedUser.getId())
+                            .orElseGet(() -> createWallet(lockedUser));
+                });
+        if (!DEFAULT_CURRENCY.equalsIgnoreCase(wallet.getCurrency())) {
+            wallet.setCurrency(DEFAULT_CURRENCY);
+        }
+        return wallet;
+    }
 
-        if (!DEFAULT_CURRENCY.equalsIgnoreCase(platformWallet.getCurrency())) {
-            platformWallet.setCurrency(DEFAULT_CURRENCY);
-            platformWallet = walletRepository.save(platformWallet);
+    private Map<UUID, Wallet> lockWallets(User... users) {
+        Map<UUID, User> usersById = new LinkedHashMap<>();
+        for (User user : users) {
+            usersById.put(user.getId(), user);
         }
 
-        return platformWallet;
+        Map<UUID, Wallet> walletsByUserId = new LinkedHashMap<>();
+        usersById.keySet().stream().sorted().forEach(userId ->
+                walletsByUserId.put(userId, getOrCreateWalletWithLock(usersById.get(userId)))
+        );
+        return walletsByUserId;
     }
 
     private Payment getPaymentEntity(UUID paymentId) {
@@ -520,16 +549,18 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private Payment completePaidPayment(Payment payment, Instant paidAt, String transactionReference) {
-        Wallet buyerWallet = payment.getWallet();
-        buyerWallet.setBalance(buyerWallet.getBalance().add(payment.getAmount()));
-        walletRepository.save(buyerWallet);
-
         String paymentReference = payment.getPaymentReference();
+        User buyer = payment.getWallet().getUser();
         if (paymentReference != null && paymentReference.startsWith("BUY_ASSET:")) {
             UUID assetId = UUID.fromString(paymentReference.substring("BUY_ASSET:".length()));
             Asset item = assetRepository.findById(assetId)
                     .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
-            User buyer = buyerWallet.getUser();
+            User platformAdmin = getPlatformAdmin();
+            Map<UUID, Wallet> wallets = lockWallets(buyer, item.getSeller(), platformAdmin);
+            Wallet buyerWallet = wallets.get(buyer.getId());
+            Wallet sellerWallet = wallets.get(item.getSeller().getId());
+            Wallet platformWallet = wallets.get(platformAdmin.getId());
+            payment.setWallet(buyerWallet);
 
             Order order = orderRepository.findByBuyerIdAndAssetId(buyer.getId(), item.getId()).orElse(null);
             if (order == null) {
@@ -545,32 +576,29 @@ public class PaymentServiceImpl implements PaymentService {
                 BigDecimal platformCommission = calculatePlatformCommission(payment.getAmount());
                 BigDecimal sellerRevenue = payment.getAmount().subtract(platformCommission);
 
-                Wallet sellerWallet = walletRepository.findByUserId(item.getSeller().getId())
-                        .orElseGet(() -> createWallet(item.getSeller()));
-                Wallet platformWallet = getPlatformWallet();
+                // PayOS paid the exact purchase amount. Credit it as restricted
+                // funding, then consume it immediately for this order.
+                WalletBalancePolicy.creditRestricted(buyerWallet, payment.getAmount());
 
-                if (!DEFAULT_CURRENCY.equalsIgnoreCase(sellerWallet.getCurrency())) {
-                    sellerWallet.setCurrency(DEFAULT_CURRENCY);
-                }
+                Transaction sellerTxn = new Transaction();
+                sellerTxn.setWallet(sellerWallet);
+                sellerTxn.setRelatedUser(buyer);
+                sellerTxn.setGame(null);
+                sellerTxn.setAsset(item);
+                sellerTxn.setAmount(sellerRevenue);
+                sellerTxn.setType(TxnType.revenue_share);
+                sellerTxn.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+                sellerTxn.setOrder(order);
+                sellerTxn.setDescription("Credit seller wallet with net sales revenue");
+                transactionRepository.save(sellerTxn);
 
-                Transaction transaction = new Transaction();
-                transaction.setWallet(sellerWallet);
-                transaction.setRelatedUser(buyer);
-                transaction.setGame(null);
-                transaction.setAsset(item);
-                transaction.setAmount(sellerRevenue);
-                transaction.setType(resolveTransactionType(item));
-                transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
-                transaction.setOrder(order);
-                transactionRepository.save(transaction);
-
-                sellerWallet.setBalance(sellerWallet.getBalance().add(sellerRevenue));
+                WalletBalancePolicy.creditSalesRevenue(sellerWallet, sellerRevenue);
                 walletRepository.save(sellerWallet);
 
-                platformWallet.setBalance(platformWallet.getBalance().add(platformCommission));
+                WalletBalancePolicy.creditRestricted(platformWallet, platformCommission);
                 walletRepository.save(platformWallet);
 
-                buyerWallet.setBalance(buyerWallet.getBalance().subtract(payment.getAmount()));
+                WalletBalancePolicy.debitPurchaseRestrictedFirst(buyerWallet, payment.getAmount(), BigDecimal.ZERO);
                 walletRepository.save(buyerWallet);
 
                 Transaction buyerTxn = new Transaction();
@@ -595,18 +623,13 @@ public class PaymentServiceImpl implements PaymentService {
                 platformTxn.setDescription("Credit platform wallet with commission fee");
                 transactionRepository.save(platformTxn);
             }
+        } else if (isTopUpReference(paymentReference)) {
+            completeWalletTopUp(payment, buyer, transactionReference);
         } else {
-            if (!transactionRepository.findByPaymentId(payment.getId()).isPresent()) {
-                Transaction transaction = new Transaction();
-                transaction.setWallet(buyerWallet);
-                transaction.setAmount(payment.getAmount());
-                transaction.setType(TxnType.wallet_topup);
-                transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference()));
-                transaction.setPayment(payment);
-                transactionRepository.save(transaction);
-
-                sendTopUpConfirmationEmail(buyerWallet.getUser(), payment);
-            }
+            // Never classify an unknown payment as a wallet top-up. Otherwise a
+            // malformed/future payment reference could accidentally create
+            // spendable wallet credit.
+            throw new AppException(ErrorCode.BAD_REQUEST);
         }
 
         payment.setPaymentStatus(PaymentStatus.PAID);
@@ -615,6 +638,34 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setCheckoutUrl(null);
 
         return paymentRepository.save(payment);
+    }
+
+    private void completeWalletTopUp(Payment payment, User buyer, String transactionReference) {
+        Wallet buyerWallet = getOrCreateWalletWithLock(buyer);
+        payment.setWallet(buyerWallet);
+
+        // The payment row is pessimistically locked by webhook/confirm flows,
+        // and transactions.payment_id is unique. This lookup keeps retries
+        // idempotent before either wallet bucket is changed.
+        if (transactionRepository.findByPaymentId(payment.getId()).isPresent()) {
+            return;
+        }
+
+        // Top-up money is purchase-only: balance increases while
+        // withdrawableBalance remains unchanged.
+        WalletBalancePolicy.creditRestricted(buyerWallet, payment.getAmount());
+        walletRepository.save(buyerWallet);
+
+        Transaction transaction = new Transaction();
+        transaction.setWallet(buyerWallet);
+        transaction.setAmount(payment.getAmount());
+        transaction.setType(TxnType.wallet_topup);
+        transaction.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference()));
+        transaction.setPayment(payment);
+        transaction.setDescription("Wallet top-up via PayOS (purchase-only funds)");
+        transactionRepository.save(transaction);
+
+        sendTopUpConfirmationEmail(buyerWallet.getUser(), payment);
     }
 
     private BigDecimal calculatePlatformCommission(BigDecimal paymentAmount) {
@@ -657,6 +708,10 @@ public class PaymentServiceImpl implements PaymentService {
 
     private String buildTopUpReference(UUID paymentId) {
         return "TOPUP:" + paymentId;
+    }
+
+    private boolean isTopUpReference(String paymentReference) {
+        return paymentReference != null && paymentReference.startsWith("TOPUP:");
     }
 
     private void sendTopUpConfirmationEmail(User buyer, Payment payment) {

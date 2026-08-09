@@ -17,6 +17,7 @@ import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.repository.PayoutGateway;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
+import com.godotlaunch.backend.util.WalletBalancePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -110,12 +111,16 @@ public class WithdrawalStatusSynchronizerImpl implements WithdrawalStatusSynchro
             Wallet wallet = walletRepository.findByUserIdWithLock(withdrawal.getUser().getId())
                     .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
             normalizeWalletCurrency(wallet);
+            WalletBalancePolicy.validateInvariant(wallet);
 
-            if (wallet.getBalance().compareTo(withdrawal.getAmount()) < 0) {
+            if (WalletBalancePolicy.balance(wallet).compareTo(withdrawal.getAmount()) < 0) {
                 throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
             }
+            if (WalletBalancePolicy.withdrawableBalance(wallet).compareTo(withdrawal.getAmount()) < 0) {
+                throw new AppException(ErrorCode.WITHDRAWAL_EXCEEDS_REVENUE);
+            }
 
-            wallet.setBalance(wallet.getBalance().subtract(withdrawal.getAmount()));
+            WalletBalancePolicy.debitCompletedWithdrawal(wallet, withdrawal.getAmount());
             walletRepository.save(wallet);
 
             Transaction transaction = new Transaction();

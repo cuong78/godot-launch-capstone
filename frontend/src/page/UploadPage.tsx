@@ -24,6 +24,9 @@ import {
   Search,
   X,
   ChevronDown,
+  Sparkles,
+  Layers3,
+  CircleDollarSign,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
@@ -710,7 +713,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   })();
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto py-4">
+    <div className="relative mx-auto max-w-6xl animate-fade-in space-y-6 py-4">
       {showBotInvite && (
         <BotInviteModal
           botUsername={botUsername}
@@ -723,51 +726,85 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       )}
 
       {/* Page Header */}
-      <div className="border-l-4 border-amber-400 pl-3 flex justify-between items-center">
-        <div>
-          <h1 className="font-display font-bold text-2xl text-slate-800 dark:text-white">
-            {step === 1
-              ? publishProgram === "marketplace"
-                ? t("page.title.marketplace.step1")
-                : t("page.title.game.step1")
-              : publishProgram === "marketplace"
-                ? t("page.title.marketplace.step2")
-                : t("page.title.game.step2")}
-          </h1>
-          <p className="text-xs text-slate-500">
-            {step === 1
-              ? t("page.description.step1")
-              : publishProgram === "marketplace"
-                ? t("page.description.marketplace.step2")
-                : t("page.description.game.step2")}
-          </p>
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85 sm:p-7">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-52 w-52 rounded-full bg-amber-400/15 blur-3xl dark:bg-amber-400/10" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-44 w-44 rounded-full bg-sky-400/10 blur-3xl" />
+
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20">
+              {publishProgram === "marketplace" ? (
+                <ShoppingBag size={23} strokeWidth={2.2} />
+              ) : (
+                <Gamepad2 size={24} strokeWidth={2.2} />
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400">
+                <Sparkles size={13} />
+                {publishProgram === "marketplace"
+                  ? t("program.marketplace.title")
+                  : t("program.game.title")}
+              </div>
+              <h1 className="font-display text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                {step === 1
+                  ? publishProgram === "marketplace"
+                    ? t("page.title.marketplace.step1")
+                    : t("page.title.game.step1")
+                  : publishProgram === "marketplace"
+                    ? t("page.title.marketplace.step2")
+                    : t("page.title.game.step2")}
+              </h1>
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                {step === 1
+                  ? t("page.description.step1")
+                  : publishProgram === "marketplace"
+                    ? t("page.description.marketplace.step2")
+                    : t("page.description.game.step2")}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end">
+            <span className="rounded-full border border-amber-300/70 bg-amber-50 px-3.5 py-2 font-mono text-xs font-bold text-amber-700 shadow-sm dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300">
+              {t("page.stepCounter", { step })}
+            </span>
+            <div className="flex flex-1 items-center gap-1.5 sm:w-32" aria-hidden="true">
+              <span className="h-1.5 flex-1 rounded-full bg-amber-400" />
+              <span
+                className={`h-1.5 flex-1 rounded-full transition-colors ${
+                  step === 2 ? "bg-amber-400" : "bg-slate-200 dark:bg-slate-800"
+                }`}
+              />
+            </div>
+          </div>
         </div>
-        <span className="text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-amber-500 px-3 py-1.5 rounded-lg">
-          {t("page.stepCounter", { step })}
-        </span>
       </div>
 
       {step === 1 ? (
         <form
           onSubmit={handleCreateDraft}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 p-6 rounded-2xl space-y-6 shadow-md"
+          className="rounded-3xl border border-slate-200/80 bg-white/95 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90"
         >
           {/* Tab Selector */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 gap-4 border-b border-slate-200/80 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/45 sm:p-7 md:grid-cols-2">
             <button
               type="button"
               onClick={() => setPublishProgram("marketplace")}
-              className={`group relative flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 ${
+              className={`group relative flex min-h-32 items-center gap-4 overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 ${
                 publishProgram === "marketplace"
-                  ? "border-amber-400 bg-gradient-to-br from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-transparent shadow-[0_0_20px_rgba(245,158,11,0.05)] dark:shadow-[0_0_30px_rgba(245,158,11,0.1)] scale-[1.01]"
-                  : "border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/40 hover:border-slate-350 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-900/60"
+                  ? "border-amber-400 bg-gradient-to-br from-amber-50 via-white to-orange-50 shadow-[0_14px_35px_-20px_rgba(245,158,11,0.65)] ring-1 ring-amber-400/20 dark:from-amber-500/15 dark:via-slate-900 dark:to-orange-500/10"
+                  : "border-slate-200 bg-white/80 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 dark:hover:bg-slate-900"
               }`}
             >
+              {publishProgram === "marketplace" && (
+                <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-amber-400/15 blur-2xl" />
+              )}
               <div
-                className={`p-3 rounded-xl transition-colors duration-300 ${
+                className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-300 ${
                   publishProgram === "marketplace"
-                    ? "bg-amber-500 text-slate-950"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-slate-200"
+                    ? "bg-gradient-to-br from-amber-300 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20"
+                    : "bg-slate-100 text-slate-500 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:text-slate-200"
                 }`}
               >
                 <ShoppingBag
@@ -775,7 +812,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   className="transition-transform duration-300 group-hover:scale-110"
                 />
               </div>
-              <div className="flex-1">
+              <div className="relative flex-1">
                 <span
                   className={`block font-display font-bold text-sm ${
                     publishProgram === "marketplace"
@@ -785,29 +822,34 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 >
                   {t("program.marketplace.title")}
                 </span>
-                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
+                <span className="mt-1.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">
                   {t("program.marketplace.description")}
                 </span>
               </div>
               {publishProgram === "marketplace" && (
-                <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-slate-950 shadow-sm">
+                  <Check size={14} strokeWidth={3} />
+                </div>
               )}
             </button>
 
             <button
               type="button"
               onClick={() => setPublishProgram("game")}
-              className={`group relative flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 ${
+              className={`group relative flex min-h-32 items-center gap-4 overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 ${
                 publishProgram === "game"
-                  ? "border-amber-400 bg-gradient-to-br from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-transparent shadow-[0_0_20px_rgba(245,158,11,0.05)] dark:shadow-[0_0_30px_rgba(245,158,11,0.1)] scale-[1.01]"
-                  : "border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/40 hover:border-slate-350 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-900/60"
+                  ? "border-amber-400 bg-gradient-to-br from-amber-50 via-white to-orange-50 shadow-[0_14px_35px_-20px_rgba(245,158,11,0.65)] ring-1 ring-amber-400/20 dark:from-amber-500/15 dark:via-slate-900 dark:to-orange-500/10"
+                  : "border-slate-200 bg-white/80 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 dark:hover:bg-slate-900"
               }`}
             >
+              {publishProgram === "game" && (
+                <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-amber-400/15 blur-2xl" />
+              )}
               <div
-                className={`p-3 rounded-xl transition-colors duration-300 ${
+                className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all duration-300 ${
                   publishProgram === "game"
-                    ? "bg-amber-500 text-slate-950"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-slate-200"
+                    ? "bg-gradient-to-br from-amber-300 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/20"
+                    : "bg-slate-100 text-slate-500 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:text-slate-200"
                 }`}
               >
                 <Gamepad2
@@ -815,7 +857,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   className="transition-transform duration-300 group-hover:scale-110"
                 />
               </div>
-              <div className="flex-1">
+              <div className="relative flex-1">
                 <span
                   className={`block font-display font-bold text-sm ${
                     publishProgram === "game"
@@ -825,17 +867,36 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 >
                   {t("program.game.title")}
                 </span>
-                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1 font-normal leading-normal">
+                <span className="mt-1.5 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">
                   {t("program.game.description")}
                 </span>
               </div>
               {publishProgram === "game" && (
-                <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-slate-950 shadow-sm">
+                  <Check size={14} strokeWidth={3} />
+                </div>
               )}
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-7 p-5 sm:p-7 lg:p-8">
+
+          <section className="space-y-6 rounded-2xl border border-slate-200/80 bg-slate-50/55 p-5 dark:border-slate-800 dark:bg-slate-900/35 sm:p-6">
+          <div className="flex items-center gap-3 border-b border-slate-200/80 pb-4 dark:border-slate-800">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:bg-sky-400/10 dark:text-sky-400">
+              <Layers3 size={18} />
+            </span>
+            <div>
+              <h2 className="font-display text-sm font-bold text-slate-900 dark:text-white">
+                {publishProgram === "game" ? t("program.game.title") : t("program.marketplace.title")}
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {t("page.description.step1")}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Input
               label={
                 publishProgram === "game"
@@ -849,6 +910,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               }
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              className="[&_input]:h-12 [&_input]:rounded-xl"
               required
             />
 
@@ -859,11 +921,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               type="text"
               value={price}
               onChange={(e) => handlePriceChange(e.target.value)}
+              className="[&_input]:h-12 [&_input]:rounded-xl"
               required
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
                 {publishProgram === "game"
@@ -878,7 +941,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
+                  className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
                 >
                   {(() => {
                     const relevantCategories = categories.filter((cat) =>
@@ -919,7 +982,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
 
               {selectedTags.length > 0 && (
-                <div className="flex min-h-8 flex-wrap gap-1.5 rounded-lg border border-slate-300 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/60">
+                <div className="flex min-h-9 flex-wrap gap-1.5 rounded-xl border border-slate-300 bg-white p-2 dark:border-slate-800 dark:bg-slate-950/60">
                   {selectedTags.map((tag) => (
                     <span
                       key={tag.id}
@@ -955,7 +1018,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   onFocus={() => setIsTagDropdownOpen(true)}
                   placeholder={t("form.searchTagsPlaceholder")}
                   autoComplete="off"
-                  className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-800 outline-none transition-studio placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                  className="h-12 w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-800 outline-none transition-studio placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
                   aria-expanded={isTagDropdownOpen}
                   aria-controls="tag-search-results"
                 />
@@ -1194,13 +1257,19 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
           </div>
+          </section>
 
-          <div className="border-t border-slate-150 dark:border-slate-800 pt-6 space-y-6">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-              <ShieldCheck size={16} className="text-amber-500" /> {t("form.specifications")}
-            </h3>
+          <section className="space-y-6 rounded-2xl border border-slate-200/80 bg-slate-50/55 p-5 dark:border-slate-800 dark:bg-slate-900/35 sm:p-6">
+            <div className="flex items-center gap-3 border-b border-slate-200/80 pb-4 dark:border-slate-800">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <ShieldCheck size={18} />
+              </span>
+              <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">
+                {t("form.specifications")}
+              </h3>
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Input
                 label={t("form.version")}
                 placeholder={t("form.versionPlaceholder")}
@@ -1208,6 +1277,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 onChange={(e) => publishProgram !== "game" && setVersion(e.target.value)}
                 disabled={publishProgram === "game"}
                 helperText={publishProgram === "game" ? t("form.versionHelper") : undefined}
+                className="[&_input]:h-12 [&_input]:rounded-xl"
               />
             </div>
 
@@ -1216,7 +1286,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
                   {t("form.supportedPlatforms")}
                 </label>
-                <div className="flex flex-wrap gap-2 mt-1">
+                <div className="mt-1 flex flex-wrap gap-2.5">
                   {PLATFORM_OPTIONS.map((platform) => {
                     const active = supportedPlatforms.includes(platform.value);
                     return (
@@ -1230,12 +1300,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                               : [...prev, platform.value]
                           );
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                        className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all ${
                           active
-                            ? "bg-amber-500 border-amber-500 text-black shadow-sm"
-                            : "bg-white dark:bg-slate-900 border-slate-350 dark:border-slate-855 text-slate-650 dark:text-slate-300 hover:border-amber-400"
+                            ? "border-amber-400 bg-amber-400 text-slate-950 shadow-md shadow-amber-500/15"
+                            : "border-slate-300 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-amber-400 hover:text-amber-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-amber-300"
                         }`}
                       >
+                        {active && <Check size={12} strokeWidth={3} />}
                         {t(platform.labelKey)}
                       </button>
                     );
@@ -1243,7 +1314,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 </div>
               </div>
             )}
-          </div>
+          </section>
 
           <TextArea
             label={t("form.descriptionLabel")}
@@ -1255,19 +1326,33 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             rows={5}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            className="rounded-2xl border border-slate-200/80 bg-slate-50/55 p-5 dark:border-slate-800 dark:bg-slate-900/35 sm:p-6 [&_textarea]:min-h-36 [&_textarea]:rounded-xl [&_textarea]:resize-y"
           />
 
-          <div className="flex justify-end pt-3">
+          <div className="flex flex-col gap-4 rounded-2xl border border-amber-300/50 bg-gradient-to-r from-amber-50 to-orange-50 p-4 dark:border-amber-500/20 dark:from-amber-500/10 dark:to-orange-500/5 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-amber-600 shadow-sm dark:bg-slate-900 dark:text-amber-400">
+                <CircleDollarSign size={20} />
+              </span>
+              <p className="max-w-lg text-xs leading-5 text-slate-600 dark:text-slate-400">
+                {publishProgram === "marketplace"
+                  ? t("program.marketplace.description")
+                  : t("program.game.description")}
+              </p>
+            </div>
             <Button
               variant="primary"
               size="md"
               type="submit"
               icon={<ArrowRight size={16} />}
+              iconPosition="right"
+              className="min-h-11 shrink-0 !rounded-xl px-6"
             >
               {publishProgram === "marketplace"
                 ? t("form.initializeMarketplaceItem")
                 : t("form.initializeGameDraft")}
             </Button>
+          </div>
           </div>
         </form>
       ) : (

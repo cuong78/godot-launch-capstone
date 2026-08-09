@@ -1,5 +1,6 @@
 {
   "card.addToCart": "Thêm vào giỏ",
+  "card.owner": "Chủ sở hữu",
   "card.owned": "Đã sở hữu",
   "card.resource": "Tài nguyên",
   "common.free": "Miễn phí",
@@ -118,6 +119,7 @@
   "page.resultsMatch": "{{count}} kết quả khớp",
   "detail.actions.addToCart": "Thêm vào giỏ creator",
   "detail.actions.buyNowBankTransfer": "Mua ngay qua chuyển khoản",
+  "detail.actions.owner": "Chủ sở hữu",
   "detail.actions.preparingPayment": "Đang chuẩn bị thanh toán...",
   "detail.breadcrumb.explore": "Khám phá",
   "detail.breadcrumb.marketplace": "Marketplace",

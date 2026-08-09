@@ -26,6 +26,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     BigDecimal sumAmountByWalletIdAndTypeIn(@Param("walletId") UUID walletId,
                                             @Param("types") Set<TxnType> types);
 
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
+            "WHERE t.wallet.id = :walletId AND t.type IN :types AND t.amount > 0")
+    BigDecimal sumPositiveAmountByWalletIdAndTypeIn(@Param("walletId") UUID walletId,
+                                                    @Param("types") Set<TxnType> types);
+
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.wallet.id = :walletId AND t.type = :type")
     long countByWalletIdAndType(@Param("walletId") UUID walletId, @Param("type") TxnType type);
 
@@ -44,4 +49,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     Optional<Transaction> findByOrderIdAndPaymentIsNotNull(UUID orderId);
     boolean existsByOrderId(UUID orderId);
     Optional<Transaction> findByPaymentId(UUID paymentId);
+    boolean existsByWalletIdAndTypeAndReferenceId(UUID walletId, TxnType type, String referenceId);
 }

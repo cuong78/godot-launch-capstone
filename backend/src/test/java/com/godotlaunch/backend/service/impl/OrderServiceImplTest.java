@@ -57,6 +57,9 @@ class OrderServiceImplTest {
     @Mock
     private PaymentRepository paymentRepository;
 
+    @Mock
+    private WithdrawalRequestRepository withdrawalRequestRepository;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -89,14 +92,17 @@ class OrderServiceImplTest {
         buyerWallet = new Wallet();
         buyerWallet.setUser(buyer);
         buyerWallet.setBalance(new BigDecimal("100000"));
+        buyerWallet.setWithdrawableBalance(BigDecimal.ZERO);
 
         sellerWallet = new Wallet();
         sellerWallet.setUser(seller);
         sellerWallet.setBalance(new BigDecimal("50000"));
+        sellerWallet.setWithdrawableBalance(BigDecimal.ZERO);
 
         platformWallet = new Wallet();
         platformWallet.setUser(platformAdmin);
         platformWallet.setBalance(new BigDecimal("200000"));
+        platformWallet.setWithdrawableBalance(BigDecimal.ZERO);
 
         mockAsset = new Asset();
         mockAsset.setId(targetId);
@@ -139,6 +145,7 @@ class OrderServiceImplTest {
         assertThat(result).isNotNull();
         assertThat(buyerWallet.getBalance()).isEqualByComparingTo("50000"); // 100000 - 50000
         assertThat(sellerWallet.getBalance()).isEqualByComparingTo("95000");  // 50000 + 45000 (90%)
+        assertThat(sellerWallet.getWithdrawableBalance()).isEqualByComparingTo("45000");
         assertThat(platformWallet.getBalance()).isEqualByComparingTo("205000"); // 200000 + 5000 (10%)
 
         verify(orderRepository, times(1)).save(any(Order.class));
@@ -178,6 +185,32 @@ class OrderServiceImplTest {
         // Act & Assert
         assertThatThrownBy(() -> orderService.buy("buyer@example.com", targetId, OrderType.asset_purchase))
                 .isInstanceOf(InsufficientBalanceException.class);
+    }
+
+    @Test
+    @DisplayName("Purchase cannot spend sale revenue reserved by a pending payout")
+    void shouldNotSpendRevenueReservedByPendingWithdrawal() {
+        buyerWallet.setBalance(new BigDecimal("150000"));
+        buyerWallet.setWithdrawableBalance(new BigDecimal("100000"));
+        mockAsset.setPrice(new BigDecimal("71000"));
+
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(buyer));
+        when(assetRepository.findById(targetId)).thenReturn(Optional.of(mockAsset));
+        when(orderRepository.existsByBuyerIdAndAssetId(buyer.getId(), targetId)).thenReturn(false);
+        when(userRepository.findByEmail("admin@godotlaunch.com")).thenReturn(Optional.of(platformAdmin));
+        when(walletRepository.findByUserIdWithLock(buyer.getId())).thenReturn(Optional.of(buyerWallet));
+        when(walletRepository.findByUserIdWithLock(seller.getId())).thenReturn(Optional.of(sellerWallet));
+        when(walletRepository.findByUserIdWithLock(platformAdmin.getId())).thenReturn(Optional.of(platformWallet));
+        when(withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(eq(buyer.getId()), anySet()))
+                .thenReturn(new BigDecimal("80000"));
+
+        assertThatThrownBy(() -> orderService.buy("buyer@example.com", targetId, OrderType.asset_purchase))
+                .isInstanceOf(InsufficientBalanceException.class);
+
+        assertThat(buyerWallet.getBalance()).isEqualByComparingTo("150000");
+        assertThat(buyerWallet.getWithdrawableBalance()).isEqualByComparingTo("100000");
+        verify(walletRepository, never()).save(any(Wallet.class));
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test

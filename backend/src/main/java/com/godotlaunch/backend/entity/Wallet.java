@@ -32,6 +32,9 @@ public class Wallet {
     @Column(name = "balance", nullable = false, precision = 15, scale = 2)
     private BigDecimal balance = BigDecimal.ZERO;
 
+    @Column(name = "withdrawable_balance", nullable = false, precision = 15, scale = 2)
+    private BigDecimal withdrawableBalance = BigDecimal.ZERO;
+
     @JdbcTypeCode(Types.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     private String currency = "VND";

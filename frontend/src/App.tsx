@@ -128,6 +128,7 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse, t: TranslateFn
 
   return {
     id: item.id,
+    sellerEmail: item.sellerEmail,
     title: item.title,
     price: Number(item.price || 0),
     rating: 4.8,
@@ -457,6 +458,19 @@ export default function App() {
     [purchaseOrderPayments]
   );
 
+  const creatorOwnedProductIds = useMemo(() => {
+    const currentEmail = currentUser?.email?.trim().toLowerCase();
+    if (!currentEmail) return new Set<string>();
+
+    return new Set(
+      assets
+        .filter(
+          (asset) => asset.sellerEmail?.trim().toLowerCase() === currentEmail,
+        )
+        .map((asset) => asset.id),
+    );
+  }, [assets, currentUser?.email]);
+
   useEffect(() => {
     sessionStorage.setItem(PAYMENT_SESSION_STORAGE_KEY, JSON.stringify(paymentOrders));
   }, [paymentOrders]);
@@ -775,6 +789,10 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    if (creatorOwnedProductIds.has(asset.id)) {
+      showToast(t('app.toast.cannotBuyOwnProduct'), "warning");
+      return;
+    }
     if (ownedProductIds.has(asset.id)) {
       showToast(t('app.toast.ownedAlready'), "warning");
       return;
@@ -825,6 +843,11 @@ export default function App() {
       return;
     }
 
+    if (creatorOwnedProductIds.has(asset.id)) {
+      showToast(t('app.toast.cannotBuyOwnProduct'), "warning");
+      return;
+    }
+
     if (ownedProductIds.has(asset.id)) {
       showToast(t('app.toast.ownedAlready'), "warning");
       return;
@@ -853,6 +876,11 @@ export default function App() {
 
     if (cart.length === 0) {
       showToast(t('app.toast.cartEmpty'), "info");
+      return;
+    }
+
+    if (cart.some((item) => creatorOwnedProductIds.has(item.id))) {
+      showToast(t('app.toast.cannotBuyOwnProduct'), "warning");
       return;
     }
 
@@ -915,6 +943,11 @@ export default function App() {
 
     if (cart.length === 0) {
       showToast(t('app.toast.cartEmpty'), "info");
+      return;
+    }
+
+    if (cart.some((item) => creatorOwnedProductIds.has(item.id))) {
+      showToast(t('app.toast.cannotBuyOwnProduct'), "warning");
       return;
     }
 
@@ -1159,7 +1192,7 @@ export default function App() {
             : displayScreen === 'dashboard' || displayScreen === 'marketplace'
             ? 'mx-auto w-full max-w-[1440px] px-5 py-6 sm:px-8 lg:px-12'
             : displayScreen === 'detail'
-            ? 'w-full max-w-none px-4 py-6 sm:px-6 lg:px-8'
+            ? 'mx-auto w-full max-w-[1440px] px-5 py-6 sm:px-8 lg:px-12'
             : 'mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8'
         }`}
       >
@@ -1172,6 +1205,7 @@ export default function App() {
             handleViewAssetDetails={handleViewAssetDetails}
             handleAddToCart={handleAddToCart}
             ownedProductIds={ownedProductIds}
+            creatorOwnedProductIds={creatorOwnedProductIds}
           />
         )}
 
@@ -1193,6 +1227,7 @@ export default function App() {
             handleAddToCart={handleAddToCart}
             setSelectedCategories={setSelectedCategories}
             ownedProductIds={ownedProductIds}
+            creatorOwnedProductIds={creatorOwnedProductIds}
             catalogType={catalogType}
             setCatalogType={setCatalogType}
             selectedTags={selectedTags}

@@ -93,6 +93,7 @@ class WithdrawalStatusSynchronizerImplTest {
         wallet.setUser(developerUser);
         wallet.setCurrency("VND");
         wallet.setBalance(new BigDecimal("250000"));
+        wallet.setWithdrawableBalance(new BigDecimal("250000"));
 
         withdrawal = new WithdrawalRequest();
         withdrawal.setId(UUID.randomUUID());
@@ -181,6 +182,7 @@ class WithdrawalStatusSynchronizerImplTest {
 
         assertEquals(WithdrawalStatus.completed, result.getStatus());
         assertEquals(new BigDecimal("150000"), wallet.getBalance());
+        assertEquals(new BigDecimal("150000"), wallet.getWithdrawableBalance());
         assertEquals(TxnType.withdrawal, savedTransaction.getType());
         assertEquals(new BigDecimal("-100000"), savedTransaction.getAmount());
         assertEquals("Withdrawal via PayOS", savedTransaction.getDescription());

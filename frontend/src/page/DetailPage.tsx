@@ -67,6 +67,13 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 }) => {
   const { t, i18n } = useTranslation(["marketplace"]);
   const isOwned = ownedProductIds.has(focusedAsset.id);
+  const currentUserEmail = currentUser?.email?.trim().toLowerCase();
+  const isCreatorOwnedAsset = (asset: Asset) =>
+    Boolean(
+      currentUserEmail &&
+        asset.sellerEmail?.trim().toLowerCase() === currentUserEmail,
+    );
+  const isCreatorOwner = isCreatorOwnedAsset(focusedAsset);
   
   const downloadUrl = React.useMemo(() => {
     if (!purchaseOrderPayments) return null;
@@ -180,14 +187,14 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 
     const paragraphs = cleaned.split(/\n\n+/);
     return (
-      <div className="space-y-4 font-sans text-sm text-[#b1bdcc] leading-relaxed">
+      <div className="space-y-4 font-sans text-sm leading-relaxed text-slate-600 dark:text-[#b1bdcc]">
         {paragraphs.map((para, idx) => {
           const lines = para.split("\n").map(l => l.trim()).filter(Boolean);
           const isList = lines.every(line => /^[-*•]/.test(line));
           
           if (isList) {
             return (
-              <ul key={idx} className="list-disc pl-5 space-y-2 text-[#b1bdcc]">
+              <ul key={idx} className="list-disc space-y-2 pl-5 text-slate-600 dark:text-[#b1bdcc]">
                 {lines.map((line, lIdx) => (
                   <li key={lIdx}>
                     {line.replace(/^[-*•]\s*/, "")}
@@ -198,12 +205,12 @@ export const DetailPage: React.FC<DetailPageProps> = ({
           }
 
           return (
-            <p key={idx} className="text-[#b1bdcc] text-justify">
+            <p key={idx} className="text-justify text-slate-600 dark:text-[#b1bdcc]">
               {lines.map((line, lIdx) => {
                 if (/^[-*•]/.test(line)) {
                   return (
                     <span key={lIdx} className="flex items-start gap-2 mt-1.5 first:mt-0 pl-1">
-                      <span className="text-[#fbbf24] mt-1.5 text-xs select-none">•</span>
+                      <span className="mt-1.5 select-none text-xs text-amber-500 dark:text-[#fbbf24]">•</span>
                       <span>{line.replace(/^[-*•]\s*/, "")}</span>
                     </span>
                   );
@@ -218,7 +225,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   return (
-    <div className="space-y-6 text-[#f4f7fb] animate-fade-in bg-[#06090f] min-h-[100dvh]">
+    <div className="min-h-[100dvh] space-y-6 bg-slate-50/70 text-slate-900 animate-fade-in dark:bg-[#06090f] dark:text-[#f4f7fb]">
       {/* Two-column layout grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8">
         
@@ -226,7 +233,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         <div className="lg:col-span-2 space-y-6">
           
           {/* Master Video/Image Viewer Frame */}
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-[rgba(96,119,148,0.34)] bg-[#090e16]">
+          <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm dark:border-[rgba(96,119,148,0.34)] dark:bg-[#090e16] dark:shadow-none">
             {activeMedia?.type === "video" ? (
               <video
                 src={activeMedia.url}
@@ -251,8 +258,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 onClick={() => setSelectedThumbIndex(index)}
                 className={`relative aspect-video w-24 sm:w-28 rounded-md overflow-hidden border-2 cursor-pointer transition-all shrink-0 ${
                   selectedThumbIndex === index 
-                    ? "border-[#fbbf24] scale-[1.02]" 
-                    : "border-[rgba(96,119,148,0.34)] hover:border-slate-400"
+                    ? "scale-[1.02] border-amber-400 shadow-sm"
+                    : "border-slate-200 hover:border-slate-400 dark:border-[rgba(96,119,148,0.34)]"
                 }`}
               >
                 {item.type === "video" ? (
@@ -286,14 +293,14 @@ export const DetailPage: React.FC<DetailPageProps> = ({
           </div>
 
           {/* Description Tabs Panel */}
-          <div className="bg-[#090e16] border border-[rgba(96,119,148,0.34)] rounded-lg p-6 space-y-6">
-            <div className="flex items-center border-b border-[rgba(96,119,148,0.15)] pb-1 gap-4">
+          <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-[rgba(96,119,148,0.34)] dark:bg-[#090e16] dark:shadow-none">
+            <div className="flex items-center gap-4 border-b border-slate-200 pb-1 dark:border-[rgba(96,119,148,0.15)]">
               <button
                 onClick={() => setActiveDetailTab("overview")}
                 className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-all ${
                   activeDetailTab === "overview" 
-                    ? "border-[#fbbf24] text-[#f4f7fb]" 
-                    : "border-transparent text-[#718096] hover:text-[#b1bdcc]"
+                    ? "border-amber-500 text-slate-900 dark:border-[#fbbf24] dark:text-[#f4f7fb]"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:text-[#718096] dark:hover:text-[#b1bdcc]"
                 }`}
               >
                 {t("detail.tabs.overview")}
@@ -303,8 +310,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   onClick={() => setActiveDetailTab("tech")}
                   className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-all ${
                     activeDetailTab === "tech" 
-                      ? "border-[#fbbf24] text-[#f4f7fb]" 
-                      : "border-transparent text-[#718096] hover:text-[#b1bdcc]"
+                      ? "border-amber-500 text-slate-900 dark:border-[#fbbf24] dark:text-[#f4f7fb]"
+                      : "border-transparent text-slate-500 hover:text-slate-800 dark:text-[#718096] dark:hover:text-[#b1bdcc]"
                   }`}
                 >
                   {t("detail.tabs.playDemo")}
@@ -315,8 +322,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   onClick={() => setActiveDetailTab("documentation")}
                   className={`pb-2.5 font-display text-sm font-bold border-b-2 transition-all ${
                     activeDetailTab === "documentation" 
-                      ? "border-[#fbbf24] text-[#f4f7fb]" 
-                      : "border-transparent text-[#718096] hover:text-[#b1bdcc]"
+                      ? "border-amber-500 text-slate-900 dark:border-[#fbbf24] dark:text-[#f4f7fb]"
+                      : "border-transparent text-slate-500 hover:text-slate-800 dark:text-[#718096] dark:hover:text-[#b1bdcc]"
                   }`}
                 >
                   {t("detail.tabs.documentation")}
@@ -326,7 +333,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 
             {activeDetailTab === "documentation" ? (
               <div className="space-y-4 animate-fade-in">
-                <div className="text-sm text-[#b1bdcc] leading-relaxed whitespace-pre-wrap font-sans bg-[#0e1520] p-4 rounded-md border border-[rgba(96,119,148,0.2)]">
+                <div className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 font-sans text-sm leading-relaxed text-slate-600 dark:border-[rgba(96,119,148,0.2)] dark:bg-[#0e1520] dark:text-[#b1bdcc]">
                   {cleanText(focusedAsset.documentation)}
                 </div>
               </div>
@@ -335,10 +342,10 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 {renderDescription(focusedAsset.description)}
                 {focusedAsset.details && (
                   <div className="space-y-3 pt-3">
-                    <h4 className="text-xs font-bold text-[#718096]">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-[#718096]">
                       {t("detail.overview.includedFeatures")}
                     </h4>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#b1bdcc]">
+                    <ul className="grid grid-cols-1 gap-2 text-xs text-slate-600 sm:grid-cols-2 dark:text-[#b1bdcc]">
                       {focusedAsset.details.featuresList.map((feature, i) => (
                         <li key={i} className="flex items-center gap-2">
                           <div className="w-4 h-4 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center flex-none">
@@ -355,7 +362,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               <div className="space-y-4 animate-fade-in">
                 {focusedAsset.webDemoUrl ? (
                   <>
-                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-[rgba(96,119,148,0.34)] bg-slate-950 shadow-md">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-slate-300 bg-slate-950 shadow-md dark:border-[rgba(96,119,148,0.34)]">
                       <iframe
                         src={focusedAsset.webDemoUrl}
                         sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
@@ -382,29 +389,29 @@ export const DetailPage: React.FC<DetailPageProps> = ({
         <div className="space-y-6 lg:sticky lg:top-6 self-start">
           
           {/* Purchase Configuration Card */}
-          <div className="bg-[#090e16] border border-[rgba(96,119,148,0.34)] rounded-lg p-5 space-y-5">
+          <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[rgba(96,119,148,0.34)] dark:bg-[#090e16] dark:shadow-none">
             
             {/* Author profile tag */}
-            <div className="inline-flex max-w-fit items-center gap-2 rounded-full border border-[rgba(96,119,148,0.34)] bg-[#0e1520] px-3 py-1.5">
+            <div className="inline-flex max-w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-[rgba(96,119,148,0.34)] dark:bg-[#0e1520]">
               <img
                 referrerPolicy="no-referrer"
                 src={focusedAsset.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80'}
                 alt={cleanText(focusedAsset.author)}
                 className="w-5 h-5 rounded-full object-cover"
               />
-              <span className="text-[11px] font-bold text-[#f4f7fb]">
+              <span className="text-[11px] font-bold text-slate-800 dark:text-[#f4f7fb]">
                 {cleanText(focusedAsset.author)}
               </span>
             </div>
 
             {/* Game / Asset Title */}
-            <h2 className="font-display text-2xl font-bold leading-tight text-[#f4f7fb]">
+            <h2 className="font-display text-2xl font-bold leading-tight text-slate-950 dark:text-[#f4f7fb]">
               {cleanText(focusedAsset.title)}
             </h2>
 
             {/* Category Breadcrumbs */}
             {focusedAsset.category && (
-              <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#38bdf8] font-semibold">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-[#38bdf8]">
                 <span
                   className="cursor-pointer hover:underline"
                   onClick={() => handleCategoryClick(getParentCategoryName(focusedAsset.category))}
@@ -426,7 +433,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             )}
 
             {/* Price tag */}
-            <p className="font-display text-xl font-bold text-[#fbbf24] pt-1">
+            <p className="pt-1 font-display text-xl font-bold text-amber-600 dark:text-[#fbbf24]">
               {focusedAsset.price === 0
                 ? t("detail.pricing.freeDownload")
                 : formatPrice(focusedAsset.price)}
@@ -452,8 +459,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 <>
                   <button
                     onClick={() => handleBuyNow(focusedAsset)}
-                    disabled={isPreparingBuyNow}
-                    className="w-full py-2.5 px-4 bg-[#fbbf24] hover:bg-[#d97706] text-[#0f172a] font-bold rounded-md text-xs font-display text-center transition-all cursor-pointer disabled:opacity-50"
+                    disabled={isPreparingBuyNow || isCreatorOwner}
+                    className="w-full cursor-pointer rounded-lg bg-amber-400 px-4 py-2.5 text-center font-display text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-50 disabled:hover:bg-amber-400 dark:bg-[#fbbf24] dark:hover:bg-[#d97706] dark:disabled:hover:bg-[#fbbf24]"
                   >
                     {isPreparingBuyNow
                       ? t("detail.actions.preparingPayment")
@@ -463,46 +470,49 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   </button>
                   <button
                     onClick={() => handleAddToCart(focusedAsset)}
-                    className="w-full py-2.5 px-4 bg-transparent hover:bg-[#0e1520] text-[#f4f7fb] border border-[rgba(96,119,148,0.34)] rounded-md text-xs font-bold font-display text-center transition-all cursor-pointer"
+                    disabled={isCreatorOwner}
+                    className="w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-center font-display text-xs font-bold text-slate-800 transition-all hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white dark:border-[rgba(96,119,148,0.34)] dark:bg-transparent dark:text-[#f4f7fb] dark:hover:bg-[#0e1520] dark:disabled:hover:bg-transparent"
                   >
-                    {t("detail.actions.addToCart")}
+                    {isCreatorOwner
+                      ? t("detail.actions.owner")
+                      : t("detail.actions.addToCart")}
                   </button>
                 </>
               )}
             </div>
 
-            <hr className="border-[rgba(96,119,148,0.15)]" />
+            <hr className="border-slate-200 dark:border-[rgba(96,119,148,0.15)]" />
 
             {/* Technical details specs metadata */}
             <div>
-              <h3 className="text-xs font-bold text-[#718096] mb-3">
+              <h3 className="mb-3 text-xs font-bold text-slate-500 dark:text-[#718096]">
                 {t("detail.meta.detailsTitle")}
               </h3>
               <div className="space-y-2.5 text-[11px] font-mono">
-                <div className="flex justify-between border-b border-[rgba(96,119,148,0.1)] pb-1.5">
-                  <span className="text-[#718096]">{t("detail.meta.version")}</span>
-                  <span className="text-[#f4f7fb] font-bold">
+                <div className="flex justify-between border-b border-slate-100 pb-1.5 dark:border-[rgba(96,119,148,0.1)]">
+                  <span className="text-slate-500 dark:text-[#718096]">{t("detail.meta.version")}</span>
+                  <span className="font-bold text-slate-800 dark:text-[#f4f7fb]">
                     {cleanText(focusedAsset.version || "1.0.0")}
                   </span>
                 </div>
 
                 {focusedAsset.supportedPlatforms && (
-                  <div className="flex justify-between border-b border-[rgba(96,119,148,0.1)] pb-1.5">
-                    <span className="text-[#718096]">{t("detail.meta.platforms")}</span>
-                    <span className="text-[#f4f7fb] font-bold">
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 dark:border-[rgba(96,119,148,0.1)]">
+                    <span className="text-slate-500 dark:text-[#718096]">{t("detail.meta.platforms")}</span>
+                    <span className="font-bold text-slate-800 dark:text-[#f4f7fb]">
                       {cleanText(focusedAsset.supportedPlatforms)}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between border-b border-[rgba(96,119,148,0.1)] pb-1.5">
-                  <span className="text-[#718096]">{t("detail.meta.lastUpdated")}</span>
-                  <span className="text-[#f4f7fb] font-bold">
+                <div className="flex justify-between border-b border-slate-100 pb-1.5 dark:border-[rgba(96,119,148,0.1)]">
+                  <span className="text-slate-500 dark:text-[#718096]">{t("detail.meta.lastUpdated")}</span>
+                  <span className="font-bold text-slate-800 dark:text-[#f4f7fb]">
                     {cleanText(focusedAsset.lastUpdated)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#718096]">{t("detail.meta.fileSize")}</span>
-                  <span className="text-[#f4f7fb] font-bold">
+                  <span className="text-slate-500 dark:text-[#718096]">{t("detail.meta.fileSize")}</span>
+                  <span className="font-bold text-slate-800 dark:text-[#f4f7fb]">
                     {t("detail.meta.fileSizeValue")}
                   </span>
                 </div>
@@ -512,15 +522,15 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 
           {/* Tags list widget */}
           {focusedAsset.tagList && focusedAsset.tagList.length > 0 && (
-            <div className="bg-[#090e16] border border-[rgba(96,119,148,0.34)] rounded-lg p-5 space-y-3">
-              <h3 className="text-xs font-bold text-[#718096]">
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[rgba(96,119,148,0.34)] dark:bg-[#090e16] dark:shadow-none">
+              <h3 className="text-xs font-bold text-slate-500 dark:text-[#718096]">
                 {t("detail.tags.title")}
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {focusedAsset.tagList.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="rounded bg-[#38bdf8]/10 text-[#38bdf8] border border-[#38bdf8]/20 px-2.5 py-1 text-[11px] font-semibold hover:bg-[#38bdf8]/20 transition-all cursor-pointer"
+                    className="cursor-pointer rounded border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-600 transition-all hover:bg-sky-500/20 dark:text-[#38bdf8]"
                     onClick={() => handleTagClick(tag)}
                   >
                     {cleanText(tag)}
@@ -532,8 +542,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 
           {/* Recommended related assets */}
           <div className="space-y-3">
-            <div className="bg-[#090e16] border border-[rgba(96,119,148,0.34)] rounded-lg p-4">
-              <h3 className="font-display font-bold text-sm text-[#f4f7fb]">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[rgba(96,119,148,0.34)] dark:bg-[#090e16] dark:shadow-none">
+              <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#f4f7fb]">
                 {t("detail.related.title")}
               </h3>
             </div>
@@ -545,17 +555,17 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   <div
                     key={item.id}
                     onClick={() => handleViewAssetDetails(item)}
-                    className="p-3 bg-[#0e1520] border border-[rgba(96,119,148,0.2)] rounded-md hover:bg-[#141e2b] transition-all duration-200 cursor-pointer flex items-center justify-between gap-3"
+                    className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-[rgba(96,119,148,0.2)] dark:bg-[#0e1520] dark:shadow-none dark:hover:bg-[#141e2b]"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <img
                         referrerPolicy="no-referrer"
                         src={item.image}
                         alt={cleanText(item.title)}
-                        className="w-10 h-10 object-cover rounded border border-[rgba(96,119,148,0.2)]"
+                        className="h-10 w-10 rounded border border-slate-200 object-cover dark:border-[rgba(96,119,148,0.2)]"
                       />
                       <div className="min-w-0">
-                        <h4 className="text-xs font-semibold text-[#f4f7fb] truncate">
+                        <h4 className="truncate text-xs font-semibold text-slate-900 dark:text-[#f4f7fb]">
                           {cleanText(item.title)}
                         </h4>
                         <p className="text-[10px] text-slate-500 truncate">
@@ -563,11 +573,18 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs font-mono font-bold text-[#fbbf24]">
-                      {item.price === 0
-                        ? t("common.free")
-                        : formatPrice(item.price)}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      {isCreatorOwnedAsset(item) && (
+                        <span className="rounded border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-400">
+                          {t("card.owner")}
+                        </span>
+                      )}
+                      <span className="font-mono text-xs font-bold text-amber-600 dark:text-[#fbbf24]">
+                        {item.price === 0
+                          ? t("common.free")
+                          : formatPrice(item.price)}
+                      </span>
+                    </div>
                   </div>
                 ))}
             </div>
@@ -577,27 +594,27 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 
       {/* More from author section (horizontal scroll carousel) */}
       {authorAssets.length > 0 && (
-        <div className="bg-[#090e16] border border-[rgba(96,119,148,0.34)] rounded-lg p-6 space-y-6">
+        <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-[rgba(96,119,148,0.34)] dark:bg-[#090e16] dark:shadow-none">
           <div className="flex items-center justify-between">
             <h3 
               onClick={() => handleAuthorClick(focusedAsset.author)}
-              className="font-display font-bold text-[1.4rem] text-[#f4f7fb] flex items-center gap-1.5 hover:text-[#38bdf8] cursor-pointer transition-colors group"
+              className="group flex cursor-pointer items-center gap-1.5 font-display text-[1.4rem] font-bold text-slate-900 transition-colors hover:text-sky-600 dark:text-[#f4f7fb] dark:hover:text-[#38bdf8]"
             >
               <span>{t("detail.author.moreFrom", { author: cleanText(focusedAsset.author) })}</span>
-              <ChevronRight size={22} className="text-slate-500 group-hover:text-[#38bdf8] group-hover:translate-x-0.5 transition-all" />
+              <ChevronRight size={22} className="text-slate-400 transition-all group-hover:translate-x-0.5 group-hover:text-sky-600 dark:text-slate-500 dark:group-hover:text-[#38bdf8]" />
             </h3>
             <div className="flex items-center gap-2">
               <button 
                 type="button" 
                 onClick={() => scroll("left")}
-                className="p-1.5 rounded-full border border-[rgba(96,119,148,0.34)] bg-[#0e1520] hover:bg-[#141e2b] text-[#f4f7fb] cursor-pointer transition-all active:scale-90"
+                className="cursor-pointer rounded-full border border-slate-200 bg-white p-1.5 text-slate-700 shadow-sm transition-all hover:bg-slate-100 active:scale-90 dark:border-[rgba(96,119,148,0.34)] dark:bg-[#0e1520] dark:text-[#f4f7fb] dark:shadow-none dark:hover:bg-[#141e2b]"
               >
                 <ChevronRight size={14} className="rotate-180" />
               </button>
               <button 
                 type="button" 
                 onClick={() => scroll("right")}
-                className="p-1.5 rounded-full border border-[rgba(96,119,148,0.34)] bg-[#0e1520] hover:bg-[#141e2b] text-[#f4f7fb] cursor-pointer transition-all active:scale-90"
+                className="cursor-pointer rounded-full border border-slate-200 bg-white p-1.5 text-slate-700 shadow-sm transition-all hover:bg-slate-100 active:scale-90 dark:border-[rgba(96,119,148,0.34)] dark:bg-[#0e1520] dark:text-[#f4f7fb] dark:shadow-none dark:hover:bg-[#141e2b]"
               >
                 <ChevronRight size={14} />
               </button>
@@ -615,21 +632,26 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   handleViewAssetDetails(item);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="w-[260px] shrink-0 snap-start bg-[#0e1520] border border-[rgba(96,119,148,0.2)] hover:border-[#fbbf24]/50 group/author-item cursor-pointer overflow-hidden rounded-lg transition-all duration-200 text-left"
+                className="group/author-item w-[260px] shrink-0 snap-start cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/60 hover:shadow-md dark:border-[rgba(96,119,148,0.2)] dark:bg-[#0e1520] dark:shadow-none dark:hover:border-[#fbbf24]/50"
               >
-                <div className="aspect-[1.5/1] overflow-hidden bg-slate-950/20 relative border-b border-[rgba(96,119,148,0.2)]">
+                <div className="relative aspect-[1.5/1] overflow-hidden border-b border-slate-200 bg-slate-100 dark:border-[rgba(96,119,148,0.2)] dark:bg-slate-950/20">
                   <img
                     referrerPolicy="no-referrer"
                     src={item.image}
                     alt={cleanText(item.title)}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover/author-item:scale-105"
                   />
+                  {isCreatorOwnedAsset(item) && (
+                    <span className="absolute right-2 top-2 rounded bg-sky-500 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm">
+                      {t("card.owner")}
+                    </span>
+                  )}
                 </div>
                 <div className="p-3.5 space-y-1">
-                  <h5 className="text-sm font-bold text-[#f4f7fb] line-clamp-1 group-hover/author-item:text-[#fbbf24] transition-colors duration-200" title={item.title}>
+                  <h5 className="line-clamp-1 text-sm font-bold text-slate-900 transition-colors duration-200 group-hover/author-item:text-amber-600 dark:text-[#f4f7fb] dark:group-hover/author-item:text-[#fbbf24]" title={item.title}>
                     {cleanText(item.title)}
                   </h5>
-                  <p className="text-xs text-[#718096] font-medium">
+                  <p className="text-xs font-medium text-slate-500 dark:text-[#718096]">
                     {item.price === 0
                       ? t("common.free")
                       : `${t("common.from")} ${formatPrice(item.price)}`}

@@ -46,6 +46,7 @@ public enum ErrorCode {
     DISPUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy khiếu nại."),
     INVALID_DISPUTE_STATUS(HttpStatus.BAD_REQUEST, "Khiếu nại không ở trạng thái phù hợp để thực hiện thao tác này."),
     REFUND_AMOUNT_NOT_MET(HttpStatus.BAD_REQUEST, "Số dư ví của seller chưa đủ số tiền cần hoàn trả."),
+    REFUND_AMOUNT_INVALID(HttpStatus.BAD_REQUEST, "Số tiền hoàn trả tranh chấp phải lớn hơn 0."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tập tin trên server lưu trữ (Có thể đã bị xóa hoặc là dữ liệu mẫu)."),
     BANNER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested banner does not exist."),
     COLLECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested collection does not exist."),
@@ -120,6 +121,9 @@ public enum ErrorCode {
     
     // Wallet and Withdrawal
     INSUFFICIENT_BALANCE(HttpStatus.PAYMENT_REQUIRED, "GL-4080", "Insufficient wallet balance."),
+    // Distinguishes a sufficient total wallet balance from insufficient sale revenue.
+    WITHDRAWAL_EXCEEDS_REVENUE(HttpStatus.PAYMENT_REQUIRED,
+            "Chỉ có thể rút doanh thu bán hàng. Tiền nạp và các khoản không phải doanh thu chỉ được dùng để mua sản phẩm."),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy ví của người dùng."),
     WITHDRAWAL_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu rút tiền."),
     INVALID_WITHDRAWAL_STATUS(HttpStatus.BAD_REQUEST, "Trạng thái yêu cầu rút tiền không hợp lệ để xử lý."),

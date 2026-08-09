@@ -28,6 +28,7 @@
   "app.toast.purchasePendingConfirmItem": "Đơn hàng {{title}} đang chờ PayOS xác nhận.",
   "app.toast.purchaseIncompleteItem": "Thanh toán cho {{title}} chưa hoàn tất.",
   "app.toast.loginRequiredAddToCart": "Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng.",
+  "app.toast.cannotBuyOwnProduct": "Bạn là chủ sở hữu sản phẩm này nên không thể mua hoặc thêm vào giỏ hàng.",
   "app.toast.ownedAlready": "Bạn đã sở hữu sản phẩm này rồi, không thể mua lại.",
   "app.toast.loginRequiredBuy": "Bạn cần đăng nhập để mua hàng.",
   "app.toast.onlyMarketplacePaymentSupported": "Chỉ marketplace item mới hỗ trợ luồng thanh toán hiện tại.",

@@ -124,6 +124,51 @@ const getStatusMeta = (status: WithdrawalStatus, t: any) => {
   }
 };
 
+interface WalletMetricCardProps {
+  label: string;
+  value: string;
+  description: string;
+  icon: React.ReactNode;
+  accentClass: string;
+  glowClass: string;
+  barClass: string;
+}
+
+const WalletMetricCard: React.FC<WalletMetricCardProps> = ({
+  label,
+  value,
+  description,
+  icon,
+  accentClass,
+  glowClass,
+  barClass,
+}) => (
+  <article className="group relative min-h-[190px] overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_12px_32px_rgba(15,23,42,0.07)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_20px_46px_rgba(15,23,42,0.12)] dark:border-slate-700/70 dark:bg-slate-900/85 dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)] dark:hover:border-slate-600/80 dark:hover:shadow-[0_24px_56px_rgba(0,0,0,0.4)]">
+    <div className={`absolute inset-x-0 top-0 h-0.5 ${barClass}`} />
+    <div
+      className={`pointer-events-none absolute -right-12 -top-14 h-36 w-36 rounded-full opacity-15 blur-3xl transition-opacity duration-300 group-hover:opacity-25 ${glowClass}`}
+    />
+    <div className="relative flex h-full flex-col">
+      <div className="flex items-center gap-3">
+        <span
+          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-sm ${accentClass}`}
+        >
+          {icon}
+        </span>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.13em] text-slate-500 dark:text-slate-400">
+          {label}
+        </span>
+      </div>
+      <p className="mt-4 font-display text-[1.75rem] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
+        {value}
+      </p>
+      <p className="mt-auto pt-4 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+        {description}
+      </p>
+    </div>
+  </article>
+);
+
 export const WalletPage: React.FC<{
   setCurrentScreen: (screen: ScreenType) => void;
 }> = ({ setCurrentScreen }) => {
@@ -132,8 +177,7 @@ export const WalletPage: React.FC<{
   const isAdmin = currentUser?.role === "admin";
   const isCustomer = currentUser?.role === "customer";
   const canTopUp = isCustomer || currentUser?.role === "developer";
-  const canUseSelfServiceWithdrawal =
-    isCustomer || currentUser?.role === "developer";
+  const canUseSelfServiceWithdrawal = currentUser?.role === "developer";
   const locale = resolveLocale(i18n.resolvedLanguage || i18n.language || "vi");
   const [walletSummary, setWalletSummary] =
     useState<DeveloperWalletSummaryResponse | null>(null);
@@ -333,6 +377,12 @@ export const WalletPage: React.FC<{
     loadTransactions();
   }, [page]);
 
+  useEffect(() => {
+    if (!canUseSelfServiceWithdrawal && activeRightTab === "withdraw") {
+      setActiveRightTab("topup");
+    }
+  }, [activeRightTab, canUseSelfServiceWithdrawal]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canUseSelfServiceWithdrawal) {
@@ -351,7 +401,7 @@ export const WalletPage: React.FC<{
       walletSummary &&
       parsedAmount > Number(walletSummary.availableBalance)
     ) {
-      setFormError(t("wallet:messages.exceedsAvailable"));
+      setFormError(t("wallet:messages.exceedsRevenue"));
       return;
     }
 
@@ -383,13 +433,19 @@ export const WalletPage: React.FC<{
         setNote("");
         await Promise.all([loadWalletSummary(), loadWithdrawals()]);
       } else {
-        setFormError(response.message || t("wallet:messages.submitFailed"));
+        setFormError(
+          response.code === "WITHDRAWAL_EXCEEDS_REVENUE"
+            ? t("wallet:messages.exceedsRevenue")
+            : response.message || t("wallet:messages.submitFailed"),
+        );
       }
     } catch (error: any) {
       setFormError(
-        error.response?.data?.message ||
-          error.message ||
-          t("wallet:messages.submitFailed"),
+        error.response?.data?.code === "WITHDRAWAL_EXCEEDS_REVENUE"
+          ? t("wallet:messages.exceedsRevenue")
+          : error.response?.data?.message ||
+              error.message ||
+              t("wallet:messages.submitFailed"),
       );
     } finally {
       setIsSubmitting(false);
@@ -433,23 +489,31 @@ export const WalletPage: React.FC<{
   const summaryCurrency =
     (isAdmin ? walletInfo?.currency : walletSummary?.currency) ||
     resolveCurrency();
-  const walletBalance = isAdmin
-    ? walletInfo?.balance
-    : walletSummary?.walletBalance;
+  const usableBalance = walletSummary
+    ? Math.max(
+        Number(walletSummary.walletBalance) -
+          Number(walletSummary.pendingBalance),
+        0,
+      )
+    : undefined;
+  const walletBalance = isAdmin ? walletInfo?.balance : usableBalance;
   const walletUpdatedAt = isAdmin
     ? walletInfo?.updatedAt
     : walletSummary?.updatedAt?.toString();
-  const renderSummaryValue = (value?: number) =>
-    walletSummary
-      ? formatMoney(
-          Number(value),
-          summaryCurrency,
-          locale,
-          t("wallet:common.notAvailable"),
-        )
-      : isLoadingSummary
-        ? t("wallet:common.loading")
-        : summaryError || t("wallet:common.notAvailable");
+  const renderSummaryValue = (value?: number) => {
+    if (isLoadingSummary) {
+      return t("wallet:common.loading");
+    }
+    if (value == null) {
+      return t("wallet:common.notAvailable");
+    }
+    return formatMoney(
+      Number(value),
+      summaryCurrency,
+      locale,
+      t("wallet:common.notAvailable"),
+    );
+  };
 
   const handleRefreshAll = () => {
     loadWalletSummary();
@@ -511,6 +575,15 @@ export const WalletPage: React.FC<{
         </Button>
       </div>
 
+      {summaryError && !isLoadingSummary && (
+        <div
+          role="alert"
+          className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-600 dark:text-rose-400"
+        >
+          {t("wallet:messages.summaryLoadFailed")}
+        </div>
+      )}
+
       {/* ── Pending top-up banner ────────────────────────────── */}
       {canTopUp && pendingTopUp && (
         <div className="flex flex-col gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 md:flex-row md:items-center md:justify-between dark:bg-amber-500/[0.04]">
@@ -566,7 +639,7 @@ export const WalletPage: React.FC<{
             ? "sm:grid-cols-1"
             : isCustomer
               ? "sm:grid-cols-2"
-              : "sm:grid-cols-2 lg:grid-cols-3"
+              : "sm:grid-cols-2 xl:grid-cols-4"
         }`}
       >
         {isAdmin ? (
@@ -589,7 +662,7 @@ export const WalletPage: React.FC<{
                     )
                   : isLoadingSummary
                     ? t("wallet:common.loading")
-                    : summaryError || t("wallet:common.notAvailable")}
+                    : t("wallet:common.notAvailable")}
               </span>
             </div>
             <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">
@@ -598,63 +671,62 @@ export const WalletPage: React.FC<{
           </div>
         ) : (
           <>
-            {/* Available balance */}
-            <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                {t("wallet:cards.availableBalance")}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <Wallet2
-                  size={16}
-                  className="text-emerald-500 shrink-0 relative top-0.5"
-                />
-                <span className="text-2xl font-display font-bold dark:text-white">
-                  {renderSummaryValue(walletSummary?.availableBalance)}
-                </span>
-              </div>
-              <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">
-                {t("wallet:cards.availableDescription")}
-              </p>
-            </div>
+            <WalletMetricCard
+              label={t("wallet:cards.totalBalance")}
+              value={renderSummaryValue(usableBalance)}
+              description={t("wallet:cards.totalBalanceDescription")}
+              icon={<Wallet2 size={17} />}
+              accentClass="border-violet-500/20 bg-violet-500/10 text-violet-500 dark:text-violet-400"
+              glowClass="bg-violet-500"
+              barClass="bg-gradient-to-r from-violet-500 via-fuchsia-400 to-transparent"
+            />
 
-            {/* Pending withdrawal */}
-            <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                {t("wallet:cards.pendingWithdrawal")}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <Clock3
-                  size={16}
-                  className="text-sky-500 shrink-0 relative top-0.5"
-                />
-                <span className="text-2xl font-display font-bold dark:text-white">
-                  {renderSummaryValue(walletSummary?.pendingBalance)}
-                </span>
-              </div>
-              <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">
-                {t("wallet:cards.pendingDescription")}
-              </p>
-            </div>
-
-            {/* Total revenue — developer only */}
             {!isCustomer && (
-              <div className="dark-depth-card space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-slate-900">
-                <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                  {t("wallet:cards.totalRevenue")}
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <TrendingUp
-                    size={16}
-                    className="text-amber-500 shrink-0 relative top-0.5"
-                  />
-                  <span className="text-2xl font-display font-bold dark:text-white">
-                    {renderSummaryValue(walletSummary?.totalRevenue)}
-                  </span>
-                </div>
-                <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">
-                  {t("wallet:cards.revenueDescription")}
-                </p>
-              </div>
+              <>
+                <WalletMetricCard
+                  label={t("wallet:cards.availableBalance")}
+                  value={renderSummaryValue(walletSummary?.availableBalance)}
+                  description={t("wallet:cards.availableDescription")}
+                  icon={<Landmark size={17} />}
+                  accentClass="border-emerald-500/20 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
+                  glowClass="bg-emerald-500"
+                  barClass="bg-gradient-to-r from-emerald-500 via-teal-400 to-transparent"
+                />
+
+                <WalletMetricCard
+                  label={t("wallet:cards.pendingWithdrawal")}
+                  value={renderSummaryValue(walletSummary?.pendingBalance)}
+                  description={t("wallet:cards.pendingDescription")}
+                  icon={<Clock3 size={17} />}
+                  accentClass="border-sky-500/20 bg-sky-500/10 text-sky-500 dark:text-sky-400"
+                  glowClass="bg-sky-500"
+                  barClass="bg-gradient-to-r from-sky-500 via-cyan-400 to-transparent"
+                />
+              </>
+            )}
+
+            {isCustomer && (
+              <WalletMetricCard
+                label={t("wallet:cards.restrictedBalance")}
+                value={renderSummaryValue(walletSummary?.restrictedBalance)}
+                description={t("wallet:cards.restrictedDescription")}
+                icon={<ReceiptText size={17} />}
+                accentClass="border-rose-500/20 bg-rose-500/10 text-rose-500 dark:text-rose-400"
+                glowClass="bg-rose-500"
+                barClass="bg-gradient-to-r from-rose-500 via-pink-400 to-transparent"
+              />
+            )}
+
+            {!isCustomer && (
+              <WalletMetricCard
+                label={t("wallet:cards.totalRevenue")}
+                value={renderSummaryValue(walletSummary?.totalRevenue)}
+                description={t("wallet:cards.revenueDescription")}
+                icon={<TrendingUp size={17} />}
+                accentClass="border-amber-500/20 bg-amber-500/10 text-amber-500 dark:text-amber-400"
+                glowClass="bg-amber-500"
+                barClass="bg-gradient-to-r from-amber-500 via-orange-400 to-transparent"
+              />
             )}
           </>
         )}
@@ -690,7 +762,7 @@ export const WalletPage: React.FC<{
         {/* Left column — tables */}
         <section className="space-y-6">
           {/* Payout request history */}
-          {!isAdmin && (
+          {canUseSelfServiceWithdrawal && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>

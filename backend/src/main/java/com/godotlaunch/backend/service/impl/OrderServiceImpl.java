@@ -3,8 +3,10 @@ package com.godotlaunch.backend.service.impl;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.LinkedHashMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +26,7 @@ import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.entity.enums.OrderType;
 import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.entity.enums.TxnType;
+import com.godotlaunch.backend.entity.enums.WithdrawalStatus;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.exception.InsufficientBalanceException;
 import com.godotlaunch.backend.repository.AssetRepository;
@@ -33,9 +36,11 @@ import com.godotlaunch.backend.repository.PaymentRepository;
 import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
+import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
 import com.godotlaunch.backend.service.OrderService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.WalletService;
+import com.godotlaunch.backend.util.WalletBalancePolicy;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,8 +59,14 @@ public class OrderServiceImpl implements OrderService {
     private final WalletService walletService;
     private final PlatformSettingsService platformSettingsService;
     private final PaymentRepository paymentRepository;
+    private final WithdrawalRequestRepository withdrawalRequestRepository;
 
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
+    private static final Set<WithdrawalStatus> RESERVED_WITHDRAWAL_STATUSES = EnumSet.of(
+            WithdrawalStatus.pending,
+            WithdrawalStatus.processing,
+            WithdrawalStatus.approved
+    );
 
     @Override
     @Transactional
@@ -134,13 +145,27 @@ public class OrderServiceImpl implements OrderService {
         Wallet sellerWallet = walletsById.get(seller.getId());
         Wallet platformWallet = walletsById.get(platformAdmin.getId());
 
-        // 5. Check balance
-        if (buyerWallet.getBalance().compareTo(price) < 0) {
-            throw new InsufficientBalanceException(price.subtract(buyerWallet.getBalance()));
+        // 5. Pending withdrawals reserve their revenue portion. Purchases may
+        // use restricted funds and only the unreserved part of sale revenue.
+        BigDecimal pendingWithdrawalBalance = withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(
+                buyer.getId(), RESERVED_WITHDRAWAL_STATUSES);
+        pendingWithdrawalBalance = pendingWithdrawalBalance == null
+                ? BigDecimal.ZERO
+                : pendingWithdrawalBalance.max(BigDecimal.ZERO);
+        BigDecimal spendableBalance = WalletBalancePolicy.spendableBalance(
+                buyerWallet,
+                pendingWithdrawalBalance
+        );
+        if (spendableBalance.compareTo(price) < 0) {
+            throw new InsufficientBalanceException(price.subtract(spendableBalance));
         }
 
-        // 6. Deduct buyer wallet
-        buyerWallet.setBalance(buyerWallet.getBalance().subtract(price));
+        // 6. Deduct restricted funds first, then unreserved sale revenue.
+        WalletBalancePolicy.debitPurchaseRestrictedFirst(
+                buyerWallet,
+                price,
+                pendingWithdrawalBalance
+        );
         walletRepository.save(buyerWallet);
 
         // 7. Calculate commission and seller revenue
@@ -150,11 +175,11 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal sellerRevenue = price.subtract(platformCommission);
 
         // 8. Add seller revenue to seller's wallet
-        sellerWallet.setBalance(sellerWallet.getBalance().add(sellerRevenue));
+        WalletBalancePolicy.creditSalesRevenue(sellerWallet, sellerRevenue);
         walletRepository.save(sellerWallet);
 
         // 9. Add platform commission to platform's wallet
-        platformWallet.setBalance(platformWallet.getBalance().add(platformCommission));
+        WalletBalancePolicy.creditRestricted(platformWallet, platformCommission);
         walletRepository.save(platformWallet);
 
         // 10. Create and save Order
@@ -204,7 +229,7 @@ public class OrderServiceImpl implements OrderService {
         txnSeller.setType(TxnType.revenue_share);
         txnSeller.setReferenceId(refId);
         txnSeller.setOrder(order);
-        txnSeller.setDescription("Credit seller wallet with revenue share");
+        txnSeller.setDescription("Credit seller wallet with net sales revenue");
         transactionRepository.save(txnSeller);
 
         // Transaction 3: Platform commission credit

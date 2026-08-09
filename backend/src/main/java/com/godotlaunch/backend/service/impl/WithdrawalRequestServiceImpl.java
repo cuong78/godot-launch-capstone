@@ -34,6 +34,7 @@ import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
+import com.godotlaunch.backend.util.WalletBalancePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -65,6 +66,7 @@ import java.util.stream.Stream;
 public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     private static final String DEFAULT_CURRENCY = "VND";
+    private static final BigDecimal MINIMUM_WITHDRAWAL_AMOUNT = new BigDecimal("10000");
     private static final List<String> PAYOUT_CATEGORY = List.of("payment");
     private static final Set<String> PAYOUT_IMMEDIATE_FAILURE_STATUSES = Set.of("FAILED", "REJECTED", "CANCELLED");
     private static final Set<WithdrawalStatus> RESERVED_STATUSES = EnumSet.of(
@@ -72,7 +74,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
             WithdrawalStatus.processing,
             WithdrawalStatus.approved
     );
-    private static final Set<TxnType> REVENUE_TXN_TYPES = EnumSet.of(
+    private static final Set<TxnType> SALES_REVENUE_TXN_TYPES = EnumSet.of(
             TxnType.source_code_purchase,
             TxnType.asset_purchase,
             TxnType.revenue_share
@@ -92,7 +94,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final WithdrawalPayoutSyncScheduler withdrawalPayoutSyncScheduler;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public DeveloperWalletSummaryResponse getDeveloperWalletSummary(String email) {
         User developer = getUserByEmail(email);
         assertWalletSelfServiceUser(developer);
@@ -102,7 +104,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public DeveloperSalesStatsResponse getDeveloperSalesStats(String email) {
         User developer = getUserByEmail(email);
         assertDeveloper(developer);
@@ -148,17 +150,21 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     public WithdrawalDetailResponse createDeveloperWithdrawal(CreateWithdrawalRequest request, String email) {
         User developer = getUserByEmail(email);
         assertWalletSelfServiceUser(developer);
+        BigDecimal requestedAmount = validateWithdrawalAmount(request);
         Wallet wallet = getOrCreateLockedWallet(developer);
 
         WalletMetrics beforeMetrics = buildWalletMetrics(developer, wallet);
-        if (request.getAmount().compareTo(beforeMetrics.availableBalance()) > 0) {
+        if (requestedAmount.compareTo(beforeMetrics.walletBalance()) > 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+        if (requestedAmount.compareTo(beforeMetrics.availableBalance()) > 0) {
+            throw new AppException(ErrorCode.WITHDRAWAL_EXCEEDS_REVENUE);
         }
 
         WithdrawalRequest withdrawal = new WithdrawalRequest();
         withdrawal.setUser(developer);
         withdrawal.setWallet(wallet);
-        withdrawal.setAmount(request.getAmount());
+        withdrawal.setAmount(requestedAmount);
         withdrawal.setCurrency(DEFAULT_CURRENCY);
         withdrawal.setStatus(WithdrawalStatus.pending);
         withdrawal.setRemark(buildRemarkSection("Developer note", request.getNote()));
@@ -181,7 +187,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         );
 
         WalletMetrics afterMetrics = buildWalletMetrics(developer, wallet);
-        log.info("Created withdrawal request {} for user {} with amount={}", saved.getId(), developer.getId(), request.getAmount());
+        log.info("Created withdrawal request {} for user {} with amount={}", saved.getId(), developer.getId(), requestedAmount);
         return mapToDetailResponse(saved, wallet, afterMetrics);
     }
 
@@ -196,7 +202,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public WithdrawalDetailResponse getDeveloperWithdrawalDetail(UUID id, String email) {
         User requester = getUserByEmail(email);
         assertWalletSelfServiceUser(requester);
@@ -220,7 +226,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public WithdrawalDetailResponse getAdminWithdrawalDetail(UUID id) {
         WithdrawalRequest withdrawal = getWithdrawal(id);
         Wallet wallet = getOrCreateWallet(withdrawal.getUser());
@@ -241,6 +247,22 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
         if (withdrawal.getStatus() != WithdrawalStatus.pending && !isLegacyApprovedWithoutPayout) {
             throw new AppException(ErrorCode.INVALID_WITHDRAWAL_STATUS);
+        }
+
+        if (adminEmail == null && isHeldByDispute(withdrawal)) {
+            throw new AppException(ErrorCode.INVALID_WITHDRAWAL_STATUS);
+        }
+
+        // The request was reserved when it was created, but dispute refunds or
+        // legacy data may have reduced the revenue bucket afterward. Re-check
+        // every reserved request before sending real money to PayOS.
+        Wallet lockedWallet = getOrCreateLockedWallet(withdrawal.getUser());
+        WalletMetrics reservedMetrics = buildWalletMetrics(withdrawal.getUser(), lockedWallet);
+        if (reservedMetrics.pendingBalance().compareTo(reservedMetrics.walletBalance()) > 0) {
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+        if (reservedMetrics.pendingBalance().compareTo(reservedMetrics.withdrawableBalance()) > 0) {
+            throw new AppException(ErrorCode.WITHDRAWAL_EXCEEDS_REVENUE);
         }
 
         String transferReference = resolveTransferReference(withdrawal, request != null ? request.getTransferReference() : null);
@@ -387,9 +409,18 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private Wallet getOrCreateWallet(User user) {
         Wallet wallet = walletRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
+                    User lockedUser = userRepository.findByIdWithLock(user.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+                    Wallet concurrentlyCreated = walletRepository.findByUserId(lockedUser.getId()).orElse(null);
+                    if (concurrentlyCreated != null) {
+                        return concurrentlyCreated;
+                    }
+
                     Wallet newWallet = new Wallet();
-                    newWallet.setUser(user);
+                    newWallet.setUser(lockedUser);
                     newWallet.setBalance(BigDecimal.ZERO);
+                    newWallet.setWithdrawableBalance(BigDecimal.ZERO);
                     newWallet.setCurrency(DEFAULT_CURRENCY);
                     return walletRepository.save(newWallet);
                 });
@@ -400,9 +431,18 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private Wallet getOrCreateLockedWallet(User user) {
         Wallet wallet = walletRepository.findByUserIdWithLock(user.getId())
                 .orElseGet(() -> {
+                    User lockedUser = userRepository.findByIdWithLock(user.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+                    Wallet concurrentlyCreated = walletRepository.findByUserIdWithLock(lockedUser.getId()).orElse(null);
+                    if (concurrentlyCreated != null) {
+                        return concurrentlyCreated;
+                    }
+
                     Wallet newWallet = new Wallet();
-                    newWallet.setUser(user);
+                    newWallet.setUser(lockedUser);
                     newWallet.setBalance(BigDecimal.ZERO);
+                    newWallet.setWithdrawableBalance(BigDecimal.ZERO);
                     newWallet.setCurrency(DEFAULT_CURRENCY);
                     walletRepository.saveAndFlush(newWallet);
                     return walletRepository.findByUserIdWithLock(user.getId())
@@ -421,19 +461,21 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     }
 
     private WalletMetrics buildWalletMetrics(User developer, Wallet wallet) {
+        WalletBalancePolicy.validateInvariant(wallet);
         BigDecimal pendingBalance = safeAmount(
                 withdrawalRequestRepository.sumAmountByUserIdAndStatusIn(developer.getId(), RESERVED_STATUSES)
-        );
+        ).max(BigDecimal.ZERO);
         BigDecimal totalRevenue = safeAmount(
-                transactionRepository.sumAmountByWalletIdAndTypeIn(wallet.getId(), REVENUE_TXN_TYPES)
+                transactionRepository.sumPositiveAmountByWalletIdAndTypeIn(wallet.getId(), SALES_REVENUE_TXN_TYPES)
         );
-        BigDecimal availableBalance = wallet.getBalance().subtract(pendingBalance);
-        if (availableBalance.compareTo(BigDecimal.ZERO) < 0) {
-            availableBalance = BigDecimal.ZERO;
-        }
+        BigDecimal withdrawableBalance = WalletBalancePolicy.withdrawableBalance(wallet);
+        BigDecimal restrictedBalance = WalletBalancePolicy.restrictedBalance(wallet);
+        BigDecimal availableBalance = WalletBalancePolicy.availableForWithdrawal(wallet, pendingBalance);
 
         return new WalletMetrics(
                 safeAmount(wallet.getBalance()),
+                withdrawableBalance,
+                restrictedBalance,
                 safeAmount(availableBalance),
                 pendingBalance,
                 totalRevenue
@@ -448,6 +490,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .developerFullName(developer.getFullName())
                 .currency(DEFAULT_CURRENCY)
                 .walletBalance(metrics.walletBalance())
+                .withdrawableBalance(metrics.withdrawableBalance())
+                .restrictedBalance(metrics.restrictedBalance())
                 .availableBalance(metrics.availableBalance())
                 .pendingBalance(metrics.pendingBalance())
                 .totalRevenue(metrics.totalRevenue())
@@ -511,6 +555,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .autoPayoutEligibleAt(computeAutoPayoutEligibleAt(withdrawal))
                 .heldByDispute(isHeldByDispute(withdrawal))
                 .walletBalance(metrics.walletBalance())
+                .withdrawableBalance(metrics.withdrawableBalance())
+                .restrictedBalance(metrics.restrictedBalance())
                 .availableBalance(metrics.availableBalance())
                 .pendingBalance(metrics.pendingBalance())
                 .totalRevenue(metrics.totalRevenue())
@@ -532,7 +578,19 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         if (withdrawal.getStatus() != WithdrawalStatus.pending) {
             return false;
         }
-        return disputeRepository.existsByReportedSellerIdAndStatus(withdrawal.getUser().getId(), DisputeStatus.open);
+        return withdrawal.getUser().getLockedForDispute() != null
+                || disputeRepository.existsByReportedSellerIdAndStatus(
+                        withdrawal.getUser().getId(),
+                        DisputeStatus.open
+                );
+    }
+
+    private BigDecimal validateWithdrawalAmount(CreateWithdrawalRequest request) {
+        if (request == null || request.getAmount() == null
+                || request.getAmount().compareTo(MINIMUM_WITHDRAWAL_AMOUNT) < 0) {
+            throw new AppException(ErrorCode.BAD_REQUEST);
+        }
+        return request.getAmount();
     }
 
     private String buildTransferReference(UUID withdrawalId) {
@@ -694,6 +752,8 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
     private record WalletMetrics(
             BigDecimal walletBalance,
+            BigDecimal withdrawableBalance,
+            BigDecimal restrictedBalance,
             BigDecimal availableBalance,
             BigDecimal pendingBalance,
             BigDecimal totalRevenue

@@ -13,6 +13,7 @@ interface HomePageProps {
   handleViewAssetDetails: (asset: Asset) => void;
   handleAddToCart: (asset: Asset) => void;
   ownedProductIds: Set<string>;
+  creatorOwnedProductIds: Set<string>;
 }
 
 type HeroSlide = {
@@ -69,6 +70,7 @@ interface HomepageSectionRowProps {
   setCurrentScreen: (screen: any) => void;
   t: any;
   numberLocale: string;
+  creatorOwnedProductIds: Set<string>;
 }
 
 const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
@@ -77,6 +79,7 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
   setCurrentScreen,
   t,
   numberLocale,
+  creatorOwnedProductIds,
 }) => {
   const [startIndex, setStartIndex] = React.useState(0);
   const itemsPerPage = 3;
@@ -163,6 +166,11 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
                         ? t('home:sectionRow.badges.game')
                         : t('home:sectionRow.badges.asset')}
                     </span>
+                    {creatorOwnedProductIds.has(product.id) && (
+                      <span className="absolute right-2.5 top-2.5 rounded border border-sky-300/20 bg-sky-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                        {t('marketplace:card.owner')}
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-1.5 p-4.5">
                     <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-slate-900 transition-colors group-hover/product:text-sky-500 dark:text-white dark:group-hover/product:text-sky-400">{product.title}</h3>
@@ -193,7 +201,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   handleCategoryClick,
   handleViewAssetDetails,
   handleAddToCart,
-  ownedProductIds
+  ownedProductIds,
+  creatorOwnedProductIds,
 }) => {
   const { t, i18n } = useTranslation(['home', 'marketplace']);
   const numberLocale = resolveNumberLocale(i18n.resolvedLanguage || i18n.language);
@@ -639,6 +648,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             setCurrentScreen={setCurrentScreen}
             t={t}
             numberLocale={numberLocale}
+            creatorOwnedProductIds={creatorOwnedProductIds}
           />
         ))}
       </div>

@@ -73,7 +73,7 @@
   "checkout.webhookDescription": "Sau khi chuyển khoản thành công, hệ thống PayOS sẽ kích hoạt webhook cập nhật đơn hàng ngay lập tức.",
   "checkout.webhookTitle": "Xác nhận tự động 24/7",
   "checkout.wallet.badge": "Thanh toán qua ví",
-  "checkout.wallet.balanceLabel": "Số dư ví hiện tại",
+  "checkout.wallet.balanceLabel": "Số dư khả dụng",
   "checkout.wallet.directDebit": "Trừ trực tiếp số dư ví",
   "checkout.wallet.insufficientBalanceDescription": "Bạn cần nạp thêm {{amount}} để thanh toán đơn hàng này.",
   "checkout.wallet.insufficientBalanceTitle": "Số dư ví không đủ",

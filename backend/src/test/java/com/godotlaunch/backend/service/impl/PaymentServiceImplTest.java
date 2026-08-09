@@ -50,6 +50,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceImplTest {
@@ -133,18 +135,25 @@ class PaymentServiceImplTest {
         buyerWallet.setUser(buyer);
         buyerWallet.setCurrency("VND");
         buyerWallet.setBalance(BigDecimal.ZERO);
+        buyerWallet.setWithdrawableBalance(BigDecimal.ZERO);
 
         sellerWallet = new Wallet();
         sellerWallet.setId(UUID.randomUUID());
         sellerWallet.setUser(seller);
         sellerWallet.setCurrency("VND");
         sellerWallet.setBalance(new BigDecimal("50000"));
+        sellerWallet.setWithdrawableBalance(BigDecimal.ZERO);
 
         platformWallet = new Wallet();
         platformWallet.setId(UUID.randomUUID());
         platformWallet.setUser(platformAdmin);
         platformWallet.setCurrency("VND");
         platformWallet.setBalance(new BigDecimal("20000"));
+        platformWallet.setWithdrawableBalance(BigDecimal.ZERO);
+
+        lenient().when(walletRepository.findByUserIdWithLock(buyer.getId())).thenReturn(Optional.of(buyerWallet));
+        lenient().when(walletRepository.findByUserIdWithLock(seller.getId())).thenReturn(Optional.of(sellerWallet));
+        lenient().when(walletRepository.findByUserIdWithLock(platformAdmin.getId())).thenReturn(Optional.of(platformWallet));
 
         asset = new Asset();
         asset.setId(UUID.randomUUID());
@@ -174,9 +183,7 @@ class PaymentServiceImplTest {
             return order;
         });
         when(transactionRepository.existsByOrderId(any(UUID.class))).thenReturn(false);
-        when(walletRepository.findByUserId(seller.getId())).thenReturn(Optional.of(sellerWallet));
         when(userRepository.findByEmail("admin@godotlaunch.com")).thenReturn(Optional.of(platformAdmin));
-        when(walletRepository.findByUserId(platformAdmin.getId())).thenReturn(Optional.of(platformWallet));
         when(platformSettingsService.getPlatformCommissionRate()).thenReturn(BigDecimal.TEN);
         when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -191,6 +198,7 @@ class PaymentServiceImplTest {
         assertEquals(PaymentStatus.PAID, completedPayment.getPaymentStatus());
         assertEquals(0, buyerWallet.getBalance().compareTo(BigDecimal.ZERO));
         assertEquals(0, sellerWallet.getBalance().compareTo(new BigDecimal("140000.00")));
+        assertEquals(0, sellerWallet.getWithdrawableBalance().compareTo(new BigDecimal("90000.00")));
         assertEquals(0, platformWallet.getBalance().compareTo(new BigDecimal("30000.00")));
         assertEquals("payos_tx_123", completedPayment.getPayosTransactionId());
         assertNull(completedPayment.getCheckoutUrl());
@@ -205,10 +213,16 @@ class PaymentServiceImplTest {
                 .findFirst()
                 .orElseThrow();
 
+        Transaction sellerRevenueTxn = savedTransactions.stream()
+                .filter(txn -> txn.getWallet() == sellerWallet)
+                .findFirst()
+                .orElseThrow();
+
         assertEquals(platformWallet, commissionTxn.getWallet());
         assertEquals(0, commissionTxn.getAmount().compareTo(new BigDecimal("10000.00")));
         assertEquals(asset, commissionTxn.getAsset());
         assertEquals(buyer, commissionTxn.getRelatedUser());
+        assertEquals(TxnType.revenue_share, sellerRevenueTxn.getType());
     }
 
     private Payment invokeCompletePaidPayment(Payment targetPayment, Instant paidAt, String transactionReference) throws Exception {
@@ -430,6 +444,44 @@ class PaymentServiceImplTest {
         assertNotNull(response);
         assertEquals(PaymentStatus.PAID, response.getPaymentStatus());
         assertEquals("txn_123", response.getPayosTransactionId());
+        assertEquals(0, buyerWallet.getBalance().compareTo(new BigDecimal("100000")));
+        assertEquals(0, buyerWallet.getWithdrawableBalance().compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    void handleWebhook_ShouldNotCreditTopUpAgain_WhenPaymentIsAlreadyPaid() {
+        Object payload = new Object();
+        var webhookResult = com.godotlaunch.backend.dto.response.PaymentGatewayWebhookResult.builder()
+                .validationRequest(false)
+                .orderCode(123456L)
+                .amount(100000L)
+                .paymentLinkId("link_123")
+                .transactionReference("txn_retry")
+                .occurredAt("2026-07-26T10:05:00Z")
+                .build();
+
+        Payment completedTopUp = new Payment();
+        completedTopUp.setId(UUID.randomUUID());
+        completedTopUp.setWallet(buyerWallet);
+        completedTopUp.setPaymentStatus(PaymentStatus.PAID);
+        completedTopUp.setAmount(new BigDecimal("100000"));
+        completedTopUp.setCurrency("VND");
+        completedTopUp.setPaymentReference("TOPUP:" + completedTopUp.getId());
+        buyerWallet.setBalance(new BigDecimal("100000"));
+
+        when(paymentGateway.verifyWebhook(payload)).thenReturn(webhookResult);
+        when(paymentRepository.findByPayosOrderCodeForUpdate(123456L))
+                .thenReturn(Optional.of(completedTopUp));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PaymentResponse response = paymentService.handleWebhook(payload);
+
+        assertEquals(PaymentStatus.PAID, response.getPaymentStatus());
+        assertEquals(0, buyerWallet.getBalance().compareTo(new BigDecimal("100000")));
+        assertEquals(0, buyerWallet.getWithdrawableBalance().compareTo(BigDecimal.ZERO));
+        verify(paymentGateway, never()).getPaymentStatus(any());
+        verify(walletRepository, never()).save(any(Wallet.class));
+        verify(transactionRepository, never()).save(any(Transaction.class));
     }
 
     @Test
@@ -454,9 +506,7 @@ class PaymentServiceImplTest {
             return order;
         });
         when(transactionRepository.existsByOrderId(any(UUID.class))).thenReturn(false);
-        when(walletRepository.findByUserId(seller.getId())).thenReturn(Optional.of(sellerWallet));
         when(userRepository.findByEmail("admin@godotlaunch.com")).thenReturn(Optional.of(platformAdmin));
-        when(walletRepository.findByUserId(platformAdmin.getId())).thenReturn(Optional.of(platformWallet));
         when(platformSettingsService.getPlatformCommissionRate()).thenReturn(BigDecimal.TEN);
         when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -607,9 +657,7 @@ class PaymentServiceImplTest {
             return o;
         });
         when(transactionRepository.existsByOrderId(any(UUID.class))).thenReturn(false);
-        when(walletRepository.findByUserId(seller.getId())).thenReturn(Optional.of(sellerWallet));
         when(userRepository.findByEmail("admin@godotlaunch.com")).thenReturn(Optional.of(platformAdmin));
-        when(walletRepository.findByUserId(platformAdmin.getId())).thenReturn(Optional.of(platformWallet));
         when(platformSettingsService.getPlatformCommissionRate()).thenReturn(BigDecimal.TEN);
 
         when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
@@ -802,9 +850,7 @@ class PaymentServiceImplTest {
         });
 
         when(transactionRepository.existsByOrderId(any(UUID.class))).thenReturn(false);
-        when(walletRepository.findByUserId(seller.getId())).thenReturn(Optional.of(sellerWallet));
         when(userRepository.findByEmail("admin@godotlaunch.com")).thenReturn(Optional.of(platformAdmin));
-        when(walletRepository.findByUserId(platformAdmin.getId())).thenReturn(Optional.of(platformWallet));
         when(platformSettingsService.getPlatformCommissionRate()).thenReturn(BigDecimal.TEN);
 
         PaymentResponse response = paymentService.createPayOSPayment(request, buyer.getEmail());
