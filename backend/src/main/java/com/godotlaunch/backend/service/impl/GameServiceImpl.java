@@ -209,7 +209,7 @@ public class GameServiceImpl implements GameService {
                     .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
             gameToSave.setStatus(GameStatus.rejected);
             gameRepository.save(gameToSave);
-            saveSnapshotForGame(gameToSave, result, false);
+            saveSnapshotForGame(gameToSave, result, false, false);
             auditLogService.publish(
                     creator.getId(), ActorRole.developer, AuditAction.security_alert,
                     AuditTarget.game, gameId, null, null,
@@ -224,22 +224,46 @@ public class GameServiceImpl implements GameService {
             throw new AppException(ErrorCode.NOT_GODOT_PROJECT);
         }
 
+        // 3c. Kiểm tra xem mã nguồn mới có gì thay đổi so với bản gần nhất không
+        java.util.Optional<SourceSnapshot> latestSnapOpt = sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(gameId);
+        if (latestSnapOpt.isPresent()) {
+            SourceSnapshot latestSnap = latestSnapOpt.get();
+            boolean isCommitSame = latestSnap.getCommitSha() != null && latestSnap.getCommitSha().equalsIgnoreCase(result.getCommitSha());
+            boolean isBundleSame = latestSnap.getBundleHash() != null && latestSnap.getBundleHash().equals(result.getBundleHash());
+            if (isCommitSame || isBundleSame) {
+                throw new AppException(ErrorCode.SOURCE_NO_CHANGES);
+            }
+        }
+
         // 4. Sạch → reload game mới nhất từ DB và lưu repo + verified + snapshot → chuyển pending
         Game gameToSave = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
         gameToSave.setGithubRepoUrl(repoUrl);
         gameToSave.setGithubBranch(branch);
         gameToSave.setGithubVerifiedAt(java.time.Instant.now());
-        gameToSave.setStatus(GameStatus.pending);
+
+        boolean isUpdate = gameToSave.getStatus() == GameStatus.published
+                || gameToSave.getStatus() == GameStatus.approved
+                || gameToSave.getStatus() == GameStatus.awaiting_store_build;
+
+        if (!isUpdate) {
+            gameToSave.setStatus(GameStatus.pending);
+        }
         gameRepository.save(gameToSave);
 
-        SourceSnapshot sourceSnapshot = saveSnapshotForGame(gameToSave, result, true);
+        SourceSnapshot sourceSnapshot = saveSnapshotForGame(gameToSave, result, true, isUpdate);
         UUID snapshotId = sourceSnapshot.getId();
+
+        if (isUpdate) {
+            gameToSave.setPendingUpdateSnapshot(sourceSnapshot);
+            gameRepository.save(gameToSave);
+        }
 
         auditLogService.publish(
                 creator.getId(), ActorRole.developer, AuditAction.game_submitted,
-                AuditTarget.game, gameId, GameStatus.draft.name(), GameStatus.pending.name(),
-                "Game '" + gameToSave.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
+                AuditTarget.game, gameId, isUpdate ? gameToSave.getStatus().name() : GameStatus.draft.name(), isUpdate ? gameToSave.getStatus().name() : GameStatus.pending.name(),
+                isUpdate ? "Game '" + gameToSave.getTitle() + "' đã gửi bản cập nhật mới qua repo. Chờ duyệt."
+                        : "Game '" + gameToSave.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
 
         // AI review async (sau snapshot sạch, trước admin) để tạo report đề xuất. Fail-soft.
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
@@ -274,7 +298,7 @@ public class GameServiceImpl implements GameService {
      * AI luôn nhận chính snapshot này thay vì clone lại đầu branch GitHub.
      */
     private SourceSnapshot saveSnapshotForGame(
-            Game game, SourceProcessResult result, boolean requireBundle) {
+            Game game, SourceProcessResult result, boolean requireBundle, boolean isUpdate) {
         SourceSnapshot snap = new SourceSnapshot();
         snap.setGame(game);
         snap.setCommitSha(result.getCommitSha());
@@ -295,7 +319,9 @@ public class GameServiceImpl implements GameService {
         SourceSnapshot savedSnapshot = sourceSnapshotRepository.save(snap);
 
         if (bundleUrl != null && !bundleUrl.isBlank()) {
-            VersionUtils.updateGameVersionFile(game, bundleUrl, gameVersionRepository);
+            if (!isUpdate) {
+                VersionUtils.updateGameVersionFile(game, bundleUrl, gameVersionRepository);
+            }
         }
         return savedSnapshot;
     }
@@ -347,6 +373,11 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional(readOnly = true)
     public List<GameResponse> getGamesByStatus(GameStatus status) {
+        if (status == GameStatus.pending) {
+            return gameRepository.findPendingGamesAndUpdates().stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+        }
         return gameRepository.findByStatusOrderByCreatedAtDesc(status).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -474,20 +505,21 @@ public class GameServiceImpl implements GameService {
                 .findFirst()
                 .orElse(null);
 
-        // File source game nằm ở SourceSnapshot mới nhất (game = repo + snapshot, không lưu file rời).
+        // File source game (bản phát hành hoạt động) lấy từ GameVersion hiện tại.
         String fileUrl = null;
-        List<SourceSnapshot> snaps = sourceSnapshotRepository.findByGameIdOrderByCreatedAtDesc(game.getId());
-        if (snaps != null && !snaps.isEmpty()) {
-            fileUrl = snaps.get(0).getBundleUrl();
-        }
-
         String versionNumber = "1.0.0";
         java.util.Optional<GameVersion> currentVerOpt = gameVersionRepository.findByGame_IdAndIsCurrentTrue(game.getId());
         if (currentVerOpt.isPresent()) {
             versionNumber = currentVerOpt.get().getVersionNumber();
-            if (fileUrl == null) {
-                fileUrl = currentVerOpt.get().getFileUrl();
-            }
+            fileUrl = currentVerOpt.get().getFileUrl();
+        }
+
+        // Bản cập nhật chờ duyệt (nếu có)
+        UUID pendingUpdateSnapshotId = null;
+        String pendingUpdateFileUrl = null;
+        if (game.getPendingUpdateSnapshot() != null) {
+            pendingUpdateSnapshotId = game.getPendingUpdateSnapshot().getId();
+            pendingUpdateFileUrl = getPresignedGetUrl(game.getPendingUpdateSnapshot().getBundleUrl());
         }
 
         return GameResponse.builder()
@@ -511,6 +543,8 @@ public class GameServiceImpl implements GameService {
                 .tags(game.getTags() == null ? java.util.List.of() : game.getTags().stream().map(com.godotlaunch.backend.utils.TranslationUtils::resolveTagName).toList())
                 .githubRepoUrl(game.getGithubRepoUrl())
                 .githubBranch(game.getGithubBranch())
+                .pendingUpdateSnapshotId(pendingUpdateSnapshotId)
+                .pendingUpdateFileUrl(pendingUpdateFileUrl)
                 .createdAt(game.getCreatedAt())
                 .updatedAt(game.getUpdatedAt())
                 .build();
@@ -658,6 +692,36 @@ public class GameServiceImpl implements GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
+        if (game.getPendingUpdateSnapshot() != null) {
+            SourceSnapshot pendingSnapshot = game.getPendingUpdateSnapshot();
+            VersionUtils.updateGameVersionFile(game, pendingSnapshot.getBundleUrl(), gameVersionRepository);
+
+            game.setPendingUpdateSnapshot(null);
+
+            if (game.getPublishingType() != null && game.getPublishingType() != com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing) {
+                game.setStatus(GameStatus.awaiting_store_build);
+            }
+            gameRepository.save(game);
+
+            emailService.sendGameStatusNotification(
+                    game.getCreator().getEmail(),
+                    game.getTitle(),
+                    "UPDATE APPROVED",
+                    "Your game update has been approved and is now live."
+            );
+
+            auditLogService.publishAuto(
+                    AuditAction.game_published,
+                    AuditTarget.game,
+                    game.getId(),
+                    null,
+                    game.getStatus().name(),
+                    "Bản cập nhật của game '" + game.getTitle() + "' đã được admin duyệt và phát hành."
+            );
+            markLatestPlagiarismFlagsReviewed(gameId);
+            return;
+        }
+
         if (game.getStatus() != GameStatus.pending) {
             throw new IllegalStateException("Game must be in pending status to be approved");
         }
@@ -709,6 +773,39 @@ public class GameServiceImpl implements GameService {
     public void rejectGame(UUID gameId, String reason) {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+
+        if (game.getPendingUpdateSnapshot() != null) {
+            SourceSnapshot pendingSnapshot = game.getPendingUpdateSnapshot();
+            try {
+                String key = extractObjectKeyFromUrl(pendingSnapshot.getBundleUrl());
+                if (key != null) {
+                    seaweedFsService.deleteObject(key);
+                }
+            } catch (Exception e) {
+                log.warn("Không xóa được file bundle của snapshot bị từ chối: {}", pendingSnapshot.getId(), e);
+            }
+
+            game.setPendingUpdateSnapshot(null);
+            gameRepository.save(game);
+
+            emailService.sendGameStatusNotification(
+                    game.getCreator().getEmail(),
+                    game.getTitle(),
+                    "UPDATE REJECTED",
+                    "Your game update has been rejected. Reason: " + reason
+            );
+
+            auditLogService.publishAuto(
+                    AuditAction.game_rejected,
+                    AuditTarget.game,
+                    game.getId(),
+                    null,
+                    game.getStatus().name(),
+                    "Bản cập nhật của game '" + game.getTitle() + "' đã bị admin từ chối. Lý do: " + reason
+            );
+            markLatestPlagiarismFlagsReviewed(gameId);
+            return;
+        }
 
         if (game.getStatus() != GameStatus.pending) {
             throw new IllegalStateException("Game must be in pending status to be rejected");

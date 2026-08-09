@@ -126,6 +126,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Giữ biến để các nhánh UI cũ tự ẩn; luôn = "asset".
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryPickerRef = useRef<HTMLDivElement>(null);
   const [tagOptions, setTagOptions] = useState<TagResponse[]>([]);
   const [selectedTags, setSelectedTags] = useState<TagResponse[]>([]);
   const [tagQuery, setTagQuery] = useState("");
@@ -243,6 +245,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       }
       if (publishDropdownRef.current && !publishDropdownRef.current.contains(event.target as Node)) {
         setIsPublishDropdownOpen(false);
+      }
+      if (categoryPickerRef.current && !categoryPickerRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -870,7 +875,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-1.5">
+            {/* Searchable category single-select */}
+            <div ref={categoryPickerRef} className="relative flex flex-col gap-1.5">
               <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
                 {publishProgram === "game"
                   ? t("form.gameCategory")
@@ -881,23 +887,63 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   {t("form.fetchingCategories")}
                 </div>
               ) : (
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500"
-                >
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                    className="w-full flex justify-between items-center px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none transition-studio focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 text-left"
+                  >
+                    <span>
+                      {categories.find((cat) => cat.id === categoryId)?.name || "Chọn danh mục..."}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`text-slate-505 transition-transform duration-200 ${
+                        isCategoryDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
+
+              {isCategoryDropdownOpen && !isLoadingCategories && (
+                <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-64 overflow-y-auto rounded-xl border border-slate-300 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                   {(() => {
                     const relevantCategories = categories.filter((cat) =>
                       publishProgram === "game" ? cat.type === "game" : cat.type === "asset",
                     );
 
-                    return relevantCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ));
+                    if (relevantCategories.length === 0) {
+                      return (
+                        <p className="px-3 py-3 text-xs text-slate-500">
+                          Không tìm thấy danh mục phù hợp
+                        </p>
+                      );
+                    }
+
+                    return relevantCategories.map((cat) => {
+                      const active = cat.id === categoryId;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setCategoryId(cat.id);
+                            setIsCategoryDropdownOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
+                            active
+                              ? "bg-amber-500/12 text-amber-700 dark:text-amber-300 font-semibold"
+                              : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          <span>{cat.name}</span>
+                          {active && <Check size={14} className="text-amber-500" />}
+                        </button>
+                      );
+                    });
                   })()}
-                </select>
+                </div>
               )}
             </div>
 
@@ -925,7 +971,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
 
               {selectedTags.length > 0 && (
-                <div className="flex min-h-8 flex-wrap gap-1.5 rounded-lg border border-slate-300 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/60">
+                <div className="flex flex-wrap gap-1.5 mt-1">
                   {selectedTags.map((tag) => (
                     <span
                       key={tag.id}

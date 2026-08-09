@@ -563,7 +563,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           return true;
         }
         if (moderationStatusFilter === "pending") {
-          return status === "pending";
+          return status === "pending" || !!game.pendingUpdateSnapshotId;
         }
         if (moderationStatusFilter === "approved_published") {
           return status === "approved" || status === "published";
@@ -946,6 +946,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [filterTargetType, setFilterTargetType] = useState<string>("");
   const [isActionDropdownOpen, setIsActionDropdownOpen] = useState(false);
   const [isTargetDropdownOpen, setIsTargetDropdownOpen] = useState(false);
+  const [isModerationStatusDropdownOpen, setIsModerationStatusDropdownOpen] = useState(false);
   const [searchActorId, setSearchActorId] = useState<string>("");
   const [searchTargetId, setSearchTargetId] = useState<string>("");
   const [searchIpAddress, setSearchIpAddress] = useState<string>("");
@@ -1903,27 +1904,55 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         {t("moderationQueue.statusLabel")}
                       </div>
 
-                      <label className="relative block w-full sm:w-[260px]">
-                        <select
-                          value={moderationStatusFilter}
-                          onChange={(event) =>
-                            setModerationStatusFilter(
-                              event.target.value as ModerationStatusFilter,
-                            )
-                          }
-                          className="w-full appearance-none rounded-xl border border-slate-200/70 bg-white/90 px-4 py-3 pr-10 text-sm font-semibold text-slate-800 outline-none transition-studio focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 dark:border-slate-800/70 dark:bg-slate-950/80 dark:text-slate-200"
+                      <div className="relative w-full sm:w-[260px] z-20">
+                        <button
+                          type="button"
+                          onClick={() => setIsModerationStatusDropdownOpen(!isModerationStatusDropdownOpen)}
+                          className="w-full flex justify-between items-center rounded-xl border border-slate-200/70 bg-white/90 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-studio focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 dark:border-slate-800/70 dark:bg-slate-950/80 dark:text-slate-200 text-left cursor-pointer"
                         >
-                          {moderationStatusFilterOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown
-                          size={16}
-                          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                        />
-                      </label>
+                          <span>
+                            {moderationStatusFilterOptions.find((opt) => opt.value === moderationStatusFilter)?.label}
+                          </span>
+                          <ChevronDown
+                            size={16}
+                            className={`text-slate-400 transition-transform duration-200 ${
+                              isModerationStatusDropdownOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+
+                        {isModerationStatusDropdownOpen && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-45"
+                              onClick={() => setIsModerationStatusDropdownOpen(false)}
+                            />
+                            <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/95 p-1">
+                              {moderationStatusFilterOptions.map((option) => {
+                                const active = option.value === moderationStatusFilter;
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => {
+                                      setModerationStatusFilter(option.value);
+                                      setIsModerationStatusDropdownOpen(false);
+                                    }}
+                                    className={`w-full px-3.5 py-2.5 rounded-lg text-left text-xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 flex items-center justify-between cursor-pointer ${
+                                      active
+                                        ? "bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 font-bold"
+                                        : "text-slate-750 dark:text-slate-350"
+                                    }`}
+                                  >
+                                    <span>{option.label}</span>
+                                    {active && <Check size={12} className="text-amber-500 font-bold" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     {moderationSubTab === "games" ? (
@@ -2117,6 +2146,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                   {t("moderationQueue.decision.rejected")}
                                                 </span>
                                               );
+                                            }
+
+                                            if (game.pendingUpdateSnapshotId) {
+                                              return approveRejectButtons;
                                             }
 
                                             if (

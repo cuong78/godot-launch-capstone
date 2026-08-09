@@ -27,6 +27,9 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
     @Query("SELECT DISTINCT g FROM Game g WHERE g.status = :status")
     List<Game> findStorefrontGames(@Param("status") GameStatus status);
 
+    @Query("SELECT g FROM Game g WHERE g.status = 'pending' OR g.pendingUpdateSnapshot IS NOT NULL ORDER BY g.createdAt DESC")
+    List<Game> findPendingGamesAndUpdates();
+
     @Query("SELECT g FROM Game g WHERE g.thumbnailUrl IS NOT NULL AND g.thumbnailUrl <> '' " +
            "AND (:search IS NULL OR :search = '' OR " +
            "LOWER(g.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
