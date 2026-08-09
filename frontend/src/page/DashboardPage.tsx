@@ -18,7 +18,10 @@ import {
   Trash2,
   WalletCards,
   TrendingUp,
+  Github,
+  Upload,
 } from "lucide-react";
+import axios from "axios";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import {
@@ -36,6 +39,7 @@ import { marketplaceApi } from "../api/marketplaceApi";
 import { walletApi } from "../api/walletApi";
 import { SignaturePad } from "../components/SignaturePad";
 import { ContractViewerModal } from "../components/ContractViewerModal";
+import { EditGameModal } from "../components/EditGameModal";
 import { DashboardFilterSelect } from "../components/developer-dashboard/DashboardFilterSelect";
 import { DashboardSidebar } from "../components/developer-dashboard/DashboardSidebar";
 import type {
@@ -170,6 +174,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [gamesError, setGamesError] = useState<string | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [expandedMarketplaceId, setExpandedMarketplaceId] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [editingItem, setEditingItem] = useState<{
+    id: string;
+    title: string;
+    type: "game" | "asset";
+    originalItem: any;
+  } | null>(null);
+
+  const handleOpenEditModal = (id: string, title: string, type: "game" | "asset", originalItem: any) => {
+    setEditingItem({ id, title, type, originalItem });
+    setIsEditModalOpen(true);
+  };
+
   const [activeScreenshotUrl, setActiveScreenshotUrl] = useState<string | null>(
     null,
   );
@@ -210,6 +227,101 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isSubmittingSignature, setIsSubmittingSignature] =
     useState<boolean>(false);
   const dashboardWorkspaceRef = React.useRef<HTMLDivElement | null>(null);
+
+  const [zippingId, setZippingId] = useState<string | null>(null);
+  const [zipProgress, setZipProgress] = useState<number>(0);
+  const [zipError, setZipError] = useState<string | null>(null);
+
+  const extractObjectKey = (url: string): string => {
+    try {
+      const parsedUrl = new URL(url);
+      return decodeURIComponent(parsedUrl.pathname.substring(1));
+    } catch (e) {
+      const prefix = ".amazonaws.com/";
+      const idx = url.indexOf(prefix);
+      if (idx !== -1) {
+        const remaining = url.substring(idx + prefix.length);
+        const queryIdx = remaining.indexOf("?");
+        return queryIdx !== -1 ? remaining.substring(0, queryIdx) : remaining;
+      }
+      return url;
+    }
+  };
+
+  const handleUploadZip = async (id: string, type: "game" | "asset", file: File) => {
+    setZippingId(id);
+    setZipProgress(0);
+    setZipError(null);
+    try {
+      if (type === "asset") {
+        const res = await marketplaceApi.uploadItemFile(id, file, (percent) => {
+          setZipProgress(percent);
+        });
+        if (res.success) {
+          alert("Gửi yêu cầu cập nhật tài nguyên thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.");
+          fetchMyGames();
+          fetchMyMarketplaceItems();
+        } else {
+          setZipError(res.message || "Không thể tải lên tệp tài nguyên.");
+        }
+      } else {
+        const urlRes = await gameApi.getPresignedUrl(id, "game", file.type);
+        if (!urlRes.success || !urlRes.data?.uploadUrl) {
+          throw new Error(urlRes.message || "Không thể lấy link tải lên.");
+        }
+        const uploadUrl = urlRes.data.uploadUrl;
+
+        await axios.put(uploadUrl, file, {
+          headers: { "Content-Type": file.type },
+          onUploadProgress: (progressEvent) => {
+            const total = progressEvent.total || file.size;
+            const percent = Math.round((progressEvent.loaded * 100) / total);
+            setZipProgress(percent);
+          },
+        });
+
+        const objectKey = extractObjectKey(uploadUrl);
+        const confirmRes = await gameApi.confirmUploadComplete(id, "game", objectKey);
+        if (confirmRes.success) {
+          alert("Tải lên file game mới thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.");
+          fetchMyGames();
+          fetchMyMarketplaceItems();
+        } else {
+          setZipError(confirmRes.message || "Không thể xác nhận hoàn thành tải lên.");
+        }
+      }
+    } catch (err: any) {
+      setZipError(
+        err.response?.data?.message || err.message || "Lỗi khi tải lên file ZIP."
+      );
+    } finally {
+      setZippingId(null);
+    }
+  };
+
+  const [syncingGameId, setSyncingGameId] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const handleSyncRepo = async (gameId: string, repoUrl: string, branch?: string) => {
+    setSyncingGameId(gameId);
+    setSyncError(null);
+    try {
+      const res = await gameApi.submitGameRepo(gameId, repoUrl, branch);
+      if (res.success) {
+        alert("Gửi yêu cầu đồng bộ thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.");
+        fetchMyGames();
+        fetchMyMarketplaceItems();
+      } else {
+        setSyncError(res.message || "Không thể đồng bộ repository.");
+      }
+    } catch (err: any) {
+      setSyncError(
+        err.response?.data?.message || err.message || "Lỗi kết nối khi đồng bộ."
+      );
+    } finally {
+      setSyncingGameId(null);
+    }
+  };
 
   const fetchMyGames = async (): Promise<boolean> => {
     if (!currentUser?.email) return false;
@@ -967,6 +1079,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           </p>
                                         </div>
 
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenEditModal(game.id, game.title, "game", game)}
+                                          className="flex items-center justify-center gap-1.5 w-full py-2.5 px-4 border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                        >
+                                          <PenTool size={14} /> Chỉnh sửa thông tin & Media
+                                        </button>
+
                                         {game.fileUrl ? (
                                           <a
                                             href={game.fileUrl}
@@ -985,6 +1105,123 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             {t("dashboard:table.noZip")}
                                           </div>
                                         )}
+
+                                        {game.githubRepoUrl && (
+                                          <div className="p-3.5 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-205 dark:border-slate-800 rounded-xl space-y-2">
+                                            <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-550 dark:text-slate-400 font-bold flex items-center gap-1.5">
+                                              <Github size={12} className="text-sky-500" />{" "}
+                                              Cập nhật mã nguồn (GitHub)
+                                            </h4>
+                                            <div className="text-[11px] font-sans text-slate-650 dark:text-slate-350 break-all space-y-0.5">
+                                              <div>
+                                                <strong>Repo: </strong>
+                                                <a href={game.githubRepoUrl} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">
+                                                  {game.githubRepoUrl}
+                                                </a>
+                                              </div>
+                                              {game.githubBranch && (
+                                                <div>
+                                                  <strong>Branch: </strong>
+                                                  <span className="font-mono bg-slate-200/50 dark:bg-slate-850 px-1 py-0.5 rounded text-[10px]">
+                                                    {game.githubBranch}
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            {game.pendingUpdateSnapshotId ? (
+                                              <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
+                                                Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
+                                              </div>
+                                            ) : (
+                                              <button
+                                                onClick={() => handleSyncRepo(game.id, game.githubRepoUrl!, game.githubBranch)}
+                                                disabled={syncingGameId !== null}
+                                                className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 cursor-pointer"
+                                              >
+                                                {syncingGameId === game.id ? (
+                                                  <>
+                                                    <RefreshCw className="animate-spin" size={12} />
+                                                    Đang kéo code mới...
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <RefreshCw size={12} />
+                                                    Đồng bộ bản mới từ GitHub
+                                                  </>
+                                                )}
+                                              </button>
+                                            )}
+
+                                            {syncError && syncingGameId === null && (
+                                              <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                                                Lỗi: {syncError}
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {!game.githubRepoUrl && (
+                                            <div className="p-3.5 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-205 dark:border-slate-800 rounded-xl space-y-2">
+                                              <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-550 dark:text-slate-400 font-bold flex items-center gap-1.5">
+                                                <Upload size={12} className="text-sky-500" />{" "}
+                                                Cập nhật sản phẩm trực tiếp (Tệp ZIP)
+                                              </h4>
+                                              
+                                              {game.pendingUpdateSnapshotId ? (
+                                                <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
+                                                  Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
+                                                </div>
+                                              ) : (
+                                                <div className="space-y-2">
+                                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                                                    Chọn tệp ZIP phiên bản mới để tải lên. Tệp sẽ được quét virus tự động trước khi kiểm duyệt.
+                                                  </p>
+                                                  <label
+                                                    htmlFor={`zip-upload-game-${game.id}`}
+                                                    className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer disabled:bg-slate-350 disabled:cursor-not-allowed"
+                                                  >
+                                                    <Upload size={12} />
+                                                    Tải lên file ZIP mới
+                                                  </label>
+                                                  <input
+                                                    type="file"
+                                                    id={`zip-upload-game-${game.id}`}
+                                                    accept=".zip"
+                                                    disabled={zippingId !== null}
+                                                    onChange={(e) => {
+                                                      const file = e.target.files?.[0];
+                                                      if (file) {
+                                                        handleUploadZip(game.id, "game", file);
+                                                      }
+                                                    }}
+                                                    className="hidden"
+                                                  />
+                                                </div>
+                                              )}
+
+                                              {zippingId === game.id && (
+                                                <div className="space-y-1.5 mt-2">
+                                                  <div className="flex justify-between text-[10px] font-semibold text-slate-500">
+                                                    <span>Đang tải lên...</span>
+                                                    <span>{zipProgress}%</span>
+                                                  </div>
+                                                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                    <div
+                                                      className="h-full bg-sky-500 transition-all duration-300"
+                                                      style={{ width: `${zipProgress}%` }}
+                                                    />
+                                                  </div>
+                                                </div>
+                                              )}
+
+                                              {zipError && zippingId === game.id && (
+                                                <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                                                  Lỗi: {zipError}
+                                                </p>
+                                              )}
+                                            </div>
+                                          )}
 
                                         {/* Alert box for rejected games */}
                                         {game.status?.toLowerCase() ===
@@ -1215,7 +1452,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           ))
                         ) : (
                           <tr>
-                            {" "}
                             <td
                               colSpan={6}
                               className="bg-slate-100/50 p-8 text-center font-medium text-slate-500 dark:bg-slate-950/20 dark:text-slate-400"
@@ -1431,6 +1667,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           </p>
                                         </div>
 
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenEditModal(item.id, item.title, item.type, item.originalItem)}
+                                          className="flex items-center justify-center gap-1.5 w-full py-2.5 px-4 border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                        >
+                                          <PenTool size={14} /> Chỉnh sửa thông tin & Media
+                                        </button>
+
                                         {item.originalItem.fileUrl ? (
                                           <a
                                             href={item.originalItem.fileUrl}
@@ -1449,6 +1693,123 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             {item.type === "game"
                                               ? t("dashboard:table.noZip")
                                               : t("dashboard:table.noAssetZip")}
+                                          </div>
+                                        )}
+
+                                        {item.type === "game" && item.originalItem.githubRepoUrl && (
+                                          <div className="p-3.5 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-205 dark:border-slate-800 rounded-xl space-y-2">
+                                            <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-550 dark:text-slate-400 font-bold flex items-center gap-1.5">
+                                              <Github size={12} className="text-sky-500" />{" "}
+                                              Cập nhật mã nguồn (GitHub)
+                                            </h4>
+                                            <div className="text-[11px] font-sans text-slate-650 dark:text-slate-350 break-all space-y-0.5">
+                                              <div>
+                                                <strong>Repo: </strong>
+                                                <a href={item.originalItem.githubRepoUrl} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">
+                                                  {item.originalItem.githubRepoUrl}
+                                                </a>
+                                              </div>
+                                              {item.originalItem.githubBranch && (
+                                                <div>
+                                                  <strong>Branch: </strong>
+                                                  <span className="font-mono bg-slate-200/50 dark:bg-slate-850 px-1 py-0.5 rounded text-[10px]">
+                                                    {item.originalItem.githubBranch}
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            {item.originalItem.pendingUpdateSnapshotId ? (
+                                              <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
+                                                Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
+                                              </div>
+                                            ) : (
+                                              <button
+                                                onClick={() => handleSyncRepo(item.id, item.originalItem.githubRepoUrl!, item.originalItem.githubBranch)}
+                                                disabled={syncingGameId !== null}
+                                                className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 cursor-pointer"
+                                              >
+                                                {syncingGameId === item.id ? (
+                                                  <>
+                                                    <RefreshCw className="animate-spin" size={12} />
+                                                    Đang kéo code mới...
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <RefreshCw size={12} />
+                                                    Đồng bộ bản mới từ GitHub
+                                                  </>
+                                                )}
+                                              </button>
+                                            )}
+
+                                            {syncError && syncingGameId === null && (
+                                              <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                                                Lỗi: {syncError}
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {(item.type === "asset" || (item.type === "game" && !item.originalItem.githubRepoUrl)) && (
+                                          <div className="p-3.5 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-205 dark:border-slate-800 rounded-xl space-y-2">
+                                            <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-550 dark:text-slate-400 font-bold flex items-center gap-1.5">
+                                              <Upload size={12} className="text-sky-500" />{" "}
+                                              {item.type === "game" ? "Cập nhật sản phẩm trực tiếp (Tệp ZIP)" : "Cập nhật tài nguyên (Tệp ZIP)"}
+                                            </h4>
+
+                                            {item.type === "game" && item.originalItem.pendingUpdateSnapshotId ? (
+                                              <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
+                                                Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
+                                              </div>
+                                            ) : (
+                                              <div className="space-y-2">
+                                                <p className="text-[11px] text-slate-505 dark:text-slate-400 leading-normal">
+                                                  Chọn tệp ZIP phiên bản mới để tải lên. Tệp sẽ được quét virus tự động trước khi kiểm duyệt.
+                                                </p>
+                                                <label
+                                                  htmlFor={`zip-upload-item-${item.id}`}
+                                                  className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer disabled:bg-slate-350 disabled:cursor-not-allowed"
+                                                >
+                                                  <Upload size={12} />
+                                                  {item.type === "game" ? "Tải lên file ZIP mới" : "Tải lên file ZIP tài nguyên mới"}
+                                                </label>
+                                                <input
+                                                  type="file"
+                                                  id={`zip-upload-item-${item.id}`}
+                                                  accept=".zip"
+                                                  disabled={zippingId !== null}
+                                                  onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                      handleUploadZip(item.id, item.type, file);
+                                                    }
+                                                  }}
+                                                  className="hidden"
+                                                />
+                                              </div>
+                                            )}
+
+                                            {zippingId === item.id && (
+                                              <div className="space-y-1.5 mt-2">
+                                                <div className="flex justify-between text-[10px] font-semibold text-slate-500">
+                                                  <span>Đang tải lên...</span>
+                                                  <span>{zipProgress}%</span>
+                                                </div>
+                                                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                  <div
+                                                    className="h-full bg-sky-500 transition-all duration-300"
+                                                    style={{ width: `${zipProgress}%` }}
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
+
+                                            {zipError && zippingId === item.id && (
+                                              <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                                                Lỗi: {zipError}
+                                              </p>
+                                            )}
                                           </div>
                                         )}
                                       </div>
@@ -1746,6 +2107,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }}
         />
       )}
+
+      <EditGameModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSaveSuccess={() => {
+          fetchMyGames();
+          fetchMyMarketplaceItems();
+        }}
+        item={editingItem}
+      />
     </>
   );
 };
