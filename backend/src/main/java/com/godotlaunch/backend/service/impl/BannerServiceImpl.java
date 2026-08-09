@@ -9,6 +9,7 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.BannerRepository;
 import com.godotlaunch.backend.service.BannerService;
 import com.godotlaunch.backend.service.SeaweedFsService;
+import com.godotlaunch.backend.utils.TranslationUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +42,10 @@ public class BannerServiceImpl implements BannerService {
     @Transactional
     public BannerResponse create(CreateBannerRequest request) {
         Banner banner = new Banner();
-        applyValues(banner, request.getTitle(), request.getDescription(), request.getImageUrl(), request.getDisplayOrder());
+        applyValues(banner, 
+            request.getTitle(), request.getTitleVi(), request.getTitleEn(), request.getTitleJa(),
+            request.getDescription(), request.getDescriptionVi(), request.getDescriptionEn(), request.getDescriptionJa(),
+            request.getImageUrl(), request.getDisplayOrder());
         BannerResponse response = mapToResponse(bannerRepository.save(banner));
         homepageCacheService.evict();
         return response;
@@ -51,7 +55,10 @@ public class BannerServiceImpl implements BannerService {
     @Transactional
     public BannerResponse update(UUID id, UpdateBannerRequest request) {
         Banner banner = findById(id);
-        applyValues(banner, request.getTitle(), request.getDescription(), request.getImageUrl(), request.getDisplayOrder());
+        applyValues(banner, 
+            request.getTitle(), request.getTitleVi(), request.getTitleEn(), request.getTitleJa(),
+            request.getDescription(), request.getDescriptionVi(), request.getDescriptionEn(), request.getDescriptionJa(),
+            request.getImageUrl(), request.getDisplayOrder());
         BannerResponse response = mapToResponse(bannerRepository.save(banner));
         homepageCacheService.evict();
         return response;
@@ -85,22 +92,23 @@ public class BannerServiceImpl implements BannerService {
                 .orElseThrow(() -> new AppException(ErrorCode.BANNER_NOT_FOUND));
     }
 
-    private void applyValues(Banner banner, String title, String description, String imageUrl, Integer displayOrder) {
+    private void applyValues(Banner banner, 
+                             String title, String titleVi, String titleEn, String titleJa,
+                             String description, String descriptionVi, String descriptionEn, String descriptionJa,
+                             String imageUrl, Integer displayOrder) {
         banner.setTitle(title.trim());
+        banner.setTitleVi(titleVi != null ? titleVi.trim() : null);
+        banner.setTitleEn(titleEn != null ? titleEn.trim() : null);
+        banner.setTitleJa(titleJa != null ? titleJa.trim() : null);
         banner.setDescription(description.trim());
+        banner.setDescriptionVi(descriptionVi != null ? descriptionVi.trim() : null);
+        banner.setDescriptionEn(descriptionEn != null ? descriptionEn.trim() : null);
+        banner.setDescriptionJa(descriptionJa != null ? descriptionJa.trim() : null);
         banner.setImageUrl(imageUrl.trim());
         banner.setDisplayOrder(displayOrder);
     }
 
     private BannerResponse mapToResponse(Banner banner) {
-        return BannerResponse.builder()
-                .id(banner.getId())
-                .title(banner.getTitle())
-                .description(banner.getDescription())
-                .imageUrl(banner.getImageUrl())
-                .displayOrder(banner.getDisplayOrder())
-                .createdAt(banner.getCreatedAt())
-                .updatedAt(banner.getUpdatedAt())
-                .build();
+        return TranslationUtils.mapBanner(banner);
     }
 }

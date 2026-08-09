@@ -39,6 +39,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -326,7 +328,24 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
 
         // Withdrawal vừa chuyển sang processing — đảm bảo vòng lặp poll PayOS đang chạy
         // (tự bật nếu đang tắt, no-op nếu đã chạy sẵn cho withdrawal khác).
-        withdrawalPayoutSyncScheduler.ensureRunning();
+        //
+        // QUAN TRỌNG: phải đợi transaction NÀY commit xong mới được gọi ensureRunning().
+        // scheduleWithFixedDelay chạy tick() đầu tiên GẦN NHƯ NGAY LẬP TỨC trên thread khác
+        // (không đợi delay) — nếu gọi thẳng ở đây, tick() có thể query DB TRƯỚC KHI status
+        // "processing" vừa set được commit (save() chỉ flush trong transaction, chưa commit
+        // tới khi method này return). Nếu withdrawal này là bản ghi processing duy nhất lúc
+        // đó, tick() thấy danh sách rỗng -> tự dừng polling ngay -> trạng thái treo mãi ở
+        // "processing" dù PayOS đã xử lý xong (đã xảy ra thực tế, xem lịch sử thay đổi này).
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    withdrawalPayoutSyncScheduler.ensureRunning();
+                }
+            });
+        } else {
+            withdrawalPayoutSyncScheduler.ensureRunning();
+        }
 
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);

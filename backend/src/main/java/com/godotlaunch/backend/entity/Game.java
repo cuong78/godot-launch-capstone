@@ -85,6 +85,9 @@ public class Game {
     @Column(name = "is_source_listed", nullable = false)
     private boolean isSourceListed = false;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pending_update_snapshot_id")
+    private SourceSnapshot pendingUpdateSnapshot;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;

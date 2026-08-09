@@ -224,7 +224,6 @@ class GameServiceImplTest {
     void shouldGetGameById_WhenExists() {
         when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
         when(mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId)).thenReturn(Collections.emptyList());
-        when(sourceSnapshotRepository.findByGameIdOrderByCreatedAtDesc(gameId)).thenReturn(Collections.emptyList());
         when(gameVersionRepository.findByGame_IdAndIsCurrentTrue(gameId)).thenReturn(Optional.empty());
 
         GameResponse response = gameService.getGameById(gameId);
@@ -540,7 +539,6 @@ class GameServiceImplTest {
     void getAllGames_UTCID01_Success() {
         when(gameRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(game));
         when(mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId)).thenReturn(Collections.emptyList());
-        when(sourceSnapshotRepository.findByGameIdOrderByCreatedAtDesc(gameId)).thenReturn(Collections.emptyList());
         when(gameVersionRepository.findByGame_IdAndIsCurrentTrue(gameId)).thenReturn(Optional.empty());
 
         List<GameResponse> responses = gameService.getAllGames();
@@ -553,9 +551,8 @@ class GameServiceImplTest {
     @Test
     @DisplayName("getGamesByStatus_UTCID01_Success")
     void getGamesByStatus_UTCID01_Success() {
-        when(gameRepository.findByStatusOrderByCreatedAtDesc(GameStatus.pending)).thenReturn(List.of(game));
+        when(gameRepository.findPendingGamesAndUpdates()).thenReturn(List.of(game));
         when(mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId)).thenReturn(Collections.emptyList());
-        when(sourceSnapshotRepository.findByGameIdOrderByCreatedAtDesc(gameId)).thenReturn(Collections.emptyList());
         when(gameVersionRepository.findByGame_IdAndIsCurrentTrue(gameId)).thenReturn(Optional.empty());
 
         List<GameResponse> responses = gameService.getGamesByStatus(GameStatus.pending);

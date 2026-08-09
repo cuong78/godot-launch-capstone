@@ -6,7 +6,8 @@ import com.godotlaunch.backend.entity.Order;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.entity.Game;
-import com.godotlaunch.backend.entity.SourceSnapshot;
+import com.godotlaunch.backend.entity.GameVersion;
+import com.godotlaunch.backend.repository.GameVersionRepository;
 import com.godotlaunch.backend.repository.OrderRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.UserRepository;
@@ -30,6 +31,7 @@ public class DownloadServiceImpl implements DownloadService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final SourceSnapshotRepository sourceSnapshotRepository;
+    private final GameVersionRepository gameVersionRepository;
     private final SeaweedFsService seaweedFsService;
 
     @Override
@@ -54,11 +56,9 @@ public class DownloadServiceImpl implements DownloadService {
             title = item.getTitle();
         } else if (order.getGame() != null) {
             Game game = order.getGame();
-            List<SourceSnapshot> snaps = sourceSnapshotRepository.findByGameIdOrderByCreatedAtDesc(game.getId());
-            if (snaps == null || snaps.isEmpty()) {
-                throw new AppException(ErrorCode.FILE_NOT_FOUND);
-            }
-            downloadUrl = snaps.get(0).getBundleUrl();
+            GameVersion currentVer = gameVersionRepository.findByGame_IdAndIsCurrentTrue(game.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
+            downloadUrl = currentVer.getFileUrl();
             title = game.getTitle();
         } else {
             throw new AppException(ErrorCode.ACCESS_DENIED);

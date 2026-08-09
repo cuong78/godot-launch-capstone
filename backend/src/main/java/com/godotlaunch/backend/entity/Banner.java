@@ -32,8 +32,26 @@ public class Banner {
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
+    @Column(name = "title_vi", length = 200)
+    private String titleVi;
+
+    @Column(name = "title_en", length = 200)
+    private String titleEn;
+
+    @Column(name = "title_ja", length = 200)
+    private String titleJa;
+
     @Column(name = "description", nullable = false, length = 1000)
     private String description;
+
+    @Column(name = "description_vi", length = 1000)
+    private String descriptionVi;
+
+    @Column(name = "description_en", length = 1000)
+    private String descriptionEn;
+
+    @Column(name = "description_ja", length = 1000)
+    private String descriptionJa;
 
     @Column(name = "image_url", nullable = false, columnDefinition = "TEXT")
     private String imageUrl;

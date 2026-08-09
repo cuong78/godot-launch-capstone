@@ -15,6 +15,7 @@ import { Input, TextArea } from "../components/Input";
 import { walletApi } from "../api/walletApi";
 import { paymentApi } from "../api/paymentApi";
 import { useAuth } from "../hooks/useAuth";
+import { useFormattedAmountInput } from "../hooks/useFormattedAmountInput";
 import {
   CreateWithdrawalRequest,
   DeveloperWalletSummaryResponse,
@@ -184,7 +185,9 @@ export const WalletPage: React.FC<{
   const [walletInfo, setWalletInfo] = useState<WalletResponse | null>(null);
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
-  const [amount, setAmount] = useState("");
+  const withdrawAmountInput = useFormattedAmountInput(sanitizeAmountInput, formatAmountInput);
+  const amount = withdrawAmountInput.rawValue;
+  const setAmount = withdrawAmountInput.setValue;
   const [note, setNote] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -193,7 +196,8 @@ export const WalletPage: React.FC<{
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [topUpAmount, setTopUpAmount] = useState("");
+  const topUpAmountInput = useFormattedAmountInput(sanitizeAmountInput, formatAmountInput);
+  const topUpAmount = topUpAmountInput.rawValue;
   const [topUpError, setTopUpError] = useState<string | null>(null);
   const [isTopUpSubmitting, setIsTopUpSubmitting] = useState(false);
   const [pendingTopUp, setPendingTopUp] = useState<PaymentResponse | null>(
@@ -1045,10 +1049,7 @@ export const WalletPage: React.FC<{
                     placeholder={t("wallet:topup.amountPlaceholder")}
                     type="text"
                     inputMode="numeric"
-                    value={formatAmountInput(topUpAmount)}
-                    onChange={(e) =>
-                      setTopUpAmount(sanitizeAmountInput(e.target.value))
-                    }
+                    {...topUpAmountInput.inputProps}
                     required
                   />
                   <Button
@@ -1130,10 +1131,7 @@ export const WalletPage: React.FC<{
                     placeholder={t("wallet:form.amountPlaceholder")}
                     type="text"
                     inputMode="numeric"
-                    value={formatAmountInput(amount)}
-                    onChange={(e) =>
-                      setAmount(sanitizeAmountInput(e.target.value))
-                    }
+                    {...withdrawAmountInput.inputProps}
                     required
                   />
                   {hasVerifiedBankInfo ? (

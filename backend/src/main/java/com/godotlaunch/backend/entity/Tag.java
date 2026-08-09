@@ -24,6 +24,15 @@ public class Tag {
     @Column(name = "name", nullable = false, unique = true, length = 100)
     private String name;
 
+    @Column(name = "name_vi", length = 100)
+    private String nameVi;
+
+    @Column(name = "name_en", length = 100)
+    private String nameEn;
+
+    @Column(name = "name_ja", length = 100)
+    private String nameJa;
+
     @Column(name = "slug", nullable = false, unique = true, length = 100)
     private String slug;
 

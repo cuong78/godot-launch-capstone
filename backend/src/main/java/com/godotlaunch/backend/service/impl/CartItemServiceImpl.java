@@ -212,7 +212,7 @@ public class CartItemServiceImpl implements CartItemService {
                 .fileUrl(seaweedFsService.resolvePublicUrl(fileUrl))
                 .webDemoUrl(game.getWebDemoUrl())
                 .version(versionNumber)
-                .tags(game.getTags() == null ? java.util.List.of() : game.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList())
+                .tags(game.getTags() == null ? java.util.List.of() : game.getTags().stream().map(com.godotlaunch.backend.utils.TranslationUtils::resolveTagName).toList())
                 .githubRepoUrl(game.getGithubRepoUrl())
                 .githubBranch(game.getGithubBranch())
                 .createdAt(game.getCreatedAt())

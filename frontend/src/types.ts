@@ -491,6 +491,8 @@ export interface GameResponse {
   tags?: string[];
   githubRepoUrl?: string;
   githubBranch?: string;
+  pendingUpdateSnapshotId?: string;
+  pendingUpdateFileUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }

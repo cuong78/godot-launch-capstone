@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Ban,
+  ChevronDown,
   Eye,
   PencilLine,
   RefreshCw,
@@ -206,24 +207,57 @@ const FilterSelect: React.FC<{
   value: string;
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
-}> = ({ label, value, options, onChange }) => (
-  <label className="space-y-1">
-    <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-      {label}
-    </span>
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className={filterSelectClassName}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  </label>
-);
+}> = ({ label, value, options, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5 relative w-full">
+      <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white/92 px-3.5 py-2.5 text-left text-sm text-slate-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/15 dark:border-slate-700/90 dark:bg-slate-950/70 dark:text-white"
+      >
+        <span className="truncate">
+          {options.find((opt) => opt.value === value)?.label || value}
+        </span>
+        <ChevronDown
+          size={15}
+          className={`text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-950/95">
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                  value === option.value
+                    ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                    : 'text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> = ({
   users,
@@ -244,6 +278,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
   const [actionError, setActionError] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ fullName: '', email: '' });
   const [roleDraft, setRoleDraft] = useState<AdminUserRole>('customer');
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const [banReason, setBanReason] = useState('');
 
   const roleOptions: Array<{ value: RoleFilter; label: string }> = [
@@ -817,15 +852,57 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
         <div className="space-y-5">
           <label className="space-y-1.5">
             <span className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">{t('userPanel.headers.role')}</span>
-            <select
-              value={roleDraft}
-              onChange={(event) => setRoleDraft(event.target.value as AdminUserRole)}
-              className={selectClassName}
-            >
-              <option value="admin">{t('roles.admin')}</option>
-              <option value="developer">{t('roles.developer')}</option>
-              <option value="customer">{t('roles.customer')}</option>
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white/92 px-3.5 py-2.5 text-left text-sm text-slate-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/15 dark:border-slate-700/90 dark:bg-slate-950/70 dark:text-white"
+              >
+                <span className="truncate">
+                  {roleDraft === 'admin'
+                    ? t('roles.admin')
+                    : roleDraft === 'developer'
+                    ? t('roles.developer')
+                    : t('roles.customer')}
+                </span>
+                <ChevronDown
+                  size={15}
+                  className={`text-slate-500 transition-transform duration-200 ${roleDropdownOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {roleDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setRoleDropdownOpen(false)}
+                  />
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-950/95">
+                    {[
+                      { value: 'admin', label: t('roles.admin') },
+                      { value: 'developer', label: t('roles.developer') },
+                      { value: 'customer', label: t('roles.customer') },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setRoleDraft(opt.value as AdminUserRole);
+                          setRoleDropdownOpen(false);
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                          roleDraft === opt.value
+                            ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
+                            : 'text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </label>
 
           {renderActionError}

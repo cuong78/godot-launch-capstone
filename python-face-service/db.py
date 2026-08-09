@@ -20,7 +20,9 @@ def find_duplicate_face(embedding: list[float], threshold: float) -> bool:
     """
     Query pgvector: tìm embedding nào có Euclidean (L2) distance <= threshold.
     Embedding do face_recognition (dlib) sinh ra được thiết kế để so bằng L2,
-    không phải cosine — ngưỡng chuẩn của thư viện là 0.6 (tolerance mặc định).
+    không phải cosine — mặc định thư viện dùng tolerance 0.6, nhưng hệ thống
+    dùng 0.45 (chặt hơn) để giảm false-positive trên ảnh webcam chất lượng
+    thấp (xem FACE_SIMILARITY_THRESHOLD trong .env/docker-compose.yml).
     """
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
     sql = """

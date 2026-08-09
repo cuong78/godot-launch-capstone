@@ -38,5 +38,7 @@ public class GameResponse {
     private String githubBranch;
     private java.time.Instant createdAt;
     private java.time.Instant updatedAt;
+    private UUID pendingUpdateSnapshotId;
+    private String pendingUpdateFileUrl;
 }
 

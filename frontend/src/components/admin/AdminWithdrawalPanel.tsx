@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../Button";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -155,6 +156,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
   const [statusFilter, setStatusFilter] = useState<"all" | WithdrawalStatus>(
     "all",
   );
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
 
   const loadAdminPayoutBalance = useCallback(async () => {
@@ -617,22 +619,61 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
             placeholder={t("withdrawal.searchPlaceholder")}
             className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
           />
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as "all" | WithdrawalStatus)
-            }
-            className="w-full rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-          >
-            <option value="all">{t("withdrawal.filterAll")}</option>
-            <option value="pending">{t("status.withdrawal.pending")}</option>
-            <option value="approved">{t("status.withdrawal.approved")}</option>
-            <option value="processing">{t("status.withdrawal.processing")}</option>
-            <option value="completed">{t("status.withdrawal.completed")}</option>
-            <option value="failed">{t("status.withdrawal.failed")}</option>
-            <option value="rejected">{t("status.withdrawal.rejected")}</option>
-            <option value="cancelled">{t("status.withdrawal.cancelled")}</option>
-          </select>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setStatusFilterOpen(!statusFilterOpen)}
+              className="flex w-full items-center justify-between rounded-2xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            >
+              <span className="truncate">
+                {statusFilter === "all"
+                  ? t("withdrawal.filterAll")
+                  : t(`status.withdrawal.${statusFilter}`)}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-slate-500 transition-transform duration-200 ${statusFilterOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {statusFilterOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setStatusFilterOpen(false)}
+                />
+                <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-900/95">
+                  {[
+                    { value: "all", label: t("withdrawal.filterAll") },
+                    { value: "pending", label: t("status.withdrawal.pending") },
+                    { value: "approved", label: t("status.withdrawal.approved") },
+                    { value: "processing", label: t("status.withdrawal.processing") },
+                    { value: "completed", label: t("status.withdrawal.completed") },
+                    { value: "failed", label: t("status.withdrawal.failed") },
+                    { value: "rejected", label: t("status.withdrawal.rejected") },
+                    { value: "cancelled", label: t("status.withdrawal.cancelled") },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(opt.value as any);
+                        setCurrentPage(0);
+                        setStatusFilterOpen(false);
+                      }}
+                      className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                        statusFilter === opt.value
+                          ? "bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold"
+                          : "text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {error && (

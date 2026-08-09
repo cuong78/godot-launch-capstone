@@ -31,6 +31,7 @@ import {
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
 import { gameApi } from "../api/gameApi";
+import { useFormattedAmountInput } from "../hooks/useFormattedAmountInput";
 import { marketplaceApi } from "../api/marketplaceApi";
 import { CategoryResponse } from "../types";
 import axios from "axios";
@@ -49,6 +50,21 @@ interface UploadStatus {
 
 const MAX_SELECTED_TAGS = 10;
 const TAG_RESULT_LIMIT = 12;
+
+/** Chỉ giữ chữ số, bỏ số 0 thừa ở đầu (giữ "0" nếu rỗng hoàn toàn). */
+function sanitizePriceDigits(val: string): string {
+  let clean = val.replace(/\D/g, "");
+  if (clean.length > 1 && clean.startsWith("0")) {
+    clean = clean.replace(/^0+/, "");
+  }
+  return clean || "0";
+}
+
+/** Hiển thị giá đã format khoảng trắng phân cách hàng nghìn. */
+function formatPriceDigits(digits: string): string {
+  if (!digits || digits === "0") return digits;
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
 const PLATFORM_OPTIONS = [
   { value: "Windows", labelKey: "form.platform.windows" },
   { value: "macOS", labelKey: "form.platform.macos" },
@@ -81,7 +97,7 @@ const getFileKey = (file: File): string => {
 
 export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const { requireFaceVerify } = useFaceVerify();
-  const { t } = useTranslation(["upload"]);
+  const { t, i18n } = useTranslation(["upload"]);
 
   // Step State
   const [step, setStep] = useState<1 | 2>(1);
@@ -100,7 +116,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Form State (Step 1)
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("0");
+  const priceInput = useFormattedAmountInput(sanitizePriceDigits, formatPriceDigits, "0");
   const [categoryId, setCategoryId] = useState("");
   const [publishingType, setPublishingType] = useState<
     "full_acquisition" | "co_publishing" | "marketplace_listing"
@@ -113,6 +129,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Giữ biến để các nhánh UI cũ tự ẩn; luôn = "asset".
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryPickerRef = useRef<HTMLDivElement>(null);
   const [tagOptions, setTagOptions] = useState<TagResponse[]>([]);
   const [selectedTags, setSelectedTags] = useState<TagResponse[]>([]);
   const [tagQuery, setTagQuery] = useState("");
@@ -187,7 +205,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       }
     };
     loadCategories();
-  }, []);
+  }, [i18n.language]);
 
   useEffect(() => {
     let ignoreResult = false;
@@ -217,7 +235,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       ignoreResult = true;
       window.clearTimeout(timeoutId);
     };
-  }, [tagQuery, t]);
+  }, [tagQuery, t, i18n.language]);
+
+  useEffect(() => {
+    setSelectedTags([]);
+  }, [i18n.language]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -226,6 +248,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       }
       if (publishDropdownRef.current && !publishDropdownRef.current.contains(event.target as Node)) {
         setIsPublishDropdownOpen(false);
+      }
+      if (categoryPickerRef.current && !categoryPickerRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -240,19 +265,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       if (current.length >= MAX_SELECTED_TAGS) return current;
       return [...current, tag];
     });
-  };
-
-  const handlePriceChange = (val: string) => {
-    let clean = val.replace(/\D/g, "");
-    if (clean.length > 1 && clean.startsWith("0")) {
-      clean = clean.replace(/^0+/, "");
-    }
-    if (!clean) {
-      setPrice("0");
-      return;
-    }
-    const formatted = clean.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    setPrice(formatted);
   };
 
   // Sync categoryId when publishProgram, itemType or categories list changes
@@ -367,8 +379,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       alert(t("errors.titleRequired"));
       return;
     }
-    const cleanPriceStr = price.replace(/\s/g, "");
-    const priceNum = parseFloat(cleanPriceStr || "0");
+    const priceNum = parseFloat(priceInput.rawValue || "0");
     if (isNaN(priceNum) || priceNum < 0) {
       alert(t("errors.invalidPrice"));
       return;
@@ -919,15 +930,16 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               prefix="VND"
               placeholder={t("form.pricePlaceholder")}
               type="text"
-              value={price}
-              onChange={(e) => handlePriceChange(e.target.value)}
+              inputMode="numeric"
+              {...priceInput.inputProps}
               className="[&_input]:h-12 [&_input]:rounded-xl"
               required
             />
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
+            {/* Searchable category single-select */}
+            <div ref={categoryPickerRef} className="relative flex flex-col gap-1.5">
               <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
                 {publishProgram === "game"
                   ? t("form.gameCategory")
@@ -938,23 +950,63 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   {t("form.fetchingCategories")}
                 </div>
               ) : (
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition-studio focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-                >
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                    className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-left text-sm text-slate-800 outline-none transition-studio focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    <span className="truncate">
+                      {categories.find((cat) => cat.id === categoryId)?.name ?? "—"}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`shrink-0 text-slate-500 transition-transform duration-200 ${
+                        isCategoryDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
+
+              {isCategoryDropdownOpen && !isLoadingCategories && (
+                <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-64 overflow-y-auto rounded-xl border border-slate-300 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                   {(() => {
                     const relevantCategories = categories.filter((cat) =>
                       publishProgram === "game" ? cat.type === "game" : cat.type === "asset",
                     );
 
-                    return relevantCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ));
+                    if (relevantCategories.length === 0) {
+                      return (
+                        <p className="px-3 py-3 text-xs text-slate-500">
+                          —
+                        </p>
+                      );
+                    }
+
+                    return relevantCategories.map((cat) => {
+                      const active = cat.id === categoryId;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setCategoryId(cat.id);
+                            setIsCategoryDropdownOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
+                            active
+                              ? "bg-amber-500/12 text-amber-700 dark:text-amber-300 font-semibold"
+                              : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          <span>{cat.name}</span>
+                          {active && <Check size={14} className="text-amber-500" />}
+                        </button>
+                      );
+                    });
                   })()}
-                </select>
+                </div>
               )}
             </div>
 

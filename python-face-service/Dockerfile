@@ -26,6 +26,14 @@ RUN pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Cache-bust CHỈ từ đây trở xuống — khi build cache bị lệch (COPY . . báo
+# CACHED sai dù code đã đổi), truyền --build-arg CACHE_BUST=$(date +%s) để
+# ép build lại code + CMD mà KHÔNG phải xây lại dlib/torch (~500s) như
+# --no-cache. Không truyền gì thì behave y hệt trước đây (build cache bình
+# thường theo checksum nội dung).
+ARG CACHE_BUST=0
+RUN echo "cache-bust: $CACHE_BUST" > /dev/null
+
 COPY . .
 
 EXPOSE 8001

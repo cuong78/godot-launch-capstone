@@ -19,9 +19,17 @@ public class UpdateBannerRequest {
     @Size(max = 200)
     private String title;
 
+    private String titleVi;
+    private String titleEn;
+    private String titleJa;
+
     @NotBlank
     @Size(max = 1000)
     private String description;
+
+    private String descriptionVi;
+    private String descriptionEn;
+    private String descriptionJa;
 
     @NotBlank
     private String imageUrl;
