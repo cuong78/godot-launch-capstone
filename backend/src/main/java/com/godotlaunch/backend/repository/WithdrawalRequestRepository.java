@@ -20,7 +20,12 @@ public interface WithdrawalRequestRepository extends JpaRepository<WithdrawalReq
     List<WithdrawalRequest> findByUserIdOrderByCreatedAtDesc(UUID userId);
     List<WithdrawalRequest> findByStatusOrderByCreatedAtDesc(WithdrawalStatus status);
     List<WithdrawalRequest> findAllByOrderByCreatedAtDesc();
-    List<WithdrawalRequest> findByStatusAndCreatedAtBefore(WithdrawalStatus status, Instant cutoff);
+    // Fetch join user: WithdrawalAutoPayoutScheduler đọc withdrawal.getUser().getLockedForDispute()
+    // NGOÀI transaction (chạy trong scheduled task, không có session) — nếu chỉ lazy-load user thì
+    // Hibernate ném LazyInitializationException lúc truy cập field. Nạp sẵn user cùng lúc để tránh.
+    @Query("SELECT w FROM WithdrawalRequest w JOIN FETCH w.user WHERE w.status = :status AND w.createdAt < :cutoff")
+    List<WithdrawalRequest> findByStatusAndCreatedAtBeforeWithUser(@Param("status") WithdrawalStatus status,
+                                                                     @Param("cutoff") Instant cutoff);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT w FROM WithdrawalRequest w WHERE w.id = :id")

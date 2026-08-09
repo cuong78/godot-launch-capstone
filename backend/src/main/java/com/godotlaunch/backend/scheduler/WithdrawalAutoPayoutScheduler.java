@@ -41,7 +41,7 @@ public class WithdrawalAutoPayoutScheduler {
         Instant cutoff = Instant.now().minus(holdDays, ChronoUnit.DAYS);
 
         List<WithdrawalRequest> eligible =
-                withdrawalRequestRepository.findByStatusAndCreatedAtBefore(WithdrawalStatus.pending, cutoff);
+                withdrawalRequestRepository.findByStatusAndCreatedAtBeforeWithUser(WithdrawalStatus.pending, cutoff);
 
         for (WithdrawalRequest withdrawal : eligible) {
             UUID sellerId = withdrawal.getUser().getId();
