@@ -28,6 +28,7 @@ import {
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
 import { gameApi } from "../api/gameApi";
+import { useFormattedAmountInput } from "../hooks/useFormattedAmountInput";
 import { marketplaceApi } from "../api/marketplaceApi";
 import { CategoryResponse } from "../types";
 import axios from "axios";
@@ -46,6 +47,21 @@ interface UploadStatus {
 
 const MAX_SELECTED_TAGS = 10;
 const TAG_RESULT_LIMIT = 12;
+
+/** Chỉ giữ chữ số, bỏ số 0 thừa ở đầu (giữ "0" nếu rỗng hoàn toàn). */
+function sanitizePriceDigits(val: string): string {
+  let clean = val.replace(/\D/g, "");
+  if (clean.length > 1 && clean.startsWith("0")) {
+    clean = clean.replace(/^0+/, "");
+  }
+  return clean || "0";
+}
+
+/** Hiển thị giá đã format khoảng trắng phân cách hàng nghìn. */
+function formatPriceDigits(digits: string): string {
+  if (!digits || digits === "0") return digits;
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
 const PLATFORM_OPTIONS = [
   { value: "Windows", labelKey: "form.platform.windows" },
   { value: "macOS", labelKey: "form.platform.macos" },
@@ -97,7 +113,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Form State (Step 1)
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("0");
+  const priceInput = useFormattedAmountInput(sanitizePriceDigits, formatPriceDigits, "0");
   const [categoryId, setCategoryId] = useState("");
   const [publishingType, setPublishingType] = useState<
     "full_acquisition" | "co_publishing" | "marketplace_listing"
@@ -248,19 +264,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     });
   };
 
-  const handlePriceChange = (val: string) => {
-    let clean = val.replace(/\D/g, "");
-    if (clean.length > 1 && clean.startsWith("0")) {
-      clean = clean.replace(/^0+/, "");
-    }
-    if (!clean) {
-      setPrice("0");
-      return;
-    }
-    const formatted = clean.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    setPrice(formatted);
-  };
-
   // Sync categoryId when publishProgram, itemType or categories list changes
   useEffect(() => {
     const filtered = categories.filter((cat) =>
@@ -373,8 +376,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       alert(t("errors.titleRequired"));
       return;
     }
-    const cleanPriceStr = price.replace(/\s/g, "");
-    const priceNum = parseFloat(cleanPriceStr || "0");
+    const priceNum = parseFloat(priceInput.rawValue || "0");
     if (isNaN(priceNum) || priceNum < 0) {
       alert(t("errors.invalidPrice"));
       return;
@@ -866,8 +868,8 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               prefix="VND"
               placeholder={t("form.pricePlaceholder")}
               type="text"
-              value={price}
-              onChange={(e) => handlePriceChange(e.target.value)}
+              inputMode="numeric"
+              {...priceInput.inputProps}
               required
             />
           </div>
