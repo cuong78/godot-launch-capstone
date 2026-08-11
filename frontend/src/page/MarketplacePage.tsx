@@ -385,6 +385,12 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
     // Local Diverse sorting logic
     result.sort((a, b) => {
+      if (searchText) {
+        const query = searchText.trim().toLowerCase();
+        const aTitle = (a.title || '').toLowerCase().includes(query) ? 2 : 1;
+        const bTitle = (b.title || '').toLowerCase().includes(query) ? 2 : 1;
+        if (aTitle !== bTitle) return bTitle - aTitle;
+      }
       if (localSortOrder === "price-low") return a.price - b.price;
       if (localSortOrder === "price-high") return b.price - a.price;
       if (localSortOrder === "alphabetical-az") return a.title.localeCompare(b.title);
@@ -481,24 +487,30 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               <button
                 type="button"
                 onClick={() => handleCatalogTypeChange("game")}
-                className={`rounded-sm py-1 px-3 text-xs font-semibold transition-studio cursor-pointer ${
+                className={`rounded-sm py-1 px-3 text-xs font-semibold transition-studio cursor-pointer flex items-center justify-center gap-1.5 ${
                   catalogType === "game"
                     ? "bg-white text-slate-900 shadow-sm dark:bg-night-800 dark:text-white"
                     : "text-slate-500 hover:text-slate-955 dark:hover:text-zinc-200"
                 }`}
               >
-                {t("filters.catalogType.game", "Game")}
+                <span>{t("filters.catalogType.game", "Game")}</span>
+                <span className="text-[10px] opacity-75 px-1 rounded bg-slate-200/60 dark:bg-slate-700/60">
+                  {filteredAssets.filter(a => a.itemType === 'source_code').length}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => handleCatalogTypeChange("asset")}
-                className={`rounded-sm py-1 px-3 text-xs font-semibold transition-studio cursor-pointer ${
+                className={`rounded-sm py-1 px-3 text-xs font-semibold transition-studio cursor-pointer flex items-center justify-center gap-1.5 ${
                   catalogType === "asset"
                     ? "bg-white text-slate-900 shadow-sm dark:bg-night-800 dark:text-white"
                     : "text-slate-500 hover:text-slate-955 dark:hover:text-zinc-200"
                 }`}
               >
-                {t("filters.catalogType.asset", "Asset")}
+                <span>{t("filters.catalogType.asset", "Asset")}</span>
+                <span className="text-[10px] opacity-75 px-1 rounded bg-slate-200/60 dark:bg-slate-700/60">
+                  {filteredAssets.filter(a => a.itemType === 'asset').length}
+                </span>
               </button>
             </div>
             
@@ -732,7 +744,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   aria-label={t("filters.searchLabel")}
-                  className="w-full rounded-md border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-xs text-slate-800 outline-none placeholder-slate-400 transition-all focus:border-slate-350 dark:border-night-700/60 dark:bg-night-950/40 dark:text-slate-100 dark:placeholder-slate-500"
+                  className="w-full rounded-md border border-slate-300 bg-slate-100/90 py-2 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none placeholder-slate-500 transition-all hover:bg-slate-100 focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-night-900 dark:text-white dark:placeholder-slate-400 dark:hover:bg-night-850 dark:focus:border-sky-400 dark:focus:bg-night-950 dark:focus:ring-sky-400/20"
                 />
                 {searchText && (
                   <button

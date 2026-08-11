@@ -10,7 +10,7 @@
 # Run this script from PowerShell: .\upload_banner_images.ps1
 
 Param(
-    [string]$SourceFolder = "D:\capstone\go-dot-launch-capstone-fptu\resource\media\banner",
+    [string]$SourceFolder = "$PSScriptRoot\resource\media\banner",
     [string]$FilerUrl = "http://localhost:8888",
     [string]$DbUser = "user_godot_launch",
     [string]$DbName = "godot_launch",

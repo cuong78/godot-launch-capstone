@@ -623,57 +623,42 @@ export default function App() {
   useEffect(() => {
     let isCancelled = false;
 
-    const fetchActiveMarketplaceItems = async () => {
+    const fetchAllCatalogItems = async () => {
       try {
-        const res = await marketplaceApi.getAllMarketplaceItems('active');
-        if (!res.success || !res.data || isCancelled) {
-          return;
+        const [assetRes, gameRes] = await Promise.all([
+          marketplaceApi.getAllMarketplaceItems('active', searchText),
+          gameApi.getAllGames('published', searchText),
+        ]);
+
+        if (isCancelled) return;
+
+        let mappedAssets: Asset[] = [];
+        if (assetRes.success && assetRes.data) {
+          mappedAssets = assetRes.data.map((item) => mapMarketplaceItemToAsset(item, t));
         }
 
-        const mapped = res.data.map((item) => mapMarketplaceItemToAsset(item, t));
-        setAssets(prev => {
-          const nonMarketplaceCatalog = prev.filter(item => item.itemType !== 'asset');
-          return [...mapped, ...nonMarketplaceCatalog];
-        });
+        let mappedGames: Asset[] = [];
+        if (gameRes.success && gameRes.data) {
+          const eligible = gameRes.data.filter(
+            (g) => !g.publishingType || g.publishingType === 'marketplace_listing'
+          );
+          mappedGames = eligible.map(mapGameToAsset);
+        }
+
+        setAssets([...mappedAssets, ...mappedGames]);
       } catch (err) {
-        console.error('Failed to load marketplace items from backend:', err);
+        console.error('Failed to load catalog items from backend:', err);
       }
     };
 
     if (currentScreen === 'marketplace' || currentScreen === 'explore' || currentScreen === 'detail') {
-      fetchActiveMarketplaceItems();
+      fetchAllCatalogItems();
     }
 
     return () => {
       isCancelled = true;
     };
-  }, [currentScreen, i18n.language]);
-
-  // Fetch published games from backend storage
-  useEffect(() => {
-    const fetchPublishedGames = async () => {
-      try {
-        const res = await gameApi.getAllGames('published');
-        if (res.success && res.data) {
-          // Game đã push lên Google Play (full_acquisition/co_publishing) không còn bán source
-          // code trên Marketplace nữa — chỉ giữ game publishingType = marketplace_listing (hoặc chưa set).
-          const marketplaceEligible = res.data.filter(
-            (g) => !g.publishingType || g.publishingType === 'marketplace_listing'
-          );
-          const mapped = marketplaceEligible.map(mapGameToAsset);
-          setAssets(prev => {
-            const filteredPrev = prev.filter(item => !mapped.some(m => m.id === item.id));
-            return [...mapped, ...filteredPrev];
-          });
-        }
-      } catch (err) {
-        console.error("Failed to load published games from backend:", err);
-      }
-    };
-    if (currentScreen === 'marketplace' || currentScreen === 'explore' || currentScreen === 'detail') {
-      fetchPublishedGames();
-    }
-  }, [currentScreen, i18n.language]);
+  }, [currentScreen, i18n.language, searchText]);
 
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);
@@ -1067,20 +1052,24 @@ export default function App() {
 
   // Filter & Sort Logic for Marketplace
   const filteredAssets = useMemo(() => {
+    const query = searchText ? searchText.trim().toLowerCase() : '';
     return marketplaceCatalogAssets.filter(item => {
       // Search Box Filter
-      if (searchText) {
-        const matchesSearch = item.title.toLowerCase().includes(searchText.toLowerCase()) || 
-                              item.description.toLowerCase().includes(searchText.toLowerCase()) ||
-                              item.tag.toLowerCase().includes(searchText.toLowerCase()) ||
-                              (item.author && item.author.toLowerCase().includes(searchText.toLowerCase()));
-        if (!matchesSearch) return false;
+      if (query) {
+        const titleMatch = (item.title || '').toLowerCase().includes(query);
+        const tagMatch = (item.tag || '').toLowerCase().includes(query);
+        const authorMatch = (item.author || '').toLowerCase().includes(query);
+        const categoryMatch = (item.category || '').toLowerCase().includes(query);
+        const tagListMatch = (item.tagList || []).some(t => (t || '').toLowerCase().includes(query));
+        if (!titleMatch && !tagMatch && !authorMatch && !categoryMatch && !tagListMatch) {
+          return false;
+        }
       }
       
       // Category Checkboxes Filter
       if (selectedCategories.length > 0) {
         const allowedCategories = getCategoryAndDescendants(selectedCategories);
-        if (!allowedCategories.some(catName => catName.toLowerCase() === item.category.toLowerCase())) return false;
+        if (!allowedCategories.some(catName => catName.toLowerCase() === (item.category || '').toLowerCase())) return false;
       }
 
       // Max price filter
@@ -1088,6 +1077,11 @@ export default function App() {
 
       return true;
     }).sort((a, b) => {
+      if (query) {
+        const aTitle = (a.title || '').toLowerCase().includes(query) ? 2 : 1;
+        const bTitle = (b.title || '').toLowerCase().includes(query) ? 2 : 1;
+        if (aTitle !== bTitle) return bTitle - aTitle;
+      }
       if (sortOrder === 'price-low') return a.price - b.price;
       if (sortOrder === 'price-high') return b.price - a.price;
       return b.rating - a.rating; // default standard popularity index
@@ -1177,6 +1171,8 @@ export default function App() {
           setSelectedAssetId={setSelectedAssetId}
           setSelectedPost={setSelectedPost}
           setSelectedAuthor={setSelectedAuthor}
+          searchText={searchText}
+          setSearchText={setSearchText}
         />
       )}
 
