@@ -58,6 +58,12 @@ public enum ErrorCode {
     TAG_ALREADY_EXISTS(HttpStatus.CONFLICT, "Tag name or slug already exists."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ."),
 
+    // Review & Rating
+    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy đánh giá."),
+    REVIEW_NOT_PURCHASED(HttpStatus.FORBIDDEN, "Bạn cần phải mua sản phẩm trước khi viết đánh giá."),
+    REVIEW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Tác giả không được tự đánh giá sản phẩm của chính mình."),
+    REVIEW_TARGET_INVALID(HttpStatus.BAD_REQUEST, "Sản phẩm được đánh giá không tồn tại hoặc đang bị ẩn."),
+
     // 400 Bad Request additions / Category
     CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "Category name or slug already exists."),
     PARENT_CATEGORY_NOT_FOUND(HttpStatus.BAD_REQUEST, "Parent category does not exist."),

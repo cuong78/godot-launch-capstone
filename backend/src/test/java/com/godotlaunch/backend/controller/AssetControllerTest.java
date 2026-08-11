@@ -75,8 +75,8 @@ class AssetControllerTest {
         when(assetService.getAllAssets(null)).thenReturn(List.of(assetResp));
 
         // Act
-        ResponseEntity<ApiResponse<List<AssetResponse>>> filtered = assetController.getAllAssets(ItemStatus.active, principal);
-        ResponseEntity<ApiResponse<List<AssetResponse>>> all = assetController.getAllAssets(null, null);
+        ResponseEntity<ApiResponse<List<AssetResponse>>> filtered = assetController.getAllAssets(ItemStatus.active, null, principal);
+        ResponseEntity<ApiResponse<List<AssetResponse>>> all = assetController.getAllAssets(null, null, null);
 
         // Assert
         assertThat(filtered.getBody().getData()).hasSize(1);
