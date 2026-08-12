@@ -246,7 +246,7 @@ Tiền nhận lại có thể dùng để mua sản phẩm nhưng không đượ
 Tạo migration tiếp theo, dự kiến:
 
 ```text
-backend/src/main/resources/db/migration/V16__add_withdrawable_balance.sql
+backend/src/main/resources/db/migration/V17__add_withdrawable_balance.sql
 ```
 
 Thứ tự trong migration:

@@ -64,14 +64,14 @@ class WithdrawalAutoPayoutSchedulerTest {
     @Test
     void shouldNotCreatePayoutBeforeHoldPeriodEnds() {
         when(platformSettingsService.getWithdrawalHoldDays()).thenReturn((short) 3);
-        when(withdrawalRequestRepository.findByStatusAndCreatedAtBefore(eq(WithdrawalStatus.pending), any()))
+        when(withdrawalRequestRepository.findByStatusAndCreatedAtBeforeWithUser(eq(WithdrawalStatus.pending), any()))
                 .thenReturn(List.of());
 
         Instant beforeRun = Instant.now();
         scheduler.autoApproveEligibleWithdrawals();
 
         ArgumentCaptor<Instant> cutoffCaptor = ArgumentCaptor.forClass(Instant.class);
-        verify(withdrawalRequestRepository).findByStatusAndCreatedAtBefore(
+        verify(withdrawalRequestRepository).findByStatusAndCreatedAtBeforeWithUser(
                 eq(WithdrawalStatus.pending),
                 cutoffCaptor.capture()
         );
@@ -85,7 +85,7 @@ class WithdrawalAutoPayoutSchedulerTest {
     @Test
     void shouldCreateAutomaticPayoutForEligibleWithdrawal() {
         when(platformSettingsService.getWithdrawalHoldDays()).thenReturn((short) 3);
-        when(withdrawalRequestRepository.findByStatusAndCreatedAtBefore(eq(WithdrawalStatus.pending), any()))
+        when(withdrawalRequestRepository.findByStatusAndCreatedAtBeforeWithUser(eq(WithdrawalStatus.pending), any()))
                 .thenReturn(List.of(withdrawal));
         when(disputeRepository.existsByReportedSellerIdAndStatus(seller.getId(), DisputeStatus.open))
                 .thenReturn(false);
@@ -104,7 +104,7 @@ class WithdrawalAutoPayoutSchedulerTest {
     @Test
     void shouldKeepEligibleWithdrawalPendingWhenSellerHasOpenDispute() {
         when(platformSettingsService.getWithdrawalHoldDays()).thenReturn((short) 3);
-        when(withdrawalRequestRepository.findByStatusAndCreatedAtBefore(eq(WithdrawalStatus.pending), any()))
+        when(withdrawalRequestRepository.findByStatusAndCreatedAtBeforeWithUser(eq(WithdrawalStatus.pending), any()))
                 .thenReturn(List.of(withdrawal));
         when(disputeRepository.existsByReportedSellerIdAndStatus(seller.getId(), DisputeStatus.open))
                 .thenReturn(true);
@@ -121,7 +121,7 @@ class WithdrawalAutoPayoutSchedulerTest {
         blockingDispute.setId(UUID.randomUUID());
         seller.setLockedForDispute(blockingDispute);
         when(platformSettingsService.getWithdrawalHoldDays()).thenReturn((short) 3);
-        when(withdrawalRequestRepository.findByStatusAndCreatedAtBefore(eq(WithdrawalStatus.pending), any()))
+        when(withdrawalRequestRepository.findByStatusAndCreatedAtBeforeWithUser(eq(WithdrawalStatus.pending), any()))
                 .thenReturn(List.of(withdrawal));
         when(disputeRepository.existsByReportedSellerIdAndStatus(seller.getId(), DisputeStatus.open))
                 .thenReturn(false);

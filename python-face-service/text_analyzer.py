@@ -41,11 +41,27 @@ _SENSITIVE_KEYWORDS = [
 ]
 
 
+def _keyword_matches(kw: str, lower_text: str) -> bool:
+    """
+    So khớp 1 keyword trong text (đã lowercase).
+
+    Từ khóa chỉ gồm chữ cái (vd "ass", "sex", "hack") dùng word-boundary
+    (\\b) để tránh false positive khi nó là substring của từ vô hại —
+    ví dụ "ass" từng khớp nhầm vào "Classic" (Cl-ass-ic), "sex" vào "essex".
+    Từ khóa có khoảng trắng/ký tự đặc biệt (cụm tiếng Việt, "18+") giữ
+    nguyên substring match vì các cụm dài này hiếm khi là false positive
+    và \\b không hoạt động đúng quanh ký tự non-word như '+'.
+    """
+    if re.fullmatch(r"[a-zA-Z]+", kw):
+        return re.search(rf"\b{re.escape(kw)}\b", lower_text) is not None
+    return kw in lower_text
+
+
 def _keyword_check(text: str, field: str) -> list[dict]:
     """Kiểm tra keyword nhanh. Trả về list issues."""
     issues = []
     lower = text.lower()
-    matched = [kw for kw in _SENSITIVE_KEYWORDS if kw in lower]
+    matched = [kw for kw in _SENSITIVE_KEYWORDS if _keyword_matches(kw, lower)]
     if matched:
         issues.append({
             "field": field,

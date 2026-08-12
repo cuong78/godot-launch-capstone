@@ -24,7 +24,7 @@
 Để theo dõi bản cập nhật đang chờ duyệt mà không làm ảnh hưởng đến trạng thái của game đang hoạt động, hệ thống sử dụng một trường liên kết tạm thời `pending_update_snapshot_id`.
 
 ```sql
--- Migration V18__add_pending_update_snapshot_to_games.sql
+-- Migration V19__add_pending_update_snapshot_to_games.sql
 ALTER TABLE public.games ADD COLUMN pending_update_snapshot_id uuid;
 ALTER TABLE public.games ADD CONSTRAINT fk_games_pending_update_snapshot 
     FOREIGN KEY (pending_update_snapshot_id) REFERENCES public.source_snapshots(id) ON DELETE SET NULL;
