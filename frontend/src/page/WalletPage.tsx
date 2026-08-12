@@ -947,6 +947,9 @@ export const WalletPage: React.FC<{
                       {t("wallet:transactions.columns.amount")}
                     </th>
                     <th className="p-3">
+                      {t("wallet:transactions.columns.balanceAfter")}
+                    </th>
+                    <th className="p-3">
                       {t("wallet:transactions.columns.reference")}
                     </th>
                     <th className="p-3">
@@ -958,7 +961,7 @@ export const WalletPage: React.FC<{
                   {transactions.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="p-8 text-center text-xs text-slate-500 dark:text-slate-400"
                       >
                         {t("wallet:transactions.empty")}
@@ -986,6 +989,16 @@ export const WalletPage: React.FC<{
                             locale,
                             t("wallet:common.notAvailable"),
                           )}
+                        </td>
+                        <td className="p-3 font-mono text-slate-600 dark:text-slate-300">
+                          {txn.balanceAfter !== undefined && txn.balanceAfter !== null
+                            ? formatMoney(
+                                Number(txn.balanceAfter),
+                                summaryCurrency,
+                                locale,
+                                t("wallet:common.notAvailable"),
+                              )
+                            : t("wallet:common.notAvailable")}
                         </td>
                         <td className="p-3 font-mono text-[10px] text-slate-500 dark:text-slate-400">
                           {txn.referenceId || "\u2014"}

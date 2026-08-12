@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.dto.projection.TransactionWithBalanceRow;
 import com.godotlaunch.backend.dto.response.TransactionResponse;
 import com.godotlaunch.backend.dto.response.WalletResponse;
 import com.godotlaunch.backend.entity.Game;
@@ -86,7 +87,7 @@ public class WalletServiceImpl implements WalletService {
     public Page<TransactionResponse> getTransactionHistory(String email, Pageable pageable) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return transactionRepository.findByWalletUserIdOrderByCreatedAtDesc(user.getId(), pageable)
+        return transactionRepository.findByWalletUserIdWithBalanceOrderByCreatedAtDesc(user.getId(), pageable)
                 .map(this::mapToTransactionResponse);
     }
 
@@ -174,18 +175,19 @@ public class WalletServiceImpl implements WalletService {
                 .build();
     }
 
-    private TransactionResponse mapToTransactionResponse(Transaction txn) {
+    private TransactionResponse mapToTransactionResponse(TransactionWithBalanceRow row) {
         return TransactionResponse.builder()
-                .id(txn.getId())
-                .walletId(txn.getWallet().getId())
-                .relatedUserId(txn.getRelatedUser() != null ? txn.getRelatedUser().getId() : null)
-                .relatedUserFullName(txn.getRelatedUser() != null ? txn.getRelatedUser().getFullName() : null)
-                .gameId(txn.getGame() != null ? txn.getGame().getId() : null)
-                .gameTitle(txn.getGame() != null ? txn.getGame().getTitle() : null)
-                .amount(txn.getAmount())
-                .type(txn.getType())
-                .referenceId(txn.getReferenceId())
-                .createdAt(txn.getCreatedAt())
+                .id(row.getId())
+                .walletId(row.getWalletId())
+                .relatedUserId(row.getRelatedUserId())
+                .relatedUserFullName(row.getRelatedUserFullName())
+                .gameId(row.getGameId())
+                .gameTitle(row.getGameTitle())
+                .amount(row.getAmount())
+                .type(TxnType.valueOf(row.getType()))
+                .referenceId(row.getReferenceId())
+                .createdAt(row.getCreatedAt())
+                .balanceAfter(row.getBalanceAfter())
                 .build();
     }
 }

@@ -79,6 +79,7 @@
   "status.processing": "決済処理中",
   "status.rejected": "却下",
   "transactions.columns.amount": "金額",
+  "transactions.columns.balanceAfter": "取引後残高",
   "transactions.columns.reference": "注文/申請ID",
   "transactions.columns.status": "ステータス",
   "transactions.columns.time": "取引日時",
