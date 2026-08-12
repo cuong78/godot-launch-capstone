@@ -1,0 +1,163 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.0" type="device">
+  <diagram id="upload-game-marketplace-class-diagram" name="Upload Game to Marketplace">
+    <mxGraphModel dx="12400" dy="10000" grid="1" gridSize="20" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="12400" pageHeight="10000" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Upload Game to Marketplace - Focused Application Class Diagram" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=60;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="160" y="60" width="7600" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-create-game" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;CreateGameRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- title: String&lt;br&gt;- description: String&lt;br&gt;- priceProposed: BigDecimal&lt;br&gt;- categoryId: UUID&lt;br&gt;- publishingType: PublishingType&lt;br&gt;- githubRepoUrl: String&lt;br&gt;- githubBranch: String&lt;br&gt;- tagIds: List&amp;lt;UUID&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getTitle(): String&lt;br&gt;+ getPriceProposed(): BigDecimal&lt;br&gt;+ getPublishingType(): PublishingType&lt;br&gt;+ getGithubRepoUrl(): String&lt;br&gt;+ getGithubBranch(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="180" y="320" width="2700" height="1150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-submit-repo" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;SubmitGameRepoRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- repoUrl: String&lt;br&gt;- branch: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getRepoUrl(): String&lt;br&gt;+ getBranch(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3200" y="380" width="2400" height="750" as="geometry" />
+        </mxCell>
+
+        <mxCell id="controller-game" value="&lt;div align=&quot;center&quot;&gt;«controller»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GameController&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- gameService: GameService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createGameDraft(request: CreateGameRequest, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, UUID&amp;gt;&amp;gt;&amp;gt;&lt;br&gt;+ submitGameRepo(id: UUID, request: SubmitGameRepoRequest, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, String&amp;gt;&amp;gt;&amp;gt;&lt;br&gt;+ acceptBot(request: SubmitGameRepoRequest, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, Boolean&amp;gt;&amp;gt;&amp;gt;&lt;br&gt;+ uploadGameMedia(id: UUID, file: MultipartFile, fileType: String, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, String&amp;gt;&amp;gt;&amp;gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="6050" y="280" width="4400" height="1400" as="geometry" />
+        </mxCell>
+
+        <mxCell id="enum-game-status" value="&lt;div align=&quot;center&quot;&gt;«enumeration»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GameStatus&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;draft&lt;br&gt;pending&lt;br&gt;approved&lt;br&gt;rejected&lt;br&gt;published&lt;br&gt;awaiting_store_build&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="10800" y="260" width="1400" height="850" as="geometry" />
+        </mxCell>
+
+        <mxCell id="enum-publishing-type" value="&lt;div align=&quot;center&quot;&gt;«enumeration»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;PublishingType&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;full_acquisition&lt;br&gt;co_publishing&lt;br&gt;marketplace_listing&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="10800" y="1250" width="1400" height="650" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-game" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GameService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createGameDraft(request: CreateGameRequest, creatorEmail: String): UUID&lt;br&gt;+ submitGameRepo(gameId: UUID, repoUrl: String, branch: String, creatorEmail: String): void&lt;br&gt;+ acceptBotInvitation(repoUrl: String, creatorEmail: String): boolean&lt;br&gt;+ uploadGameMedia(gameId: UUID, fileType: String, file: MultipartFile, uploaderEmail: String): String&lt;br&gt;+ approveGame(gameId: UUID): void&lt;br&gt;+ rejectGame(gameId: UUID, reason: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="2250" width="3400" height="1350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-game-impl" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GameServiceImpl&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- gitHubRepoService: GitHubRepoService&lt;br&gt;- sourceProcessingClient: SourceProcessingClient&lt;br&gt;- seaweedFsService: SeaweedFsService&lt;br&gt;- aiReviewService: AiReviewService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createGameDraft(request: CreateGameRequest, creatorEmail: String): UUID&lt;br&gt;+ submitGameRepo(gameId: UUID, repoUrl: String, branch: String, creatorEmail: String): void&lt;br&gt;+ acceptBotInvitation(repoUrl: String, creatorEmail: String): boolean&lt;br&gt;+ uploadGameMedia(gameId: UUID, fileType: String, file: MultipartFile, uploaderEmail: String): String&lt;br&gt;- saveSnapshotForGame(game: Game, result: SourceProcessResult, requireBundle: boolean, isUpdate: boolean): SourceSnapshot&lt;br&gt;- uploadSourceBundle(result: SourceProcessResult, gameId: UUID, snapshotId: UUID): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="4100" y="2150" width="4100" height="1650" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-github-repo" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GitHubRepoService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ verifyOwnership(user: User, repoUrl: String): void&lt;br&gt;+ checkAccess(repoUrl: String): RepoAccess&lt;br&gt;+ acceptBotInvitation(repoUrl: String): boolean&lt;br&gt;+ getCloneToken(repoUrl: String): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="9000" y="2200" width="3000" height="950" as="geometry" />
+        </mxCell>
+
+        <mxCell id="client-source-processing" value="&lt;div align=&quot;center&quot;&gt;«client»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;SourceProcessingClient&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- serviceUrl: String&lt;br&gt;- restTemplate: RestTemplate&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ process(repoUrl: String, token: String, branch: String): SourceProcessResult&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="9000" y="3450" width="3000" height="800" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-seaweed" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;SeaweedFsService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ uploadWithKey(file: MultipartFile, objectKey: String): String&lt;br&gt;+ getFileUrl(objectKey: String): String&lt;br&gt;+ deleteObject(objectKey: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="9000" y="4600" width="3000" height="850" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-ai-review" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AiReviewService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ reviewGameSnapshotAsync(gameId: UUID, snapshotId: UUID): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="9000" y="5800" width="3000" height="700" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-user" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;User&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- email: String&lt;br&gt;- githubUsername: String&lt;br&gt;- role: Role&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getId(): UUID&lt;br&gt;+ getEmail(): String&lt;br&gt;+ getGithubUsername(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="180" y="6600" width="2400" height="850" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-game" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Game&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- creator: User&lt;br&gt;- title: String&lt;br&gt;- description: String&lt;br&gt;- githubRepoUrl: String&lt;br&gt;- githubBranch: String&lt;br&gt;- githubVerifiedAt: Instant&lt;br&gt;- status: GameStatus&lt;br&gt;- publishingType: PublishingType&lt;br&gt;- priceProposed: BigDecimal&lt;br&gt;- isSourceListed: boolean&lt;br&gt;- pendingUpdateSnapshot: SourceSnapshot&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setCreator(creator: User): void&lt;br&gt;+ setStatus(status: GameStatus): void&lt;br&gt;+ setPublishingType(type: PublishingType): void&lt;br&gt;+ setGithubRepoUrl(repoUrl: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3200" y="6300" width="3600" height="1550" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-media" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Media&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- game: Game&lt;br&gt;- mediaType: String&lt;br&gt;- mediaUrl: String&lt;br&gt;- createdAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setGame(game: Game): void&lt;br&gt;+ setMediaType(mediaType: String): void&lt;br&gt;+ setMediaUrl(mediaUrl: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="7500" y="6700" width="2300" height="900" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-source-snapshot" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;SourceSnapshot&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- game: Game&lt;br&gt;- bundleHash: String&lt;br&gt;- commitSha: String&lt;br&gt;- isGodotProject: boolean&lt;br&gt;- virusClean: boolean&lt;br&gt;- virusScanned: boolean&lt;br&gt;- secretsFound: String&lt;br&gt;- bundleUrl: String&lt;br&gt;- createdAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setGame(game: Game): void&lt;br&gt;+ setBundleUrl(bundleUrl: String): void&lt;br&gt;+ setVirusClean(virusClean: boolean): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="10000" y="6800" width="2200" height="1300" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-game-version" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GameVersion&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- game: Game&lt;br&gt;- versionNumber: String&lt;br&gt;- changelog: String&lt;br&gt;- fileUrl: String&lt;br&gt;- isCurrent: boolean&lt;br&gt;- releasedAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setGame(game: Game): void&lt;br&gt;+ setFileUrl(fileUrl: String): void&lt;br&gt;+ setCurrent(current: boolean): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3900" y="8500" width="2800" height="1050" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-controller-service" value="gameService" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.05;exitY=1;entryX=0.88;entryY=0;" edge="1" parent="1" source="controller-game" target="service-game">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="6270" y="2000" /><mxPoint x="3192" y="2000" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-controller-create-request" value="receives draft data" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.28;entryX=1;entryY=0.42;" edge="1" parent="1" source="controller-game" target="dto-create-game">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="5850" y="672" /><mxPoint x="5850" y="803" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-controller-submit-request" value="receives repository" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.62;entryX=1;entryY=0.62;" edge="1" parent="1" source="controller-game" target="dto-submit-repo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-service-create-request" value="createGameDraft(request)" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.18;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="service-game" target="dto-create-game">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="812" y="1900" /><mxPoint x="1530" y="1900" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-impl-realizes-service" value="implements" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=block;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.48;entryX=1;entryY=0.48;" edge="1" parent="1" source="service-game-impl" target="service-game">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-impl-github" value="verifies ownership and access" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.15;entryX=0;entryY=0.4;" edge="1" parent="1" source="service-game-impl" target="service-github-repo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-impl-source-processing" value="clones and scans repository" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="service-game-impl" target="client-source-processing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-impl-storage" value="stores source bundle and media" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.92;exitY=1;entryX=0;entryY=0.45;" edge="1" parent="1" source="service-game-impl" target="service-seaweed">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="7872" y="4200" /><mxPoint x="8600" y="4200" /><mxPoint x="8600" y="4983" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-impl-ai-review" value="reviews verified snapshot" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.72;exitY=1;entryX=0;entryY=0.5;" edge="1" parent="1" source="service-game-impl" target="service-ai-review">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="7052" y="4400" /><mxPoint x="8400" y="4400" /><mxPoint x="8400" y="6150" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-impl-game" value="creates and updates" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.25;exitY=1;entryX=0.48;entryY=0;" edge="1" parent="1" source="service-game-impl" target="entity-game">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-impl-snapshot" value="creates immutable snapshot" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.85;entryX=0;entryY=0.3;" edge="1" parent="1" source="service-game-impl" target="entity-source-snapshot">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="8500" y="3553" /><mxPoint x="8500" y="6590" /><mxPoint x="9800" y="6590" /><mxPoint x="9800" y="7190" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-impl-version" value="initializes and updates version" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.08;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="service-game-impl" target="entity-game-version">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="4428" y="6000" /><mxPoint x="2900" y="6000" /><mxPoint x="2900" y="8300" /><mxPoint x="5300" y="8300" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-user-games" value="creates" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.48;" edge="1" parent="1" source="entity-user" target="entity-game">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-user-games-user-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-games"><mxGeometry x="-0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-user-games-game-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-games"><mxGeometry x="0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-game-media" value="has media" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=1;exitY=0.52;entryX=0;entryY=0.5;" edge="1" parent="1" source="entity-game" target="entity-media">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-game-media-game-multiplicity" value="0..1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-media"><mxGeometry x="-0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-game-media-media-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-media"><mxGeometry x="0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-game-snapshots" value="captures source" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=0.9;exitY=1;entryX=0.25;entryY=1;" edge="1" parent="1" source="entity-game" target="entity-source-snapshot">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="6440" y="8250" /><mxPoint x="10550" y="8250" /></Array></mxGeometry>
+          <mxCell id="edge-game-snapshots-game-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-snapshots"><mxGeometry x="-0.9" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-game-snapshots-snapshot-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-snapshots"><mxGeometry x="0.9" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-game-versions" value="has versions" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=0.45;exitY=1;entryX=0.45;entryY=0;" edge="1" parent="1" source="entity-game" target="entity-game-version">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-game-versions-game-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-versions"><mxGeometry x="-0.82" y="-1" relative="1" as="geometry"><mxPoint x="100" y="-20" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-game-versions-version-multiplicity" value="1..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-versions"><mxGeometry x="0.82" y="-1" relative="1" as="geometry"><mxPoint x="100" y="-20" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-game-status" value="status type" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.18;exitY=0;entryX=1;entryY=0.5;" edge="1" parent="1" source="entity-game" target="enum-game-status">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="3848" y="6100" /><mxPoint x="12300" y="6100" /><mxPoint x="12300" y="685" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-game-publishing" value="listing type" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.05;exitY=0;entryX=1;entryY=0.5;" edge="1" parent="1" source="entity-game" target="enum-publishing-type">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="3380" y="5900" /><mxPoint x="12100" y="5900" /><mxPoint x="12100" y="1575" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-create-request-publishing" value="selects marketplace_listing" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0;entryY=0.5;" edge="1" parent="1" source="dto-create-game" target="enum-publishing-type">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1530" y="1800" /><mxPoint x="10600" y="1800" /><mxPoint x="10600" y="1575" /></Array></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

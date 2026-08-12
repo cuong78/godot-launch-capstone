@@ -1,0 +1,166 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.0" type="device">
+  <diagram id="upload-game-store-class-diagram" name="Upload Game to Store">
+    <mxGraphModel dx="15600" dy="10900" grid="1" gridSize="20" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="15600" pageHeight="10900" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Upload Game to Store - Focused Application Class Diagram" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=60;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="160" y="60" width="8500" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="controller-admin-game" value="&lt;div align=&quot;center&quot;&gt;«controller»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AdminGameController&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- storePublishService: StorePublishService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ uploadStoreBuild(id: UUID, file: MultipartFile, versionNumber: String, changelog: String, shortDescription: String, featureGraphic: MultipartFile, authentication: Authentication): ResponseEntity&amp;lt;ApiResponse&amp;lt;ExternalPublishResponse&amp;gt;&amp;gt;&lt;br&gt;+ getStorePublishStatus(id: UUID): ResponseEntity&amp;lt;ApiResponse&amp;lt;ExternalPublishResponse&amp;gt;&amp;gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="340" width="4300" height="1250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-external-publish-response" value="&lt;div align=&quot;center&quot;&gt;«response DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;ExternalPublishResponse&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- gameId: UUID&lt;br&gt;- gameVersionId: UUID&lt;br&gt;- versionNumber: String&lt;br&gt;- status: String&lt;br&gt;- externalAppId: String&lt;br&gt;- storeUrl: String&lt;br&gt;- submittedAt: Instant&lt;br&gt;- liveAt: Instant&lt;br&gt;- rejectedReason: String&lt;br&gt;- createdAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getId(): UUID&lt;br&gt;+ getStatus(): String&lt;br&gt;+ getStoreUrl(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="5100" y="300" width="3000" height="1450" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-store-publish" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;StorePublishService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ uploadBuildAndPublish(gameId: UUID, file: MultipartFile, versionNumber: String, changelog: String, shortDescription: String, featureGraphic: MultipartFile, adminId: UUID): ExternalPublishResponse&lt;br&gt;+ getLatestForGame(gameId: UUID): ExternalPublishResponse&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="8700" y="360" width="3600" height="1050" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-seaweed" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;SeaweedFsService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ uploadFile(file: MultipartFile, prefix: String): String&lt;br&gt;+ resolvePublicUrl(rawUrl: String): String&lt;br&gt;+ deleteObject(objectKey: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="12800" y="440" width="2600" height="850" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-store-publish-impl" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;StorePublishServiceImpl&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- SHORT_DESCRIPTION_MAX_LEN: int = 80&lt;br&gt;- MIN_SCREENSHOTS: int = 2&lt;br&gt;- seaweedFsService: SeaweedFsService&lt;br&gt;- googlePlayPublishService: GooglePlayPublishService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ uploadBuildAndPublish(gameId: UUID, file: MultipartFile, versionNumber: String, changelog: String, shortDescription: String, featureGraphic: MultipartFile, adminId: UUID): ExternalPublishResponse&lt;br&gt;+ getLatestForGame(gameId: UUID): ExternalPublishResponse&lt;br&gt;- toResponse(publish: ExternalPublish, version: GameVersion): ExternalPublishResponse&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="2250" width="5000" height="1750" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-google-play" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GooglePlayPublishService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ publishGameToStore(version: GameVersion, shortDescription: String, featureGraphicUrl: String, screenshotUrls: List&amp;lt;String&amp;gt;): ExternalPublish&lt;br&gt;+ checkReviewStatus(publish: ExternalPublish): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="5900" y="2300" width="3800" height="1050" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-polling" value="&lt;div align=&quot;center&quot;&gt;«scheduled service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;ExternalPublishPollingService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- googlePlayPublishService: GooglePlayPublishService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ pollPendingReviews(): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="10400" y="2250" width="4400" height="900" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-google-play-real" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;RealGooglePlayPublishServiceImpl&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- restTemplate: RestTemplate&lt;br&gt;- serviceAccountPath: String&lt;br&gt;- packageName: String&lt;br&gt;- track: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ publishGameToStore(version: GameVersion, shortDescription: String, featureGraphicUrl: String, screenshotUrls: List&amp;lt;String&amp;gt;): ExternalPublish&lt;br&gt;+ checkReviewStatus(publish: ExternalPublish): void&lt;br&gt;- uploadImage(editId: String, imageType: String, imageUrl: String, accessToken: String): void&lt;br&gt;- fetchAccessToken(): String&lt;br&gt;- downloadBundle(fileUrl: String): byte[]&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="5900" y="4650" width="4100" height="1650" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-game" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Game&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- title: String&lt;br&gt;- description: String&lt;br&gt;- thumbnailUrl: String&lt;br&gt;- status: GameStatus&lt;br&gt;- publishingType: PublishingType&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getId(): UUID&lt;br&gt;+ getThumbnailUrl(): String&lt;br&gt;+ setStatus(status: GameStatus): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="7300" width="3000" height="1250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-media" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Media&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- game: Game&lt;br&gt;- mediaType: String&lt;br&gt;- mediaUrl: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getMediaType(): String&lt;br&gt;+ getMediaUrl(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3700" y="7450" width="2300" height="900" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-game-version" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GameVersion&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- game: Game&lt;br&gt;- versionNumber: String&lt;br&gt;- changelog: String&lt;br&gt;- fileUrl: String&lt;br&gt;- isCurrent: boolean&lt;br&gt;- releasedAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setGame(game: Game): void&lt;br&gt;+ setVersionNumber(versionNumber: String): void&lt;br&gt;+ setFileUrl(fileUrl: String): void&lt;br&gt;+ setCurrent(current: boolean): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="6500" y="7250" width="3000" height="1350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-external-publish" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;ExternalPublish&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- game: Game&lt;br&gt;- gameVersion: GameVersion&lt;br&gt;- status: ExtStatus&lt;br&gt;- externalAppId: String&lt;br&gt;- storeUrl: String&lt;br&gt;- submittedAt: Instant&lt;br&gt;- liveAt: Instant&lt;br&gt;- rejectedReason: String&lt;br&gt;- createdAt: Instant&lt;br&gt;- updatedAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setStatus(status: ExtStatus): void&lt;br&gt;+ setStoreUrl(storeUrl: String): void&lt;br&gt;+ setRejectedReason(reason: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="10000" y="7100" width="3600" height="1550" as="geometry" />
+        </mxCell>
+
+        <mxCell id="enum-game-status" value="&lt;div align=&quot;center&quot;&gt;«enumeration»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GameStatus&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;draft&lt;br&gt;pending&lt;br&gt;approved&lt;br&gt;rejected&lt;br&gt;published&lt;br&gt;awaiting_store_build&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="300" y="9500" width="1900" height="850" as="geometry" />
+        </mxCell>
+
+        <mxCell id="enum-publishing-type" value="&lt;div align=&quot;center&quot;&gt;«enumeration»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;PublishingType&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;full_acquisition&lt;br&gt;co_publishing&lt;br&gt;marketplace_listing&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="2700" y="9600" width="2100" height="650" as="geometry" />
+        </mxCell>
+
+        <mxCell id="enum-ext-status" value="&lt;div align=&quot;center&quot;&gt;«enumeration»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;ExtStatus&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;pending&lt;br&gt;submitted&lt;br&gt;live&lt;br&gt;rejected&lt;br&gt;removed&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="10800" y="9500" width="2100" height="750" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-controller-store-service" value="storePublishService" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.15;exitY=0;entryX=0.25;entryY=0;" edge="1" parent="1" source="controller-admin-game" target="service-store-publish">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="845" y="210" /><mxPoint x="9600" y="210" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-controller-response" value="returns publish status" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="controller-admin-game" target="dto-external-publish-response">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-store-service-response" value="returns" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="service-store-publish" target="dto-external-publish-response">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-store-impl-realizes" value="implements" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=block;endFill=0;labelBackgroundColor=#ffffff;exitX=0.75;exitY=0;entryX=0.15;entryY=1;" edge="1" parent="1" source="service-store-publish-impl" target="service-store-publish">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="3950" y="1900" /><mxPoint x="9240" y="1900" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-store-impl-storage" value="uploads build and feature graphic" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.85;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="service-store-publish-impl" target="service-seaweed">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="4450" y="2050" /><mxPoint x="14100" y="2050" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-store-impl-google" value="submits version" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="service-store-publish-impl" target="service-google-play">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-polling-google" value="checks review status" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="service-polling" target="service-google-play">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-real-realizes-google" value="implements" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=block;endFill=0;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;entryX=0.54;entryY=1;" edge="1" parent="1" source="service-google-play-real" target="service-google-play">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-store-impl-game" value="validates store readiness" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.7;entryX=0;entryY=0.5;" edge="1" parent="1" source="service-store-publish-impl" target="entity-game">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="100" y="3475" /><mxPoint x="100" y="7925" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-store-impl-media" value="reads screenshots" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.08;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="service-store-publish-impl" target="entity-media">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="600" y="6800" /><mxPoint x="4850" y="6800" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-store-impl-version" value="creates or updates current version" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.85;entryX=0.5;entryY=0;" edge="1" parent="1" source="service-store-publish-impl" target="entity-game-version">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="5750" y="3738" /><mxPoint x="5750" y="6900" /><mxPoint x="8000" y="6900" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-google-publish" value="creates and checks" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.7;entryX=0.1;entryY=0;" edge="1" parent="1" source="service-google-play" target="entity-external-publish">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="10200" y="3035" /><mxPoint x="10200" y="6800" /><mxPoint x="10360" y="6800" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-polling-publish" value="polls submitted attempts" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.72;exitY=1;entryX=0.83;entryY=0;" edge="1" parent="1" source="service-polling" target="entity-external-publish">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="13568" y="3650" /><mxPoint x="12988" y="3650" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-polling-game" value="marks game published when live" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.8;entryX=0;entryY=0.8;" edge="1" parent="1" source="service-polling" target="entity-game">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="15200" y="2970" /><mxPoint x="15200" y="10600" /><mxPoint x="50" y="10600" /><mxPoint x="50" y="8300" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-game-media" value="provides screenshots" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="entity-game" target="entity-media">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-game-media-game-multiplicity" value="0..1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-media"><mxGeometry x="-0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-game-media-media-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-media"><mxGeometry x="0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-game-versions" value="has versions" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=0.97;exitY=1;entryX=0.2;entryY=1;" edge="1" parent="1" source="entity-game" target="entity-game-version">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="3110" y="8800" /><mxPoint x="7100" y="8800" /></Array></mxGeometry>
+          <mxCell id="edge-game-versions-game-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-versions"><mxGeometry x="-0.9" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-game-versions-version-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-versions"><mxGeometry x="0.9" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-game-publishes" value="has submission attempts" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=0.85;exitY=1;entryX=0.15;entryY=1;" edge="1" parent="1" source="entity-game" target="entity-external-publish">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="2750" y="9100" /><mxPoint x="10540" y="9100" /></Array></mxGeometry>
+          <mxCell id="edge-game-publishes-game-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-publishes"><mxGeometry x="-0.9" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-game-publishes-publish-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-game-publishes"><mxGeometry x="0.9" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-version-publishes" value="has publish attempts" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="entity-game-version" target="entity-external-publish">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-version-publishes-version-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-version-publishes"><mxGeometry x="-0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-version-publishes-publish-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-version-publishes"><mxGeometry x="0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-game-status" value="controls store readiness" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.35;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="entity-game" target="enum-game-status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-game-publishing-type" value="selects store publishing" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.65;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="entity-game" target="enum-publishing-type">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="2150" y="9300" /><mxPoint x="3750" y="9300" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-publish-status" value="tracks review lifecycle" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="entity-external-publish" target="enum-ext-status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

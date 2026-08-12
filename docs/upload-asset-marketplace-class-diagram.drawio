@@ -1,0 +1,145 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.0" type="device">
+  <diagram id="upload-asset-marketplace-class-diagram" name="Upload Asset to Marketplace">
+    <mxGraphModel dx="12200" dy="8200" grid="1" gridSize="20" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="12200" pageHeight="8200" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Upload Asset to Marketplace - Focused Application Class Diagram" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=60;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="160" y="60" width="7200" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-create-asset" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;CreateAssetRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- title: String&lt;br&gt;- description: String&lt;br&gt;- price: BigDecimal&lt;br&gt;- categoryId: UUID&lt;br&gt;- fileUrl: String&lt;br&gt;- thumbnailUrl: String&lt;br&gt;- version: String&lt;br&gt;- supportedPlatforms: String&lt;br&gt;- tagIds: List&amp;lt;UUID&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getTitle(): String&lt;br&gt;+ getDescription(): String&lt;br&gt;+ getPrice(): BigDecimal&lt;br&gt;+ getCategoryId(): UUID&lt;br&gt;+ getTagIds(): List&amp;lt;UUID&amp;gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="350" width="2700" height="1250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="controller-asset" value="&lt;div align=&quot;center&quot;&gt;«controller»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AssetController&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- assetService: AssetService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createAsset(request: CreateAssetRequest, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, UUID&amp;gt;&amp;gt;&amp;gt;&lt;br&gt;+ uploadItemFile(id: UUID, file: MultipartFile, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, String&amp;gt;&amp;gt;&amp;gt;&lt;br&gt;+ uploadItemMedia(id: UUID, file: MultipartFile, mediaType: String, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, String&amp;gt;&amp;gt;&amp;gt;&lt;br&gt;+ approveAsset(id: UUID): ResponseEntity&amp;lt;ApiResponse&amp;lt;Void&amp;gt;&amp;gt;&lt;br&gt;+ rejectAsset(id: UUID, requestBody: Map&amp;lt;String, String&amp;gt;): ResponseEntity&amp;lt;ApiResponse&amp;lt;Void&amp;gt;&amp;gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3700" y="300" width="4600" height="1500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="enum-item-status" value="&lt;div align=&quot;center&quot;&gt;«enumeration»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;ItemStatus&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;pending&lt;br&gt;active&lt;br&gt;rejected&lt;br&gt;removed&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="9800" y="450" width="1900" height="700" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-asset" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AssetService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createAsset(request: CreateAssetRequest, sellerEmail: String): UUID&lt;br&gt;+ uploadItemFile(itemId: UUID, file: MultipartFile, uploaderEmail: String): void&lt;br&gt;+ uploadItemMedia(itemId: UUID, mediaType: String, file: MultipartFile, uploaderEmail: String): String&lt;br&gt;+ confirmUploadComplete(itemId: UUID, objectKey: String, requesterEmail: String): void&lt;br&gt;+ approveAsset(id: UUID): void&lt;br&gt;+ rejectAsset(id: UUID, reason: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="300" y="2300" width="3500" height="1350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-asset-impl" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AssetServiceImpl&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- seaweedFsService: SeaweedFsService&lt;br&gt;- asyncVirusScanService: AsyncVirusScanService&lt;br&gt;- aiReviewService: AiReviewService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createAsset(request: CreateAssetRequest, sellerEmail: String): UUID&lt;br&gt;+ uploadItemFile(itemId: UUID, file: MultipartFile, uploaderEmail: String): void&lt;br&gt;+ uploadItemMedia(itemId: UUID, mediaType: String, file: MultipartFile, uploaderEmail: String): String&lt;br&gt;+ confirmUploadComplete(itemId: UUID, objectKey: String, requesterEmail: String): void&lt;br&gt;+ approveAsset(id: UUID): void&lt;br&gt;+ rejectAsset(id: UUID, reason: String): void&lt;br&gt;- assertDeveloper(user: User): void&lt;br&gt;- assertAssetOwner(item: Asset, requester: User): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="4400" y="2200" width="4000" height="1750" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-seaweed" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;SeaweedFsService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ uploadWithKey(file: MultipartFile, objectKey: String): String&lt;br&gt;+ getObjectStream(objectKey: String): InputStream&lt;br&gt;+ getFileUrl(objectKey: String): String&lt;br&gt;+ deleteObject(objectKey: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="9200" y="1900" width="2800" height="1000" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-virus-scan" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AsyncVirusScanService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- seaweedFsService: SeaweedFsService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ scanAndProcessAsset(itemId: UUID, objectKey: String): void&lt;br&gt;- updateAssetStatus(itemId: UUID, status: ItemStatus): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="9200" y="3450" width="2800" height="900" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-ai-review" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AiReviewService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ reviewAssetAsync(itemId: UUID): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="9200" y="4600" width="2800" height="700" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-user" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;User&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- role: Role&lt;br&gt;- email: String&lt;br&gt;- faceVerified: boolean&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getRole(): Role&lt;br&gt;+ getEmail(): String&lt;br&gt;+ isFaceVerified(): boolean&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="5100" width="2500" height="900" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-role" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Role&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- name: String&lt;br&gt;- description: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getName(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="400" y="6800" width="2100" height="750" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-asset" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Asset&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- seller: User&lt;br&gt;- category: Category&lt;br&gt;- tags: Set&amp;lt;Tag&amp;gt;&lt;br&gt;- title: String&lt;br&gt;- description: String&lt;br&gt;- price: BigDecimal&lt;br&gt;- fileUrl: String&lt;br&gt;- thumbnailUrl: String&lt;br&gt;- status: ItemStatus&lt;br&gt;- createdAt: Instant&lt;br&gt;- updatedAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setSeller(seller: User): void&lt;br&gt;+ setCategory(category: Category): void&lt;br&gt;+ setTags(tags: Set&amp;lt;Tag&amp;gt;): void&lt;br&gt;+ setFileUrl(fileUrl: String): void&lt;br&gt;+ setStatus(status: ItemStatus): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3500" y="5000" width="3600" height="1550" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-media" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Media&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- asset: Asset&lt;br&gt;- mediaType: String&lt;br&gt;- mediaUrl: String&lt;br&gt;- createdAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setAsset(asset: Asset): void&lt;br&gt;+ setMediaType(mediaType: String): void&lt;br&gt;+ setMediaUrl(mediaUrl: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="7600" y="5500" width="2500" height="950" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-category" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Category&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- name: String&lt;br&gt;- slug: String&lt;br&gt;- type: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getName(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="7500" y="6800" width="2200" height="800" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-tag" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Tag&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- name: String&lt;br&gt;- slug: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getName(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="10100" y="6800" width="1900" height="750" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-controller-service" value="assetService" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.12;exitY=1;entryX=0.86;entryY=0;" edge="1" parent="1" source="controller-asset" target="service-asset">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="4252" y="2050" /><mxPoint x="3310" y="2050" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-controller-create-request" value="receives metadata" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.42;entryX=1;entryY=0.42;" edge="1" parent="1" source="controller-asset" target="dto-create-asset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-service-create-request" value="createAsset(request)" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.2;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="service-asset" target="dto-create-asset">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1000" y="2000" /><mxPoint x="1550" y="2000" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-impl-realizes-service" value="implements" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=block;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.48;entryX=1;entryY=0.48;" edge="1" parent="1" source="service-asset-impl" target="service-asset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-impl-storage" value="uploads ZIP and media" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.18;entryX=0;entryY=0.55;" edge="1" parent="1" source="service-asset-impl" target="service-seaweed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-impl-virus" value="starts security scan" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.7;entryX=0;entryY=0.32;" edge="1" parent="1" source="service-asset-impl" target="service-virus-scan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-impl-ai-review" value="starts AI review" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.92;exitY=1;entryX=0;entryY=0.5;" edge="1" parent="1" source="service-asset-impl" target="service-ai-review">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="8080" y="4450" /><mxPoint x="8800" y="4450" /><mxPoint x="8800" y="4950" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-virus-storage" value="reads or deletes ZIP" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.72;exitY=0;entryX=0.72;entryY=1;" edge="1" parent="1" source="service-virus-scan" target="service-seaweed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-impl-asset" value="creates and updates" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.38;exitY=1;entryX=0.52;entryY=0;" edge="1" parent="1" source="service-asset-impl" target="entity-asset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-virus-asset" value="updates unsafe status" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.75;entryX=1;entryY=0.15;" edge="1" parent="1" source="service-virus-scan" target="entity-asset">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="8800" y="4125" /><mxPoint x="8800" y="4700" /><mxPoint x="7300" y="4700" /><mxPoint x="7300" y="5233" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-asset-status" value="status type" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.7;exitY=0;entryX=1;entryY=0.5;" edge="1" parent="1" source="entity-asset" target="enum-item-status">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="6020" y="4450" /><mxPoint x="12100" y="4450" /><mxPoint x="12100" y="800" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-user-assets" value="sells" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.36;" edge="1" parent="1" source="entity-user" target="entity-asset">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-user-assets-user-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-assets"><mxGeometry x="-0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-user-assets-asset-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-assets"><mxGeometry x="0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-user-role" value="has role" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="entity-user" target="entity-role">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-user-role-user-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-role"><mxGeometry x="-0.82" y="-1" relative="1" as="geometry"><mxPoint x="100" y="-20" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-user-role-role-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-role"><mxGeometry x="0.82" y="-1" relative="1" as="geometry"><mxPoint x="100" y="-20" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-asset-media" value="has media" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=1;exitY=0.38;entryX=0;entryY=0.5;" edge="1" parent="1" source="entity-asset" target="entity-media">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-asset-media-asset-multiplicity" value="0..1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-asset-media"><mxGeometry x="-0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-asset-media-media-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-asset-media"><mxGeometry x="0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-category-assets" value="categorizes" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=0;exitY=0.35;entryX=1;entryY=0.87;" edge="1" parent="1" source="entity-category" target="entity-asset">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-category-assets-category-multiplicity" value="0..1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-category-assets"><mxGeometry x="-0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-category-assets-asset-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-category-assets"><mxGeometry x="0.86" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+        <mxCell id="edge-asset-tags" value="tagged with" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;labelBackgroundColor=#ffffff;exitX=0.82;exitY=1;entryX=0.5;entryY=1;" edge="1" parent="1" source="entity-asset" target="entity-tag">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="6452" y="7900" /><mxPoint x="11050" y="7900" /></Array></mxGeometry>
+          <mxCell id="edge-asset-tags-asset-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-asset-tags"><mxGeometry x="-0.9" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+          <mxCell id="edge-asset-tags-tag-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-asset-tags"><mxGeometry x="0.9" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry></mxCell>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

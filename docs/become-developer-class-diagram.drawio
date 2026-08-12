@@ -1,0 +1,151 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.0" type="device">
+  <diagram id="become-developer-focused-class-diagram" name="Become Developer Class Diagram">
+    <mxGraphModel dx="9600" dy="6500" grid="1" gridSize="20" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="9600" pageHeight="6500" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Become Developer - Focused Application Class Diagram" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=60;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="160" y="60" width="5600" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-face-verify-request" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;FaceVerifyRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- faceImageBase64: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getFaceImageBase64(): String&lt;br&gt;+ setFaceImageBase64(faceImageBase64: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="300" width="2000" height="720" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-kyc-confirm-request" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;KycConfirmRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- documentType: String&lt;br&gt;- fullName: String&lt;br&gt;- idNumber: String&lt;br&gt;- dateOfBirth: String&lt;br&gt;- address: String&lt;br&gt;- frontImageBase64: String&lt;br&gt;- backImageBase64: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getDocumentType(): String&lt;br&gt;+ getFullName(): String&lt;br&gt;+ getIdNumber(): String&lt;br&gt;+ getDateOfBirth(): String&lt;br&gt;+ getAddress(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="2900" y="300" width="2600" height="1050" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-bank-setup-request" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;BankSetupRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- bankName: String&lt;br&gt;- bankAccount: String&lt;br&gt;- bankAccountHolder: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getBankName(): String&lt;br&gt;+ getBankAccount(): String&lt;br&gt;+ getBankAccountHolder(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="6400" y="300" width="2500" height="850" as="geometry" />
+        </mxCell>
+
+        <mxCell id="controller-github-auth" value="&lt;div align=&quot;center&quot;&gt;«controller»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GitHubAuthController&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- githubOAuthService: GitHubOAuthService&lt;br&gt;- frontendUrl: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ prepareLink(principal: Principal, session: HttpSession): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, String&amp;gt;&amp;gt;&amp;gt;&lt;br&gt;+ redirectToGitHub(action: String, rememberMe: Boolean, session: HttpSession): ResponseEntity&amp;lt;Void&amp;gt;&lt;br&gt;+ handleCallback(code: String, error: String, state: String, session: HttpSession, response: HttpServletResponse): ResponseEntity&amp;lt;Void&amp;gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1500" width="2800" height="1350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="controller-face-verify" value="&lt;div align=&quot;center&quot;&gt;«controller»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;FaceVerifyController&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- faceServiceClient: FaceServiceClient&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getFaceVerifyStatus(principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, Boolean&amp;gt;&amp;gt;&amp;gt;&lt;br&gt;+ verifyFace(request: FaceVerifyRequest, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;Map&amp;lt;String, Boolean&amp;gt;&amp;gt;&amp;gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3400" y="1500" width="2600" height="1150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="controller-kyc" value="&lt;div align=&quot;center&quot;&gt;«controller»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;KycController&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getKycStatus(principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;KycStatusResponse&amp;gt;&amp;gt;&lt;br&gt;+ confirmKyc(request: KycConfirmRequest, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;KycStatusResponse&amp;gt;&amp;gt;&lt;br&gt;+ setupBank(request: BankSetupRequest, principal: Principal): ResponseEntity&amp;lt;ApiResponse&amp;lt;KycStatusResponse&amp;gt;&amp;gt;&lt;br&gt;- normalizeNameForCompare(name: String): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="6400" y="1500" width="3000" height="1550" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-github-oauth" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GitHubOAuthService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ buildAuthorizationUrl(session: HttpSession): String&lt;br&gt;+ handleCallback(code: String, state: String, session: HttpSession): String&lt;br&gt;+ prepareLinkSession(email: String, session: HttpSession): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="200" y="3400" width="2800" height="1000" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-github-oauth-impl" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;GitHubOAuthServiceImpl&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- githubConfig: GitHubOAuthConfig&lt;br&gt;- jwtProvider: JwtProvider&lt;br&gt;- encryptionService: EncryptionService&lt;br&gt;- webClient: WebClient&lt;br&gt;- passwordEncoder: PasswordEncoder&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ buildAuthorizationUrl(session: HttpSession): String&lt;br&gt;+ handleCallback(code: String, state: String, session: HttpSession): String&lt;br&gt;+ prepareLinkSession(email: String, session: HttpSession): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3400" y="3400" width="2800" height="1150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="client-face-service" value="&lt;div align=&quot;center&quot;&gt;«client»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;FaceServiceClient&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- faceServiceUrl: String&lt;br&gt;- restTemplate: RestTemplate&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ isDuplicateFace(imageBase64: String): boolean&lt;br&gt;+ checkFace(imageBase64: String): FaceCheckResult&lt;br&gt;+ registerFace(userId: UUID, imageBase64: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="6800" y="3400" width="2500" height="1100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-user" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;User&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- role: Role&lt;br&gt;- email: String&lt;br&gt;- githubId: String&lt;br&gt;- githubUsername: String&lt;br&gt;- githubLinkedAt: Instant&lt;br&gt;- faceVerified: boolean&lt;br&gt;- kycVerified: boolean&lt;br&gt;- kycFullName: String&lt;br&gt;- kycIdNumber: String&lt;br&gt;- kycVerifiedAt: Instant&lt;br&gt;- bankName: String&lt;br&gt;- bankAccount: String&lt;br&gt;- bankAccountHolder: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setGithubId(githubId: String): void&lt;br&gt;+ setFaceVerified(faceVerified: boolean): void&lt;br&gt;+ setKycVerified(kycVerified: boolean): void&lt;br&gt;+ setRole(role: Role): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1800" y="5000" width="4100" height="1350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-role" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Role&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- name: String&lt;br&gt;- description: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getName(): String&lt;br&gt;+ setName(name: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="7000" y="5200" width="2000" height="800" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-github-controller-service" value="uses OAuth service" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.35;exitY=1;entryX=0.35;entryY=0;" edge="1" parent="1" source="controller-github-auth" target="service-github-oauth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-github-impl-realizes" value="implements" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=block;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.55;entryX=1;entryY=0.55;" edge="1" parent="1" source="service-github-oauth-impl" target="service-github-oauth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-face-controller-client" value="checks and registers face" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.8;exitY=1;entryX=0;entryY=0.35;" edge="1" parent="1" source="controller-face-verify" target="client-face-service">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="5480" y="3200" />
+              <mxPoint x="6600" y="3200" />
+              <mxPoint x="6600" y="3785" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-face-controller-request" value="receives" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.1;exitY=0;entryX=1;entryY=0.5;" edge="1" parent="1" source="controller-face-verify" target="dto-face-verify-request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="3660" y="1400" />
+              <mxPoint x="2700" y="1400" />
+              <mxPoint x="2700" y="660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-kyc-controller-confirm-request" value="receives KYC data" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.25;entryX=1;entryY=0.55;" edge="1" parent="1" source="controller-kyc" target="dto-kyc-confirm-request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="6000" y="1888" />
+              <mxPoint x="6000" y="878" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-kyc-controller-bank-request" value="receives bank data" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.62;exitY=0;entryX=0.62;entryY=1;" edge="1" parent="1" source="controller-kyc" target="dto-bank-setup-request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-github-impl-user" value="updates GitHub profile" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.52;exitY=1;entryX=0.72;entryY=0;" edge="1" parent="1" source="service-github-oauth-impl" target="entity-user">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-github-impl-role" value="checks customer role" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.78;entryX=0.5;entryY=0;" edge="1" parent="1" source="service-github-oauth-impl" target="entity-role">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="6400" y="4297" />
+              <mxPoint x="6400" y="4800" />
+              <mxPoint x="8000" y="4800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-face-controller-user" value="updates face verification" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.8;entryX=0.34;entryY=0;" edge="1" parent="1" source="controller-face-verify" target="entity-user">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="3200" y="2420" />
+              <mxPoint x="3200" y="4800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-kyc-controller-user" value="stores KYC and bank data" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.05;exitY=1;entryX=1;entryY=0.4;" edge="1" parent="1" source="controller-kyc" target="entity-user">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="6500" y="3200" />
+              <mxPoint x="6500" y="5540" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-kyc-controller-role" value="assigns developer role" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.8;entryX=1;entryY=0.5;" edge="1" parent="1" source="controller-kyc" target="entity-role">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="9500" y="2740" />
+              <mxPoint x="9500" y="5600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-user-role" value="has role" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=1;exitY=0.55;entryX=0;entryY=0.55;" edge="1" parent="1" source="entity-user" target="entity-role">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-user-role-user-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-role">
+            <mxGeometry x="-0.88" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry>
+          </mxCell>
+          <mxCell id="edge-user-role-role-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-role">
+            <mxGeometry x="0.88" y="-1" relative="1" as="geometry"><mxPoint x="0" y="-55" as="offset" /></mxGeometry>
+          </mxCell>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
