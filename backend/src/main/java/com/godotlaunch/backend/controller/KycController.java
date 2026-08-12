@@ -232,12 +232,12 @@ public class KycController {
             return ResponseEntity.ok(ApiResponse.success(nullAccountNameResult(), "Thông tin chưa đủ để tra cứu."));
         }
 
-        String bin = BankBinResolver.resolve(bankName.trim());
-        if (!StringUtils.hasText(bin)) {
+        String bankLookupCode = BankBinResolver.resolveLookupCode(bankName.trim());
+        if (!StringUtils.hasText(bankLookupCode)) {
             return ResponseEntity.ok(ApiResponse.success(nullAccountNameResult(), "Ngân hàng chưa được hỗ trợ tra cứu tự động."));
         }
 
-        return vietQrLookupClient.lookupAccountName(bin, bankAccount.trim())
+        return vietQrLookupClient.lookupAccountName(bankLookupCode, bankAccount.trim())
                 .map(accountName -> ResponseEntity.ok(
                         ApiResponse.success(Map.of("accountName", accountName), "Tra cứu thành công.")))
                 .orElseGet(() -> ResponseEntity.ok(
@@ -351,9 +351,9 @@ public class KycController {
         // chặn trường hợp user gõ đúng tên trùng KYC nhưng STK thực chất KHÔNG
         // phải của họ (vd mượn/đánh cắp STK người khác trùng tên). Fail-soft: nếu
         // lookup không khả dụng/lỗi, không chặn — vẫn dựa vào check tên tự nhập.
-        String bin = BankBinResolver.resolve(normalizedBankName);
-        if (StringUtils.hasText(bin)) {
-            vietQrLookupClient.lookupAccountName(bin, normalizedBankAccount).ifPresent(realAccountName -> {
+        String bankLookupCode = BankBinResolver.resolveLookupCode(normalizedBankName);
+        if (StringUtils.hasText(bankLookupCode)) {
+            vietQrLookupClient.lookupAccountName(bankLookupCode, normalizedBankAccount).ifPresent(realAccountName -> {
                 if (!normalizeNameForCompare(realAccountName).equals(normalizeNameForCompare(normalizedHolder))) {
                     throw new AppException(ErrorCode.BANK_NAME_MISMATCH);
                 }

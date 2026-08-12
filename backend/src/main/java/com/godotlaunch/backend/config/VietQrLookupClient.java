@@ -15,10 +15,15 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * VietQR.io Account Lookup API (api.vietqr.io/v2/lookup) — tra tên chủ tài
- * khoản THẬT từ ngân hàng, dùng bin + accountNumber. Credential
- * (x-client-id/x-api-key) HOÀN TOÀN KHÁC với VietQR Host2Host (tạo QR nhận
- * tiền) đã có sẵn ở nơi khác trong hệ thống — không dùng chung.
+ * banklookup.net Account Lookup API — tra tên chủ tài khoản THẬT từ ngân
+ * hàng, dùng mã "code" ngân hàng (vd "VCB", "MB" — xem
+ * https://api.banklookup.net/bank/list, khác BIN NAPAS) + số tài khoản.
+ * Credential (x-api-key/x-api-secret) hoàn toàn khác VietQR Host2Host (tạo QR
+ * nhận tiền) đã có sẵn ở nơi khác trong hệ thống — không dùng chung.
+ *
+ * Đổi từ VietQR.io (api.vietqr.io/v2/lookup) sang banklookup.net vì gói Free
+ * của VietQR.io ngừng hỗ trợ Account Lookup từ 20/08/2024 (API trả
+ * code=47 "The Free Plan will no longer support...").
  *
  * Fail-soft theo thiết kế: nếu chưa cấu hình credential, hoặc API lỗi/
  * timeout, trả về Optional.empty() thay vì throw — luồng setup-bank vẫn
@@ -31,43 +36,49 @@ public class VietQrLookupClient {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${app.vietqr.lookup.base-url:https://api.vietqr.io/v2}")
+    @Value("${app.vietqr.lookup.base-url:https://api.banklookup.net}")
     private String baseUrl;
 
     @Value("${app.vietqr.lookup.client-id:}")
-    private String clientId;
-
-    @Value("${app.vietqr.lookup.api-key:}")
     private String apiKey;
 
+    @Value("${app.vietqr.lookup.api-key:}")
+    private String apiSecret;
+
     public boolean isConfigured() {
-        return StringUtils.hasText(clientId) && StringUtils.hasText(apiKey);
+        return StringUtils.hasText(apiKey) && StringUtils.hasText(apiSecret);
     }
 
     /**
-     * Trả về tên chủ tài khoản thật theo ngân hàng (bin) + số tài khoản, hoặc
-     * empty nếu chưa cấu hình / API báo không hợp lệ / lỗi kết nối. Không bao
-     * giờ throw ra ngoài — caller tự quyết định fallback.
+     * Trả về tên chủ tài khoản thật theo mã ngân hàng (banklookup.net "code",
+     * KHÔNG phải BIN — xem {@link com.godotlaunch.backend.util.BankBinResolver#resolveLookupCode})
+     * + số tài khoản, hoặc empty nếu chưa cấu hình / API báo không hợp lệ /
+     * lỗi kết nối. Không bao giờ throw ra ngoài — caller tự quyết định
+     * fallback.
      */
-    public Optional<String> lookupAccountName(String bin, String accountNumber) {
+    public Optional<String> lookupAccountName(String bankCode, String accountNumber) {
         if (!isConfigured()) {
-            log.debug("VietQR lookup skipped: credential not configured.");
+            log.debug("Bank account lookup skipped: credential not configured.");
+            return Optional.empty();
+        }
+        if (!StringUtils.hasText(bankCode)) {
+            log.debug("Bank account lookup skipped: bank code not resolved.");
             return Optional.empty();
         }
 
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("x-client-id", clientId);
             headers.set("x-api-key", apiKey);
+            headers.set("x-api-secret", apiSecret);
 
             Map<String, Object> body = Map.of(
-                    "bin", Long.parseLong(bin),
-                    "accountNumber", accountNumber
+                    "bank", bankCode,
+                    "account", accountNumber
             );
 
             var response = restTemplate.exchange(
-                    baseUrl + "/lookup",
+                    baseUrl,
                     HttpMethod.POST,
                     new HttpEntity<>(body, headers),
                     Map.class
@@ -78,29 +89,44 @@ public class VietQrLookupClient {
                 return Optional.empty();
             }
 
-            Object code = responseBody.get("code");
-            if (!"00".equals(String.valueOf(code))) {
-                log.info("VietQR lookup returned non-success code={} desc={}", code, responseBody.get("desc"));
+            // banklookup.net trả {"code":200,"success":true,"data":{...},"msg":"..."}
+            // (đối chiếu theo response mẫu của /bank/list — cùng nhà cung cấp).
+            Object success = responseBody.get("success");
+            boolean isSuccess = Boolean.TRUE.equals(success)
+                    || "200".equals(String.valueOf(responseBody.get("code")));
+            if (!isSuccess) {
+                log.info("Bank account lookup returned non-success code={} msg={}",
+                        responseBody.get("code"), responseBody.get("msg"));
                 return Optional.empty();
             }
 
-            Object data = responseBody.get("data");
-            if (data instanceof Map<?, ?> dataMap) {
-                Object accountName = dataMap.get("accountName");
-                if (accountName instanceof String s && StringUtils.hasText(s)) {
-                    return Optional.of(s.trim());
-                }
+            Optional<String> accountName = extractAccountName(responseBody.get("data"));
+            if (accountName.isEmpty()) {
+                log.info("Bank account lookup succeeded but no account name field found. Raw response: {}", responseBody);
             }
-            return Optional.empty();
-        } catch (NumberFormatException ex) {
-            log.warn("VietQR lookup skipped: invalid bin '{}'.", bin);
-            return Optional.empty();
+            return accountName;
         } catch (RestClientException ex) {
-            log.warn("VietQR lookup failed (fail-soft, not blocking): {}", ex.getMessage());
+            log.warn("Bank account lookup failed (fail-soft, not blocking): {}", ex.getMessage());
             return Optional.empty();
         } catch (Exception ex) {
-            log.warn("VietQR lookup unexpected error (fail-soft, not blocking): {}", ex.getMessage());
+            log.warn("Bank account lookup unexpected error (fail-soft, not blocking): {}", ex.getMessage());
             return Optional.empty();
         }
+    }
+
+    // Response thật của endpoint lookup chưa được xác nhận bằng tài liệu chính
+    // thức (banklookup.net không public docs chi tiết) — thử nhiều tên field
+    // phổ biến để không vỡ khi provider dùng snake_case hay tên khác.
+    private Optional<String> extractAccountName(Object data) {
+        if (!(data instanceof Map<?, ?> dataMap)) {
+            return Optional.empty();
+        }
+        for (String key : new String[]{"accountName", "account_name", "name", "ownerName", "owner_name"}) {
+            Object value = dataMap.get(key);
+            if (value instanceof String s && StringUtils.hasText(s)) {
+                return Optional.of(s.trim());
+            }
+        }
+        return Optional.empty();
     }
 }

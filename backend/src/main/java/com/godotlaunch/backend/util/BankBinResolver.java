@@ -9,20 +9,39 @@ import java.util.Map;
 
 /**
  * Map tên ngân hàng (theo danh sách SUPPORTED_BANK_NAMES ở KycController /
- * BANK_OPTIONS ở frontend) sang mã BIN NAPAS 6 chữ số — dùng chung cho payout
- * (PayOS toBin) và VietQR Account Lookup (bin). Tách ra khỏi
+ * BANK_OPTIONS ở frontend) sang mã BIN NAPAS 6 chữ số (dùng cho payout PayOS
+ * toBin) và mã "code" chuỗi của banklookup.net (dùng cho Account Lookup API,
+ * field "bank" trong request — KHÁC bin, xem
+ * https://api.banklookup.net/bank/list). Tách ra khỏi
  * WithdrawalRequestServiceImpl để không lặp lại map này ở 2 nơi.
  */
 public final class BankBinResolver {
 
-    private static final Map<String, String> BANK_CODE_MAP = createBankCodeMap();
+    private static final Map<String, String> BANK_BIN_MAP = createBankBinMap();
+    private static final Map<String, String> BANK_LOOKUP_CODE_MAP = createBankLookupCodeMap();
 
     private BankBinResolver() {
     }
 
+    /** Mã BIN NAPAS 6 chữ số (dùng cho PayOS payout toBin). */
     public static String resolve(String bankName) {
+        return lookup(bankName, BANK_BIN_MAP);
+    }
+
+    /**
+     * Mã "code" chuỗi của banklookup.net (vd "VCB", "MB", "SCB") — dùng cho
+     * field "bank" khi gọi Account Lookup API. Đối chiếu trực tiếp từ
+     * https://api.banklookup.net/bank/list, KHÔNG đoán — vd Sacombank có
+     * code="SCB" trên banklookup.net dù bin 970403 (khác "Ngân hàng Sài Gòn"
+     * cũ có code="SGCB", bin 970429 — không nằm trong SUPPORTED_BANK_NAMES).
+     */
+    public static String resolveLookupCode(String bankName) {
+        return lookup(bankName, BANK_LOOKUP_CODE_MAP);
+    }
+
+    private static String lookup(String bankName, Map<String, String> map) {
         String normalized = normalizeBankName(bankName);
-        for (Map.Entry<String, String> entry : BANK_CODE_MAP.entrySet()) {
+        for (Map.Entry<String, String> entry : map.entrySet()) {
             if (normalized.contains(entry.getKey())) {
                 return entry.getValue();
             }
@@ -36,7 +55,7 @@ public final class BankBinResolver {
         return normalized.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", "");
     }
 
-    private static Map<String, String> createBankCodeMap() {
+    private static Map<String, String> createBankBinMap() {
         Map<String, String> map = new LinkedHashMap<>();
         map.put("VIETCOMBANK", "970436");
         map.put("VCB", "970436");
@@ -53,6 +72,24 @@ public final class BankBinResolver {
         map.put("OCB", "970448");
         map.put("SHB", "970443");
         map.put("HDBANK", "970437");
+        return map;
+    }
+
+    private static Map<String, String> createBankLookupCodeMap() {
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("VIETCOMBANK", "VCB");
+        map.put("BIDV", "BIDV");
+        map.put("VIETINBANK", "VTB");
+        map.put("AGRIBANK", "VARB");
+        map.put("TECHCOMBANK", "TCB");
+        map.put("MBBANK", "MB");
+        map.put("ACB", "ACB");
+        map.put("SACOMBANK", "SCB");
+        map.put("VPBANK", "VPB");
+        map.put("TPBANK", "TPB");
+        map.put("OCB", "OCB");
+        map.put("SHB", "SHB");
+        map.put("HDBANK", "HDB");
         return map;
     }
 }
