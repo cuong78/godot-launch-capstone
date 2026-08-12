@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { AdminBannerPanel } from './AdminBannerPanel';
+import { AdminReviewManagementPanel } from './AdminReviewManagementPanel';
 import {
   contentApi,
   ContentCategory,
@@ -27,7 +28,7 @@ import {
   HomepageSectionType,
 } from '../../api/contentApi';
 
-type Tab = 'layout' | 'banners' | 'collections' | 'tags' | 'categories';
+type Tab = 'layout' | 'banners' | 'collections' | 'tags' | 'categories' | 'reviews';
 type CategoryForm = {
   id: string;
   name: string;
@@ -393,6 +394,7 @@ export const AdminContentManagementPanel: React.FC = () => {
     ['collections', t('contentPanel.tabs.collections')],
     ['tags', t('contentPanel.tabs.tags')],
     ['categories', t('contentPanel.tabs.categories')],
+    ['reviews', t('contentPanel.tabs.reviews', 'Đánh giá & Bình luận')],
   ];
 
   return (
@@ -444,6 +446,7 @@ export const AdminContentManagementPanel: React.FC = () => {
       )}
 
       {tab === 'banners' && <AdminBannerPanel />}
+      {tab === 'reviews' && <AdminReviewManagementPanel />}
 
       {tab === 'layout' && (
         <div className="space-y-3">

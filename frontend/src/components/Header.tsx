@@ -350,7 +350,7 @@ export function Header({
         </div>
 
         {/* Global Search Bar */}
-        <div className="relative hidden md:flex items-center flex-1 max-w-sm lg:max-w-md mx-2 lg:mx-4">
+        <div className="relative hidden md:flex items-center flex-1 max-w-xs lg:max-w-sm mx-2">
           <Search size={15} className="absolute left-3 text-slate-400 dark:text-slate-400 pointer-events-none z-10" />
           <input
             type="text"
@@ -379,7 +379,7 @@ export function Header({
         </div>
 
         {/* Navigation Items (Responsive on Desktop) */}
-        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 px-1 lg:flex xl:gap-2">
+        <nav className="hidden shrink-0 items-center gap-1.5 lg:flex xl:gap-3 mx-2">
           <div className="relative shrink-0">
             <button
               type="button"
@@ -424,7 +424,7 @@ export function Header({
         </nav>
 
         {/* Utility actions: language, cart, notifications, and account */}
-        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5 ml-2">
           <LanguageSwitcher className="launch-header-language shrink-0 [&>button]:!border-slate-200 [&>button]:!bg-white/85 [&>button]:!text-slate-600 [&>button:hover]:!border-slate-300 [&>button:hover]:!bg-white [&>button:hover]:!text-slate-900 dark:[&>button]:!border-slate-700/60 dark:[&>button]:!bg-night-850/75 dark:[&>button]:!text-slate-300 dark:[&>button:hover]:!border-slate-600/80 dark:[&>button:hover]:!bg-night-800 dark:[&>button:hover]:!text-white dark:[&>button]:!shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" />
 
           <button
