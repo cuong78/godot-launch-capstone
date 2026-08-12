@@ -77,6 +77,7 @@
   "status.processing": "Settling",
   "status.rejected": "Rejected",
   "transactions.columns.amount": "Amount",
+  "transactions.columns.balanceAfter": "Balance After",
   "transactions.columns.reference": "Order/Request ID",
   "transactions.columns.status": "Status",
   "transactions.columns.time": "Time",

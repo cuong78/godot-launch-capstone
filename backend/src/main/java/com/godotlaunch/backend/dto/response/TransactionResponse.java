@@ -27,4 +27,8 @@ public class TransactionResponse {
     private TxnType type;
     private String referenceId;
     private Instant createdAt;
+    // Số dư ví SAU giao dịch này (running balance tại đúng thời điểm giao
+    // dịch xảy ra) — khác với số dư ví HIỆN TẠI (latest) hiển thị ở đầu
+    // trang ví. Xem TransactionRepository.findByWalletUserIdWithBalanceOrderByCreatedAtDesc.
+    private BigDecimal balanceAfter;
 }

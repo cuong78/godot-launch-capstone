@@ -136,6 +136,9 @@ export interface TransactionResponse {
   amount: number;
   referenceId?: string;
   createdAt?: string;
+  // Số dư ví SAU giao dịch này (running balance tại đúng thời điểm giao
+  // dịch xảy ra) — khác với số dư ví HIỆN TẠI (latest) hiển thị đầu trang ví.
+  balanceAfter?: number;
 }
 
 export interface WithdrawalResponse {
