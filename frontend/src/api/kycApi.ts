@@ -40,9 +40,21 @@ export interface BankSetupPayload {
   bankAccountHolder: string;
 }
 
+export interface BankOtpConfirmPayload extends BankSetupPayload {
+  otp: string;
+}
+
 export const kycApi = {
   getStatus: async (): Promise<ApiResponse<KycStatus>> => {
     const res = await api.get('/api/developer/kyc/status');
+    return res.data;
+  },
+
+  // Best-effort: tra tên chủ tài khoản thật từ ngân hàng (VietQR). accountName
+  // trong response có thể null nếu dịch vụ chưa cấu hình/ngân hàng chưa hỗ trợ/
+  // STK không hợp lệ — không phải lỗi, chỉ là không tự điền được, user vẫn tự gõ.
+  lookupBankAccount: async (bankName: string, bankAccount: string): Promise<ApiResponse<{ accountName: string | null }>> => {
+    const res = await api.post('/api/developer/kyc/bank/lookup-account', { bankName, bankAccount });
     return res.data;
   },
 
@@ -56,8 +68,15 @@ export const kycApi = {
     return res.data;
   },
 
-  setupBank: async (payload: BankSetupPayload): Promise<ApiResponse<KycStatus>> => {
-    const res = await api.post('/api/developer/kyc/bank', payload);
+  // Bước 1: validate thông tin ngân hàng + gửi OTP qua email. Chưa lưu DB.
+  requestBankOtp: async (payload: BankSetupPayload): Promise<ApiResponse<void>> => {
+    const res = await api.post('/api/developer/kyc/bank/request-otp', payload);
+    return res.data;
+  },
+
+  // Bước 2: xác nhận OTP + lưu thông tin ngân hàng thật.
+  confirmBankOtp: async (payload: BankOtpConfirmPayload): Promise<ApiResponse<KycStatus>> => {
+    const res = await api.post('/api/developer/kyc/bank/confirm', payload);
     return res.data;
   },
 };

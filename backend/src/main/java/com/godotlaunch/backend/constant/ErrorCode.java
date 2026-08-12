@@ -31,6 +31,7 @@ public enum ErrorCode {
     BANK_NAME_MISMATCH(HttpStatus.BAD_REQUEST, "Tên chủ tài khoản ngân hàng phải khớp với tên trên giấy tờ tùy thân."),
     BANK_ACCOUNT_DUPLICATE(HttpStatus.CONFLICT, "Số tài khoản ngân hàng này đã được sử dụng bởi một tài khoản khác trong hệ thống."),
     BANK_INFO_ALREADY_SET(HttpStatus.CONFLICT, "Thông tin ngân hàng đã được thiết lập và không thể tự chỉnh sửa."),
+    BANK_OTP_INVALID(HttpStatus.BAD_REQUEST, "Mã OTP không đúng hoặc đã hết hạn. Vui lòng yêu cầu gửi lại mã mới."),
     
     // 403 Forbidden
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "You do not have permission to execute this operation."),

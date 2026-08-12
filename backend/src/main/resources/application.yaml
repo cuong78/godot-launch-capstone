@@ -81,6 +81,15 @@ app:
       reject-threshold: ${PLAGIARISM_REJECT_THRESHOLD:0.90}
       top-n: ${PLAGIARISM_TOP_N:10}
 
+  vietqr:
+    lookup:
+      # VietQR.io Account Lookup API (api.vietqr.io/v2/lookup) — tra tên chủ
+      # tài khoản thật từ STK + mã BIN ngân hàng, KHÁC hoàn toàn bộ credential
+      # VietQR Host2Host (tạo QR nhận tiền) đã có sẵn trong .env.
+      base-url: ${VIETQR_LOOKUP_BASE_URL:https://api.vietqr.io/v2}
+      client-id: ${VIETQR_LOOKUP_CLIENT_ID:}
+      api-key: ${VIETQR_LOOKUP_API_KEY:}
+
   security:
     encryption-key: ${ENCRYPTION_KEY}
     recaptcha:

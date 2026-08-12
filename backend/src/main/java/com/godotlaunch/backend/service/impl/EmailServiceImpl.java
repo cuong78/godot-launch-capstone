@@ -163,6 +163,32 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(to, subject, htmlBody);
     }
 
+    @Override
+    public void sendBankSetupOtpEmail(String to, String otp, String bankName, String maskedAccount) {
+        String subject = "Godot Launch - Bank Account Verification Code";
+
+        String htmlBody = "<div style=\"font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #121418; color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #2a2d35;\">"
+                + "<div style=\"background-color: #1a1d24; padding: 20px; text-align: center; border-bottom: 1px solid #2a2d35;\">"
+                + "  <h1 style=\"margin: 0; color: #ffffff; font-size: 24px; letter-spacing: 2px; text-transform: uppercase;\">GODOT LAUNCH</h1>"
+                + "</div>"
+                + "<div style=\"padding: 30px;\">"
+                + "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">Hello,</p>"
+                + "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5;\">We received a request to link a payout bank account to your developer profile: <strong style=\"color: #ffffff;\">" + bankName + " •••• " + maskedAccount + "</strong>. Use the following One-Time Password (OTP) verification code to confirm. This code is valid for <strong>10 minutes</strong>.</p>"
+                + "  <div style=\"background-color: rgba(255, 255, 255, 0.03); border: 1px solid #2a2d35; padding: 20px; margin: 25px 0; border-radius: 6px; text-align: center;\">"
+                + "    <h2 style=\"margin: 0 0 10px 0; font-size: 12px; color: #a0a5b5; text-transform: uppercase; letter-spacing: 1px;\">Your OTP Code</h2>"
+                + "    <p style=\"margin: 0; font-size: 32px; color: #f59e0b; font-weight: bold; letter-spacing: 4px; font-family: monospace;\">" + otp + "</p>"
+                + "  </div>"
+                + "  <p style=\"font-size: 14px; color: #ef4444; line-height: 1.5;\">If you did not request this, please ignore this email and secure your account — this bank account will NOT be linked without the correct code.</p>"
+                + "  <p style=\"font-size: 16px; color: #a0a5b5; line-height: 1.5; margin-top: 30px;\">Thank you,<br/><strong style=\"color: #ffffff;\">The Godot Launch Team</strong></p>"
+                + "</div>"
+                + "<div style=\"background-color: #0d0f12; padding: 15px; text-align: center; font-size: 12px; color: #6b7280;\">"
+                + "  &copy; 2026 Godot Launch. This is an automated message, please do not reply."
+                + "</div>"
+                + "</div>";
+
+        sendEmail(to, subject, htmlBody);
+    }
+
     @org.springframework.scheduling.annotation.Async
     @Override
     public void sendNotificationEmail(String to, String subject, String messageBody) {

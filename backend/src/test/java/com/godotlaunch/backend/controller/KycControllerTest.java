@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.dto.request.BankOtpConfirmRequest;
 import com.godotlaunch.backend.dto.request.BankSetupRequest;
 import com.godotlaunch.backend.dto.request.KycConfirmRequest;
 import com.godotlaunch.backend.dto.request.KycOcrRequest;
@@ -13,7 +14,10 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.RoleRepository;
 import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.config.VietQrLookupClient;
 import com.godotlaunch.backend.service.AuthService;
+import com.godotlaunch.backend.service.EmailService;
+import com.godotlaunch.backend.service.OtpService;
 import com.godotlaunch.backend.service.SeaweedFsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +63,15 @@ class KycControllerTest {
 
     @Mock
     private SeaweedFsService seaweedFsService;
+
+    @Mock
+    private OtpService otpService;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private VietQrLookupClient vietQrLookupClient;
 
     @Mock
     private Principal principal;
@@ -167,7 +180,7 @@ class KycControllerTest {
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
 
-        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+        assertThatThrownBy(() -> kycController.requestBankOtp(request, principal))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BANK_INFO_REQUIRED);
@@ -186,7 +199,7 @@ class KycControllerTest {
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
 
-        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+        assertThatThrownBy(() -> kycController.requestBankOtp(request, principal))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BANK_NAME_MISMATCH);
@@ -205,7 +218,7 @@ class KycControllerTest {
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
 
-        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+        assertThatThrownBy(() -> kycController.requestBankOtp(request, principal))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BANK_ACCOUNT_INVALID);
@@ -224,7 +237,7 @@ class KycControllerTest {
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
 
-        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+        assertThatThrownBy(() -> kycController.requestBankOtp(request, principal))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BANK_NAME_INVALID);
@@ -243,7 +256,7 @@ class KycControllerTest {
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
         when(bannedIdentityRepository.existsByBankAccount("19034567890123")).thenReturn(true);
 
-        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+        assertThatThrownBy(() -> kycController.requestBankOtp(request, principal))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.IDENTITY_BANNED);
@@ -262,7 +275,7 @@ class KycControllerTest {
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
         when(userRepository.existsByBankAccountAndIdNot("19034567890123", userId)).thenReturn(true);
 
-        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+        assertThatThrownBy(() -> kycController.requestBankOtp(request, principal))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BANK_ACCOUNT_DUPLICATE);
@@ -271,19 +284,38 @@ class KycControllerTest {
     }
 
     @Test
-    @DisplayName("Should set bank once and upgrade role after all onboarding checks")
-    void shouldSetupBank_AndUpgradeRoleToDeveloper() {
+    @DisplayName("Should send bank setup OTP once validation passes")
+    void shouldRequestBankOtp_AfterValidation() {
         mockUser.setKycVerified(true);
         mockUser.setKycFullName("Nguyễn Văn Đạt");
         BankSetupRequest request = validBankRequest();
 
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(otpService.generateOtp("bank-setup", "dev@example.com")).thenReturn("123456");
+
+        ResponseEntity<ApiResponse<Void>> result = kycController.requestBankOtp(request, principal);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(emailService).sendBankSetupOtpEmail("dev@example.com", "123456", "Vietcombank", "0123");
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Should set bank once and upgrade role after correct OTP")
+    void shouldSetupBank_AndUpgradeRoleToDeveloper() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankOtpConfirmRequest request = validBankOtpConfirmRequest();
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(otpService.validateOtp("bank-setup", "dev@example.com", "123456")).thenReturn(true);
         when(roleRepository.findByName("developer")).thenReturn(Optional.of(developerRole));
         when(userRepository.save(any(User.class))).thenReturn(mockUser);
         when(authService.refreshSession(mockUser)).thenReturn("new-developer-jwt-token");
 
-        ResponseEntity<ApiResponse<KycStatusResponse>> result = kycController.setupBank(request, principal);
+        ResponseEntity<ApiResponse<KycStatusResponse>> result = kycController.confirmBankOtp(request, principal);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isNotNull();
@@ -293,8 +325,28 @@ class KycControllerTest {
         assertThat(mockUser.getBankAccount()).isEqualTo("19034567890123");
         assertThat(mockUser.getBankAccountHolder()).isEqualTo("NGUYEN VAN DAT");
 
+        verify(otpService).invalidateOtp("bank-setup", "dev@example.com");
         verify(userRepository).save(mockUser);
         verify(authService).refreshSession(mockUser);
+    }
+
+    @Test
+    @DisplayName("Should reject confirm when OTP is wrong or expired")
+    void shouldThrowException_WhenBankOtpIsInvalid() {
+        mockUser.setKycVerified(true);
+        mockUser.setKycFullName("Nguyễn Văn Đạt");
+        BankOtpConfirmRequest request = validBankOtpConfirmRequest();
+
+        when(principal.getName()).thenReturn("dev@example.com");
+        when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
+        when(otpService.validateOtp("bank-setup", "dev@example.com", "123456")).thenReturn(false);
+
+        assertThatThrownBy(() -> kycController.confirmBankOtp(request, principal))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BANK_OTP_INVALID);
+
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
@@ -305,7 +357,7 @@ class KycControllerTest {
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
 
-        assertThatThrownBy(() -> kycController.setupBank(request, principal))
+        assertThatThrownBy(() -> kycController.requestBankOtp(request, principal))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.KYC_VERIFY_REQUIRED);
@@ -325,7 +377,7 @@ class KycControllerTest {
         when(principal.getName()).thenReturn("dev@example.com");
         when(userRepository.findWithRoleByEmail("dev@example.com")).thenReturn(Optional.of(mockUser));
 
-        assertThatThrownBy(() -> kycController.setupBank(validBankRequest(), principal))
+        assertThatThrownBy(() -> kycController.requestBankOtp(validBankRequest(), principal))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BANK_INFO_ALREADY_SET);
@@ -432,6 +484,15 @@ class KycControllerTest {
         request.setBankName("Vietcombank");
         request.setBankAccount("19034567890123");
         request.setBankAccountHolder("NGUYEN VAN DAT");
+        return request;
+    }
+
+    private BankOtpConfirmRequest validBankOtpConfirmRequest() {
+        BankOtpConfirmRequest request = new BankOtpConfirmRequest();
+        request.setBankName("Vietcombank");
+        request.setBankAccount("19034567890123");
+        request.setBankAccountHolder("NGUYEN VAN DAT");
+        request.setOtp("123456");
         return request;
     }
 }

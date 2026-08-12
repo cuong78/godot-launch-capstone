@@ -15,28 +15,47 @@ public class OtpServiceImpl implements OtpService {
 
     @Override
     public String generateOtp(String email) {
-        String otp = String.format("%06d", random.nextInt(1000000));
-        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES);
-        otpCache.put(email, new OtpData(otp, expiryTime));
-        return otp;
+        return generateOtp(null, email);
     }
 
     @Override
     public boolean validateOtp(String email, String otp) {
-        OtpData otpData = otpCache.get(email);
+        return validateOtp(null, email, otp);
+    }
+
+    @Override
+    public void invalidateOtp(String email) {
+        invalidateOtp(null, email);
+    }
+
+    @Override
+    public String generateOtp(String purpose, String email) {
+        String otp = String.format("%06d", random.nextInt(1000000));
+        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES);
+        otpCache.put(cacheKey(purpose, email), new OtpData(otp, expiryTime));
+        return otp;
+    }
+
+    @Override
+    public boolean validateOtp(String purpose, String email, String otp) {
+        OtpData otpData = otpCache.get(cacheKey(purpose, email));
         if (otpData == null) {
             return false;
         }
         if (otpData.isExpired()) {
-            otpCache.remove(email);
+            otpCache.remove(cacheKey(purpose, email));
             return false;
         }
         return otpData.getOtp().equals(otp);
     }
 
     @Override
-    public void invalidateOtp(String email) {
-        otpCache.remove(email);
+    public void invalidateOtp(String purpose, String email) {
+        otpCache.remove(cacheKey(purpose, email));
+    }
+
+    private String cacheKey(String purpose, String email) {
+        return (purpose == null ? "default" : purpose) + ":" + email;
     }
 
     private static class OtpData {
