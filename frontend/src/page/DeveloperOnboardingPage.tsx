@@ -54,6 +54,18 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
   const [bankAccount, setBankAccount] = useState('');
   const [bankAccountHolder, setBankAccountHolder] = useState('');
 
+  // Tra cứu tên chủ tài khoản thật từ ngân hàng (VietQR) khi user gõ xong
+  // ngân hàng + STK — best-effort, không chặn nếu tra cứu thất bại.
+  const [isLookingUpAccount, setIsLookingUpAccount] = useState(false);
+  const [lookupAccountName, setLookupAccountName] = useState<string | null>(null);
+  const [lookupAttempted, setLookupAttempted] = useState(false);
+
+  // Bước OTP xác nhận ngân hàng: sau khi validate + gửi OTP thành công,
+  // chờ user nhập mã 6 số nhận qua email trước khi thật sự lưu.
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [isConfirmingOtp, setIsConfirmingOtp] = useState(false);
+
   const loadStatus = async () => {
     setIsLoadingStatus(true);
     setError(null);
@@ -208,7 +220,50 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '');
 
-  const handleSavePayout = async () => {
+  // Tự động tra cứu tên chủ tài khoản thật (VietQR) khi user gõ xong ngân
+  // hàng + STK hợp lệ — debounce 600ms để không gọi API mỗi phím gõ. Chỉ
+  // chạy khi chưa lưu (payoutSaved=false) và chưa đang ở bước nhập OTP.
+  useEffect(() => {
+    if (payoutSaved || otpSent) return;
+    const normalizedAccount = bankAccount.trim();
+    if (!bankName || !/^\d{6,19}$/.test(normalizedAccount)) {
+      setLookupAccountName(null);
+      setLookupAttempted(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLookingUpAccount(true);
+    setLookupAttempted(false);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await kycApi.lookupBankAccount(bankName, normalizedAccount);
+        if (cancelled) return;
+        const accountName = res.success ? res.data?.accountName ?? null : null;
+        setLookupAccountName(accountName);
+        // Tự điền tên nếu tra cứu được VÀ user chưa tự gõ tên nào khác —
+        // không ghi đè nếu họ đang sửa tay dở.
+        if (accountName && !bankAccountHolder.trim()) {
+          setBankAccountHolder(accountName.toUpperCase());
+        }
+      } catch {
+        if (!cancelled) setLookupAccountName(null);
+      } finally {
+        if (!cancelled) {
+          setIsLookingUpAccount(false);
+          setLookupAttempted(true);
+        }
+      }
+    }, 600);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bankName, bankAccount, payoutSaved, otpSent]);
+
+  const handleRequestPayoutOtp = async () => {
     const normalizedBankName = bankName.trim();
     const normalizedBankAccount = bankAccount.trim();
     const normalizedHolder = bankAccountHolder.trim();
@@ -233,20 +288,61 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
     setIsSavingPayout(true);
     try {
-      const res = await kycApi.setupBank({
+      const res = await kycApi.requestBankOtp({
         bankName: normalizedBankName,
         bankAccount: normalizedBankAccount,
         bankAccountHolder: normalizedHolder,
+      });
+      if (!res.success) {
+        setPayoutError(res.message || t('onboarding.payout.errors.saveFailed'));
+        return;
+      }
+
+      // Chốt lại giá trị đã validate — dùng đúng chúng ở bước confirm OTP,
+      // tránh user sửa form giữa lúc đang chờ nhập mã.
+      setBankName(normalizedBankName);
+      setBankAccount(normalizedBankAccount);
+      setBankAccountHolder(normalizedHolder);
+      setOtpCode('');
+      setOtpSent(true);
+    } catch (err: any) {
+      setPayoutError(
+        err?.response?.data?.message ||
+          err?.message ||
+          t('onboarding.payout.errors.saveFailed'),
+      );
+    } finally {
+      setIsSavingPayout(false);
+    }
+  };
+
+  const handleConfirmPayoutOtp = async () => {
+    setPayoutError(null);
+    const normalizedOtp = otpCode.trim();
+    if (!/^\d{6}$/.test(normalizedOtp)) {
+      setPayoutError(t('onboarding.payout.errors.invalidOtp'));
+      return;
+    }
+
+    setIsConfirmingOtp(true);
+    try {
+      const res = await kycApi.confirmBankOtp({
+        bankName,
+        bankAccount,
+        bankAccountHolder,
+        otp: normalizedOtp,
       });
       if (!res.success || !res.data) {
         setPayoutError(res.message || t('onboarding.payout.errors.saveFailed'));
         return;
       }
 
-      setBankName(res.data.bankName ?? normalizedBankName);
-      setBankAccount(res.data.bankAccount ?? normalizedBankAccount);
-      setBankAccountHolder(res.data.bankAccountHolder ?? normalizedHolder);
+      setBankName(res.data.bankName ?? bankName);
+      setBankAccount(res.data.bankAccount ?? bankAccount);
+      setBankAccountHolder(res.data.bankAccountHolder ?? bankAccountHolder);
       setPayoutSaved(true);
+      setOtpSent(false);
+      setOtpCode('');
 
       if (res.data.token) {
         try {
@@ -262,8 +358,16 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
           t('onboarding.payout.errors.saveFailed'),
       );
     } finally {
-      setIsSavingPayout(false);
+      setIsConfirmingOtp(false);
     }
+  };
+
+  const handleChangePayoutBankInfo = () => {
+    // Quay lại chỉnh form (STK/tên ngân hàng nhập sai) — hủy OTP đang chờ,
+    // yêu cầu bấm gửi lại mã sau khi sửa xong.
+    setOtpSent(false);
+    setOtpCode('');
+    setPayoutError(null);
   };
 
   const allDone = githubLinked && faceVerified && kycVerified && payoutSaved;
@@ -600,6 +704,72 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                           <span>{t('onboarding.payout.saved')}</span>
                         </div>
                       </>
+                    ) : otpSent ? (
+                      <div className="space-y-4">
+                        <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-700 dark:text-sky-300">
+                          {t('onboarding.payout.otp.hint', { bankName, bankAccount })}
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+                            {t('onboarding.payout.otp.codeLabel')} <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            value={otpCode}
+                            onChange={(event) => {
+                              setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6));
+                              setPayoutError(null);
+                            }}
+                            placeholder={t('onboarding.payout.otp.codePlaceholder')}
+                            maxLength={6}
+                            disabled={isConfirmingOtp}
+                            className="w-full rounded-xl border border-slate-300 bg-white/90 px-4 py-3 text-center text-lg font-mono font-bold tracking-[0.5em] text-slate-900 outline-none transition placeholder:text-slate-400 placeholder:tracking-normal placeholder:font-sans placeholder:font-normal focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-white dark:placeholder:text-slate-600"
+                          />
+                        </div>
+
+                        {payoutError && (
+                          <div className="flex items-start gap-2 rounded-xl border border-rose-300/50 bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>{payoutError}</span>
+                          </div>
+                        )}
+
+                        <Button
+                          variant="primary"
+                          className="w-full bg-amber-500 font-bold text-black hover:bg-amber-400"
+                          onClick={handleConfirmPayoutOtp}
+                          disabled={isConfirmingOtp}
+                        >
+                          {isConfirmingOtp ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              {t('onboarding.payout.otp.confirming')}
+                            </span>
+                          ) : t('onboarding.payout.otp.confirm')}
+                        </Button>
+
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <button
+                            type="button"
+                            onClick={handleChangePayoutBankInfo}
+                            disabled={isConfirmingOtp}
+                            className="font-semibold text-slate-500 underline decoration-dotted underline-offset-2 hover:text-slate-700 disabled:opacity-60 dark:text-slate-400 dark:hover:text-slate-200"
+                          >
+                            {t('onboarding.payout.otp.changeInfo')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRequestPayoutOtp}
+                            disabled={isSavingPayout || isConfirmingOtp}
+                            className="font-semibold text-amber-600 underline decoration-dotted underline-offset-2 hover:text-amber-500 disabled:opacity-60 dark:text-amber-400"
+                          >
+                            {isSavingPayout ? t('onboarding.payout.otp.resending') : t('onboarding.payout.otp.resend')}
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <div className="space-y-4">
                         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
@@ -644,6 +814,23 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                             disabled={isSavingPayout}
                             className="w-full rounded-xl border border-slate-300 bg-white/90 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-white dark:placeholder:text-slate-600"
                           />
+                          {isLookingUpAccount && (
+                            <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              {t('onboarding.payout.lookup.checking')}
+                            </div>
+                          )}
+                          {!isLookingUpAccount && lookupAttempted && lookupAccountName && (
+                            <div className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="h-3 w-3" />
+                              {t('onboarding.payout.lookup.found', { name: lookupAccountName })}
+                            </div>
+                          )}
+                          {!isLookingUpAccount && lookupAttempted && !lookupAccountName && (
+                            <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                              {t('onboarding.payout.lookup.notFound')}
+                            </div>
+                          )}
                         </div>
 
                         <div>
@@ -675,7 +862,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                         <Button
                           variant="primary"
                           className="w-full bg-amber-500 font-bold text-black hover:bg-amber-400"
-                          onClick={handleSavePayout}
+                          onClick={handleRequestPayoutOtp}
                           disabled={isSavingPayout}
                         >
                           {isSavingPayout ? (
@@ -683,7 +870,7 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                               <Loader2 className="h-4 w-4 animate-spin" />
                               {t('onboarding.payout.saving')}
                             </span>
-                          ) : t('onboarding.payout.save')}
+                          ) : t('onboarding.payout.otp.sendCode')}
                         </Button>
                       </div>
                     )}

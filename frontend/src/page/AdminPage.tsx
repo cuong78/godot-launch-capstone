@@ -51,6 +51,7 @@ import { marketplaceApi } from "../api/marketplaceApi";
 import { platformSettingsApi } from "../api/platformSettingsApi";
 import { walletApi } from "../api/walletApi";
 import { paymentApi } from "../api/paymentApi";
+import { useToast } from "../hooks/useToast";
 import { SignaturePad } from "../components/SignaturePad";
 import { ContractViewerModal } from "../components/ContractViewerModal";
 import AdminDisputePanel from "../components/admin/AdminDisputePanel";
@@ -430,6 +431,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   currentUser,
 }) => {
   const { t, i18n } = useTranslation(["admin"]);
+  const { showToast } = useToast();
   const locale = useMemo(
     () => resolveLocale(i18n.resolvedLanguage || i18n.language || "vi"),
     [i18n.language, i18n.resolvedLanguage],
@@ -812,7 +814,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Download failed:", error);
-      alert(t("alerts.downloadFailed"));
+      showToast(t("alerts.downloadFailed"), 'error');
     } finally {
       setDownloadingFile(null);
     }
@@ -1122,20 +1124,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       try {
         const res = await gameApi.approveGame(game.id);
         if (res.success) {
-          alert(
+          showToast(
             t("moderationQueue.messages.approveGameSuccess", {
               title: game.title,
             }),
+            'success',
           );
           fetchPendingGamesAndContracts();
         } else {
-          alert(res.message || t("errors.approveGame"));
+          showToast(res.message || t("errors.approveGame"), 'error');
         }
       } catch (err: any) {
-        alert(
+        showToast(
             err.response?.data?.message ||
             err.message ||
             t("errors.approveGame"),
+            'error',
         );
       }
     } else {
@@ -1154,7 +1158,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   const handleConfirmRejection = async () => {
     if (!rejectReason.trim()) {
-      alert(t("errors.rejectionReasonRequired"));
+      showToast(t("errors.rejectionReasonRequired"), 'warning');
       return;
     }
     setIsSubmittingReject(true);
@@ -1162,15 +1166,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       if (rejectItemType === "game") {
         const res = await gameApi.rejectGame(rejectItemId, rejectReason);
         if (res.success) {
-          alert(
+          showToast(
             t("moderationQueue.messages.rejectGameSuccess", {
               title: rejectItemTitle,
             }),
+            'success',
           );
           setIsRejectModalOpen(false);
           fetchPendingGamesAndContracts();
         } else {
-          alert(res.message || t("errors.rejectGame"));
+          showToast(res.message || t("errors.rejectGame"), 'error');
         }
       } else {
         const res = await marketplaceApi.rejectMarketplaceItem(
@@ -1178,22 +1183,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           rejectReason,
         );
         if (res.success) {
-          alert(
+          showToast(
             t("moderationQueue.messages.rejectAssetSuccess", {
               title: rejectItemTitle,
             }),
+            'success',
           );
           setIsRejectModalOpen(false);
           fetchPendingMarketplaceItems();
         } else {
-          alert(res.message || t("errors.rejectMarketplaceItem"));
+          showToast(res.message || t("errors.rejectMarketplaceItem"), 'error');
         }
       }
     } catch (err: any) {
-      alert(
+      showToast(
         err.response?.data?.message ||
           err.message ||
           t("moderationQueue.messages.rejectItemFailed"),
+        'error',
       );
     } finally {
       setIsSubmittingReject(false);
@@ -1215,20 +1222,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     try {
       const res = await marketplaceApi.approveMarketplaceItem(item.id);
       if (res.success) {
-        alert(
+        showToast(
           t("moderationQueue.messages.approveAssetSuccess", {
             title: item.title,
           }),
+          'success',
         );
         fetchPendingMarketplaceItems();
       } else {
-        alert(res.message || t("errors.approveMarketplaceItem"));
+        showToast(res.message || t("errors.approveMarketplaceItem"), 'error');
       }
     } catch (err: any) {
-      alert(
+      showToast(
         err.response?.data?.message ||
           err.message ||
           t("errors.approveMarketplaceItem"),
+        'error',
       );
     }
   };
@@ -1271,7 +1280,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     e.preventDefault();
     if (!selectedGame) return;
     if (!adminSignatureBase64) {
-      alert(t("contractComposer.signatureRequired"));
+      showToast(t("contractComposer.signatureRequired"), 'warning');
       return;
     }
 
@@ -1301,17 +1310,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       });
 
       if (res.success) {
-        alert(t("contractComposer.createSuccess"));
+        showToast(t("contractComposer.createSuccess"), 'success');
         setIsContractModalOpen(false);
         fetchPendingGamesAndContracts();
       } else {
-        alert(res.message || t("contractComposer.createError"));
+        showToast(res.message || t("contractComposer.createError"), 'error');
       }
     } catch (err: any) {
-      alert(
+      showToast(
         err.response?.data?.message ||
           err.message ||
           t("contractComposer.createRequestError"),
+        'error',
       );
     }
   };

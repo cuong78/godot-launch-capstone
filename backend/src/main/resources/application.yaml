@@ -81,6 +81,17 @@ app:
       reject-threshold: ${PLAGIARISM_REJECT_THRESHOLD:0.90}
       top-n: ${PLAGIARISM_TOP_N:10}
 
+  vietqr:
+    lookup:
+      # banklookup.net Account Lookup API — tra tên chủ tài khoản thật từ STK
+      # + mã ngân hàng dạng code (vd "VCB", "MB" — KHÁC BIN NAPAS). Đổi từ
+      # VietQR.io vì gói Free của VietQR.io ngừng hỗ trợ Account Lookup từ
+      # 20/08/2024. KHÁC hoàn toàn bộ credential VietQR Host2Host (tạo QR
+      # nhận tiền) đã có sẵn trong .env.
+      base-url: ${VIETQR_LOOKUP_BASE_URL:https://api.banklookup.net}
+      client-id: ${VIETQR_LOOKUP_CLIENT_ID:}
+      api-key: ${VIETQR_LOOKUP_API_KEY:}
+
   security:
     encryption-key: ${ENCRYPTION_KEY}
     recaptcha:

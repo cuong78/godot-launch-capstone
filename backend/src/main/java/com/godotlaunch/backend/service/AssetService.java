@@ -13,6 +13,7 @@ public interface AssetService {
     UUID createAsset(CreateAssetRequest request, String sellerEmail);
     AssetResponse getAssetById(UUID id, String requesterEmail);
     List<AssetResponse> getAllAssets(String requesterEmail);
+    List<AssetResponse> getAllAssets(ItemStatus status, String search, String requesterEmail);
     List<AssetResponse> getAssetsByStatus(ItemStatus status, String requesterEmail);
     List<AssetResponse> getAssetsBySeller(String sellerEmail);
     AssetResponse updateAsset(UUID id, UpdateAssetRequest request, String updaterEmail);

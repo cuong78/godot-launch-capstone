@@ -477,7 +477,7 @@ def ai_review(req: AiReviewRequest):
     # ── 4a. OCR Text Moderation on Images & Video Frames ──
     ocr_flags_count = 0
     try:
-        from text_analyzer import _SENSITIVE_KEYWORDS
+        from text_analyzer import _SENSITIVE_KEYWORDS, _keyword_matches
         # Quét tối đa 8 hình ảnh (bao gồm cả screenshots và video frames) để tránh quá tải API
         sampled_images = images_b64[:8]
         for idx, img_b64 in enumerate(sampled_images):
@@ -485,7 +485,7 @@ def ai_review(req: AiReviewRequest):
                 detected_text = extract_text_from_image(img_b64)
                 if detected_text:
                     detected_lower = detected_text.lower()
-                    matched_kws = [kw for kw in _SENSITIVE_KEYWORDS if kw in detected_lower]
+                    matched_kws = [kw for kw in _SENSITIVE_KEYWORDS if _keyword_matches(kw, detected_lower)]
                     if matched_kws:
                         flags.append({
                             "type": "media_ocr_sensitive",

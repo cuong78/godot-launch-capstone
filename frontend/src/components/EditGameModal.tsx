@@ -18,6 +18,7 @@ import { gameApi } from "../api/gameApi";
 import { marketplaceApi } from "../api/marketplaceApi";
 import { tagApi, TagResponse } from "../api/tagApi";
 import { CategoryResponse } from "../types";
+import { useToast } from "../hooks/useToast";
 
 interface EditGameModalProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   item,
 }) => {
   const { t } = useTranslation(["dashboard", "upload"]);
+  const { showToast } = useToast();
 
   // Form Fields
   const [title, setTitle] = useState("");
@@ -255,7 +257,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
       }
     } catch (err: any) {
       setUploadStatus((prev) => ({ ...prev, [key]: "failed" }));
-      alert(err.message || "Lỗi khi upload tệp.");
+      showToast(err.message || "Lỗi khi upload tệp.", 'error');
     }
   };
 

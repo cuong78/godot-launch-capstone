@@ -15,7 +15,7 @@
   "form.assetTitle": "Tên tài nguyên",
   "form.gameTitlePlaceholder": "VD: Neon Horizon Racer 3D",
   "form.assetTitlePlaceholder": "VD: Fantasy Knight Sprite Sheet",
-  "form.priceLabel": "Giá đề xuất (VND)",
+  "form.priceLabel": "Giá",
   "form.pricePlaceholder": "VD: 50,000 (đặt 0 nếu miễn phí)",
   "form.gameCategory": "Danh mục game",
   "form.category": "Danh mục",

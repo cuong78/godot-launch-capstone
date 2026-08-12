@@ -31,6 +31,7 @@ public enum ErrorCode {
     BANK_NAME_MISMATCH(HttpStatus.BAD_REQUEST, "Tên chủ tài khoản ngân hàng phải khớp với tên trên giấy tờ tùy thân."),
     BANK_ACCOUNT_DUPLICATE(HttpStatus.CONFLICT, "Số tài khoản ngân hàng này đã được sử dụng bởi một tài khoản khác trong hệ thống."),
     BANK_INFO_ALREADY_SET(HttpStatus.CONFLICT, "Thông tin ngân hàng đã được thiết lập và không thể tự chỉnh sửa."),
+    BANK_OTP_INVALID(HttpStatus.BAD_REQUEST, "Mã OTP không đúng hoặc đã hết hạn. Vui lòng yêu cầu gửi lại mã mới."),
     
     // 403 Forbidden
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "You do not have permission to execute this operation."),
@@ -57,6 +58,12 @@ public enum ErrorCode {
     SYSTEM_SECTION_PROTECTED(HttpStatus.BAD_REQUEST, "System homepage sections cannot be deleted or change their rule."),
     TAG_ALREADY_EXISTS(HttpStatus.CONFLICT, "Tag name or slug already exists."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "Yêu cầu không hợp lệ."),
+
+    // Review & Rating
+    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy đánh giá."),
+    REVIEW_NOT_PURCHASED(HttpStatus.FORBIDDEN, "Bạn cần phải mua sản phẩm trước khi viết đánh giá."),
+    REVIEW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Tác giả không được tự đánh giá sản phẩm của chính mình."),
+    REVIEW_TARGET_INVALID(HttpStatus.BAD_REQUEST, "Sản phẩm được đánh giá không tồn tại hoặc đang bị ẩn."),
 
     // 400 Bad Request additions / Category
     CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "Category name or slug already exists."),

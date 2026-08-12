@@ -12,10 +12,11 @@ export const marketplaceApi = {
     return response.data;
   },
 
-  getAllMarketplaceItems: async (status?: string): Promise<ApiResponse<MarketplaceItemResponse[]>> => {
-    const response = await api.get<ApiResponse<MarketplaceItemResponse[]>>('/api/v1/assets', {
-      params: status ? { status } : {}
-    });
+  getAllMarketplaceItems: async (status?: string, search?: string): Promise<ApiResponse<MarketplaceItemResponse[]>> => {
+    const params: Record<string, string> = {};
+    if (status) params.status = status;
+    if (search) params.search = search;
+    const response = await api.get<ApiResponse<MarketplaceItemResponse[]>>('/api/v1/assets', { params });
     return response.data;
   },
 

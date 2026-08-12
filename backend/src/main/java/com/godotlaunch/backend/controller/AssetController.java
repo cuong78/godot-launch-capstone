@@ -40,16 +40,12 @@ public class AssetController {
     }
 
     @GetMapping
-    @Operation(summary = "Get all marketplace items", description = "Retrieves active or removed marketplace items (optionally filtered by status).")
+    @Operation(summary = "Get all marketplace items", description = "Retrieves active or removed marketplace items (optionally filtered by status or search keyword).")
     public ResponseEntity<ApiResponse<List<AssetResponse>>> getAllAssets(
             @RequestParam(required = false) ItemStatus status,
+            @RequestParam(required = false) String search,
             Principal principal) {
-        List<AssetResponse> items;
-        if (status != null) {
-            items = assetService.getAssetsByStatus(status, principal != null ? principal.getName() : null);
-        } else {
-            items = assetService.getAllAssets(principal != null ? principal.getName() : null);
-        }
+        List<AssetResponse> items = assetService.getAllAssets(status, search, principal != null ? principal.getName() : null);
         return ResponseEntity.ok(ApiResponse.success(items, "Marketplace items retrieved successfully"));
     }
 

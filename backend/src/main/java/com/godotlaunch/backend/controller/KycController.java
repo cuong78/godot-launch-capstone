@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.constant.ErrorCode;
+import com.godotlaunch.backend.dto.request.BankOtpConfirmRequest;
 import com.godotlaunch.backend.dto.request.BankSetupRequest;
 import com.godotlaunch.backend.dto.request.KycConfirmRequest;
 import com.godotlaunch.backend.dto.request.KycOcrRequest;
@@ -13,7 +14,11 @@ import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.RoleRepository;
 import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.config.VietQrLookupClient;
 import com.godotlaunch.backend.service.AuthService;
+import com.godotlaunch.backend.service.EmailService;
+import com.godotlaunch.backend.service.OtpService;
+import com.godotlaunch.backend.util.BankBinResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -54,12 +59,16 @@ public class KycController {
             "Vietcombank", "BIDV", "VietinBank", "Agribank", "Techcombank",
             "MBBank", "ACB", "Sacombank", "VPBank", "TPBank", "OCB", "SHB", "HDBank"
     );
+    private static final String BANK_OTP_PURPOSE = "bank-setup";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final BannedIdentityRepository bannedIdentityRepository;
     private final AuthService authService;
     private final SeaweedFsService seaweedFsService;
+    private final OtpService otpService;
+    private final EmailService emailService;
+    private final VietQrLookupClient vietQrLookupClient;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${app.face-service.url:http://localhost:8001}")
@@ -202,60 +211,87 @@ public class KycController {
         return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "Xác thực KYC thành công."));
     }
 
-    @PostMapping("/bank")
+    @PostMapping("/bank/lookup-account")
     @PreAuthorize("isAuthenticated()")
     @Operation(
-        summary = "Thiết lập thông tin ngân hàng sau KYC",
-        description = "Bước cuối của become-developer. Chỉ lưu một lần; tên chủ tài khoản phải khớp tên KYC."
+        summary = "Tra cứu tên chủ tài khoản thật từ ngân hàng (VietQR)",
+        description = "Gọi khi user vừa nhập xong ngân hàng + số tài khoản, để hiển thị/tự điền tên chủ tài khoản trước khi submit. " +
+                "Best-effort: trả accountName=null nếu dịch vụ tra cứu chưa cấu hình, ngân hàng chưa hỗ trợ, hoặc STK không hợp lệ — " +
+                "KHÔNG chặn luồng, người dùng vẫn có thể tự nhập tay tên chủ tài khoản."
     )
-    public ResponseEntity<ApiResponse<KycStatusResponse>> setupBank(
+    public ResponseEntity<ApiResponse<Map<String, String>>> lookupBankAccount(
+            @RequestBody Map<String, String> request,
+            Principal principal) {
+
+        findUser(principal); // chỉ để chắc chắn đây là user hợp lệ đã đăng nhập, không cần dùng tiếp
+
+        String bankName = request.get("bankName");
+        String bankAccount = request.get("bankAccount");
+        if (!StringUtils.hasText(bankName) || !StringUtils.hasText(bankAccount)
+                || !bankAccount.trim().matches("\\d{6,19}")) {
+            return ResponseEntity.ok(ApiResponse.success(nullAccountNameResult(), "Thông tin chưa đủ để tra cứu."));
+        }
+
+        String bankLookupCode = BankBinResolver.resolveLookupCode(bankName.trim());
+        if (!StringUtils.hasText(bankLookupCode)) {
+            return ResponseEntity.ok(ApiResponse.success(nullAccountNameResult(), "Ngân hàng chưa được hỗ trợ tra cứu tự động."));
+        }
+
+        return vietQrLookupClient.lookupAccountName(bankLookupCode, bankAccount.trim())
+                .map(accountName -> ResponseEntity.ok(
+                        ApiResponse.success(Map.of("accountName", accountName), "Tra cứu thành công.")))
+                .orElseGet(() -> ResponseEntity.ok(
+                        ApiResponse.success(nullAccountNameResult(), "Không tra cứu được — vui lòng tự nhập tên chủ tài khoản.")));
+    }
+
+    private Map<String, String> nullAccountNameResult() {
+        Map<String, String> result = new java.util.HashMap<>();
+        result.put("accountName", null);
+        return result;
+    }
+
+    @PostMapping("/bank/request-otp")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Bước 1: Validate thông tin ngân hàng và gửi mã OTP xác nhận qua email",
+        description = "Chưa lưu DB. Gửi OTP 6 số tới email tài khoản, hiệu lực 10 phút. Gọi /bank/confirm với đúng OTP để hoàn tất."
+    )
+    public ResponseEntity<ApiResponse<Void>> requestBankOtp(
             @Valid @RequestBody BankSetupRequest request,
             Principal principal) {
 
         User user = findUser(principal);
-        requireGithubLinkedOrDeveloper(user);
+        validateBankSetupEligibility(user, request.getBankName(), request.getBankAccount(), request.getBankAccountHolder());
 
-        if (!user.isKycVerified() || !StringUtils.hasText(user.getKycFullName())) {
-            throw new AppException(ErrorCode.KYC_VERIFY_REQUIRED);
-        }
+        String otp = otpService.generateOtp(BANK_OTP_PURPOSE, user.getEmail());
+        emailService.sendBankSetupOtpEmail(
+                user.getEmail(), otp, request.getBankName().trim(), maskAccountNumber(request.getBankAccount().trim()));
 
-        // Không cho endpoint onboarding trở thành đường sửa ngân hàng sau khi đã lưu.
-        if (StringUtils.hasText(user.getBankName())
-                || StringUtils.hasText(user.getBankAccount())
-                || StringUtils.hasText(user.getBankAccountHolder())) {
-            throw new AppException(ErrorCode.BANK_INFO_ALREADY_SET);
-        }
+        return ResponseEntity.ok(ApiResponse.success(null,
+                "Mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra hộp thư."));
+    }
 
-        if (!StringUtils.hasText(request.getBankName())
-                || !StringUtils.hasText(request.getBankAccount())
-                || !StringUtils.hasText(request.getBankAccountHolder())) {
-            throw new AppException(ErrorCode.BANK_INFO_REQUIRED);
-        }
+    @PostMapping("/bank/confirm")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Bước 2: Xác nhận OTP và lưu thông tin ngân hàng",
+        description = "Bước cuối của become-developer. Chỉ lưu một lần; tên chủ tài khoản phải khớp tên KYC; yêu cầu đúng OTP còn hiệu lực từ /bank/request-otp."
+    )
+    public ResponseEntity<ApiResponse<KycStatusResponse>> confirmBankOtp(
+            @Valid @RequestBody BankOtpConfirmRequest request,
+            Principal principal) {
 
-        String bankName = request.getBankName().trim();
-        String bankAccount = request.getBankAccount().trim();
-        String bankAccountHolder = request.getBankAccountHolder().trim();
+        User user = findUser(principal);
+        validateBankSetupEligibility(user, request.getBankName(), request.getBankAccount(), request.getBankAccountHolder());
 
-        if (!SUPPORTED_BANK_NAMES.contains(bankName)) {
-            throw new AppException(ErrorCode.BANK_NAME_INVALID);
+        if (!otpService.validateOtp(BANK_OTP_PURPOSE, user.getEmail(), request.getOtp())) {
+            throw new AppException(ErrorCode.BANK_OTP_INVALID);
         }
-        if (!bankAccount.matches("\\d{6,30}")) {
-            throw new AppException(ErrorCode.BANK_ACCOUNT_INVALID);
-        }
-        if (!normalizeNameForCompare(user.getKycFullName())
-                .equals(normalizeNameForCompare(bankAccountHolder))) {
-            throw new AppException(ErrorCode.BANK_NAME_MISMATCH);
-        }
-        if (bannedIdentityRepository.existsByBankAccount(bankAccount)) {
-            throw new AppException(ErrorCode.IDENTITY_BANNED);
-        }
-        if (userRepository.existsByBankAccountAndIdNot(bankAccount, user.getId())) {
-            throw new AppException(ErrorCode.BANK_ACCOUNT_DUPLICATE);
-        }
+        otpService.invalidateOtp(BANK_OTP_PURPOSE, user.getEmail());
 
-        user.setBankName(bankName);
-        user.setBankAccount(bankAccount);
-        user.setBankAccountHolder(bankAccountHolder);
+        user.setBankName(request.getBankName().trim());
+        user.setBankAccount(request.getBankAccount().trim());
+        user.setBankAccountHolder(request.getBankAccountHolder().trim());
 
         // Chỉ hoàn tất nâng role sau bước payout hợp lệ, không nâng ở bước KYC.
         boolean justUpgraded = false;
@@ -274,6 +310,69 @@ public class KycController {
                 toStatusResponse(user, newToken),
                 "Thiết lập thông tin ngân hàng thành công."
         ));
+    }
+
+    // Dùng chung cho cả 2 bước (request-otp/confirm) — mỗi request HTTP độc lập,
+    // không tin dữ liệu đã "chốt" từ bước trước nên validate lại đầy đủ mỗi lần.
+    private void validateBankSetupEligibility(User user, String bankName, String bankAccount, String bankAccountHolder) {
+        requireGithubLinkedOrDeveloper(user);
+
+        if (!user.isKycVerified() || !StringUtils.hasText(user.getKycFullName())) {
+            throw new AppException(ErrorCode.KYC_VERIFY_REQUIRED);
+        }
+
+        // Không cho endpoint onboarding trở thành đường sửa ngân hàng sau khi đã lưu.
+        if (StringUtils.hasText(user.getBankName())
+                || StringUtils.hasText(user.getBankAccount())
+                || StringUtils.hasText(user.getBankAccountHolder())) {
+            throw new AppException(ErrorCode.BANK_INFO_ALREADY_SET);
+        }
+
+        if (!StringUtils.hasText(bankName) || !StringUtils.hasText(bankAccount) || !StringUtils.hasText(bankAccountHolder)) {
+            throw new AppException(ErrorCode.BANK_INFO_REQUIRED);
+        }
+
+        String normalizedBankName = bankName.trim();
+        String normalizedBankAccount = bankAccount.trim();
+        String normalizedHolder = bankAccountHolder.trim();
+
+        if (!SUPPORTED_BANK_NAMES.contains(normalizedBankName)) {
+            throw new AppException(ErrorCode.BANK_NAME_INVALID);
+        }
+        if (!normalizedBankAccount.matches("\\d{6,30}")) {
+            throw new AppException(ErrorCode.BANK_ACCOUNT_INVALID);
+        }
+        if (!normalizeNameForCompare(user.getKycFullName()).equals(normalizeNameForCompare(normalizedHolder))) {
+            throw new AppException(ErrorCode.BANK_NAME_MISMATCH);
+        }
+
+        // Lớp bảo vệ BỔ SUNG (không thay thế check ở trên): nếu VietQR lookup khả
+        // dụng, đối chiếu THÊM với tên chủ tài khoản THẬT do ngân hàng trả về —
+        // chặn trường hợp user gõ đúng tên trùng KYC nhưng STK thực chất KHÔNG
+        // phải của họ (vd mượn/đánh cắp STK người khác trùng tên). Fail-soft: nếu
+        // lookup không khả dụng/lỗi, không chặn — vẫn dựa vào check tên tự nhập.
+        String bankLookupCode = BankBinResolver.resolveLookupCode(normalizedBankName);
+        if (StringUtils.hasText(bankLookupCode)) {
+            vietQrLookupClient.lookupAccountName(bankLookupCode, normalizedBankAccount).ifPresent(realAccountName -> {
+                if (!normalizeNameForCompare(realAccountName).equals(normalizeNameForCompare(normalizedHolder))) {
+                    throw new AppException(ErrorCode.BANK_NAME_MISMATCH);
+                }
+            });
+        }
+
+        if (bannedIdentityRepository.existsByBankAccount(normalizedBankAccount)) {
+            throw new AppException(ErrorCode.IDENTITY_BANNED);
+        }
+        if (userRepository.existsByBankAccountAndIdNot(normalizedBankAccount, user.getId())) {
+            throw new AppException(ErrorCode.BANK_ACCOUNT_DUPLICATE);
+        }
+    }
+
+    private String maskAccountNumber(String accountNumber) {
+        if (accountNumber == null || accountNumber.length() <= 4) {
+            return accountNumber;
+        }
+        return accountNumber.substring(accountNumber.length() - 4);
     }
 
     private String cleanBase64(String base64) {

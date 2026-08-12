@@ -31,6 +31,7 @@ import {
   AssetFileDetailResponse
 } from '../../api/storageApi';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../../hooks/useToast';
 
 interface CategoryOption {
   value: string;
@@ -51,6 +52,7 @@ const PUBLISHING_TYPE_META: Record<string, { labelKey: string; className: string
 
 export const AdminFileManagementPanel: React.FC = () => {
   const { t } = useTranslation('admin');
+  const { showToast } = useToast();
   const [category, setCategory] = useState<string>('game');
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(0);
@@ -148,10 +150,10 @@ export const AdminFileManagementPanel: React.FC = () => {
       if (res.success && res.data) {
         setSelectedGame(res.data);
       } else {
-        alert(res.message || t('fileManagement.errors.gameDetail'));
+        showToast(res.message || t('fileManagement.errors.gameDetail'), 'error');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || t('fileManagement.errors.gameDetailCatch'));
+      showToast(err.response?.data?.message || err.message || t('fileManagement.errors.gameDetailCatch'), 'error');
     } finally {
       setIsDetailLoading(false);
     }
@@ -164,10 +166,10 @@ export const AdminFileManagementPanel: React.FC = () => {
       if (res.success && res.data) {
         setSelectedAsset(res.data);
       } else {
-        alert(res.message || t('fileManagement.errors.assetDetail'));
+        showToast(res.message || t('fileManagement.errors.assetDetail'), 'error');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || t('fileManagement.errors.assetDetailCatch'));
+      showToast(err.response?.data?.message || err.message || t('fileManagement.errors.assetDetailCatch'), 'error');
     } finally {
       setIsDetailLoading(false);
     }
@@ -198,7 +200,7 @@ export const AdminFileManagementPanel: React.FC = () => {
         if (newTab) {
           newTab.location.href = url;
         } else {
-          alert(t('fileManagement.errors.allowPopup'));
+          showToast(t('fileManagement.errors.allowPopup'), 'warning');
         }
       } else {
         const link = document.createElement('a');
@@ -208,10 +210,10 @@ export const AdminFileManagementPanel: React.FC = () => {
         link.click();
         link.remove();
       }
-      
+
       setTimeout(() => window.URL.revokeObjectURL(url), 15000);
     } catch (err: any) {
-      alert(t('fileManagement.errors.download'));
+      showToast(t('fileManagement.errors.download'), 'error');
     } finally {
       setDownloadingId(null);
     }
@@ -235,10 +237,10 @@ export const AdminFileManagementPanel: React.FC = () => {
         setDeleteTarget(null);
         fetchFiles();
       } else {
-        alert(res.message || t('fileManagement.errors.delete'));
+        showToast(res.message || t('fileManagement.errors.delete'), 'error');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || t('fileManagement.errors.deleteCatch'));
+      showToast(err.response?.data?.message || err.message || t('fileManagement.errors.deleteCatch'), 'error');
     } finally {
       setIsDeleting(false);
     }

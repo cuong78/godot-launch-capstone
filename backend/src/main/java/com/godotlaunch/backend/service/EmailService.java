@@ -5,5 +5,6 @@ public interface EmailService {
     void sendAssetStatusNotification(String to, String itemTitle, String status, String reason);
     void sendOtpEmail(String to, String otp);
     void sendSignupOtpEmail(String to, String otp);
+    void sendBankSetupOtpEmail(String to, String otp, String bankName, String maskedAccount);
     void sendNotificationEmail(String to, String subject, String messageBody);
 }

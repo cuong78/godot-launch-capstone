@@ -37,6 +37,7 @@ import { gameApi } from "../api/gameApi";
 import { contractApi } from "../api/contractApi";
 import { marketplaceApi } from "../api/marketplaceApi";
 import { walletApi } from "../api/walletApi";
+import { useToast } from "../hooks/useToast";
 import { SignaturePad } from "../components/SignaturePad";
 import { ContractViewerModal } from "../components/ContractViewerModal";
 import { EditGameModal } from "../components/EditGameModal";
@@ -150,6 +151,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   setCurrentScreen,
 }) => {
   const { t, i18n } = useTranslation(["dashboard"]);
+  const { showToast } = useToast();
   const locale = React.useMemo(() => {
     const language = i18n.resolvedLanguage || i18n.language || "vi";
     return language === "vi" ? "vi-VN" : language === "ja" ? "ja-JP" : "en-US";
@@ -258,7 +260,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           setZipProgress(percent);
         });
         if (res.success) {
-          alert("Gửi yêu cầu cập nhật tài nguyên thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.");
+          showToast("Gửi yêu cầu cập nhật tài nguyên thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.", 'success');
           fetchMyGames();
           fetchMyMarketplaceItems();
         } else {
@@ -283,7 +285,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         const objectKey = extractObjectKey(uploadUrl);
         const confirmRes = await gameApi.confirmUploadComplete(id, "game", objectKey);
         if (confirmRes.success) {
-          alert("Tải lên file game mới thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.");
+          showToast("Tải lên file game mới thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.", 'success');
           fetchMyGames();
           fetchMyMarketplaceItems();
         } else {
@@ -308,7 +310,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     try {
       const res = await gameApi.submitGameRepo(gameId, repoUrl, branch);
       if (res.success) {
-        alert("Gửi yêu cầu đồng bộ thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.");
+        showToast("Gửi yêu cầu đồng bộ thành công! Bản cập nhật đang được quét bảo mật và chờ Admin duyệt.", 'success');
         fetchMyGames();
         fetchMyMarketplaceItems();
       } else {
@@ -399,16 +401,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     try {
       const res = await marketplaceApi.deleteMarketplaceItem(id);
       if (res.success) {
-        alert(t("dashboard:contracts.deleteSuccess"));
+        showToast(t("dashboard:contracts.deleteSuccess"), 'success');
         fetchMyMarketplaceItems();
       } else {
-        alert(res.message || t("dashboard:contracts.deleteFail"));
+        showToast(res.message || t("dashboard:contracts.deleteFail"), 'error');
       }
     } catch (err: any) {
-      alert(
+      showToast(
         err.response?.data?.message ||
           err.message ||
           t("dashboard:contracts.deleteError"),
+        'error',
       );
     }
   };
@@ -482,18 +485,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         sellerTaxCode,
       );
       if (response.success) {
-        alert(t("dashboard:contracts.signSuccess"));
+        showToast(t("dashboard:contracts.signSuccess"), 'success');
         setIsSignModalOpen(false);
         fetchMyGames();
         fetchMyContracts();
       } else {
-        alert(response.message || t("dashboard:contracts.signErrorMessage"));
+        showToast(response.message || t("dashboard:contracts.signErrorMessage"), 'error');
       }
     } catch (err: any) {
-      alert(
+      showToast(
         err.response?.data?.message ||
           err.message ||
           t("dashboard:contracts.signError"),
+        'error',
       );
     } finally {
       setIsSubmittingSignature(false);

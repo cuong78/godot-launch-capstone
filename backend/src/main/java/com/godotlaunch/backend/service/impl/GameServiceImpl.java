@@ -365,6 +365,20 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional(readOnly = true)
     public List<GameResponse> getAllGames() {
+        return getAllGames(null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GameResponse> getAllGames(GameStatus status, String search) {
+        if (search != null && !search.isBlank()) {
+            return gameRepository.searchGames(status, search.trim()).stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+        }
+        if (status != null) {
+            return getGamesByStatus(status);
+        }
         return gameRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());

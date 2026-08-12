@@ -32,6 +32,7 @@ import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
 import { gameApi } from "../api/gameApi";
 import { useFormattedAmountInput } from "../hooks/useFormattedAmountInput";
+import { useToast } from "../hooks/useToast";
 import { marketplaceApi } from "../api/marketplaceApi";
 import { CategoryResponse } from "../types";
 import axios from "axios";
@@ -98,6 +99,7 @@ const getFileKey = (file: File): string => {
 export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const { requireFaceVerify } = useFaceVerify();
   const { t, i18n } = useTranslation(["upload"]);
+  const { showToast } = useToast();
 
   // Step State
   const [step, setStep] = useState<1 | 2>(1);
@@ -355,7 +357,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       if (res.success && res.data?.itemId) {
         setGameId(res.data.itemId);
         setStep(2);
-      } else alert(res.message || t("errors.failedCreateMarketplaceItem"));
+      } else showToast(res.message || t("errors.failedCreateMarketplaceItem"), 'error');
     } else {
       const res = await gameApi.createGameDraft({
         title,
@@ -368,7 +370,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       if (res.success && res.data?.gameId) {
         setGameId(res.data.gameId);
         setStep(2);
-      } else alert(res.message || t("errors.failedCreateGameDraft"));
+      } else showToast(res.message || t("errors.failedCreateGameDraft"), 'error');
     }
   };
 
@@ -376,12 +378,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const handleCreateDraft = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title) {
-      alert(t("errors.titleRequired"));
+      showToast(t("errors.titleRequired"), 'warning');
       return;
     }
     const priceNum = parseFloat(priceInput.rawValue || "0");
     if (isNaN(priceNum) || priceNum < 0) {
-      alert(t("errors.invalidPrice"));
+      showToast(t("errors.invalidPrice"), 'warning');
       return;
     }
 
@@ -394,10 +396,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         });
         return;
       }
-      alert(
+      showToast(
         err.response?.data?.message ||
           err.message ||
           t("errors.failedInitializeDraft"),
+        'error',
       );
     }
   };
@@ -527,7 +530,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     if (e.target.files && gameId) {
       const filesArr = Array.from(e.target.files);
       if (screenshots.length + filesArr.length > 5) {
-        alert(t("errors.maximumScreenshots"));
+        showToast(t("errors.maximumScreenshots"), 'warning');
         return;
       }
       setScreenshots((prev) => [...prev, ...filesArr]);
@@ -1542,7 +1545,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     onChange={(e) => {
                       const file = e.target.files ? e.target.files[0] : null;
                       if (file && file.size > 10 * 1024 * 1024) {
-                        alert(t("errors.thumbnailTooLarge"));
+                        showToast(t("errors.thumbnailTooLarge"), 'warning');
                         e.target.value = "";
                         return;
                       }
@@ -1876,10 +1879,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   scanStatus === "scanning"
                 }
                 onClick={() => {
-                  alert(
+                  showToast(
                     publishProgram === "marketplace"
                       ? t("success.marketplaceSubmissionCompleted")
                       : t("success.gameSubmissionCompleted"),
+                    'success',
                   );
                   setCurrentScreen("dashboard");
                 }}

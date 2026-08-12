@@ -17,7 +17,6 @@ import {
   CategoryResponse,
 } from './types';
 import { Button } from './components/Button';
-import { ShieldAlert, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 
 // Modular Page Components
 import { HomePage } from './page/HomePage';
@@ -40,6 +39,7 @@ import { DeveloperOnboardingPage } from './page/DeveloperOnboardingPage';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
+import { useToast } from './hooks/useToast';
 import { useWebSocket } from './context/WebSocketContext';
 import { gameApi } from './api/gameApi';
 import { marketplaceApi } from './api/marketplaceApi';
@@ -228,6 +228,7 @@ export default function App() {
     initialRoute.screen === 'checkout' ? 'marketplace' : initialRoute.screen,
   );
   const { currentUser, logout } = useAuth();
+  const { showToast } = useToast();
   const setCurrentUser = (user: User | null) => {
     if (user === null) {
       logout();
@@ -244,7 +245,6 @@ export default function App() {
 
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
   });
-  const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
   const displayScreen = currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen;
   const isCheckoutModalOpen = currentScreen === 'checkout';
   const usesDashboardWorkspaceBackground = displayScreen === 'dashboard';
@@ -315,19 +315,6 @@ export default function App() {
     displayScreen,
     redirectAdminToSection,
   ]);
-
-  const showToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
-    setToast({ message, type });
-  }, []);
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => {
-        setToast(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   useEffect(() => {
     if (!isCheckoutModalOpen) {
@@ -623,57 +610,42 @@ export default function App() {
   useEffect(() => {
     let isCancelled = false;
 
-    const fetchActiveMarketplaceItems = async () => {
+    const fetchAllCatalogItems = async () => {
       try {
-        const res = await marketplaceApi.getAllMarketplaceItems('active');
-        if (!res.success || !res.data || isCancelled) {
-          return;
+        const [assetRes, gameRes] = await Promise.all([
+          marketplaceApi.getAllMarketplaceItems('active', searchText),
+          gameApi.getAllGames('published', searchText),
+        ]);
+
+        if (isCancelled) return;
+
+        let mappedAssets: Asset[] = [];
+        if (assetRes.success && assetRes.data) {
+          mappedAssets = assetRes.data.map((item) => mapMarketplaceItemToAsset(item, t));
         }
 
-        const mapped = res.data.map((item) => mapMarketplaceItemToAsset(item, t));
-        setAssets(prev => {
-          const nonMarketplaceCatalog = prev.filter(item => item.itemType !== 'asset');
-          return [...mapped, ...nonMarketplaceCatalog];
-        });
+        let mappedGames: Asset[] = [];
+        if (gameRes.success && gameRes.data) {
+          const eligible = gameRes.data.filter(
+            (g) => !g.publishingType || g.publishingType === 'marketplace_listing'
+          );
+          mappedGames = eligible.map(mapGameToAsset);
+        }
+
+        setAssets([...mappedAssets, ...mappedGames]);
       } catch (err) {
-        console.error('Failed to load marketplace items from backend:', err);
+        console.error('Failed to load catalog items from backend:', err);
       }
     };
 
     if (currentScreen === 'marketplace' || currentScreen === 'explore' || currentScreen === 'detail') {
-      fetchActiveMarketplaceItems();
+      fetchAllCatalogItems();
     }
 
     return () => {
       isCancelled = true;
     };
-  }, [currentScreen, i18n.language]);
-
-  // Fetch published games from backend storage
-  useEffect(() => {
-    const fetchPublishedGames = async () => {
-      try {
-        const res = await gameApi.getAllGames('published');
-        if (res.success && res.data) {
-          // Game đã push lên Google Play (full_acquisition/co_publishing) không còn bán source
-          // code trên Marketplace nữa — chỉ giữ game publishingType = marketplace_listing (hoặc chưa set).
-          const marketplaceEligible = res.data.filter(
-            (g) => !g.publishingType || g.publishingType === 'marketplace_listing'
-          );
-          const mapped = marketplaceEligible.map(mapGameToAsset);
-          setAssets(prev => {
-            const filteredPrev = prev.filter(item => !mapped.some(m => m.id === item.id));
-            return [...mapped, ...filteredPrev];
-          });
-        }
-      } catch (err) {
-        console.error("Failed to load published games from backend:", err);
-      }
-    };
-    if (currentScreen === 'marketplace' || currentScreen === 'explore' || currentScreen === 'detail') {
-      fetchPublishedGames();
-    }
-  }, [currentScreen, i18n.language]);
+  }, [currentScreen, i18n.language, searchText]);
 
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);
@@ -1067,20 +1039,24 @@ export default function App() {
 
   // Filter & Sort Logic for Marketplace
   const filteredAssets = useMemo(() => {
+    const query = searchText ? searchText.trim().toLowerCase() : '';
     return marketplaceCatalogAssets.filter(item => {
       // Search Box Filter
-      if (searchText) {
-        const matchesSearch = item.title.toLowerCase().includes(searchText.toLowerCase()) || 
-                              item.description.toLowerCase().includes(searchText.toLowerCase()) ||
-                              item.tag.toLowerCase().includes(searchText.toLowerCase()) ||
-                              (item.author && item.author.toLowerCase().includes(searchText.toLowerCase()));
-        if (!matchesSearch) return false;
+      if (query) {
+        const titleMatch = (item.title || '').toLowerCase().includes(query);
+        const tagMatch = (item.tag || '').toLowerCase().includes(query);
+        const authorMatch = (item.author || '').toLowerCase().includes(query);
+        const categoryMatch = (item.category || '').toLowerCase().includes(query);
+        const tagListMatch = (item.tagList || []).some(t => (t || '').toLowerCase().includes(query));
+        if (!titleMatch && !tagMatch && !authorMatch && !categoryMatch && !tagListMatch) {
+          return false;
+        }
       }
       
       // Category Checkboxes Filter
       if (selectedCategories.length > 0) {
         const allowedCategories = getCategoryAndDescendants(selectedCategories);
-        if (!allowedCategories.some(catName => catName.toLowerCase() === item.category.toLowerCase())) return false;
+        if (!allowedCategories.some(catName => catName.toLowerCase() === (item.category || '').toLowerCase())) return false;
       }
 
       // Max price filter
@@ -1088,6 +1064,11 @@ export default function App() {
 
       return true;
     }).sort((a, b) => {
+      if (query) {
+        const aTitle = (a.title || '').toLowerCase().includes(query) ? 2 : 1;
+        const bTitle = (b.title || '').toLowerCase().includes(query) ? 2 : 1;
+        if (aTitle !== bTitle) return bTitle - aTitle;
+      }
       if (sortOrder === 'price-low') return a.price - b.price;
       if (sortOrder === 'price-high') return b.price - a.price;
       return b.rating - a.rating; // default standard popularity index
@@ -1177,6 +1158,8 @@ export default function App() {
           setSelectedAssetId={setSelectedAssetId}
           setSelectedPost={setSelectedPost}
           setSelectedAuthor={setSelectedAuthor}
+          searchText={searchText}
+          setSearchText={setSearchText}
         />
       )}
 
@@ -1421,37 +1404,6 @@ export default function App() {
           setCurrentScreen={setCurrentScreen}
           noTopMargin={displayScreen === 'developer-onboarding'}
         />
-      )}
-
-      {/* Toast Notifications */}
-      {toast && (
-        <div 
-          className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 max-w-md p-4 rounded-xl shadow-2xl border backdrop-blur-md animate-toast-in transition-all duration-300"
-          style={{
-            backgroundColor: darkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-            borderColor: toast.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 
-                         toast.type === 'warning' ? 'rgba(245, 158, 11, 0.3)' : 
-                         toast.type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(56, 189, 248, 0.3)'
-          }}
-        >
-          <div className="flex-shrink-0">
-            {toast.type === 'success' && <CheckCircle className="text-emerald-500 w-5 h-5" />}
-            {toast.type === 'warning' && <AlertTriangle className="text-amber-500 w-5 h-5 animate-pulse" />}
-            {toast.type === 'error' && <ShieldAlert className="text-rose-500 w-5 h-5" />}
-            {toast.type === 'info' && <Info className="text-sky-500 w-5 h-5" />}
-          </div>
-          <div className="flex-grow text-xs sm:text-sm font-semibold tracking-wide pr-2">
-            <span className={darkMode ? 'text-slate-200' : 'text-slate-800'}>
-              {toast.message}
-            </span>
-          </div>
-          <button 
-            onClick={() => setToast(null)}
-            className="flex-shrink-0 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 p-1 rounded-md hover:bg-slate-100/10 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
       )}
 
     </div>

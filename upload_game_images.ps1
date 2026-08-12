@@ -2,7 +2,7 @@
 # Run this script from PowerShell: .\upload_game_images.ps1
 
 Param(
-    [string]$SourceFolder = "D:\capstone\go-dot-launch-capstone-fptu\resource\media\GameData",
+    [string]$SourceFolder = "$PSScriptRoot\resource\media",
     [string]$FilerUrl = "http://localhost:8888",
     [string]$DbUser = "user_godot_launch",
     [string]$DbName = "godot_launch"
@@ -90,7 +90,7 @@ foreach ($item in $items) {
     $targetFolder = $null
     $friendlyItemTitle = Get-FolderFriendlyName $item.Title
     
-    $subfolders = Get-ChildItem -Path $SourceFolder -Directory
+    $subfolders = Get-ChildItem -Path $SourceFolder -Directory -Recurse
     foreach ($folder in $subfolders) {
         $friendlyFolderName = Get-FolderFriendlyName $folder.Name
         

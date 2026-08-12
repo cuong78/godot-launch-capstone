@@ -79,15 +79,11 @@ public class GameController {
     }
 
     @GetMapping
-    @Operation(summary = "Get all games", description = "Retrieves all game drafts, submissions, or published games (optionally filtered by status).")
+    @Operation(summary = "Get all games", description = "Retrieves all game drafts, submissions, or published games (optionally filtered by status and search keyword).")
     public ResponseEntity<ApiResponse<List<GameResponse>>> getAllGames(
-            @RequestParam(required = false) GameStatus status) {
-        List<GameResponse> games;
-        if (status != null) {
-            games = gameService.getGamesByStatus(status);
-        } else {
-            games = gameService.getAllGames();
-        }
+            @RequestParam(required = false) GameStatus status,
+            @RequestParam(required = false) String search) {
+        List<GameResponse> games = gameService.getAllGames(status, search);
         return ResponseEntity.ok(ApiResponse.success(games, "Games retrieved successfully"));
     }
 
