@@ -35,7 +35,9 @@ import { ProfileScreen } from './page/ProfileScreen';
 import { CheckoutPage } from './page/CheckoutPage';
 import { PaymentDetailPage } from './page/PaymentDetailPage';
 import { PaymentResultPage } from './page/PaymentResultPage';
+import { PaymentQrPage } from './page/PaymentQrPage';
 import { DeveloperOnboardingPage } from './page/DeveloperOnboardingPage';
+import { ConfirmResumeCheckoutModal } from './components/ConfirmResumeCheckoutModal';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
@@ -47,6 +49,16 @@ import { paymentApi } from './api/paymentApi';
 import { orderApi } from './api/orderApi';
 import { cartApi } from './api/cartApi';
 import { dispatchAdminNavigation } from './utils/adminNavigation';
+import {
+  PendingCheckoutContext,
+  clearPaymentQrSession,
+  clearPendingCheckoutContext,
+  readPaymentQrSession,
+  readPendingCheckoutContext,
+  storePaymentQrSession,
+  storePendingCheckoutContext,
+  updatePendingCheckoutContext,
+} from './utils/paymentFlowStorage';
 
 // Seed Images loaded from assets folder management
 import { VOXEL_BG_IMAGE, IMAGE_SEED_MAP } from '../assets/images';
@@ -173,6 +185,7 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   if (primary === 'marketplace') return { screen: 'marketplace' };
   if (primary === 'checkout') return { screen: 'checkout' };
   if (primary === 'payment') {
+    if (segments[1] === 'qr') return { screen: 'payment-qr' };
     if (segments[1] === 'success') return { screen: 'payment-success' };
     if (segments[1] === 'failed') return { screen: 'payment-failed' };
     if (segments[1] === 'cancelled') return { screen: 'payment-cancelled' };
@@ -214,6 +227,7 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
   if (screen === 'author-profile' && assetId) return `/profile/${assetId}`;
   if (screen === 'auth-callback') return '/auth/callback';
   if (screen === 'payment-success') return '/payment/success';
+  if (screen === 'payment-qr') return '/payment/qr';
   if (screen === 'payment-failed') return '/payment/failed';
   if (screen === 'payment-cancelled') return '/payment/cancelled';
   if (screen === 'wallet') return '/wallet';
@@ -287,6 +301,7 @@ export default function App() {
     ];
     const sharedFinanceScreens: ScreenType[] = [
       'payment',
+      'payment-qr',
       'payment-success',
       'payment-failed',
       'payment-cancelled',
@@ -420,6 +435,12 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState<'popular' | 'price-low' | 'price-high'>('popular');
 
   const [cart, setCart] = useState<Asset[]>([]);
+  const [resumeCheckoutContext, setResumeCheckoutContext] =
+    useState<PendingCheckoutContext | null>(() => {
+      if (initialRoute.screen !== 'checkout') return null;
+      const context = readPendingCheckoutContext();
+      return context?.readyToResume ? context : null;
+    });
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [paymentOrders, setPaymentOrders] = useState<PaymentResponse[]>(() => readStoredPayments());
   const [selectedPaymentOrderId, setSelectedPaymentOrderId] = useState<string | null>(() => readStoredSelectedPaymentOrder());
@@ -866,6 +887,24 @@ export default function App() {
     setCurrentScreen(checkoutOriginScreen);
   };
 
+  const handleCheckoutTopUp = useCallback((shortfall: number) => {
+    const normalizedShortfall = Math.max(0, Math.ceil(Number(shortfall) || 0));
+    if (normalizedShortfall <= 0 || cart.length === 0) return;
+
+    storePendingCheckoutContext({
+      cartItemIds: cart.map((item) => item.id),
+      itemTitles: cart.map((item) => item.title),
+      totalAmount: cart.reduce((sum, item) => sum + Number(item.price || 0), 0),
+      shortfall: normalizedShortfall,
+      createdAt: new Date().toISOString(),
+      readyToResume: false,
+    });
+    setResumeCheckoutContext(null);
+    window.history.pushState(null, '', '/wallet?suggestTopUp=1');
+    setCurrentScreen('wallet');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [cart]);
+
   const refreshTrackedPayments = async () => {
     if (!currentUser || currentUser.role === 'admin') {
       return;
@@ -973,15 +1012,22 @@ export default function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       const errorCode = err.response?.data?.code;
-      const shortfall = err.response?.data?.data?.shortfall;
+      const shortfallValue =
+        err.response?.data?.data?.shortfall ?? err.response?.data?.shortfall;
+      const shortfall = Number(shortfallValue);
 
-      if (errorCode === 'INSUFFICIENT_BALANCE' && typeof shortfall === 'number') {
+      if (
+        errorCode === 'INSUFFICIENT_BALANCE' &&
+        Number.isFinite(shortfall) &&
+        shortfall > 0
+      ) {
         showToast(
           t('app.toast.walletShortfall', {
             amount: `${shortfall.toLocaleString('vi-VN')}đ`,
           }),
           'warning',
         );
+        handleCheckoutTopUp(shortfall);
       } else if (errorCode === 'DATA_CONFLICT') {
         showToast(t('app.toast.dataConflict'), 'warning');
       } else {
@@ -990,6 +1036,74 @@ export default function App() {
     } finally {
       setIsPlacingOrder(false);
     }
+  };
+
+  const handleOpenPaymentQr = useCallback((payment: PaymentResponse) => {
+    const existingSession = readPaymentQrSession(payment.id);
+    storePaymentQrSession(payment, existingSession?.expiresAt);
+
+    window.history.pushState(
+      null,
+      '',
+      `/payment/qr?paymentId=${encodeURIComponent(payment.id)}`,
+    );
+    setCurrentScreen('payment-qr');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleQrPaymentPaid = useCallback((payment: PaymentResponse) => {
+    syncTrackedPayment(payment);
+    clearPaymentQrSession(payment.id);
+
+    const isTopUpPayment =
+      payment.paymentReference?.startsWith('TOPUP:') ||
+      (!payment.marketplaceItemId && !payment.orderId);
+
+    if (isTopUpPayment) {
+      const pendingCheckout = readPendingCheckoutContext();
+      if (
+        pendingCheckout &&
+        (!pendingCheckout.triggeredTopUpPaymentId ||
+          pendingCheckout.triggeredTopUpPaymentId === payment.id)
+      ) {
+        const readyContext = updatePendingCheckoutContext({
+          triggeredTopUpPaymentId: payment.id,
+          readyToResume: true,
+        });
+        if (readyContext) {
+          setResumeCheckoutContext(readyContext);
+          setCheckoutOriginScreen('wallet');
+          window.history.pushState(null, '', '/checkout?resumeTopUp=1');
+          setCurrentScreen('checkout');
+          showToast(t('app.toast.topUpSuccessResumeCheckout'), 'success');
+          return;
+        }
+      }
+
+      showToast(t('app.toast.topUpSuccess'), 'success');
+      setCurrentScreen('wallet');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    window.history.pushState(
+      null,
+      '',
+      `/payment/success?paymentId=${encodeURIComponent(payment.id)}`,
+    );
+    setCurrentScreen('payment-success');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [showToast, syncTrackedPayment, t]);
+
+  const handleResumeCheckoutLater = () => {
+    clearPendingCheckoutContext();
+    setResumeCheckoutContext(null);
+  };
+
+  const handleResumeCheckoutNow = async () => {
+    clearPendingCheckoutContext();
+    setResumeCheckoutContext(null);
+    await handlePlaceOrder();
   };
 
   const handleCancelPayment = async (paymentId: string) => {
@@ -1236,6 +1350,16 @@ export default function App() {
           </ProtectedRoute>
         )}
 
+        {currentScreen === 'payment-qr' && (
+          <ProtectedRoute setCurrentScreen={setCurrentScreen}>
+            <PaymentQrPage
+              setCurrentScreen={setCurrentScreen}
+              onPaymentUpdated={syncTrackedPayment}
+              onPaymentPaid={handleQrPaymentPaid}
+            />
+          </ProtectedRoute>
+        )}
+
         {currentScreen === 'payment-success' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
             <PaymentResultPage
@@ -1285,6 +1409,7 @@ export default function App() {
             currentUser={currentUser}
             showToast={showToast}
             ownedProductIds={ownedProductIds}
+            creatorOwnedProductIds={creatorOwnedProductIds}
             purchaseOrderPayments={purchaseOrderPayments}
             handleCategoryClick={handleCategoryClick}
             handleTagClick={handleTagClick}
@@ -1322,7 +1447,10 @@ export default function App() {
 
         {displayScreen === 'wallet' && (
           <ProtectedRoute setCurrentScreen={setCurrentScreen}>
-            <WalletPage setCurrentScreen={setCurrentScreen} />
+            <WalletPage
+              setCurrentScreen={setCurrentScreen}
+              onOpenPaymentQr={handleOpenPaymentQr}
+            />
           </ProtectedRoute>
         )}
 
@@ -1390,12 +1518,19 @@ export default function App() {
             onClose={handleCloseCheckoutModal}
             onPlaceOrder={handlePlaceOrder}
             onRemoveItem={(id) => handleRemoveFromCart(id)}
-            onGoToWallet={() => {
-              setCurrentScreen('wallet');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+            onGoToWallet={handleCheckoutTopUp}
           />
         </ProtectedRoute>
+      )}
+
+      {resumeCheckoutContext && isCheckoutModalOpen && (
+        <ConfirmResumeCheckoutModal
+          context={resumeCheckoutContext}
+          cart={cart}
+          isProcessing={isPlacingOrder}
+          onConfirm={handleResumeCheckoutNow}
+          onLater={handleResumeCheckoutLater}
+        />
       )}
 
       {/* FOOTER ACCENTS SECTION */}

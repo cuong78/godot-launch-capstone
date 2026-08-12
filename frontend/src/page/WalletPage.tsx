@@ -7,6 +7,7 @@ import {
   Landmark,
   ReceiptText,
   RefreshCw,
+  Sparkles,
   TrendingUp,
   Wallet2,
 } from "lucide-react";
@@ -16,6 +17,13 @@ import { walletApi } from "../api/walletApi";
 import { paymentApi } from "../api/paymentApi";
 import { useAuth } from "../hooks/useAuth";
 import { useFormattedAmountInput } from "../hooks/useFormattedAmountInput";
+import {
+  PendingCheckoutContext,
+  mergePaymentWithStoredQr,
+  readPendingCheckoutContext,
+  resolveSuggestedTopUpAmount,
+  updatePendingCheckoutContext,
+} from "../utils/paymentFlowStorage";
 import {
   CreateWithdrawalRequest,
   DeveloperWalletSummaryResponse,
@@ -172,7 +180,8 @@ const WalletMetricCard: React.FC<WalletMetricCardProps> = ({
 
 export const WalletPage: React.FC<{
   setCurrentScreen: (screen: ScreenType) => void;
-}> = ({ setCurrentScreen }) => {
+  onOpenPaymentQr: (payment: PaymentResponse) => void;
+}> = ({ setCurrentScreen, onOpenPaymentQr }) => {
   const { t, i18n } = useTranslation(["wallet"]);
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === "admin";
@@ -198,6 +207,9 @@ export const WalletPage: React.FC<{
   const [totalPages, setTotalPages] = useState(1);
   const topUpAmountInput = useFormattedAmountInput(sanitizeAmountInput, formatAmountInput);
   const topUpAmount = topUpAmountInput.rawValue;
+  const setTopUpAmount = topUpAmountInput.setValue;
+  const [suggestedCheckout, setSuggestedCheckout] =
+    useState<PendingCheckoutContext | null>(null);
   const [topUpError, setTopUpError] = useState<string | null>(null);
   const [isTopUpSubmitting, setIsTopUpSubmitting] = useState(false);
   const [pendingTopUp, setPendingTopUp] = useState<PaymentResponse | null>(
@@ -294,7 +306,7 @@ export const WalletPage: React.FC<{
         .filter(
           (p) =>
             p.paymentReference?.startsWith("TOPUP:") &&
-            p.paymentStatus === "PENDING" &&
+            (p.paymentStatus === "PENDING" || p.paymentStatus === "PROCESSING") &&
             p.checkoutUrl,
         )
         .sort(
@@ -315,7 +327,11 @@ export const WalletPage: React.FC<{
           ? confirmResponse.data
           : latest;
 
-      if (refreshed.paymentStatus === "PENDING" && refreshed.checkoutUrl) {
+      if (
+        (refreshed.paymentStatus === "PENDING" ||
+          refreshed.paymentStatus === "PROCESSING") &&
+        refreshed.checkoutUrl
+      ) {
         setPendingTopUp(refreshed);
       } else {
         setPendingTopUp(null);
@@ -335,8 +351,16 @@ export const WalletPage: React.FC<{
       const response = await paymentApi.confirmPayment(pendingTopUp.id);
       const refreshed =
         response.success && response.data ? response.data : pendingTopUp;
-      if (refreshed.paymentStatus === "PENDING" && refreshed.checkoutUrl) {
-        window.location.href = refreshed.checkoutUrl;
+      if (
+        refreshed.paymentStatus === "PENDING" ||
+        refreshed.paymentStatus === "PROCESSING"
+      ) {
+        const paymentWithQr = mergePaymentWithStoredQr(refreshed);
+        if (paymentWithQr.qrCode) {
+          onOpenPaymentQr(paymentWithQr);
+        } else if (refreshed.checkoutUrl) {
+          window.location.href = refreshed.checkoutUrl;
+        }
       } else {
         setPendingTopUp(null);
         if (refreshed.paymentStatus === "PAID") {
@@ -386,6 +410,19 @@ export const WalletPage: React.FC<{
       setActiveRightTab("topup");
     }
   }, [activeRightTab, canUseSelfServiceWithdrawal]);
+
+  useEffect(() => {
+    const shouldSuggestTopUp =
+      new URLSearchParams(window.location.search).get("suggestTopUp") === "1";
+    if (!shouldSuggestTopUp) return;
+
+    const context = readPendingCheckoutContext();
+    if (!context) return;
+
+    setSuggestedCheckout(context);
+    setActiveRightTab("topup");
+    setTopUpAmount(String(resolveSuggestedTopUpAmount(context.shortfall)));
+  }, [setTopUpAmount]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -472,8 +509,18 @@ export const WalletPage: React.FC<{
     setIsTopUpSubmitting(true);
     try {
       const response = await walletApi.createTopUp({ amount: parsedAmount });
-      if (response.success && response.data?.checkoutUrl) {
-        window.location.href = response.data.checkoutUrl;
+      if (
+        response.success &&
+        response.data &&
+        (response.data.qrCode || response.data.checkoutUrl)
+      ) {
+        if (suggestedCheckout) {
+          updatePendingCheckoutContext({
+            triggeredTopUpPaymentId: response.data.id,
+            readyToResume: false,
+          });
+        }
+        onOpenPaymentQr(response.data);
       } else {
         setTopUpError(
           response.message || t("wallet:topup.messages.submitFailed"),
@@ -1039,6 +1086,32 @@ export const WalletPage: React.FC<{
                 {topUpError && (
                   <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-xs font-semibold">
                     {topUpError}
+                  </div>
+                )}
+
+                {suggestedCheckout && (
+                  <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-400/12 via-orange-400/8 to-transparent p-4">
+                    <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-amber-400/20 blur-2xl" />
+                    <div className="relative flex items-start gap-3">
+                      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-400/15 text-amber-600 dark:text-amber-400">
+                        <Sparkles size={17} />
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-amber-700 dark:text-amber-300">
+                          {t("wallet:topup.suggestionTitle")}
+                        </p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                          {t("wallet:topup.suggestionDescription", {
+                            amount: formatMoney(
+                              suggestedCheckout.shortfall,
+                              "VND",
+                              locale,
+                              t("wallet:common.notAvailable"),
+                            ),
+                          })}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
 

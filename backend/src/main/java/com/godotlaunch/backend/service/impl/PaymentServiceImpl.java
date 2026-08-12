@@ -160,7 +160,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
         payment.setPaidAt(null);
 
-        return mapToResponse(paymentRepository.save(payment));
+        return mapToResponse(paymentRepository.save(payment), gatewayResponse);
     }
 
     @Override
@@ -198,7 +198,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPayosPaymentLinkId(gatewayResponse.getPaymentLinkId());
         payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
 
-        return mapToResponse(paymentRepository.save(payment));
+        return mapToResponse(paymentRepository.save(payment), gatewayResponse);
     }
 
     @Override
@@ -889,6 +889,18 @@ public class PaymentServiceImpl implements PaymentService {
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();
+    }
+
+    private PaymentResponse mapToResponse(
+            Payment payment,
+            PaymentGatewayCreateResponse gatewayResponse
+    ) {
+        PaymentResponse response = mapToResponse(payment);
+        response.setQrCode(gatewayResponse.getQrCode());
+        response.setBin(gatewayResponse.getBin());
+        response.setBankAccountNumber(gatewayResponse.getBankAccountNumber());
+        response.setBankAccountName(gatewayResponse.getBankAccountName());
+        return response;
     }
 
     private PaymentResponse safeMapToResponse(Payment payment) {

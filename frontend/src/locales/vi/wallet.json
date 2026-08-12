@@ -63,6 +63,8 @@
   "topup.submitting": "Đang tạo liên kết thanh toán...",
   "topup.subtitle": "Nạp tiền vào ví qua PayOS để mua hàng. Tiền nạp không thể rút về tài khoản ngân hàng.",
   "topup.title": "Nạp tiền vào ví",
+  "topup.suggestionTitle": "Đơn hàng của bạn đang chờ",
+  "topup.suggestionDescription": "Bạn cần nạp thêm {{amount}} để có thể hoàn tất thanh toán. Số tiền phù hợp đã được điền sẵn bên dưới.",
   "pendingTopup.title": "Bạn có một giao dịch nạp tiền chưa hoàn tất",
   "pendingTopup.description": "Số tiền {{amount}}, tạo lúc {{createdAt}}. Hãy tiếp tục thanh toán hoặc hủy giao dịch này để tạo giao dịch mới.",
   "pendingTopup.resume": "Tiếp tục thanh toán",

@@ -72,6 +72,7 @@ export type ScreenType =
   | "author-profile"
   | "checkout"
   | "payment"
+  | "payment-qr"
   | "payment-success"
   | "payment-failed"
   | "payment-cancelled"
@@ -615,6 +616,10 @@ export interface PaymentResponse {
   payosPaymentLinkId?: string | null;
   payosTransactionId?: string | null;
   checkoutUrl?: string | null;
+  qrCode?: string | null;
+  bin?: string | null;
+  bankAccountNumber?: string | null;
+  bankAccountName?: string | null;
   paymentReference?: string | null;
   paidAt?: string | null;
   downloadUrl?: string | null;

@@ -63,6 +63,8 @@
   "topup.submitting": "決済リンクを作成中...",
   "topup.subtitle": "PayOS経由で商品購入用にチャージします。チャージ残高は銀行口座へ出金できません。",
   "topup.title": "ウォレットにチャージ",
+  "topup.suggestionTitle": "注文が保留中です",
+  "topup.suggestionDescription": "決済完了まであと{{amount}}必要です。適切な金額を下に自動入力しました。",
   "pendingTopup.title": "未完了のチャージ取引があります",
   "pendingTopup.description": "金額 {{amount}}、作成日時 {{createdAt}}。決済を続けるか、キャンセルして新しい取引を作成してください。",
   "pendingTopup.resume": "決済を続ける",

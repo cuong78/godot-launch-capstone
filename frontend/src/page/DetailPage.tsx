@@ -26,6 +26,7 @@ interface DetailPageProps {
     type?: "info" | "success" | "warning" | "error",
   ) => void;
   ownedProductIds: Set<string>;
+  creatorOwnedProductIds: Set<string>;
   purchaseOrderPayments?: PaymentResponse[];
   handleCategoryClick: (category: string) => void;
   handleTagClick: (tag: string) => void;
@@ -61,6 +62,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   currentUser,
   showToast,
   ownedProductIds,
+  creatorOwnedProductIds,
   purchaseOrderPayments,
   handleCategoryClick,
   handleTagClick,
@@ -68,12 +70,8 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 }) => {
   const { t, i18n } = useTranslation(["marketplace"]);
   const isOwned = ownedProductIds.has(focusedAsset.id);
-  const currentUserEmail = currentUser?.email?.trim().toLowerCase();
   const isCreatorOwnedAsset = (asset: Asset) =>
-    Boolean(
-      currentUserEmail &&
-        asset.sellerEmail?.trim().toLowerCase() === currentUserEmail,
-    );
+    creatorOwnedProductIds.has(asset.id);
   const isCreatorOwner = isCreatorOwnedAsset(focusedAsset);
   
   const downloadUrl = React.useMemo(() => {
@@ -450,7 +448,15 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 
             {/* CTA action buttons */}
             <div className="space-y-2.5 pt-2">
-              {isOwned ? (
+              {isCreatorOwner ? (
+                <div className="relative w-full overflow-hidden rounded-lg border border-sky-500/25 bg-gradient-to-r from-sky-500/12 via-cyan-500/8 to-transparent px-4 py-3.5 text-center">
+                  <div className="pointer-events-none absolute -right-5 -top-8 h-20 w-20 rounded-full bg-sky-400/20 blur-2xl" />
+                  <div className="relative flex items-center justify-center gap-2 font-display text-xs font-bold text-sky-600 dark:text-sky-400">
+                    <Check size={15} strokeWidth={2.5} />
+                    {t("detail.pricing.ownerMessage")}
+                  </div>
+                </div>
+              ) : isOwned ? (
                 <div className="space-y-2 w-full">
                   <div className="w-full py-2.5 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-xs font-bold text-emerald-500 font-display text-center">
                     {t("detail.pricing.ownedMessage")}
@@ -468,7 +474,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                 <>
                   <button
                     onClick={() => handleBuyNow(focusedAsset)}
-                    disabled={isPreparingBuyNow || isCreatorOwner}
+                    disabled={isPreparingBuyNow}
                     className="w-full cursor-pointer rounded-lg bg-amber-400 px-4 py-2.5 text-center font-display text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-50 disabled:hover:bg-amber-400 dark:bg-[#fbbf24] dark:hover:bg-[#d97706] dark:disabled:hover:bg-[#fbbf24]"
                   >
                     {isPreparingBuyNow
@@ -479,12 +485,9 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   </button>
                   <button
                     onClick={() => handleAddToCart(focusedAsset)}
-                    disabled={isCreatorOwner}
                     className="w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-center font-display text-xs font-bold text-slate-800 transition-all hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white dark:border-[rgba(96,119,148,0.34)] dark:bg-transparent dark:text-[#f4f7fb] dark:hover:bg-[#0e1520] dark:disabled:hover:bg-transparent"
                   >
-                    {isCreatorOwner
-                      ? t("detail.actions.owner")
-                      : t("detail.actions.addToCart")}
+                    {t("detail.actions.addToCart")}
                   </button>
                 </>
               )}
