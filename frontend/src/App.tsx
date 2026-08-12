@@ -17,7 +17,6 @@ import {
   CategoryResponse,
 } from './types';
 import { Button } from './components/Button';
-import { ShieldAlert, AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 
 // Modular Page Components
 import { HomePage } from './page/HomePage';
@@ -40,6 +39,7 @@ import { DeveloperOnboardingPage } from './page/DeveloperOnboardingPage';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
+import { useToast } from './hooks/useToast';
 import { useWebSocket } from './context/WebSocketContext';
 import { gameApi } from './api/gameApi';
 import { marketplaceApi } from './api/marketplaceApi';
@@ -228,6 +228,7 @@ export default function App() {
     initialRoute.screen === 'checkout' ? 'marketplace' : initialRoute.screen,
   );
   const { currentUser, logout } = useAuth();
+  const { showToast } = useToast();
   const setCurrentUser = (user: User | null) => {
     if (user === null) {
       logout();
@@ -244,7 +245,6 @@ export default function App() {
 
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
   });
-  const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
   const displayScreen = currentScreen === 'checkout' ? checkoutOriginScreen : currentScreen;
   const isCheckoutModalOpen = currentScreen === 'checkout';
   const usesDashboardWorkspaceBackground = displayScreen === 'dashboard';
@@ -315,19 +315,6 @@ export default function App() {
     displayScreen,
     redirectAdminToSection,
   ]);
-
-  const showToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
-    setToast({ message, type });
-  }, []);
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => {
-        setToast(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   useEffect(() => {
     if (!isCheckoutModalOpen) {
@@ -1417,37 +1404,6 @@ export default function App() {
           setCurrentScreen={setCurrentScreen}
           noTopMargin={displayScreen === 'developer-onboarding'}
         />
-      )}
-
-      {/* Toast Notifications */}
-      {toast && (
-        <div 
-          className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 max-w-md p-4 rounded-xl shadow-2xl border backdrop-blur-md animate-toast-in transition-all duration-300"
-          style={{
-            backgroundColor: darkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-            borderColor: toast.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 
-                         toast.type === 'warning' ? 'rgba(245, 158, 11, 0.3)' : 
-                         toast.type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(56, 189, 248, 0.3)'
-          }}
-        >
-          <div className="flex-shrink-0">
-            {toast.type === 'success' && <CheckCircle className="text-emerald-500 w-5 h-5" />}
-            {toast.type === 'warning' && <AlertTriangle className="text-amber-500 w-5 h-5 animate-pulse" />}
-            {toast.type === 'error' && <ShieldAlert className="text-rose-500 w-5 h-5" />}
-            {toast.type === 'info' && <Info className="text-sky-500 w-5 h-5" />}
-          </div>
-          <div className="flex-grow text-xs sm:text-sm font-semibold tracking-wide pr-2">
-            <span className={darkMode ? 'text-slate-200' : 'text-slate-800'}>
-              {toast.message}
-            </span>
-          </div>
-          <button 
-            onClick={() => setToast(null)}
-            className="flex-shrink-0 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 p-1 rounded-md hover:bg-slate-100/10 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
       )}
 
     </div>

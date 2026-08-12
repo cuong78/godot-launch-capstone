@@ -8,6 +8,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import KycOcrModal from './KycOcrModal';
 import { kycApi } from '../api/kycApi';
+import { useToast } from '../hooks/useToast';
 
 const resolveLocale = (language?: string | null) => {
   const normalized = language?.toLowerCase().split('-')[0];
@@ -39,6 +40,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   onRejectDeveloper
 }) => {
   const { t, i18n } = useTranslation(['shared']);
+  const { showToast } = useToast();
   const locale = resolveLocale(i18n.resolvedLanguage || i18n.language);
   // Developer signing states
   const [sellerRepresentative, setSellerRepresentative] = useState(contract.sellerRepresentative || currentUser?.fullName || '');
@@ -169,7 +171,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
   const handleDevReject = async () => {
     if (!onRejectDeveloper) return;
     if (!rejectionReasonInput.trim()) {
-      alert(t('contract.errorRejectReasonRequired'));
+      showToast(t('contract.errorRejectReasonRequired'), 'warning');
       return;
     }
     

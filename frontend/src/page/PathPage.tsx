@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { TrendingUp, Sparkles, Check } from 'lucide-react';
 import { Button } from '../components/Button';
+import { useToast } from '../hooks/useToast';
 
 interface PathPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -9,6 +10,7 @@ interface PathPageProps {
 
 export const PathPage: React.FC<PathPageProps> = ({ setCurrentScreen }) => {
   const { t } = useTranslation(['path']);
+  const { showToast } = useToast();
 
   return (
     <div className="space-y-8 animate-fade-in py-4">
@@ -114,7 +116,7 @@ export const PathPage: React.FC<PathPageProps> = ({ setCurrentScreen }) => {
           </div>
 
           <button
-            onClick={() => alert(t('grant.alert'))}
+            onClick={() => showToast(t('grant.alert'), 'info')}
             className="w-full py-3 px-4 bg-transparent border border-sky-500 hover:bg-sky-500 text-sky-500 hover:text-white font-display text-xs font-bold rounded-lg transition-studio text-center cursor-pointer"
           >
             {t('grant.cta')}

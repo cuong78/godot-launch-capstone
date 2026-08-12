@@ -16,6 +16,7 @@ import {
 import { paymentApi } from '../../api/paymentApi';
 import { Button } from '../Button';
 import { PaymentResponse } from '../../types';
+import { useToast } from '../../hooks/useToast';
 
 const PAYMENTS_PER_PAGE = 6;
 
@@ -119,6 +120,7 @@ export const AdminPaymentVerificationPanel: React.FC<
   AdminPaymentVerificationPanelProps
 > = ({ onRefreshStateChange }) => {
   const { t, i18n } = useTranslation(['admin']);
+  const { showToast } = useToast();
   const locale = useMemo(
     () => resolveLocale(i18n.resolvedLanguage || i18n.language || 'vi'),
     [i18n.language, i18n.resolvedLanguage],
@@ -203,10 +205,10 @@ export const AdminPaymentVerificationPanel: React.FC<
         setSelectedPayment(res.data);
         setIsModalOpen(true);
       } else {
-        alert(res.message || t('paymentVerification.detailLoadError'));
+        showToast(res.message || t('paymentVerification.detailLoadError'), 'error');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || t('paymentVerification.detailLoadError'));
+      showToast(err.response?.data?.message || err.message || t('paymentVerification.detailLoadError'), 'error');
     }
   };
 
@@ -221,10 +223,10 @@ export const AdminPaymentVerificationPanel: React.FC<
       if (res.success && res.data) {
         setSelectedPayment(res.data);
       } else {
-        alert(res.message || t('paymentVerification.detailRefreshError'));
+        showToast(res.message || t('paymentVerification.detailRefreshError'), 'error');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || t('paymentVerification.detailRefreshError'));
+      showToast(err.response?.data?.message || err.message || t('paymentVerification.detailRefreshError'), 'error');
     } finally {
       setIsRefreshingDetail(false);
     }

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { storePublishApi } from '../../api/storePublishApi';
 import { ExternalPublishResponse } from '../../types';
+import { useToast } from '../../hooks/useToast';
 
 interface Props {
   gameId: string;
@@ -18,6 +19,7 @@ interface Props {
  */
 const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
   const { t } = useTranslation(['admin']);
+  const { showToast } = useToast();
   const [publish, setPublish] = useState<ExternalPublishResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +58,7 @@ const ExternalPublishStatusCard: React.FC<Props> = ({ gameId, gameStatus }) => {
 
   const handleUpload = async () => {
     if (!file || !shortDescription.trim() || !featureGraphic) {
-      alert(t('externalPublish.requiredError'));
+      showToast(t('externalPublish.requiredError'), 'warning');
       return;
     }
     setUploading(true);
