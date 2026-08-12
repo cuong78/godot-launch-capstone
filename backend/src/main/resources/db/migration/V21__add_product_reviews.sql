@@ -1,4 +1,4 @@
--- V20: Add product reviews table and rating cached columns to games and assets
+-- V21: Add product reviews table and rating cached columns to games and assets
 
 CREATE TABLE public.reviews (
     id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
