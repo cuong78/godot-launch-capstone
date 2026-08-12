@@ -78,6 +78,12 @@ public class Asset {
     @Column(name = "status", nullable = false, columnDefinition = "item_status_enum")
     private ItemStatus status = ItemStatus.active;
 
+    @Column(name = "average_rating", nullable = false, precision = 3, scale = 2)
+    private BigDecimal averageRating = BigDecimal.ZERO;
+
+    @Column(name = "review_count", nullable = false)
+    private Integer reviewCount = 0;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 

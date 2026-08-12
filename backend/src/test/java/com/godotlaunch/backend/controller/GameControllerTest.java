@@ -140,9 +140,9 @@ class GameControllerTest {
         when(gameService.getAllGames()).thenReturn(List.of(gameResponse));
 
         // Act - with status
-        ResponseEntity<ApiResponse<List<GameResponse>>> filtered = gameController.getAllGames(GameStatus.published);
+        ResponseEntity<ApiResponse<List<GameResponse>>> filtered = gameController.getAllGames(GameStatus.published, null);
         // Act - without status
-        ResponseEntity<ApiResponse<List<GameResponse>>> all = gameController.getAllGames(null);
+        ResponseEntity<ApiResponse<List<GameResponse>>> all = gameController.getAllGames(null, null);
 
         // Assert
         assertThat(filtered.getBody().getData()).hasSize(1);

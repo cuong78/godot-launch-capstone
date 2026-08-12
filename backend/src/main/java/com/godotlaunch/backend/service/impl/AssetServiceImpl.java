@@ -135,7 +135,21 @@ public class AssetServiceImpl implements AssetService {
     @Override
     @Transactional(readOnly = true)
     public List<AssetResponse> getAllAssets(String requesterEmail) {
+        return getAllAssets(null, null, requesterEmail);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AssetResponse> getAllAssets(ItemStatus status, String search, String requesterEmail) {
         User requester = resolveRequester(requesterEmail).orElse(null);
+        if (search != null && !search.isBlank()) {
+            return assetRepository.searchAssets(status, search.trim()).stream()
+                    .map(item -> mapToResponse(item, canAccessPrivateItemFields(item, requester)))
+                    .collect(Collectors.toList());
+        }
+        if (status != null) {
+            return getAssetsByStatus(status, requesterEmail);
+        }
         return assetRepository.findAll().stream()
                 .map(item -> mapToResponse(item, canAccessPrivateItemFields(item, requester)))
                 .collect(Collectors.toList());

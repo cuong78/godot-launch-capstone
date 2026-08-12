@@ -31,6 +31,7 @@ public interface GameService {
     String getBotUsername();
     GameResponse getGameById(UUID gameId);
     List<GameResponse> getAllGames();
+    List<GameResponse> getAllGames(GameStatus status, String search);
     List<GameResponse> getGamesByStatus(GameStatus status);
     GameResponse updateGame(UUID gameId, UpdateGameRequest request, String updaterEmail);
     String getPresignedUploadUrl(UUID gameId, String fileType, String contentType, String requesterEmail);

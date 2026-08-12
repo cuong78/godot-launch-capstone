@@ -21,6 +21,13 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
     @Query("SELECT DISTINCT a FROM Asset a WHERE a.status = :status")
     List<Asset> findStorefrontAssets(@Param("status") ItemStatus status);
 
+    @EntityGraph(attributePaths = {"seller", "category", "tags"})
+    @Query("SELECT DISTINCT a FROM Asset a WHERE (:status IS NULL OR a.status = :status) " +
+           "AND (:search IS NULL OR :search = '' OR " +
+           "LOWER(a.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(a.category.name) LIKE LOWER(CONCAT('%', :search, '%')))")
+    List<Asset> searchAssets(@Param("status") ItemStatus status, @Param("search") String search);
+
     @Query("SELECT a FROM Asset a WHERE a.fileUrl IS NOT NULL AND a.fileUrl <> '' " +
            "AND (:search IS NULL OR :search = '' OR " +
            "LOWER(a.title) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

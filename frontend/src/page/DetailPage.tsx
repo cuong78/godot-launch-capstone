@@ -5,6 +5,7 @@ import { Asset, User, CategoryResponse, PaymentResponse } from "../types";
 import { resolveApiUrl } from "../utils/apiUrl";
 import { IMAGE_SEED_MAP } from "../../assets/images";
 import { gameApi } from "../api/gameApi";
+import { ReviewSection } from "../components/ReviewSection";
 
 interface DetailPageProps {
   focusedAsset: Asset;
@@ -383,6 +384,14 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               </div>
             )}
           </div>
+
+          {/* Product Reviews & Ratings Section */}
+          <ReviewSection
+            productId={focusedAsset.id}
+            productType={focusedAsset.itemType === 'asset' ? 'asset' : 'game'}
+            currentUserId={currentUser?.id}
+            isAdmin={currentUser?.role === 'admin'}
+          />
         </div>
 
         {/* Right Column: Sticky Sidebar Info & Purchase */}
