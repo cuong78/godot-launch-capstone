@@ -217,6 +217,17 @@ public class GameServiceImpl implements GameService {
                     creator.getId(), ActorRole.developer, AuditAction.security_alert,
                     AuditTarget.game, gameId, null, null,
                     "Phát hiện mã độc trong repo của game: " + gameToSave.getTitle(), null);
+            try {
+                notificationService.createAndSendNotification(
+                        creator,
+                        null,
+                        NotificationType.SECURITY_ALERT,
+                        "CẢNH BÁO BẢO MẬT: Mã nguồn / File ZIP của game \"" + gameToSave.getTitle() + "\" bị phát hiện chứa mã độc và đã bị từ chối.",
+                        gameId.toString()
+                );
+            } catch (Exception e) {
+                log.warn("Lỗi gửi thông báo SECURITY_ALERT: {}", e.getMessage());
+            }
             throw new AppException(ErrorCode.SOURCE_MALWARE_DETECTED);
         }
 

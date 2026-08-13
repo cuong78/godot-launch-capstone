@@ -90,6 +90,18 @@ public class ReviewServiceImpl implements ReviewService {
             review = reviewRepository.save(review);
             recalculateGameRating(game);
 
+            try {
+                notificationService.createAndSendNotification(
+                        game.getCreator(),
+                        user,
+                        NotificationType.NEW_REVIEW,
+                        "Người dùng " + (user.getFullName() != null ? user.getFullName() : user.getEmail()) + " vừa gửi đánh giá " + request.getRating() + "★ cho sản phẩm \"" + game.getTitle() + "\" của bạn.",
+                        game.getId().toString()
+                );
+            } catch (Exception e) {
+                // Ignore notification error to not break review creation
+            }
+
         } else {
             Asset asset = assetRepository.findById(request.getAssetId())
                     .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
@@ -118,6 +130,18 @@ public class ReviewServiceImpl implements ReviewService {
 
             review = reviewRepository.save(review);
             recalculateAssetRating(asset);
+
+            try {
+                notificationService.createAndSendNotification(
+                        asset.getSeller(),
+                        user,
+                        NotificationType.NEW_REVIEW,
+                        "Người dùng " + (user.getFullName() != null ? user.getFullName() : user.getEmail()) + " vừa gửi đánh giá " + request.getRating() + "★ cho sản phẩm \"" + asset.getTitle() + "\" của bạn.",
+                        asset.getId().toString()
+                );
+            } catch (Exception e) {
+                // Ignore notification error
+            }
         }
 
         return mapToResponse(review);

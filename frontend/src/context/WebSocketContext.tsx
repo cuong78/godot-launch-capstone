@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import api from '../api/axios';
 import { NotificationResponse } from '../types';
 import { tokenStorage } from '../utils/tokenStorage';
@@ -19,6 +20,7 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(undefin
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
+  const { showToast } = useToast();
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -36,8 +38,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [currentUser]);
 
   // Establish WebSocket connection when user is logged in.
-  // Dùng cho notification real-time (push game, phê duyệt game, hợp đồng, ...)
-  // và community updates — KHÔNG dùng cho chat 1-1 (chưa có backend).
   useEffect(() => {
     if (!currentUser) {
       if (stompClientRef.current) {
@@ -60,16 +60,28 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         Authorization: `Bearer ${token}`
       },
       debug: (str) => {
-        // Suppress detailed frames logs to clean up browser console, uncomment if needed
-        // console.log("[STOMP Debug] " + str);
+        // Suppress detailed frames logs to clean up browser console
       },
       onConnect: () => {
         setIsConnected(true);
         console.log("WebSocket connected via SockJS + STOMP Broker.");
 
         // Subscribe to user notifications
-        client.subscribe('/user/queue/notifications', () => {
-          fetchNotifications();
+        client.subscribe('/user/queue/notifications', (message) => {
+          try {
+            const notif = JSON.parse(message.body) as NotificationResponse;
+            if (notif && notif.id) {
+              setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
+              setUnreadNotificationsCount((prev) => prev + 1);
+              if (notif.message) {
+                showToast(notif.message, 'info');
+              }
+            } else {
+              fetchNotifications();
+            }
+          } catch (err) {
+            fetchNotifications();
+          }
         });
 
         // Subscribe to public community updates

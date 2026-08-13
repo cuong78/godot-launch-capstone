@@ -1255,6 +1255,9 @@ export default function App() {
           setCurrentUser={setCurrentUser}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          setSelectedAssetId={setSelectedAssetId}
+          setSelectedPost={setSelectedPost}
+          setSelectedAuthor={setSelectedAuthor}
         />
       ) : (
         <Header
