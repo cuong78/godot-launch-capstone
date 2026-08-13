@@ -71,10 +71,32 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       await markNotificationAsRead(notif.id);
     }
     
-    // 2. Perform redirect navigation
+    // 2. Perform intelligent redirect navigation
     if (notif.targetId) {
-      setSelectedAssetId(notif.targetId);
-      setCurrentScreen('detail');
+      switch (notif.type) {
+        case 'CONTRACT_OFFERED':
+        case 'SELLER_RESPONSE':
+        case 'GAME_REVIEW_RESULT':
+          setCurrentScreen('dashboard');
+          break;
+        case 'PAYMENT_SUCCESS':
+          setCurrentScreen('payment');
+          break;
+        case 'CHAT_MESSAGE':
+        case 'COMMENT':
+        case 'REACTION':
+        case 'SHARE':
+          if (setSelectedPost) {
+            setSelectedPost({ id: notif.targetId });
+          }
+          setCurrentScreen('community');
+          break;
+        case 'REVIEW_REMOVED':
+        default:
+          setSelectedAssetId(notif.targetId);
+          setCurrentScreen('detail');
+          break;
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -89,6 +111,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         return <Share2 className="w-3.5 h-3.5 text-amber-500" />;
       case 'CHAT_MESSAGE':
         return <CornerDownRight className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'REVIEW_REMOVED':
+        return <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />;
       default:
         return <Bell className="w-3.5 h-3.5 text-slate-400" />;
     }
@@ -150,8 +174,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                   <div className="w-8.5 h-8.5 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-800/60 shrink-0">
                     <img 
                       referrerPolicy="no-referrer" 
-                      src={notif.sender.avatarUrl || PROFILE_AVATAR_YOU} 
-                      alt={notif.sender.fullName} 
+                      src={notif.sender?.avatarUrl || PROFILE_AVATAR_YOU} 
+                      alt={notif.sender?.fullName || 'GodotLaunch'} 
                       className="w-full h-full object-cover"
                     />
                   </div>

@@ -648,7 +648,13 @@ export type NotificationType =
   | "COMMENT"
   | "REACTION"
   | "SHARE"
-  | "CHAT_MESSAGE";
+  | "CHAT_MESSAGE"
+  | "PAYMENT_SUCCESS"
+  | "GAME_REVIEW_RESULT"
+  | "CONTRACT_OFFERED"
+  | "SELLER_RESPONSE"
+  | "REVIEW_REMOVED"
+  | (string & {});
 
 export interface NotificationResponse {
   id: string;

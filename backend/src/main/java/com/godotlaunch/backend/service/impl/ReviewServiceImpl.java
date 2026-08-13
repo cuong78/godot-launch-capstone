@@ -10,8 +10,10 @@ import com.godotlaunch.backend.entity.Review;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.*;
+import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,6 +34,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final AssetRepository assetRepository;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -225,11 +228,11 @@ public class ReviewServiceImpl implements ReviewService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new AppException(ErrorCode.REVIEW_NOT_FOUND));
 
-        User user = userRepository.findByEmail(userEmail)
+        User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        boolean isAdmin = "admin".equalsIgnoreCase(user.getRole().getName());
-        boolean isOwner = review.getUser().getId().equals(user.getId());
+        boolean isAdmin = "admin".equalsIgnoreCase(currentUser.getRole().getName());
+        boolean isOwner = review.getUser().getId().equals(currentUser.getId());
 
         if (!isAdmin && !isOwner) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
@@ -237,6 +240,10 @@ public class ReviewServiceImpl implements ReviewService {
 
         Game game = review.getGame();
         Asset asset = review.getAsset();
+        User reviewAuthor = review.getUser();
+
+        String productTitle = (game != null) ? game.getTitle() : ((asset != null) ? asset.getTitle() : "sản phẩm");
+        String targetId = (game != null) ? game.getId().toString() : ((asset != null) ? asset.getId().toString() : null);
 
         reviewRepository.delete(review);
 
@@ -244,6 +251,18 @@ public class ReviewServiceImpl implements ReviewService {
             recalculateGameRating(game);
         } else if (asset != null) {
             recalculateAssetRating(asset);
+        }
+
+        // Send real-time WebSocket notification if deleted by Admin (and not self-deleted by author)
+        if (isAdmin && !isOwner && reviewAuthor != null) {
+            String message = "Đánh giá của bạn về sản phẩm \"" + productTitle + "\" đã bị quản trị viên xóa do vi phạm tiêu chuẩn cộng đồng.";
+            notificationService.createAndSendNotification(
+                    reviewAuthor,
+                    currentUser,
+                    NotificationType.REVIEW_REMOVED,
+                    message,
+                    targetId
+            );
         }
     }
 

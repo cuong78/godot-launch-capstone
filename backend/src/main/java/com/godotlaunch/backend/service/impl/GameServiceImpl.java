@@ -25,6 +25,8 @@ import com.godotlaunch.backend.service.SeaweedFsService;
 import com.godotlaunch.backend.service.ClamAVService;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.GameService;
+import com.godotlaunch.backend.service.NotificationService;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.CategoryRepository;
@@ -81,6 +83,7 @@ public class GameServiceImpl implements GameService {
     private final ClamAVService clamAVService;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final AuditLogService auditLogService;
     private final GitHubRepoService gitHubRepoService;
     private final SourceProcessingClient sourceProcessingClient;
@@ -135,10 +138,10 @@ public class GameServiceImpl implements GameService {
     }
 
     private void validateUpdateDependency(Game game, String fileType) {
-        boolean isLive = game.getStatus() == GameStatus.published 
-                || game.getStatus() == GameStatus.approved 
+        boolean isLive = game.getStatus() == GameStatus.published
+                || game.getStatus() == GameStatus.approved
                 || game.getStatus() == GameStatus.awaiting_store_build;
-                
+
         if (isLive) {
             if ("game".equalsIgnoreCase(fileType)) {
                 return;
@@ -429,12 +432,12 @@ public class GameServiceImpl implements GameService {
         assertGameOwner(game, updater);
         validateUpdateDependency(game, null);
 
-        boolean isLive = game.getStatus() == GameStatus.published 
-                || game.getStatus() == GameStatus.approved 
+        boolean isLive = game.getStatus() == GameStatus.published
+                || game.getStatus() == GameStatus.approved
                 || game.getStatus() == GameStatus.awaiting_store_build;
 
         if (isLive) {
-            if (request.getPriceProposed() != null && game.getPriceProposed() != null 
+            if (request.getPriceProposed() != null && game.getPriceProposed() != null
                     && request.getPriceProposed().compareTo(game.getPriceProposed()) != 0) {
                 throw new AppException(ErrorCode.BAD_REQUEST, "Không thể thay đổi giá bán khi game đã được duyệt.");
             }
@@ -517,8 +520,8 @@ public class GameServiceImpl implements GameService {
             throw new IllegalArgumentException("Không xác định được objectKey từ mediaUrl");
         }
 
-        boolean isLive = game.getStatus() == GameStatus.published 
-                || game.getStatus() == GameStatus.approved 
+        boolean isLive = game.getStatus() == GameStatus.published
+                || game.getStatus() == GameStatus.approved
                 || game.getStatus() == GameStatus.awaiting_store_build;
 
         if (isLive) {
@@ -756,8 +759,8 @@ public class GameServiceImpl implements GameService {
         assertGameOwner(game, requester);
         validateUpdateDependency(game, fileType);
 
-        boolean isLive = game.getStatus() == GameStatus.published 
-                || game.getStatus() == GameStatus.approved 
+        boolean isLive = game.getStatus() == GameStatus.published
+                || game.getStatus() == GameStatus.approved
                 || game.getStatus() == GameStatus.awaiting_store_build;
 
         if ("thumbnail".equalsIgnoreCase(fileType)) {
@@ -870,8 +873,8 @@ public class GameServiceImpl implements GameService {
         // Upload qua SeaweedFsService
         String mediaUrl = seaweedFsService.uploadWithKey(file, objectKey);
 
-        boolean isLive = game.getStatus() == GameStatus.published 
-                || game.getStatus() == GameStatus.approved 
+        boolean isLive = game.getStatus() == GameStatus.published
+                || game.getStatus() == GameStatus.approved
                 || game.getStatus() == GameStatus.awaiting_store_build;
 
         if ("thumbnail".equalsIgnoreCase(fileType)) {
@@ -1086,6 +1089,15 @@ public class GameServiceImpl implements GameService {
                     game.getStatus().name(),
                     "Bản cập nhật của game '" + game.getTitle() + "' đã được admin duyệt và phát hành."
             );
+
+            notificationService.createAndSendNotification(
+                    game.getCreator(),
+                    null,
+                    NotificationType.GAME_REVIEW_RESULT,
+                    "Bản cập nhật dự án game \"" + game.getTitle() + "\" của bạn đã được quản trị viên phê duyệt thành công!",
+                    game.getId().toString()
+            );
+
             markLatestPlagiarismFlagsReviewed(gameId);
             return;
         }
@@ -1133,6 +1145,15 @@ public class GameServiceImpl implements GameService {
                     "Game '" + game.getTitle() + "' approved by administrator (contract pending)."
             );
         }
+
+        notificationService.createAndSendNotification(
+                game.getCreator(),
+                null,
+                NotificationType.GAME_REVIEW_RESULT,
+                "Dự án game \"" + game.getTitle() + "\" của bạn đã được quản trị viên phê duyệt thành công!",
+                game.getId().toString()
+        );
+
         markLatestPlagiarismFlagsReviewed(gameId);
     }
 
@@ -1221,6 +1242,15 @@ public class GameServiceImpl implements GameService {
                     game.getStatus().name(),
                     "Bản cập nhật của game '" + game.getTitle() + "' đã bị admin từ chối. Lý do: " + reason
             );
+
+            notificationService.createAndSendNotification(
+                    game.getCreator(),
+                    null,
+                    NotificationType.GAME_REVIEW_RESULT,
+                    "Bản cập nhật dự án game \"" + game.getTitle() + "\" của bạn đã bị từ chối xét duyệt." + (reason != null && !reason.isBlank() ? " Lý do: " + reason : ""),
+                    game.getId().toString()
+            );
+
             markLatestPlagiarismFlagsReviewed(gameId);
             return;
         }
@@ -1275,6 +1305,14 @@ public class GameServiceImpl implements GameService {
                 GameStatus.pending.name(),
                 GameStatus.rejected.name(),
                 "Game '" + game.getTitle() + "' rejected by administrator. Reason: " + reason
+        );
+
+        notificationService.createAndSendNotification(
+                game.getCreator(),
+                null,
+                NotificationType.GAME_REVIEW_RESULT,
+                "Dự án game \"" + game.getTitle() + "\" của bạn đã bị từ chối xét duyệt." + (reason != null && !reason.isBlank() ? " Lý do: " + reason : ""),
+                game.getId().toString()
         );
     }
 

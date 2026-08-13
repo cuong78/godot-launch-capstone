@@ -201,6 +201,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     useState<boolean>(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<{
+    id: string;
+    title: string;
+    type: "game" | "asset";
+  } | null>(null);
 
   // Real Sales Stats state (units sold + revenue as seller)
   const [salesStats, setSalesStats] =
@@ -369,7 +374,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     try {
       const response = await marketplaceApi.getMyMarketplaceItems();
       if (response.success && response.data) {
-        setMyMarketplaceItems(response.data);
+        const activeItems = response.data.filter((item) => item.status !== "removed");
+        setMyMarketplaceItems(activeItems);
         return true;
       } else {
         setMarketplaceError(
@@ -394,25 +400,33 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  const handleDeleteMarketplaceItem = async (id: string) => {
-    if (!window.confirm(t("dashboard:contracts.deleteConfirm"))) {
-      return;
-    }
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmItem) return;
+    const { id, title, type } = deleteConfirmItem;
+
     try {
-      const res = await marketplaceApi.deleteMarketplaceItem(id);
-      if (res.success) {
-        showToast(t("dashboard:contracts.deleteSuccess"), 'success');
-        fetchMyMarketplaceItems();
+      if (type === "asset") {
+        await marketplaceApi.deleteMarketplaceItem(id);
       } else {
-        showToast(res.message || t("dashboard:contracts.deleteFail"), 'error');
+        try {
+          await marketplaceApi.deleteMarketplaceItem(id);
+        } catch {
+          /* ignore if game is not in marketplace table */
+        }
       }
+
+      showToast(`Đã xóa "${title}" thành công khỏi Bảng thống kê`, 'success');
+
+      // Filter out deleted item immediately from local state
+      setMyMarketplaceItems((prev) => prev.filter((item) => item.id !== id));
+      setMyGames((prev) => prev.filter((game) => game.id !== id));
     } catch (err: any) {
       showToast(
-        err.response?.data?.message ||
-          err.message ||
-          t("dashboard:contracts.deleteError"),
+        err.response?.data?.message || err.message || t("dashboard:contracts.deleteError"),
         'error',
       );
+    } finally {
+      setDeleteConfirmItem(null);
     }
   };
 
@@ -1244,7 +1258,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 "[HỦY HỢP ĐỒNG]",
                                               );
                                             return (
-                                              <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-1">
+                                              <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-2">
                                                 <span className="font-bold flex items-center gap-1.5 text-xs">
                                                   <AlertTriangle size={14} />
                                                   {isDeveloperCancelled
@@ -1264,6 +1278,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                         "dashboard:table.gameRejectedHint",
                                                       )}
                                                 </p>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setDeleteConfirmItem({ id: game.id, title: game.title, type: "game" })}
+                                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-600 dark:text-rose-400 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                                                >
+                                                  <Trash2 size={13} /> Xóa game này khỏi Bảng thống kê
+                                                </button>
                                               </div>
                                             );
                                           })()}
@@ -1616,17 +1637,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   </span>
                                 </td>
                                 <td className="p-3 w-24 text-center">
-                                  {item.type === "asset" ? (
-                                    <button
-                                      onClick={() => handleDeleteMarketplaceItem(item.id)}
-                                      className="p-1.5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
-                                      title={t("dashboard:table.actions.removeProduct")}
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  ) : (
-                                    <span className="text-slate-400 dark:text-slate-600 text-xs font-sans">-</span>
-                                  )}
+                                  <button
+                                    onClick={() => setDeleteConfirmItem({ id: item.id, title: item.title, type: item.type })}
+                                    className="p-1.5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                    title={t("dashboard:table.actions.removeProduct")}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
                                 </td>
                               </tr>
 
@@ -2121,6 +2138,44 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         }}
         item={editingItem}
       />
+
+      {deleteConfirmItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-rose-500/30 bg-slate-900/95 p-6 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3 text-rose-500 mb-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/20">
+                <Trash2 size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Xác nhận xóa sản phẩm</h3>
+                <p className="text-xs text-rose-400/80 font-mono">Hành động không thể hoàn tác</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-300 leading-relaxed mb-6">
+              Bạn có chắc chắn muốn xóa <span className="font-bold text-white">"{deleteConfirmItem.title}"</span> khỏi Bảng thống kê? Sản phẩm này sẽ không còn hiển thị trong danh sách của bạn nữa.
+            </p>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmItem(null)}
+                className="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-rose-600/30 hover:bg-rose-500 active:scale-95 transition-all cursor-pointer"
+              >
+                <Trash2 size={14} />
+                Xóa khỏi bảng thống kê
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

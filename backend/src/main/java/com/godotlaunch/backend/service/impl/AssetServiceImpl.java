@@ -16,6 +16,8 @@ import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.AsyncVirusScanService;
 import com.godotlaunch.backend.service.SeaweedFsService;
 import com.godotlaunch.backend.service.EmailService;
+import com.godotlaunch.backend.service.NotificationService;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.service.AssetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ public class AssetServiceImpl implements AssetService {
     private final SeaweedFsService seaweedFsService;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final com.godotlaunch.backend.service.GitHubRepoService gitHubRepoService;
     private final com.godotlaunch.backend.config.SourceProcessingClient sourceProcessingClient;
     private final com.godotlaunch.backend.repository.SourceSnapshotRepository sourceSnapshotRepository;
@@ -395,6 +398,14 @@ public class AssetServiceImpl implements AssetService {
                 ItemStatus.active.name(),
                 "Marketplace item '" + item.getTitle() + "' approved and activated by administrator."
         );
+
+        notificationService.createAndSendNotification(
+                item.getSeller(),
+                null,
+                NotificationType.GAME_REVIEW_RESULT,
+                "Sản phẩm asset \"" + item.getTitle() + "\" của bạn đã được quản trị viên phê duyệt thành công!",
+                item.getId().toString()
+        );
     }
 
     @Override
@@ -434,6 +445,14 @@ public class AssetServiceImpl implements AssetService {
                 ItemStatus.pending.name(),
                 ItemStatus.rejected.name(),
                 "Marketplace item '" + item.getTitle() + "' rejected by administrator. Reason: " + reason
+        );
+
+        notificationService.createAndSendNotification(
+                item.getSeller(),
+                null,
+                NotificationType.GAME_REVIEW_RESULT,
+                "Sản phẩm asset \"" + item.getTitle() + "\" của bạn đã bị từ chối xét duyệt." + (reason != null && !reason.isBlank() ? " Lý do: " + reason : ""),
+                item.getId().toString()
         );
     }
 
