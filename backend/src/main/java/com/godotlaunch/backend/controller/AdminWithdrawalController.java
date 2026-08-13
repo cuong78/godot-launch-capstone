@@ -68,4 +68,14 @@ public class AdminWithdrawalController {
         WithdrawalDetailResponse response = withdrawalRequestService.rejectWithdrawal(id, request, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal rejected successfully."));
     }
+
+    private final com.godotlaunch.backend.scheduler.WithdrawalAutoPayoutScheduler withdrawalAutoPayoutScheduler;
+
+    @PostMapping("/trigger-auto-payout")
+    @Operation(summary = "Trigger auto-payout scan manually for testing")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<String>> triggerAutoPayout() {
+        withdrawalAutoPayoutScheduler.autoApproveEligibleWithdrawals();
+        return ResponseEntity.ok(ApiResponse.success("Success", "Kích hoạt quét duyệt rút tiền tự động thành công."));
+    }
 }

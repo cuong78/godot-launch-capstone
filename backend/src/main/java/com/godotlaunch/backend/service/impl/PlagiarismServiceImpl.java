@@ -13,11 +13,16 @@ import com.godotlaunch.backend.repository.CodeEmbeddingRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.PlagiarismFlagRepository;
 import com.godotlaunch.backend.repository.SourceSnapshotRepository;
+import com.godotlaunch.backend.entity.User;
+import com.godotlaunch.backend.entity.enums.NotificationType;
+import com.godotlaunch.backend.repository.UserRepository;
+import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.service.PlagiarismService;
 import com.godotlaunch.backend.service.SourceReviewStatusService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -38,6 +43,8 @@ public class PlagiarismServiceImpl implements PlagiarismService {
     private final PlagiarismFlagRepository plagiarismFlagRepository;
     private final SourceSnapshotRepository sourceSnapshotRepository;
     private final GameRepository gameRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
     private final SourceReviewStatusService sourceReviewStatusService;
     private final PlatformTransactionManager transactionManager;
 
@@ -149,6 +156,22 @@ public class PlagiarismServiceImpl implements PlagiarismService {
         flag.setRejectThreshold(rejectThreshold);
         flag.setSeverity(score >= rejectThreshold ? PlagiarismSeverity.reject : PlagiarismSeverity.review);
         plagiarismFlagRepository.save(flag);
+
+        try {
+            List<User> admins = userRepository.findAdminsOrderByCreatedAtAsc(PageRequest.of(0, 10));
+            int scorePct = Math.round(score * 100);
+            for (User admin : admins) {
+                notificationService.createAndSendNotification(
+                        admin,
+                        null,
+                        NotificationType.PLAGIARISM_ALERT,
+                        "CẢNH BÁO BẢN QUYỀN: Game \"" + current.getGame().getTitle() + "\" có tỷ lệ trùng lặp code " + scorePct + "% với game \"" + matched.getGame().getTitle() + "\".",
+                        current.getGame().getId().toString()
+                );
+            }
+        } catch (Exception e) {
+            log.warn("Lỗi gửi thông báo PLAGIARISM_ALERT: {}", e.getMessage());
+        }
     }
 
     private void validateResult(CodeEmbeddingResult result) {

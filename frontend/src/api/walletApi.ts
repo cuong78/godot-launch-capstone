@@ -81,5 +81,10 @@ export const walletApi = {
   rejectWithdrawal: async (id: string, data: RejectWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
     const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/reject`, data);
     return response.data;
+  },
+
+  triggerAutoPayout: async (): Promise<ApiResponse<string>> => {
+    const response = await api.post<ApiResponse<string>>('/api/v1/admin/withdrawals/trigger-auto-payout');
+    return response.data;
   }
 };

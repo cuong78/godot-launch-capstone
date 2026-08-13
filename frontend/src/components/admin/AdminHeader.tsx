@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { User, ScreenType } from "../../types";
 import { LanguageSwitcher } from "../LanguageSwitcher";
+import { NotificationBell } from "../NotificationBell";
 import { useTranslation } from "react-i18next";
 import { dispatchAdminNavigation } from "../../utils/adminNavigation";
 
@@ -16,6 +17,9 @@ interface AdminHeaderProps {
   setCurrentUser: (user: User | null) => void;
   darkMode: boolean;
   setDarkMode: (mode: boolean) => void;
+  setSelectedAssetId?: (id: string) => void;
+  setSelectedPost?: (post: any) => void;
+  setSelectedAuthor?: (author: any) => void;
 }
 
 export function AdminHeader({
@@ -24,6 +28,9 @@ export function AdminHeader({
   setCurrentUser,
   darkMode,
   setDarkMode,
+  setSelectedAssetId,
+  setSelectedPost,
+  setSelectedAuthor,
 }: AdminHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const { t } = useTranslation(["common", "payment", "admin"]);
@@ -90,6 +97,15 @@ export function AdminHeader({
 
         <div className="flex items-center gap-3">
           <LanguageSwitcher className="hidden md:block" />
+
+          {currentUser && (
+            <NotificationBell
+              setCurrentScreen={setCurrentScreen}
+              setSelectedAssetId={setSelectedAssetId || (() => {})}
+              setSelectedPost={setSelectedPost || (() => {})}
+              setSelectedAuthor={setSelectedAuthor || (() => {})}
+            />
+          )}
 
           <button
             onClick={() => setDarkMode(!darkMode)}

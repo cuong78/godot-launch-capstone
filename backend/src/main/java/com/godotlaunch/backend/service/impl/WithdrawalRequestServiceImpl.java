@@ -31,6 +31,9 @@ import com.godotlaunch.backend.repository.PayoutGateway;
 import com.godotlaunch.backend.scheduler.WithdrawalPayoutSyncScheduler;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.service.NotificationService;
+import com.godotlaunch.backend.entity.enums.NotificationType;
+import org.springframework.data.domain.PageRequest;
 import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import com.godotlaunch.backend.util.BankBinResolver;
@@ -89,6 +92,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final UserRepository userRepository;
     private final DisputeRepository disputeRepository;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
     private final PayoutGateway payoutGateway;
     private final EncryptionUtils encryptionUtils;
     private final WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
@@ -187,6 +191,21 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 ),
                 "Developer submitted a withdrawal request."
         );
+
+        try {
+            List<User> admins = userRepository.findAdminsOrderByCreatedAtAsc(PageRequest.of(0, 10));
+            for (User admin : admins) {
+                notificationService.createAndSendNotification(
+                        admin,
+                        developer,
+                        NotificationType.WITHDRAWAL_REQUEST,
+                        "Nhà phát triển " + (developer.getFullName() != null ? developer.getFullName() : developer.getEmail()) + " vừa gửi yêu cầu rút " + saved.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ.",
+                        saved.getId().toString()
+                );
+            }
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo withdrawal request tới admin: {}", ex.getMessage());
+        }
 
         WalletMetrics afterMetrics = buildWalletMetrics(developer, wallet);
         log.info("Created withdrawal request {} for user {} with amount={}", saved.getId(), developer.getId(), requestedAmount);
@@ -347,6 +366,18 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
             withdrawalPayoutSyncScheduler.ensureRunning();
         }
 
+        try {
+            notificationService.createAndSendNotification(
+                    updated.getUser(),
+                    null,
+                    NotificationType.WITHDRAWAL_RESULT,
+                    "Yêu cầu rút " + updated.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ của bạn đã được phê duyệt và đang xử lý chuyển khoản.",
+                    updated.getId().toString()
+            );
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo approve withdrawal: {}", ex.getMessage());
+        }
+
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
         return mapToDetailResponse(updated, wallet, metrics);
@@ -390,6 +421,18 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 Map.of("status", updated.getStatus().name(), "remark", updated.getRemark()),
                 "Admin rejected a withdrawal request."
         );
+
+        try {
+            notificationService.createAndSendNotification(
+                    updated.getUser(),
+                    admin,
+                    NotificationType.WITHDRAWAL_RESULT,
+                    "Yêu cầu rút " + updated.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ của bạn đã bị từ chối." + (request != null && StringUtils.hasText(request.getRemark()) ? " Lý do: " + request.getRemark() : ""),
+                    updated.getId().toString()
+            );
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo reject withdrawal: {}", ex.getMessage());
+        }
 
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);

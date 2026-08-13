@@ -650,10 +650,18 @@ export type NotificationType =
   | "SHARE"
   | "CHAT_MESSAGE"
   | "PAYMENT_SUCCESS"
+  | "NEW_SALE"
   | "GAME_REVIEW_RESULT"
   | "CONTRACT_OFFERED"
   | "SELLER_RESPONSE"
   | "REVIEW_REMOVED"
+  | "NEW_REVIEW"
+  | "WITHDRAWAL_REQUEST"
+  | "WITHDRAWAL_RESULT"
+  | "REPLY_COMMENT"
+  | "SECURITY_ALERT"
+  | "PLAGIARISM_ALERT"
+  | "STORE_PUBLISH_RESULT"
   | (string & {});
 
 export interface NotificationResponse {

@@ -60,19 +60,23 @@ public class ExternalPublishPollingService {
                 game.setStatus(GameStatus.published);
                 gameRepository.save(game);
                 notificationService.createAndSendNotification(
-                        developer, developer, NotificationType.SELLER_RESPONSE,
-                        "Game '" + game.getTitle() + "' đã live trên Google Play: " + publish.getStoreUrl(),
+                        developer, null, NotificationType.STORE_PUBLISH_RESULT,
+                        "Chúc mừng! Trò chơi '" + game.getTitle() + "' của bạn đã chính thức phát hành trên Google Play Store: " + publish.getStoreUrl(),
                         game.getId().toString()
                 );
             } else if (publish.getStatus() == ExtStatus.rejected) {
+                notificationService.createAndSendNotification(
+                        developer, null, NotificationType.STORE_PUBLISH_RESULT,
+                        "Google Play đã từ chối xuất bản game '" + game.getTitle() + "'. Lý do: " + publish.getRejectedReason(),
+                        game.getId().toString()
+                );
                 for (User adminUser : userRepository.findByRole_NameIgnoreCase("admin")) {
                     notificationService.createAndSendNotification(
-                            adminUser, developer, NotificationType.SELLER_RESPONSE,
+                            adminUser, developer, NotificationType.STORE_PUBLISH_RESULT,
                             "Google Play từ chối game '" + game.getTitle() + "': " + publish.getRejectedReason(),
                             game.getId().toString()
                     );
                 }
-                // game.status giữ nguyên awaiting_store_build — admin sửa build và upload lại
             }
         }
     }
