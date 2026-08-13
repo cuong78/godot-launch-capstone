@@ -62,6 +62,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const tagPickerRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Media
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
@@ -257,7 +258,8 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
       }
     } catch (err: any) {
       setUploadStatus((prev) => ({ ...prev, [key]: "failed" }));
-      showToast(err.message || "Lỗi khi upload tệp.", 'error');
+      const errMsg = err.response?.data?.message || err.message || "Lỗi khi upload tệp.";
+      showToast(errMsg, 'error');
     }
   };
 
@@ -276,8 +278,10 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
       } else {
         setVideoUrl(null);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Xóa media thất bại", err);
+      const errMsg = err.response?.data?.message || err.message || "Xóa media thất bại.";
+      showToast(errMsg, 'error');
     }
   };
 
@@ -315,7 +319,12 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
       onSaveSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Có lỗi xảy ra khi lưu.");
+      const errMsg = err.response?.data?.message || err.message || "Có lỗi xảy ra khi lưu.";
+      setError(errMsg);
+      showToast(errMsg, 'error');
+      if (formRef.current) {
+        formRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -339,7 +348,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
         </header>
 
         {/* Scrollable Form Area */}
-        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form ref={formRef} onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-6">
           {error && (
             <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
               {error}
