@@ -25,6 +25,8 @@ import com.godotlaunch.backend.service.SeaweedFsService;
 import com.godotlaunch.backend.service.ClamAVService;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.GameService;
+import com.godotlaunch.backend.service.NotificationService;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.CategoryRepository;
@@ -66,15 +68,11 @@ public class GameServiceImpl implements GameService {
     private final CategoryRepository categoryRepository;
     private final MediaRepository mediaRepository;
     private final com.godotlaunch.backend.repository.TagRepository tagRepository;
-
-    /** Helper: tìm media của game này. */
-    private List<Media> gameMedia(UUID gameId) {
-        return mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId);
-    }
     private final SeaweedFsService seaweedFsService;
     private final ClamAVService clamAVService;
     private final AsyncVirusScanService asyncVirusScanService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final AuditLogService auditLogService;
     private final GitHubRepoService gitHubRepoService;
     private final SourceProcessingClient sourceProcessingClient;
@@ -82,6 +80,11 @@ public class GameServiceImpl implements GameService {
     private final com.godotlaunch.backend.repository.PlagiarismFlagRepository plagiarismFlagRepository;
     private final ObjectMapper objectMapper;
     private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
+
+    /** Helper: tìm media của game này. */
+    private List<Media> gameMedia(UUID gameId) {
+        return mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId);
+    }
 
     /** Build objectKey cố định/random theo loại media với đuôi mở rộng gốc. */
     private String buildMediaObjectKey(UUID gameId, String fileType, MultipartFile file) {
@@ -732,6 +735,15 @@ public class GameServiceImpl implements GameService {
                     game.getStatus().name(),
                     "Bản cập nhật của game '" + game.getTitle() + "' đã được admin duyệt và phát hành."
             );
+
+            notificationService.createAndSendNotification(
+                    game.getCreator(),
+                    null,
+                    NotificationType.GAME_REVIEW_RESULT,
+                    "Bản cập nhật dự án game \"" + game.getTitle() + "\" của bạn đã được quản trị viên phê duyệt thành công!",
+                    game.getId().toString()
+            );
+
             markLatestPlagiarismFlagsReviewed(gameId);
             return;
         }
@@ -779,6 +791,15 @@ public class GameServiceImpl implements GameService {
                     "Game '" + game.getTitle() + "' approved by administrator (contract pending)."
             );
         }
+
+        notificationService.createAndSendNotification(
+                game.getCreator(),
+                null,
+                NotificationType.GAME_REVIEW_RESULT,
+                "Dự án game \"" + game.getTitle() + "\" của bạn đã được quản trị viên phê duyệt thành công!",
+                game.getId().toString()
+        );
+
         markLatestPlagiarismFlagsReviewed(gameId);
     }
 
@@ -817,6 +838,15 @@ public class GameServiceImpl implements GameService {
                     game.getStatus().name(),
                     "Bản cập nhật của game '" + game.getTitle() + "' đã bị admin từ chối. Lý do: " + reason
             );
+
+            notificationService.createAndSendNotification(
+                    game.getCreator(),
+                    null,
+                    NotificationType.GAME_REVIEW_RESULT,
+                    "Bản cập nhật dự án game \"" + game.getTitle() + "\" của bạn đã bị từ chối xét duyệt." + (reason != null && !reason.isBlank() ? " Lý do: " + reason : ""),
+                    game.getId().toString()
+            );
+
             markLatestPlagiarismFlagsReviewed(gameId);
             return;
         }
@@ -871,6 +901,14 @@ public class GameServiceImpl implements GameService {
                 GameStatus.pending.name(),
                 GameStatus.rejected.name(),
                 "Game '" + game.getTitle() + "' rejected by administrator. Reason: " + reason
+        );
+
+        notificationService.createAndSendNotification(
+                game.getCreator(),
+                null,
+                NotificationType.GAME_REVIEW_RESULT,
+                "Dự án game \"" + game.getTitle() + "\" của bạn đã bị từ chối xét duyệt." + (reason != null && !reason.isBlank() ? " Lý do: " + reason : ""),
+                game.getId().toString()
         );
     }
 

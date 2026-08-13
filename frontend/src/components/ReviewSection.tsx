@@ -92,19 +92,27 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({ productId, product
     }
   };
 
-  const handleDelete = async (reviewId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa đánh giá này?')) return;
+  // Delete modal state
+  const [reviewToDeleteId, setReviewToDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!reviewToDeleteId) return;
     try {
-      await reviewApi.deleteReview(reviewId);
+      setDeleting(true);
+      await reviewApi.deleteReview(reviewToDeleteId);
       setSuccessMsg('Xóa đánh giá thành công!');
-      if (summary?.currentUserReview?.id === reviewId) {
+      if (summary?.currentUserReview?.id === reviewToDeleteId) {
         setIsEditing(false);
         setComment('');
         setRating(5);
       }
+      setReviewToDeleteId(null);
       fetchReviewData();
     } catch (err: any) {
       setErrorMsg('Không thể xóa đánh giá.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -305,7 +313,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({ productId, product
 
                         {(isAdmin || (currentUserId && currentUserId === rev.userId)) && (
                           <button
-                            onClick={() => handleDelete(rev.id)}
+                            onClick={() => setReviewToDeleteId(rev.id)}
                             title={isAdmin ? "Admin xóa đánh giá này" : "Xóa đánh giá"}
                             className="p-1 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
                           >
@@ -324,6 +332,47 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({ productId, product
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {reviewToDeleteId && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-fade-in"
+          onClick={() => setReviewToDeleteId(null)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-rose-400">
+              <AlertCircle className="w-6 h-6 shrink-0" />
+              <h3 className="text-lg font-bold text-white">Xác nhận xóa đánh giá</h3>
+            </div>
+            <p className="text-sm text-slate-300">
+              {isAdmin
+                ? "Bạn có chắc chắn muốn xóa đánh giá này khỏi hệ thống? Tác giả đánh giá sẽ nhận được thông báo giải thích do vi phạm quy định."
+                : "Bạn có chắc chắn muốn xóa đánh giá của mình? Hành động này không thể hoàn tác."}
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setReviewToDeleteId(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-750 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {deleting ? 'Đang xóa...' : 'Xóa đánh giá'}
+              </button>
+            </div>
           </div>
         </div>
       )}
