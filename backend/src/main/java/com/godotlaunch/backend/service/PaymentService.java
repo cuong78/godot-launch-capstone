@@ -19,4 +19,5 @@ public interface PaymentService {
     PaymentResponse getPaymentById(UUID paymentId, String requesterEmail);
     PaymentStatusSummaryResponse getPaymentStatus(UUID orderId, String requesterEmail);
     List<PaymentResponse> getAdminPayments();
+    java.util.Map<UUID, java.util.Map<com.godotlaunch.backend.entity.enums.PaymentStatus, Long>> getPaymentStatusStatsBySeller(UUID sellerId);
 }

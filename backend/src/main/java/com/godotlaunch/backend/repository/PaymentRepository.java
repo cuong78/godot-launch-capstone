@@ -25,4 +25,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     List<Payment> findByWalletUserIdOrderByCreatedAtDesc(UUID userId);
     List<Payment> findByPaymentStatusOrderByCreatedAtDesc(PaymentStatus paymentStatus);
     Optional<Payment> findByWalletIdAndPaymentReferenceAndPaymentStatus(UUID walletId, String paymentReference, PaymentStatus paymentStatus);
+
+    @Query("SELECT p FROM Payment p WHERE p.paymentReference LIKE 'BUY_ASSET:%' OR p.paymentReference LIKE 'BUY_GAME:%'")
+    List<Payment> findAllProductPurchasePayments();
 }

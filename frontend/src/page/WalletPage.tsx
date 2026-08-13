@@ -133,6 +133,46 @@ const getStatusMeta = (status: WithdrawalStatus, t: any) => {
   }
 };
 
+const getTransactionTypeMeta = (type: string, t: any) => {
+  switch (type?.toLowerCase()) {
+    case "wallet_topup":
+      return {
+        label: t("wallet:txnTypes.walletTopup", "Nạp tiền vào ví"),
+        colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      };
+    case "revenue_share":
+      return {
+        label: t("wallet:txnTypes.revenueShare", "Nhận doanh thu"),
+        colorClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+      };
+    case "asset_purchase":
+      return {
+        label: t("wallet:txnTypes.assetPurchase", "Mua tài nguyên"),
+        colorClass: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+      };
+    case "source_code_purchase":
+      return {
+        label: t("wallet:txnTypes.sourceCodePurchase", "Mua game nguồn"),
+        colorClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+      };
+    case "withdrawal":
+      return {
+        label: t("wallet:txnTypes.withdrawal", "Rút tiền về ngân hàng"),
+        colorClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+      };
+    case "commission":
+      return {
+        label: t("wallet:txnTypes.commission", "Phí nền tảng"),
+        colorClass: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+      };
+    default:
+      return {
+        label: type,
+        colorClass: "bg-slate-500/10 text-slate-500 border-slate-500/20",
+      };
+  }
+};
+
 interface WalletMetricCardProps {
   label: string;
   value: string;
@@ -968,50 +1008,58 @@ export const WalletPage: React.FC<{
                       </td>
                     </tr>
                   ) : (
-                    transactions.map((txn) => (
-                      <tr
-                        key={txn.id}
-                        className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors"
-                      >
-                        <td className="p-3 font-semibold capitalize text-slate-700 dark:text-slate-200">
-                          {txn.type || "n/a"}
-                        </td>
-                        <td
-                          className={`p-3 font-mono font-semibold ${
-                            Number(txn.amount) < 0
-                              ? "text-rose-500"
-                              : "text-emerald-500"
-                          }`}
+                    transactions.map((txn) => {
+                      const typeMeta = getTransactionTypeMeta(txn.type, t);
+                      return (
+                        <tr
+                          key={txn.id}
+                          className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors"
                         >
-                          {formatMoney(
-                            Number(txn.amount),
-                            summaryCurrency,
-                            locale,
-                            t("wallet:common.notAvailable"),
-                          )}
-                        </td>
-                        <td className="p-3 font-mono text-slate-600 dark:text-slate-300">
-                          {txn.balanceAfter !== undefined && txn.balanceAfter !== null
-                            ? formatMoney(
-                                Number(txn.balanceAfter),
-                                summaryCurrency,
-                                locale,
-                                t("wallet:common.notAvailable"),
-                              )
-                            : t("wallet:common.notAvailable")}
-                        </td>
-                        <td className="p-3 font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                          {txn.referenceId || "\u2014"}
-                        </td>
-                        <td className="p-3 text-[10px] text-slate-500 dark:text-slate-400">
-                          {formatTimestamp(
-                            txn.createdAt?.toString(),
-                            locale,
-                            t("wallet:common.notAvailable"),
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                          <td className="p-3">
+                            <span
+                              className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${typeMeta.colorClass}`}
+                            >
+                              {typeMeta.label}
+                            </span>
+                          </td>
+                          <td
+                            className={`p-3 font-mono font-semibold ${
+                              Number(txn.amount) < 0
+                                ? "text-rose-500"
+                                : "text-emerald-500"
+                            }`}
+                          >
+                            {Number(txn.amount) > 0 ? "+" : ""}
+                            {formatMoney(
+                              Number(txn.amount),
+                              summaryCurrency,
+                              locale,
+                              t("wallet:common.notAvailable"),
+                            )}
+                          </td>
+                          <td className="p-3 font-mono text-slate-600 dark:text-slate-300 font-semibold">
+                            {txn.balanceAfter !== undefined && txn.balanceAfter !== null
+                              ? formatMoney(
+                                  Number(txn.balanceAfter),
+                                  summaryCurrency,
+                                  locale,
+                                  t("wallet:common.notAvailable"),
+                                )
+                              : t("wallet:common.notAvailable")}
+                          </td>
+                          <td className="p-3 font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                            {txn.referenceId || "\u2014"}
+                          </td>
+                          <td className="p-3 text-[10px] text-slate-500 dark:text-slate-400">
+                            {formatTimestamp(
+                              txn.createdAt?.toString(),
+                              locale,
+                              t("wallet:common.notAvailable"),
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

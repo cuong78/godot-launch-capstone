@@ -119,6 +119,10 @@ export interface ProductSalesResponse {
   thumbnailUrl?: string | null;
   unitsSold: number;
   revenue: number;
+  pendingCount?: number;
+  failedCount?: number;
+  cancelledCount?: number;
+  expiredCount?: number;
 }
 
 export interface DeveloperSalesStatsResponse {

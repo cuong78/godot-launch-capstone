@@ -350,6 +350,45 @@ public class PaymentServiceImpl implements PaymentService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<UUID, java.util.Map<PaymentStatus, Long>> getPaymentStatusStatsBySeller(UUID sellerId) {
+        java.util.Map<UUID, java.util.Map<PaymentStatus, Long>> result = new java.util.HashMap<>();
+        List<Payment> payments = paymentRepository.findAllProductPurchasePayments();
+
+        for (Payment p : payments) {
+            String ref = p.getPaymentReference();
+            if (!StringUtils.hasText(ref)) continue;
+
+            UUID productId = null;
+            UUID productSellerId = null;
+
+            if (ref.startsWith("BUY_ASSET:")) {
+                try {
+                    productId = UUID.fromString(ref.substring("BUY_ASSET:".length()));
+                    Asset asset = assetRepository.findById(productId).orElse(null);
+                    if (asset != null && asset.getSeller() != null) {
+                        productSellerId = asset.getSeller().getId();
+                    }
+                } catch (Exception ignored) {}
+            } else if (ref.startsWith("BUY_GAME:")) {
+                try {
+                    productId = UUID.fromString(ref.substring("BUY_GAME:".length()));
+                    Game game = gameRepository.findById(productId).orElse(null);
+                    if (game != null && game.getCreator() != null) {
+                        productSellerId = game.getCreator().getId();
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            if (productId != null && sellerId.equals(productSellerId)) {
+                result.computeIfAbsent(productId, k -> new java.util.EnumMap<>(PaymentStatus.class))
+                        .merge(p.getPaymentStatus(), 1L, Long::sum);
+            }
+        }
+        return result;
+    }
+
     private Order createOrder(User buyer, Asset item) {
         Order order = new Order();
         order.setBuyer(buyer);

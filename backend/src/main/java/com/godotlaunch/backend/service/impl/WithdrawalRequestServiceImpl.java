@@ -35,10 +35,13 @@ import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.entity.enums.NotificationType;
 import org.springframework.data.domain.PageRequest;
 import com.godotlaunch.backend.service.PlatformSettingsService;
+import com.godotlaunch.backend.service.PaymentService;
+import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import com.godotlaunch.backend.util.BankBinResolver;
 import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
 import com.godotlaunch.backend.util.WalletBalancePolicy;
+import java.util.Collections;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -98,6 +101,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
     private final PlatformSettingsService platformSettingsService;
     private final WithdrawalPayoutSyncScheduler withdrawalPayoutSyncScheduler;
+    private final PaymentService paymentService;
 
     @Override
     @Transactional
@@ -121,11 +125,13 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 transactionRepository.sumAmountByWalletIdAndTypeIn(wallet.getId(), EnumSet.of(TxnType.revenue_share))
         );
 
+        Map<UUID, Map<PaymentStatus, Long>> statusStats = paymentService.getPaymentStatusStatsBySeller(developer.getId());
+
         List<ProductSalesResponse> products = Stream.concat(
                         transactionRepository.sumAssetSalesByWalletIdAndType(wallet.getId(), TxnType.revenue_share)
-                                .stream().map(row -> mapProductRow(row, "ASSET")),
+                                .stream().map(row -> mapProductRow(row, "ASSET", statusStats)),
                         transactionRepository.sumGameSalesByWalletIdAndType(wallet.getId(), TxnType.revenue_share)
-                                .stream().map(row -> mapProductRow(row, "GAME")))
+                                .stream().map(row -> mapProductRow(row, "GAME", statusStats)))
                 .sorted(Comparator.comparing(ProductSalesResponse::getRevenue).reversed())
                 .collect(Collectors.toList());
 
@@ -140,7 +146,13 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .build();
     }
 
-    private ProductSalesResponse mapProductRow(ProductSalesRow row, String productType) {
+    private ProductSalesResponse mapProductRow(ProductSalesRow row, String productType, Map<UUID, Map<PaymentStatus, Long>> statusStats) {
+        Map<PaymentStatus, Long> counts = statusStats.getOrDefault(row.productId(), Collections.emptyMap());
+        long pendingCount = counts.getOrDefault(PaymentStatus.PENDING, 0L) + counts.getOrDefault(PaymentStatus.PROCESSING, 0L);
+        long failedCount = counts.getOrDefault(PaymentStatus.FAILED, 0L);
+        long cancelledCount = counts.getOrDefault(PaymentStatus.CANCELLED, 0L);
+        long expiredCount = counts.getOrDefault(PaymentStatus.EXPIRED, 0L);
+
         return ProductSalesResponse.builder()
                 .productId(row.productId())
                 .productType(productType)
@@ -148,6 +160,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .thumbnailUrl(row.thumbnailUrl())
                 .unitsSold(row.unitsSold() == null ? 0 : row.unitsSold())
                 .revenue(row.revenue() == null ? BigDecimal.ZERO : row.revenue())
+                .pendingCount(pendingCount)
+                .failedCount(failedCount)
+                .cancelledCount(cancelledCount)
+                .expiredCount(expiredCount)
                 .build();
     }
 

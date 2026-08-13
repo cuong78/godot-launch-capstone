@@ -150,7 +150,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onCancelPayment,
   setCurrentScreen,
 }) => {
-  const { t, i18n } = useTranslation(["dashboard"]);
+  const { t, i18n } = useTranslation(["dashboard", "payment"]);
   const { showToast } = useToast();
   const locale = React.useMemo(() => {
     const language = i18n.resolvedLanguage || i18n.language || "vi";
@@ -1953,6 +1953,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <th className="p-3 text-right">
                             {t("dashboard:table.headers.sold")}
                           </th>
+                          <th className="p-3 text-center">
+                            {t("payment:center.orderStatus", "Trạng thái đơn (Thành công / Chờ / Lỗi / Hủy / Hết hạn)")}
+                          </th>
                           <th className="p-3 text-right">
                             {t("dashboard:table.headers.revenue")}
                           </th>
@@ -1991,6 +1994,38 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               <td className="p-3 text-right font-mono">
                                 {product.unitsSold}
                               </td>
+                              <td className="p-3 text-center">
+                                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                  {!!product.unitsSold && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" title="Đơn hàng đã thanh toán thành công">
+                                      ✅ {product.unitsSold} {t("payment:status.paid.label", "Thành công")}
+                                    </span>
+                                  )}
+                                  {!!product.pendingCount && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20" title="Đơn hàng đang chờ thanh toán">
+                                      ⏳ {product.pendingCount} {t("payment:status.pending.label", "Đang chờ")}
+                                    </span>
+                                  )}
+                                  {!!product.failedCount && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20" title="Đơn hàng thất bại">
+                                      ❌ {product.failedCount} {t("payment:status.failed.label", "Thất bại")}
+                                    </span>
+                                  )}
+                                  {!!product.cancelledCount && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/20" title="Đơn hàng đã hủy">
+                                      🚫 {product.cancelledCount} {t("payment:status.cancelled.label", "Đã hủy")}
+                                    </span>
+                                  )}
+                                  {!!product.expiredCount && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20" title="Đơn hàng hết hạn">
+                                      ⏰ {product.expiredCount} {t("payment:status.expired.label", "Hết hạn")}
+                                    </span>
+                                  )}
+                                  {!product.unitsSold && !product.pendingCount && !product.failedCount && !product.cancelledCount && !product.expiredCount && (
+                                    <span className="text-[11px] text-slate-400 font-mono">—</span>
+                                  )}
+                                </div>
+                              </td>
                               <td className="p-3 text-right font-mono font-semibold dark:text-amber-400">
                                 {formatCurrencyValue(
                                   product.revenue,
@@ -2003,7 +2038,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         ) : (
                           <tr>
                             <td
-                              colSpan={4}
+                              colSpan={5}
                               className="p-8 text-center font-medium text-slate-500 dark:text-slate-400"
                             >
                               {t("dashboard:table.emptySales")}

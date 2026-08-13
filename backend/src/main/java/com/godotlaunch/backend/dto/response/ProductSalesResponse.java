@@ -21,4 +21,8 @@ public class ProductSalesResponse {
     private String thumbnailUrl;
     private long unitsSold;
     private BigDecimal revenue;
+    private long pendingCount;
+    private long failedCount;
+    private long cancelledCount;
+    private long expiredCount;
 }
