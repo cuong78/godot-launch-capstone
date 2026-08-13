@@ -128,6 +128,21 @@ public class GameServiceImpl implements GameService {
         }
     }
 
+    private void validateUpdateDependency(Game game, String fileType) {
+        boolean isLive = game.getStatus() == GameStatus.published 
+                || game.getStatus() == GameStatus.approved 
+                || game.getStatus() == GameStatus.awaiting_store_build;
+                
+        if (isLive) {
+            if ("game".equalsIgnoreCase(fileType)) {
+                return;
+            }
+            if (game.getPendingUpdateSnapshot() == null) {
+                throw new AppException(ErrorCode.UPDATE_REQUIRES_CODE_UPDATE);
+            }
+        }
+    }
+
     @Override
     @Transactional
     public UUID createGameDraft(CreateGameRequest request, String creatorEmail) {
@@ -406,6 +421,7 @@ public class GameServiceImpl implements GameService {
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
         assertGameOwner(game, updater);
+        validateUpdateDependency(game, null);
 
         if (request.getTitle() != null) {
             game.setTitle(request.getTitle());
@@ -449,6 +465,7 @@ public class GameServiceImpl implements GameService {
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
         assertGameOwner(game, updater);
+        validateUpdateDependency(game, null);
 
         // Chuẩn hóa: "screenshot" → "image" (DB lưu mediaType là "image")
         String normalized = "video".equalsIgnoreCase(mediaType) ? "video" : "image";
@@ -464,6 +481,7 @@ public class GameServiceImpl implements GameService {
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
         assertGameOwner(game, updater);
+        validateUpdateDependency(game, null);
 
         // Frontend gửi presigned URL — match bằng objectKey (bỏ query string ?X-Amz-...)
         String targetKey = extractObjectKeyFromUrl(mediaUrl);
@@ -573,6 +591,7 @@ public class GameServiceImpl implements GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
         assertGameOwner(game, requester);
+        validateUpdateDependency(game, fileType);
 
         // thumbnail/video: key random mỗi lần upload để tránh browser cache ảnh/video cũ khi thay file mới
         String objectKey;
@@ -597,6 +616,7 @@ public class GameServiceImpl implements GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
         assertGameOwner(game, requester);
+        validateUpdateDependency(game, fileType);
 
         if ("thumbnail".equalsIgnoreCase(fileType)) {
             if (objectKey == null) {
@@ -647,6 +667,7 @@ public class GameServiceImpl implements GameService {
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
         assertGameOwner(game, uploader);
+        validateUpdateDependency(game, fileType);
 
         validateMediaFileSize(fileType, file);
 
@@ -905,6 +926,7 @@ public class GameServiceImpl implements GameService {
                 .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
 
         assertGameOwner(game, creator);
+        validateUpdateDependency(game, "web_demo");
 
         // 1. Quét virus file ZIP bằng ClamAV
         try (java.io.InputStream scanStream = file.getInputStream()) {

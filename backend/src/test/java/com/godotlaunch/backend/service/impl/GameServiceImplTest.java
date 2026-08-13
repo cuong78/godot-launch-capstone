@@ -834,4 +834,65 @@ class GameServiceImplTest {
         verify(mediaRepository).delete(m);
         verify(seaweedFsService).deleteObject("games/123/screenshots/key1.png");
     }
+
+    @Test
+    void validateUpdateDependency_ShouldThrowException_WhenGameIsLiveAndNoPendingSnapshot() {
+        game.setStatus(GameStatus.published);
+        game.setPendingUpdateSnapshot(null);
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+
+        // updateGame should fail
+        UpdateGameRequest updateReq = new UpdateGameRequest();
+        updateReq.setTitle("New Title");
+        AppException ex = assertThrows(AppException.class, () -> 
+            gameService.updateGame(gameId, updateReq, devUser.getEmail())
+        );
+        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.UPDATE_REQUIRES_CODE_UPDATE);
+
+        // getPresignedUploadUrl for thumbnail should fail
+        ex = assertThrows(AppException.class, () -> 
+            gameService.getPresignedUploadUrl(gameId, "thumbnail", "image/png", devUser.getEmail())
+        );
+        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.UPDATE_REQUIRES_CODE_UPDATE);
+
+        // clearGameMedia should fail
+        ex = assertThrows(AppException.class, () -> 
+            gameService.clearGameMedia(gameId, "image", devUser.getEmail())
+        );
+        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.UPDATE_REQUIRES_CODE_UPDATE);
+    }
+
+    @Test
+    void validateUpdateDependency_ShouldSucceed_WhenGameIsLiveAndHasPendingSnapshot() {
+        game.setStatus(GameStatus.published);
+        SourceSnapshot pendingSnapshot = new SourceSnapshot();
+        pendingSnapshot.setId(UUID.randomUUID());
+        game.setPendingUpdateSnapshot(pendingSnapshot);
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(gameRepository.save(any(Game.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // updateGame should succeed
+        UpdateGameRequest updateReq = new UpdateGameRequest();
+        updateReq.setTitle("New Title");
+        GameResponse resp = gameService.updateGame(gameId, updateReq, devUser.getEmail());
+        assertThat(resp.getTitle()).isEqualTo("New Title");
+    }
+
+    @Test
+    void validateUpdateDependency_ShouldAllowGameZipUpload_EvenWhenNoPendingSnapshot() {
+        game.setStatus(GameStatus.published);
+        game.setPendingUpdateSnapshot(null);
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(seaweedFsService.generatePresignedUploadUrl(anyString(), anyString())).thenReturn("http://presigned-url");
+
+        // getPresignedUploadUrl for "game" should succeed
+        String url = gameService.getPresignedUploadUrl(gameId, "game", "application/zip", devUser.getEmail());
+        assertThat(url).isEqualTo("http://presigned-url");
+    }
 }

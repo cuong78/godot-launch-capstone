@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 import requests
 
 # Thư mục chứa file/ext cần bỏ qua khi hash (giảm noise, tránh .git nội bộ)
-IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".godot", ".import"}
+IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".godot", ".import", ".git_commit_info.json"}
 
 # Giới hạn an toàn
 MAX_CLONE_MB = 500          # repo quá lớn → từ chối
@@ -168,6 +168,49 @@ def scan_secrets(tmp_dir: str) -> list[dict]:
     return findings
 
 
+def _write_git_info(tmp_dir: str):
+    """
+    Trích xuất thông tin git (commit message, diff của commit mới nhất) và lưu
+    vào file json tạm thời trong thư mục clone để đóng gói cùng bundle.
+    """
+    try:
+        # Commit message
+        msg_out = subprocess.run(
+            ["git", "-C", tmp_dir, "log", "-1", "--pretty=%B"],
+            capture_output=True, text=True, timeout=5, errors="ignore"
+        )
+        commit_message = msg_out.stdout.strip()
+        
+        # Git show stats
+        show_out = subprocess.run(
+            ["git", "-C", tmp_dir, "show", "--stat", "HEAD"],
+            capture_output=True, text=True, timeout=5, errors="ignore"
+        )
+        git_show = show_out.stdout.strip()
+        
+        # Git diff (HEAD~1 to HEAD)
+        diff_out = subprocess.run(
+            ["git", "-C", tmp_dir, "diff", "HEAD~1", "HEAD"],
+            capture_output=True, text=True, timeout=10, errors="ignore"
+        )
+        git_diff = diff_out.stdout.strip() if diff_out.returncode == 0 else ""
+        
+        if len(git_diff) > 8000:
+            git_diff = git_diff[:8000] + "\n... (diff truncated)"
+            
+        git_info = {
+            "commitMessage": commit_message,
+            "gitShow": git_show,
+            "gitDiff": git_diff
+        }
+        
+        import json
+        with open(os.path.join(tmp_dir, ".git_commit_info.json"), "w", encoding="utf-8") as f:
+            json.dump(git_info, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
 def bundle_source(tmp_dir: str) -> str | None:
     """
     Zip toàn bộ source (bỏ .git, build dirs) → trả base64 để backend upload storage.
@@ -175,6 +218,9 @@ def bundle_source(tmp_dir: str) -> str | None:
     Bỏ qua nếu zip > MAX_BUNDLE_MB (chỉ giữ snapshot làm bằng chứng).
     Trả về: base64 string của zip, hoặc None nếu vượt giới hạn.
     """
+    # Ghi đè thông tin git ra file json để đóng gói cùng bundle
+    _write_git_info(tmp_dir)
+
     root = Path(tmp_dir)
     tmp_zip = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
     tmp_zip_path = tmp_zip.name

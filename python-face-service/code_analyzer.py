@@ -14,7 +14,7 @@ from pathlib import Path
 
 import requests
 
-IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".godot", ".import"}
+IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".godot", ".import", ".git_commit_info.json"}
 CODE_EXTS = {".gd", ".cs", ".tscn", ".tres", ".cfg", ".json", ".shader", ".gdshader"}
 
 # Sample limits cho DeepSeek (tránh vượt context / tốn token)
@@ -233,6 +233,16 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
                 "codeQualityScore": None, "descriptionMatchScore": None,
                 "completeness": None, "issues": [], "summary": ""}
 
+    # Đọc thông tin git (commit message, diff) nếu có
+    git_info = {}
+    git_info_path = root / ".git_commit_info.json"
+    if git_info_path.is_file():
+        try:
+            with open(git_info_path, "r", encoding="utf-8") as f:
+                git_info = json.load(f)
+        except Exception:
+            pass
+
     tree = _build_tree(root)
     samples = _pick_sample_files(root)
     sample_block = "\n\n".join(
@@ -243,6 +253,11 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
         "Bạn là chuyên gia review code Godot Engine cho marketplace. "
         "Đánh giá chất lượng code, đối chiếu mô tả của developer với code thật, "
         "và GỢI Ý GIÁ bán hợp lý (USD) dựa trên độ hoàn thiện/quy mô/độ hữu ích. "
+        "Nếu đây là bản cập nhật (có phần THÔNG TIN CẬP NHẬT/Git Diff), hãy đặc biệt chú ý "
+        "phân tích các thay đổi trong commit mới này so với mã nguồn cũ. Đánh giá xem bản cập nhật "
+        "có thực sự nâng cấp tính năng, sửa lỗi hay chỉ là cập nhật rác/nhỏ không đáng kể (ví dụ: "
+        "chỉ thêm một file văn bản trống/không liên quan như test.md để kích hoạt update nhằm bypass hệ thống). "
+        "Hãy phản ánh điều này vào phần nhận xét (summary) và lý giải giá (pricingRationale) để cảnh báo cho admin. "
         "Bạn CHỈ đưa ĐỀ XUẤT — admin con người quyết định cuối. "
         "Trả về DUY NHẤT một JSON object, không markdown, không giải thích thêm. "
         "Schema: {\"codeQualityScore\": int 0-100, \"descriptionMatchScore\": int 0-100, "
@@ -256,6 +271,7 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
         "descriptionMatchScore thấp nếu mô tả phóng đại / claim tính năng (vd multiplayer, AI) "
         "mà code không có dấu hiệu tương ứng."
     )
+
     user_prompt = (
         f"TIÊU ĐỀ: {title}\n\n"
         f"MÔ TẢ CỦA DEVELOPER:\n{description}\n\n"
@@ -266,6 +282,15 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
         f"CÂY THƯ MỤC:\n{tree}\n\n"
         f"FILE MẪU:\n{sample_block}"
     )
+
+    if git_info.get("commitMessage") or git_info.get("gitShow"):
+        user_prompt += (
+            f"\n\nTHÔNG TIN CẬP NHẬT (LATEST COMMIT):\n"
+            f"- Commit Message: {git_info.get('commitMessage', '')}\n"
+            f"- Git Show Stat:\n{git_info.get('gitShow', '')}\n"
+        )
+        if git_info.get("gitDiff"):
+            user_prompt += f"- Chi tiết thay đổi (Git Diff):\n{git_info.get('gitDiff', '')}\n"
 
     try:
         resp = requests.post(
