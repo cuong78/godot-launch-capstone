@@ -165,6 +165,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   // Game & Asset status filters
   const [gameStatusFilter, setGameStatusFilter] = useState<string>("all");
+  const [publishingTypeFilter, setPublishingTypeFilter] = useState<"all" | "store" | "marketplace">("all");
   const [assetStatusFilter, setAssetStatusFilter] = useState<string>("all");
   const [marketplaceTypeFilter, setMarketplaceTypeFilter] = useState<
     "all" | "game" | "asset"
@@ -604,18 +605,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     },
   ];
 
-  // Store games: games not listed as marketplace_listing
-  const storeGames = myGames.filter(
-    (game) => game.publishingType !== "marketplace_listing"
-  );
-
-  // Marketplace games: games listed as marketplace_listing
-  const marketplaceGames = myGames.filter(
-    (game) => game.publishingType === "marketplace_listing"
-  );
-
-  const filteredGames = storeGames
+  const filteredGames = myGames
     .filter((game) => {
+      // 1. Filter by publishing type
+      if (publishingTypeFilter === "store" && game.publishingType === "marketplace_listing") {
+        return false;
+      }
+      if (publishingTypeFilter === "marketplace" && game.publishingType !== "marketplace_listing") {
+        return false;
+      }
+
+      // 2. Status filtering
       if (gameStatusFilter === "all") return true;
 
       const contract = [...contracts]
@@ -659,22 +659,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     ...myMarketplaceItems.map((item) => ({
       id: item.id,
       title: item.title,
-      type: "asset" as const,
+      type: "asset" as "asset" | "game",
       categoryName: item.categoryName,
       price: item.price,
-      status: item.status, // active, pending, rejected, removed
+      status: item.status as string, // active, pending, rejected, removed
       createdAt: item.createdAt,
-      originalItem: item,
-    })),
-    ...marketplaceGames.map((game) => ({
-      id: game.id,
-      title: game.title,
-      type: "game" as const,
-      categoryName: game.categoryName,
-      price: game.priceProposed || 0,
-      status: game.status?.toLowerCase() === "published" ? "active" : game.status?.toLowerCase() || "pending", // map published to active
-      createdAt: game.createdAt,
-      originalItem: game,
+      originalItem: item as any,
     })),
   ];
 
@@ -705,7 +695,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {
             id: "my-games" as const,
             label: t("dashboard:tabs.publishedGames"),
-            count: storeGames.length,
+            count: myGames.length,
             icon: Gamepad2,
           },
           {
@@ -779,7 +769,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </span>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-sans font-bold dark:text-white">
-                  {storeGames.length}
+                  {myGames.length}
                 </span>
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-350 ml-1">
                   {t("dashboard:table.game").toLowerCase()}
@@ -835,12 +825,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       {t("dashboard:workspace.gameSubtitle")}
                     </p>
                   </div>
-                  <DashboardFilterSelect
-                    label={t("dashboard:filters.gameStatus")}
-                    value={gameStatusFilter}
-                    options={gameFilterOptions}
-                    onChange={setGameStatusFilter}
-                  />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <DashboardFilterSelect
+                      label="Kênh phát hành"
+                      value={publishingTypeFilter}
+                      options={[
+                        { label: "Tất cả", value: "all", tone: "neutral" },
+                        { label: "Game lên Store", value: "store", tone: "success" },
+                        { label: "Game lên Marketplace", value: "marketplace", tone: "info" }
+                      ]}
+                      onChange={(val) => setPublishingTypeFilter(val as any)}
+                    />
+                    <DashboardFilterSelect
+                      label={t("dashboard:filters.gameStatus")}
+                      value={gameStatusFilter}
+                      options={gameFilterOptions}
+                      onChange={setGameStatusFilter}
+                    />
+                  </div>
                 </header>
 
                 {isLoadingGames ? (
@@ -1507,12 +1509,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </p>
                   </div>
                   <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
-                    <DashboardFilterSelect<"all" | "game" | "asset">
-                      label={t("dashboard:filters.productType")}
-                      value={marketplaceTypeFilter}
-                      options={marketplaceTypeFilterOptions}
-                      onChange={setMarketplaceTypeFilter}
-                    />
                     <DashboardFilterSelect
                       label={t("dashboard:filters.assetStatus")}
                       value={assetStatusFilter}

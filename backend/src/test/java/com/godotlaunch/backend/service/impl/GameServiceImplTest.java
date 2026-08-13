@@ -29,6 +29,7 @@ import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.ClamAVService;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.GitHubRepoService;
+import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.service.SeaweedFsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -87,6 +88,8 @@ class GameServiceImplTest {
     private ObjectMapper objectMapper;
     @Mock
     private AiReviewService aiReviewService;
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private GameServiceImpl gameService;
