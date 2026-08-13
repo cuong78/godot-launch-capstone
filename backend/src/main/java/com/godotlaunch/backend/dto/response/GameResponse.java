@@ -40,5 +40,10 @@ public class GameResponse {
     private java.time.Instant updatedAt;
     private UUID pendingUpdateSnapshotId;
     private String pendingUpdateFileUrl;
+    private String pendingTitle;
+    private String pendingDescription;
+    private String pendingThumbnailUrl;
+    private String pendingVideoUrl;
+    private List<String> pendingScreenshots;
 }
 

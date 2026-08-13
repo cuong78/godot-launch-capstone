@@ -75,6 +75,12 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isLiveGame = item?.type === "game" && (
+    item.originalItem.status?.toLowerCase() === "published" ||
+    item.originalItem.status?.toLowerCase() === "approved" ||
+    item.originalItem.status?.toLowerCase() === "awaiting_store_build"
+  );
+
   const MAX_SELECTED_TAGS = 10;
 
   // Sync click outside to close dropdowns
@@ -161,8 +167,8 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
     if (!isOpen || !item) return;
 
     const raw = item.originalItem;
-    setTitle(raw.title || "");
-    setDescription(raw.description || "");
+    setTitle(raw.pendingTitle || raw.title || "");
+    setDescription(raw.pendingDescription || raw.description || "");
 
     // Format price with space separator
     const initialPriceRaw = raw.priceProposed !== undefined ? String(raw.priceProposed) : raw.price !== undefined ? String(raw.price) : "0";
@@ -175,9 +181,17 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
     setGithubBranch(raw.githubBranch || "main");
 
     // Load media
-    setThumbnailUrl(raw.thumbnailUrl || null);
-    setScreenshots(raw.screenshots || []);
-    setVideoUrl(raw.videoUrl || null);
+    const displayThumbnail = raw.pendingThumbnailUrl || raw.thumbnailUrl || null;
+    const displayScreenshots = raw.pendingScreenshots && raw.pendingScreenshots.length > 0
+      ? raw.pendingScreenshots
+      : (raw.screenshots || []);
+    const displayVideo = raw.pendingVideoUrl === "DELETE_VIDEO"
+      ? null
+      : (raw.pendingVideoUrl || raw.videoUrl || null);
+
+    setThumbnailUrl(displayThumbnail);
+    setScreenshots(displayScreenshots);
+    setVideoUrl(displayVideo);
 
     // Load tags
     if (raw.tags && raw.tags.length > 0) {
@@ -249,9 +263,19 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
           : await marketplaceApi.getMarketplaceItemById(item.id);
           
         if (refetchRes.success && refetchRes.data) {
-          setThumbnailUrl(refetchRes.data.thumbnailUrl || null);
-          setScreenshots(refetchRes.data.screenshots || []);
-          setVideoUrl(refetchRes.data.videoUrl || null);
+          const rawData = refetchRes.data as any;
+          const isGame = item.type === "game";
+          const displayThumbnail = (isGame && rawData.pendingThumbnailUrl) || rawData.thumbnailUrl || null;
+          const displayScreenshots = isGame && rawData.pendingScreenshots && rawData.pendingScreenshots.length > 0
+            ? rawData.pendingScreenshots
+            : (rawData.screenshots || []);
+          const displayVideo = isGame && rawData.pendingVideoUrl === "DELETE_VIDEO"
+            ? null
+            : ((isGame && rawData.pendingVideoUrl) || rawData.videoUrl || null);
+
+          setThumbnailUrl(displayThumbnail);
+          setScreenshots(displayScreenshots);
+          setVideoUrl(displayVideo);
         }
       } else {
         throw new Error(res.message || "Upload thất bại.");
@@ -372,15 +396,21 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
 
             {/* Price proposed */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-555 dark:text-slate-350">
-                Giá bán (VND)
+              <label className="text-xs font-semibold text-slate-555 dark:text-slate-350 flex justify-between items-center">
+                <span>Giá bán (VND)</span>
+                {isLiveGame && (
+                  <span className="text-[10px] text-amber-500 font-normal">
+                    (Không thể sửa khi đã phát hành)
+                  </span>
+                )}
               </label>
               <input
                 type="text"
                 value={price}
                 onChange={(e) => handlePriceChange(e.target.value)}
                 required
-                className="w-full px-3.5 py-2 bg-white dark:bg-slate-955 border border-slate-300 dark:border-slate-855 rounded-lg text-sm outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:text-white"
+                disabled={isLiveGame}
+                className="w-full px-3.5 py-2 bg-white dark:bg-slate-955 border border-slate-300 dark:border-slate-855 rounded-lg text-sm outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -401,8 +431,13 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Category Dropdown */}
             <div ref={categoryPickerRef} className="relative flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-555 dark:text-slate-350">
-                Danh mục sản phẩm
+              <label className="text-xs font-semibold text-slate-555 dark:text-slate-350 flex justify-between items-center">
+                <span>Danh mục sản phẩm</span>
+                {isLiveGame && (
+                  <span className="text-[10px] text-amber-500 font-normal">
+                    (Không thể sửa khi đã phát hành)
+                  </span>
+                )}
               </label>
               {isLoadingCategories ? (
                 <div className="text-xs text-slate-400 animate-pulse py-2">
@@ -412,8 +447,9 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                    className="w-full flex justify-between items-center px-3.5 py-2 bg-white dark:bg-slate-955 border border-slate-300 dark:border-slate-855 rounded-lg text-sm outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 text-left dark:text-white"
+                    onClick={() => !isLiveGame && setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                    disabled={isLiveGame}
+                    className="w-full flex justify-between items-center px-3.5 py-2 bg-white dark:bg-slate-955 border border-slate-300 dark:border-slate-855 rounded-lg text-sm outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 text-left dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <span>
                       {categories.find((cat) => cat.id === categoryId)?.name || "Chọn danh mục..."}

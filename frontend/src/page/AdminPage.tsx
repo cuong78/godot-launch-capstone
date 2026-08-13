@@ -2266,241 +2266,319 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             colSpan={7}
                                             className="p-6 bg-slate-50/10 dark:bg-slate-950/20 border-t border-b border-slate-200/50 dark:border-slate-800/60"
                                           >
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
-                                              {/* Left Column: Thumbnail, Description, ZIP */}
-                                              <div className="space-y-4">
-                                                {(() => {
-                                                  const activeRejectedContract =
-                                                    [...contracts]
-                                                      .reverse()
-                                                      .find(
-                                                        (c) =>
-                                                          c.gameId ===
-                                                            game.id &&
-                                                          c.status ===
-                                                            "cancelled" &&
-                                                          c.rejectionReason,
-                                                      );
-                                                  if (activeRejectedContract) {
-                                                    return (
-                                                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs space-y-1">
-                                                        <span className="font-bold block">
-                                                          {t("moderationQueue.previousRejection")}
-                                                        </span>
-                                                        <p className="italic text-[11px] text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-rose-500/10 break-words">
-                                                          "
-                                                          {activeRejectedContract.rejectionReason ??
-                                                            ""}
-                                                          "
-                                                        </p>
-                                                      </div>
-                                                    );
+                                            {(() => {
+                                              const hasPendingUpdate = !!game.pendingUpdateSnapshotId;
+                                              const isTitleChanged = hasPendingUpdate && game.pendingTitle && game.pendingTitle !== game.title;
+                                              const isDescChanged = hasPendingUpdate && game.pendingDescription && game.pendingDescription !== game.description;
+                                              const isThumbChanged = hasPendingUpdate && game.pendingThumbnailUrl && game.pendingThumbnailUrl !== game.thumbnailUrl;
+                                              const isVideoChanged = hasPendingUpdate && game.pendingVideoUrl && game.pendingVideoUrl !== game.videoUrl;
+
+                                              const getScreenshotDiff = () => {
+                                                const diff: { url: string; status: "added" | "deleted" | "unchanged" }[] = [];
+                                                const liveUrls = game.screenshots || [];
+                                                const pendingUrls = game.pendingScreenshots || liveUrls;
+
+                                                liveUrls.forEach((lUrl: string) => {
+                                                  const parts = lUrl.split("?")[0].split("/");
+                                                  const key = parts[parts.length - 1];
+                                                  const isStillPresent = pendingUrls.some((pUrl: string) => {
+                                                    const pParts = pUrl.split("?")[0].split("/");
+                                                    return pParts[pParts.length - 1] === key;
+                                                  });
+                                                  if (isStillPresent) {
+                                                    diff.push({ url: lUrl, status: "unchanged" });
+                                                  } else {
+                                                    diff.push({ url: lUrl, status: "deleted" });
                                                   }
-                                                  return null;
-                                                })()}
-                                                <div>
-                                                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
-                                                    <Image size={12} />{" "}
-                                                    {t("moderationQueue.detail.thumbnail")}
-                                                  </h4>
-                                                  <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
-                                                    {game.thumbnailUrl ? (
-                                                      <img
-                                                        src={game.thumbnailUrl}
-                                                        alt={game.title}
-                                                        className="object-cover w-full h-full"
-                                                      />
+                                                });
+
+                                                pendingUrls.forEach((pUrl: string) => {
+                                                  const pParts = pUrl.split("?")[0].split("/");
+                                                  const key = pParts[pParts.length - 1];
+                                                  const wasInLive = liveUrls.some((lUrl: string) => {
+                                                    const lParts = lUrl.split("?")[0].split("/");
+                                                    return lParts[lParts.length - 1] === key;
+                                                  });
+                                                  if (!wasInLive) {
+                                                    diff.push({ url: pUrl, status: "added" });
+                                                  }
+                                                });
+
+                                                return diff;
+                                              };
+
+                                              const screenshotsDiff = hasPendingUpdate ? getScreenshotDiff() : [];
+
+                                              return (
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 dark:text-slate-300">
+                                                  {/* Left Column: Thumbnail, Description, ZIP */}
+                                                  <div className="space-y-4">
+                                                    {(() => {
+                                                      const activeRejectedContract =
+                                                        [...contracts]
+                                                          .reverse()
+                                                          .find(
+                                                            (c) =>
+                                                              c.gameId ===
+                                                                game.id &&
+                                                              c.status ===
+                                                                "cancelled" &&
+                                                              c.rejectionReason,
+                                                          );
+                                                      if (activeRejectedContract) {
+                                                        return (
+                                                          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs space-y-1">
+                                                            <span className="font-bold block">
+                                                              {t("moderationQueue.previousRejection")}
+                                                            </span>
+                                                            <p className="italic text-[11px] text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-955/30 p-2 rounded border border-rose-500/10 break-words">
+                                                              "
+                                                              {activeRejectedContract.rejectionReason ??
+                                                                ""}
+                                                              "
+                                                            </p>
+                                                          </div>
+                                                        );
+                                                      }
+                                                      return null;
+                                                    })()}
+                                                    <div>
+                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
+                                                        <Image size={12} />{" "}
+                                                        {isThumbChanged ? "So sánh Ảnh bìa (Cũ vs Mới)" : t("moderationQueue.detail.thumbnail")}
+                                                      </h4>
+                                                      {isThumbChanged ? (
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                          <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 aspect-video bg-slate-900 flex items-center justify-center">
+                                                            <img src={game.thumbnailUrl} alt="Old" className="object-cover w-full h-full opacity-60" />
+                                                            <div className="absolute top-1 left-1 px-1 py-0.5 bg-slate-950/80 text-[8px] text-white rounded font-mono uppercase font-semibold">Hiện tại</div>
+                                                          </div>
+                                                          <div className="relative rounded-xl overflow-hidden border border-emerald-500/40 aspect-video bg-slate-900 flex items-center justify-center">
+                                                            <img src={game.pendingThumbnailUrl} alt="New" className="object-cover w-full h-full" />
+                                                            <div className="absolute top-1 left-1 px-1 py-0.5 bg-emerald-500 text-[8px] text-white rounded font-mono uppercase font-bold">Cập nhật</div>
+                                                          </div>
+                                                        </div>
+                                                      ) : (
+                                                        <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
+                                                          {game.thumbnailUrl ? (
+                                                            <img
+                                                              src={game.thumbnailUrl}
+                                                              alt={game.title}
+                                                              className="object-cover w-full h-full"
+                                                            />
+                                                          ) : (
+                                                            <div className="flex flex-col items-center justify-center text-slate-500">
+                                                              <Image
+                                                                size={32}
+                                                                className="mb-2 text-slate-650"
+                                                              />
+                                                              <span className="text-[10px] font-mono">
+                                                                {t("moderationQueue.detail.noThumbnail")}
+                                                              </span>
+                                                            </div>
+                                                          )}
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {isTitleChanged && (
+                                                      <div className="space-y-1 bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-lg text-xs">
+                                                        <span className="font-bold text-[10px] uppercase text-amber-500 block">Thay đổi Tiêu đề</span>
+                                                        <div className="text-slate-400 line-through">Cũ: {game.title}</div>
+                                                        <div className="text-emerald-500 font-bold">Mới: {game.pendingTitle}</div>
+                                                      </div>
+                                                    )}
+
+                                                    <div className="space-y-1.5">
+                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                                                        {isDescChanged ? "So sánh Mô tả (Cũ vs Mới)" : t("moderationQueue.detail.description")}
+                                                      </h4>
+                                                      {isDescChanged ? (
+                                                        <div className="grid grid-cols-2 gap-2 text-[10px] leading-relaxed max-h-32 overflow-y-auto">
+                                                          <div className="bg-slate-100 dark:bg-slate-955/40 p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-450 line-through">
+                                                            {game.description || t("moderationQueue.detail.noDescription")}
+                                                          </div>
+                                                          <div className="bg-emerald-500/5 p-2 rounded-lg border border-emerald-500/25 text-slate-800 dark:text-slate-200">
+                                                            {game.pendingDescription}
+                                                          </div>
+                                                        </div>
+                                                      ) : (
+                                                        <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                                          {game.description ||
+                                                            t("moderationQueue.detail.noDescription")}
+                                                        </p>
+                                                      )}
+                                                    </div>
+
+                                                    <div className="space-y-1.5">
+                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                                                        {t("moderationQueue.detail.tags")}
+                                                      </h4>
+                                                      {game.tags &&
+                                                      game.tags.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                          {game.tags.map(
+                                                            (tag: string, idx: number) => (
+                                                              <span
+                                                                key={idx}
+                                                                className="px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300"
+                                                              >
+                                                                {tag}
+                                                              </span>
+                                                            ),
+                                                          )}
+                                                        </div>
+                                                      ) : (
+                                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                          {t("moderationQueue.detail.noTags")}
+                                                        </p>
+                                                      )}
+                                                    </div>
+
+                                                    <div className="space-y-1.5">
+                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                                                        {t("moderationQueue.detail.githubRepository")}
+                                                      </h4>
+                                                      {game.githubRepoUrl ? (
+                                                        <a
+                                                          href={game.githubRepoUrl}
+                                                          target="_blank"
+                                                          rel="noopener noreferrer"
+                                                          className="flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline break-all"
+                                                        >
+                                                          <FileText
+                                                            size={12}
+                                                            className="shrink-0"
+                                                          />
+                                                          {game.githubRepoUrl}
+                                                          {game.githubBranch && (
+                                                            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-450">
+                                                              @{game.githubBranch}
+                                                            </span>
+                                                          )}
+                                                        </a>
+                                                      ) : (
+                                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                          {t("moderationQueue.detail.noRepository")}
+                                                        </p>
+                                                      )}
+                                                    </div>
+
+                                                    {game.fileUrl ? (
+                                                      <button
+                                                        onClick={() =>
+                                                          handleDownloadFile(
+                                                            game.fileUrl,
+                                                            `${game.title || "game"}-source.zip`,
+                                                          )
+                                                        }
+                                                        disabled={
+                                                          downloadingFile ===
+                                                          game.fileUrl
+                                                        }
+                                                        className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                                      >
+                                                        {downloadingFile ===
+                                                        game.fileUrl ? (
+                                                          <>
+                                                            <RefreshCw
+                                                              className="animate-spin"
+                                                              size={14}
+                                                            />{" "}
+                                                            {t("actions.downloading")}
+                                                          </>
+                                                        ) : (
+                                                          <>
+                                                            <Download size={14} />{" "}
+                                                            {t("actions.downloadGamePackage")}
+                                                          </>
+                                                        )}
+                                                      </button>
                                                     ) : (
-                                                      <div className="flex flex-col items-center justify-center text-slate-500">
-                                                        <Image
-                                                          size={32}
-                                                          className="mb-2 text-slate-650"
-                                                        />
-                                                        <span className="text-[10px] font-mono">
-                                                          {t("moderationQueue.detail.noThumbnail")}
-                                                        </span>
+                                                      <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
+                                                        {t("actions.noGamePackageUploaded")}
                                                       </div>
                                                     )}
                                                   </div>
-                                                </div>
 
-                                                <div className="space-y-1.5">
-                                                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                    {t("moderationQueue.detail.description")}
-                                                  </h4>
-                                                  <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                                    {game.description ||
-                                                      t("moderationQueue.detail.noDescription")}
-                                                  </p>
-                                                </div>
-
-                                                <div className="space-y-1.5">
-                                                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                    {t(
-                                                      "moderationQueue.detail.tags",
-                                                    )}
-                                                  </h4>
-                                                  {game.tags &&
-                                                  game.tags.length > 0 ? (
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                      {game.tags.map(
-                                                        (tag, idx) => (
-                                                          <span
-                                                            key={idx}
-                                                            className="px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300"
-                                                          >
-                                                            {tag}
-                                                          </span>
-                                                        ),
-                                                      )}
-                                                    </div>
-                                                  ) : (
-                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                      {t(
-                                                        "moderationQueue.detail.noTags",
-                                                      )}
-                                                    </p>
-                                                  )}
-                                                </div>
-
-                                                <div className="space-y-1.5">
-                                                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                    {t(
-                                                      "moderationQueue.detail.githubRepository",
-                                                    )}
-                                                  </h4>
-                                                  {game.githubRepoUrl ? (
-                                                    <a
-                                                      href={game.githubRepoUrl}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline break-all"
-                                                    >
-                                                      <FileText
-                                                        size={12}
-                                                        className="shrink-0"
-                                                      />
-                                                      {game.githubRepoUrl}
-                                                      {game.githubBranch && (
-                                                        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-450">
-                                                          @{game.githubBranch}
-                                                        </span>
-                                                      )}
-                                                    </a>
-                                                  ) : (
-                                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                      {t(
-                                                        "moderationQueue.detail.noRepository",
-                                                      )}
-                                                    </p>
-                                                  )}
-                                                </div>
-
-                                                {game.fileUrl ? (
-                                                  <button
-                                                    onClick={() =>
-                                                      handleDownloadFile(
-                                                        game.fileUrl,
-                                                        `${game.title || "game"}-source.zip`,
-                                                      )
-                                                    }
-                                                    disabled={
-                                                      downloadingFile ===
-                                                      game.fileUrl
-                                                    }
-                                                    className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
-                                                  >
-                                                    {downloadingFile ===
-                                                    game.fileUrl ? (
-                                                      <>
-                                                        <RefreshCw
-                                                          className="animate-spin"
-                                                          size={14}
-                                                        />{" "}
-                                                        {t("actions.downloading")}
-                                                      </>
-                                                    ) : (
-                                                      <>
-                                                        <Download size={14} />{" "}
-                                                        {t("actions.downloadGamePackage")}
-                                                      </>
-                                                    )}
-                                                  </button>
-                                                ) : (
-                                                  <div className="text-center py-2.5 px-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold">
-                                                    {t("actions.noGamePackageUploaded")}
-                                                  </div>
-                                                )}
-                                              </div>
-
-                                              {/* Middle & Right Column: Screenshots & Video */}
-                                              <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
-                                                {/* Play Game Demo: mở modal toàn màn hình để admin chơi thử trực tiếp trước khi duyệt */}
-                                                <div className="space-y-2">
-                                                  <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                    <Play
-                                                      size={12}
-                                                      className="text-amber-500"
-                                                    />{" "}
-                                                    {t("playDemo.sectionTitle")}
-                                                  </h4>
-                                                  {game.webDemoUrl ? (
-                                                    <button
-                                                      onClick={() =>
-                                                        setPlayDemoGame(game)
-                                                      }
-                                                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
-                                                    >
-                                                      <Play
-                                                        size={14}
-                                                        fill="currentColor"
-                                                      />{" "}
-                                                      {t("playDemo.launchButton")}
-                                                    </button>
-                                                  ) : (
-                                                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-6 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
-                                                      <Play
-                                                        size={20}
-                                                        className="mb-1 text-slate-350 dark:text-slate-650"
-                                                      />
-                                                      <span className="text-[10px]">
-                                                        {t("playDemo.empty")}
-                                                      </span>
-                                                    </div>
-                                                  )}
-                                                </div>
-
-                                                  {game.screenshots && game.screenshots.length > 0 && (
+                                                  {/* Middle & Right Column: Screenshots & Video */}
+                                                  <div className="space-y-4 md:col-span-2 flex flex-col justify-between">
+                                                    {/* Play Game Demo */}
                                                     <div className="space-y-2">
                                                       <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                        <Image
+                                                        <Play
                                                           size={12}
                                                           className="text-amber-500"
                                                         />{" "}
-                                                        {t("playDemo.screenshotsTitle")}
+                                                        {t("playDemo.sectionTitle")}
                                                       </h4>
-                                                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                        {game.screenshots.map(
-                                                          (url, index) => (
+                                                      {game.webDemoUrl ? (
+                                                        <button
+                                                          onClick={() =>
+                                                            setPlayDemoGame(game)
+                                                          }
+                                                          className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs transition-studio active:scale-[0.98] cursor-pointer"
+                                                        >
+                                                          <Play
+                                                            size={14}
+                                                            fill="currentColor"
+                                                          />{" "}
+                                                          {t("playDemo.launchButton")}
+                                                        </button>
+                                                      ) : (
+                                                        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-100/50 py-6 text-slate-500 dark:border-slate-800 dark:bg-slate-955/20 dark:text-slate-400">
+                                                          <Play
+                                                            size={20}
+                                                            className="mb-1 text-slate-350 dark:text-slate-650"
+                                                          />
+                                                          <span className="text-[10px]">
+                                                            {t("playDemo.empty")}
+                                                          </span>
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {/* Screenshots (Diff or Normal) */}
+                                                    {hasPendingUpdate ? (
+                                                      <div className="space-y-2">
+                                                        <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                          <Image
+                                                            size={12}
+                                                            className="text-amber-500"
+                                                          />{" "}
+                                                          So sánh Ảnh chụp màn hình (Screenshots)
+                                                        </h4>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                          {screenshotsDiff.map((item, index) => (
                                                             <div
                                                               key={index}
                                                               onClick={() => {
-                                                                setActiveScreenshotUrl(
-                                                                  url,
-                                                                );
-                                                                setIsOpenLightbox(
-                                                                  true,
-                                                                );
+                                                                setActiveScreenshotUrl(item.url);
+                                                                setIsOpenLightbox(true);
                                                               }}
-                                                              className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-amber-400/50 transition-studio"
+                                                              className={`relative aspect-video rounded-lg overflow-hidden border cursor-pointer group transition-studio ${
+                                                                item.status === "added"
+                                                                  ? "border-emerald-500 shadow-md shadow-emerald-500/10"
+                                                                  : item.status === "deleted"
+                                                                    ? "border-rose-500 opacity-60 animate-pulse-subtle"
+                                                                    : "border-slate-200 dark:border-slate-800 hover:border-amber-400/50"
+                                                              }`}
                                                             >
                                                               <img
-                                                                src={url}
-                                                                alt={t("moderationQueue.detail.screenshotAlt", {
-                                                                  index: index + 1,
-                                                                })}
+                                                                src={item.url}
+                                                                alt={`Screenshot ${index + 1}`}
                                                                 className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                                                               />
+                                                              {item.status === "added" && (
+                                                                <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-emerald-500 text-[8px] text-white rounded font-mono font-bold uppercase shadow-sm">
+                                                                  Thêm mới
+                                                                </div>
+                                                              )}
+                                                              {item.status === "deleted" && (
+                                                                <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-rose-600 text-[8px] text-white rounded font-mono font-bold uppercase shadow-sm">
+                                                                  Đã xóa
+                                                                </div>
+                                                              )}
                                                               <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                                 <Eye
                                                                   size={16}
@@ -2508,51 +2586,138 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                                 />
                                                               </div>
                                                             </div>
-                                                          ),
+                                                          ))}
+                                                        </div>
+                                                      </div>
+                                                    ) : (
+                                                      game.screenshots && game.screenshots.length > 0 && (
+                                                        <div className="space-y-2">
+                                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                            <Image
+                                                              size={12}
+                                                              className="text-amber-500"
+                                                            />{" "}
+                                                            {t("playDemo.screenshotsTitle")}
+                                                          </h4>
+                                                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                            {game.screenshots.map((url: string, index: number) => (
+                                                              <div
+                                                                key={index}
+                                                                onClick={() => {
+                                                                  setActiveScreenshotUrl(url);
+                                                                  setIsOpenLightbox(true);
+                                                                }}
+                                                                className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-amber-400/50 transition-studio"
+                                                              >
+                                                                <img
+                                                                  src={url}
+                                                                  alt={t("moderationQueue.detail.screenshotAlt", {
+                                                                    index: index + 1,
+                                                                  })}
+                                                                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                                                                />
+                                                                <div className="absolute inset-0 bg-slate-955/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                  <Eye
+                                                                    size={16}
+                                                                    className="text-white"
+                                                                  />
+                                                                </div>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      )
+                                                    )}
+
+                                                    {/* Video Gameplay */}
+                                                    {hasPendingUpdate && game.pendingVideoUrl ? (
+                                                      <div className="space-y-2">
+                                                        <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                          <Video
+                                                            size={12}
+                                                            className="text-amber-500"
+                                                          />{" "}
+                                                          {isVideoChanged ? "So sánh Video Demo (Cũ vs Mới)" : t("moderationQueue.detail.videoDemo")}
+                                                        </h4>
+                                                        {game.pendingVideoUrl === "DELETE_VIDEO" ? (
+                                                          <div className="relative aspect-video rounded-xl overflow-hidden border border-rose-500 bg-slate-955 max-h-56">
+                                                            <video
+                                                              src={game.videoUrl}
+                                                              controls
+                                                              className="w-full h-full object-contain opacity-55"
+                                                            />
+                                                            <div className="absolute inset-0 bg-rose-950/60 backdrop-blur-[1px] flex flex-col items-center justify-center text-rose-200 text-xs font-bold gap-1">
+                                                              <Video size={20} className="text-rose-400" />
+                                                              Video này sẽ bị gỡ bỏ
+                                                            </div>
+                                                          </div>
+                                                        ) : isVideoChanged ? (
+                                                          <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-1">
+                                                              <div className="text-[9px] font-mono text-slate-400 uppercase">Hiện tại</div>
+                                                              <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-40">
+                                                                <video src={game.videoUrl} controls className="w-full h-full object-contain opacity-60" />
+                                                              </div>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                              <div className="text-[9px] font-mono text-emerald-500 uppercase font-bold">Cập nhật</div>
+                                                              <div className="relative aspect-video rounded-xl overflow-hidden border border-emerald-500/40 bg-slate-955 max-h-40">
+                                                                <video src={game.pendingVideoUrl} controls className="w-full h-full object-contain" />
+                                                              </div>
+                                                            </div>
+                                                          </div>
+                                                        ) : (
+                                                          <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
+                                                            <video
+                                                              src={game.videoUrl}
+                                                              controls
+                                                              className="w-full h-full object-contain"
+                                                            />
+                                                          </div>
                                                         )}
                                                       </div>
-                                                    </div>
-                                                  )}
+                                                    ) : (
+                                                      game.videoUrl && (
+                                                        <div className="space-y-2">
+                                                          <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                                                            <Video
+                                                              size={12}
+                                                              className="text-amber-500"
+                                                            />{" "}
+                                                            {t("moderationQueue.detail.videoDemo")}
+                                                          </h4>
+                                                          <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
+                                                            <video
+                                                              src={game.videoUrl}
+                                                              controls
+                                                              className="w-full h-full object-contain"
+                                                            />
+                                                          </div>
+                                                        </div>
+                                                      )
+                                                    )}
 
-                                                  {/* Video Gameplay */}
-                                                  {game.videoUrl && (
-                                                    <div className="space-y-2">
-                                                      <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
-                                                        <Video
-                                                          size={12}
-                                                          className="text-amber-500"
-                                                        />{" "}
-                                                        {t("moderationQueue.detail.videoDemo")}
-                                                      </h4>
-                                                      <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-955 max-h-56">
-                                                        <video
-                                                          src={game.videoUrl}
-                                                          controls
-                                                          className="w-full h-full object-contain"
+                                                    {/* AI REVIEW REPORT */}
+                                                    <div className="pt-2">
+                                                      <AiReviewReportCard
+                                                        gameId={game.id}
+                                                      />
+                                                    </div>
+
+                                                    {/* PUSH GOOGLE PLAY */}
+                                                    {game.publishingType !==
+                                                      "marketplace_listing" && (
+                                                      <div className="pt-2">
+                                                        <ExternalPublishStatusCard
+                                                          gameId={game.id}
+                                                          gameStatus={game.status}
                                                         />
                                                       </div>
-                                                    </div>
-                                                  )}
-
-                                                {/* AI REVIEW REPORT */}
-                                                <div className="pt-2">
-                                                  <AiReviewReportCard
-                                                    gameId={game.id}
-                                                  />
-                                                </div>
-
-                                                {/* PUSH GOOGLE PLAY (chỉ game full_acquisition/co_publishing đã ký hợp đồng) */}
-                                                {game.publishingType !==
-                                                  "marketplace_listing" && (
-                                                  <div className="pt-2">
-                                                    <ExternalPublishStatusCard
-                                                      gameId={game.id}
-                                                      gameStatus={game.status}
-                                                    />
+                                                    )}
                                                   </div>
-                                                )}
-                                              </div>
-                                            </div>
+                                                </div>
+                                              );
+                                            })()}
                                           </td>
                                         </tr>
                                       )}

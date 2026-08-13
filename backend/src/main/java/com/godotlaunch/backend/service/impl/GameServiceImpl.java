@@ -71,6 +71,12 @@ public class GameServiceImpl implements GameService {
     private List<Media> gameMedia(UUID gameId) {
         return mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId);
     }
+    private List<String> getLiveScreenshots(UUID gameId) {
+        return mediaRepository.findByGame_IdOrderByCreatedAtDesc(gameId).stream()
+                .filter(m -> "image".equalsIgnoreCase(m.getMediaType()) || "screenshot".equalsIgnoreCase(m.getMediaType()))
+                .map(Media::getMediaUrl)
+                .collect(Collectors.toList());
+    }
     private final SeaweedFsService seaweedFsService;
     private final ClamAVService clamAVService;
     private final AsyncVirusScanService asyncVirusScanService;
@@ -423,26 +429,48 @@ public class GameServiceImpl implements GameService {
         assertGameOwner(game, updater);
         validateUpdateDependency(game, null);
 
-        if (request.getTitle() != null) {
-            game.setTitle(request.getTitle());
-        }
-        if (request.getDescription() != null) {
-            game.setDescription(request.getDescription());
-        }
-        if (request.getPriceProposed() != null) {
-            game.setPriceProposed(request.getPriceProposed());
-        }
-        if (request.getCategoryId() != null) {
-            Category category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
-            game.setCategory(category);
-        }
-        if (request.getPublishingType() != null) {
-            game.setPublishingType(request.getPublishingType());
-            game.setSourceListed(request.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing);
-        }
+        boolean isLive = game.getStatus() == GameStatus.published 
+                || game.getStatus() == GameStatus.approved 
+                || game.getStatus() == GameStatus.awaiting_store_build;
 
-        Game updatedGame = gameRepository.save(game);
+        if (isLive) {
+            if (request.getPriceProposed() != null && game.getPriceProposed() != null 
+                    && request.getPriceProposed().compareTo(game.getPriceProposed()) != 0) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "Không thể thay đổi giá bán khi game đã được duyệt.");
+            }
+            if (request.getCategoryId() != null && (game.getCategory() == null || !request.getCategoryId().equals(game.getCategory().getId()))) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "Không thể thay đổi danh mục khi game đã được duyệt.");
+            }
+
+            SourceSnapshot snap = game.getPendingUpdateSnapshot();
+            if (request.getTitle() != null) {
+                snap.setPendingTitle(request.getTitle());
+            }
+            if (request.getDescription() != null) {
+                snap.setPendingDescription(request.getDescription());
+            }
+            sourceSnapshotRepository.save(snap);
+        } else {
+            if (request.getTitle() != null) {
+                game.setTitle(request.getTitle());
+            }
+            if (request.getDescription() != null) {
+                game.setDescription(request.getDescription());
+            }
+            if (request.getPriceProposed() != null) {
+                game.setPriceProposed(request.getPriceProposed());
+            }
+            if (request.getCategoryId() != null) {
+                Category category = categoryRepository.findById(request.getCategoryId())
+                        .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
+                game.setCategory(category);
+            }
+            if (request.getPublishingType() != null) {
+                game.setPublishingType(request.getPublishingType());
+                game.setSourceListed(request.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing);
+            }
+            game = gameRepository.save(game);
+        }
 
         auditLogService.publishAuto(
                 AuditAction.game_updated,
@@ -450,10 +478,10 @@ public class GameServiceImpl implements GameService {
                 gameId,
                 null,
                 null,
-                "Game '" + updatedGame.getTitle() + "' draft updated by creator."
+                "Game '" + game.getTitle() + "' update draft/info updated by creator."
         );
 
-        return mapToResponse(updatedGame);
+        return mapToResponse(game);
     }
 
     @Override
@@ -489,17 +517,98 @@ public class GameServiceImpl implements GameService {
             throw new IllegalArgumentException("Không xác định được objectKey từ mediaUrl");
         }
 
-        gameMedia(gameId).stream()
-                .filter(m -> targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
-                .findFirst()
-                .ifPresent(m -> {
-                    mediaRepository.delete(m);
-                    try {
-                        seaweedFsService.deleteObject(targetKey);
-                    } catch (Exception e) {
-                        log.warn("Đã xóa record media nhưng không xóa được file storage: {}", targetKey, e);
+        boolean isLive = game.getStatus() == GameStatus.published 
+                || game.getStatus() == GameStatus.approved 
+                || game.getStatus() == GameStatus.awaiting_store_build;
+
+        if (isLive) {
+            SourceSnapshot snap = game.getPendingUpdateSnapshot();
+            // Check if deleting a live video
+            boolean isLiveVideo = gameMedia(gameId).stream()
+                    .anyMatch(m -> "video".equalsIgnoreCase(m.getMediaType()) && targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())));
+            if (isLiveVideo) {
+                snap.setPendingVideoUrl("DELETE_VIDEO");
+                sourceSnapshotRepository.save(snap);
+                return;
+            }
+
+            // If they are deleting the pending video
+            if (snap.getPendingVideoUrl() != null && targetKey.equals(extractObjectKeyFromUrl(snap.getPendingVideoUrl()))) {
+                snap.setPendingVideoUrl(null);
+                sourceSnapshotRepository.save(snap);
+                try {
+                    seaweedFsService.deleteObject(targetKey);
+                } catch (Exception e) {
+                    log.warn("Lỗi khi xóa pending video khỏi storage: {}", targetKey, e);
+                }
+                return;
+            }
+
+            // Or if they are deleting a screenshot
+            if (snap.getPendingScreenshots() != null) {
+                try {
+                    List<String> parsed = objectMapper.readValue(snap.getPendingScreenshots(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                    if (parsed != null) {
+                        boolean removed = false;
+                        for (int i = 0; i < parsed.size(); i++) {
+                            if (targetKey.equals(extractObjectKeyFromUrl(parsed.get(i)))) {
+                                parsed.remove(i);
+                                removed = true;
+                                // If it was uploaded during this pending update (i.e. it is not in live screenshots), we can delete it from storage immediately
+                                boolean isNewUpload = getLiveScreenshots(gameId).stream()
+                                        .noneMatch(url -> targetKey.equals(extractObjectKeyFromUrl(url)));
+                                if (isNewUpload) {
+                                    try {
+                                        seaweedFsService.deleteObject(targetKey);
+                                    } catch (Exception e) {
+                                        log.warn("Lỗi khi xóa pending screenshot mới khỏi storage: {}", targetKey, e);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                        if (removed) {
+                            snap.setPendingScreenshots(objectMapper.writeValueAsString(parsed));
+                            sourceSnapshotRepository.save(snap);
+                        }
                     }
-                });
+                } catch (Exception e) {
+                    log.warn("Lỗi khi xóa pending screenshot: {}", e.getMessage());
+                }
+            } else {
+                // If pendingScreenshots is null, it means they haven't modified screenshots yet.
+                // We initialize it from live, remove this item, and save it.
+                List<String> live = new java.util.ArrayList<>(getLiveScreenshots(gameId));
+                boolean removed = false;
+                for (int i = 0; i < live.size(); i++) {
+                    if (targetKey.equals(extractObjectKeyFromUrl(live.get(i)))) {
+                        live.remove(i);
+                        removed = true;
+                        break;
+                    }
+                }
+                if (removed) {
+                    try {
+                        snap.setPendingScreenshots(objectMapper.writeValueAsString(live));
+                        sourceSnapshotRepository.save(snap);
+                    } catch (Exception e) {
+                        log.warn("Lỗi khi ghi pendingScreenshots khởi tạo: {}", e.getMessage());
+                    }
+                }
+            }
+        } else {
+            gameMedia(gameId).stream()
+                    .filter(m -> targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())))
+                    .findFirst()
+                    .ifPresent(m -> {
+                        mediaRepository.delete(m);
+                        try {
+                            seaweedFsService.deleteObject(targetKey);
+                        } catch (Exception e) {
+                            log.warn("Đã xóa record media nhưng không xóa được file storage: {}", targetKey, e);
+                        }
+                    });
+        }
     }
 
     private String getPresignedGetUrl(String rawUrl) {
@@ -549,9 +658,33 @@ public class GameServiceImpl implements GameService {
         // Bản cập nhật chờ duyệt (nếu có)
         UUID pendingUpdateSnapshotId = null;
         String pendingUpdateFileUrl = null;
+        String pendingTitle = null;
+        String pendingDescription = null;
+        String pendingThumbnailUrl = null;
+        String pendingVideoUrl = null;
+        List<String> pendingScreenshots = null;
+
         if (game.getPendingUpdateSnapshot() != null) {
-            pendingUpdateSnapshotId = game.getPendingUpdateSnapshot().getId();
-            pendingUpdateFileUrl = getPresignedGetUrl(game.getPendingUpdateSnapshot().getBundleUrl());
+            SourceSnapshot snap = game.getPendingUpdateSnapshot();
+            pendingUpdateSnapshotId = snap.getId();
+            pendingUpdateFileUrl = getPresignedGetUrl(snap.getBundleUrl());
+            pendingTitle = snap.getPendingTitle();
+            pendingDescription = snap.getPendingDescription();
+            pendingThumbnailUrl = snap.getPendingThumbnailUrl() != null ? getPresignedGetUrl(snap.getPendingThumbnailUrl()) : null;
+            pendingVideoUrl = snap.getPendingVideoUrl() != null ? getPresignedGetUrl(snap.getPendingVideoUrl()) : null;
+
+            if (snap.getPendingScreenshots() != null) {
+                try {
+                    List<String> rawUrls = objectMapper.readValue(snap.getPendingScreenshots(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                    if (rawUrls != null) {
+                        pendingScreenshots = rawUrls.stream()
+                                .map(this::getPresignedGetUrl)
+                                .collect(Collectors.toList());
+                    }
+                } catch (Exception e) {
+                    log.warn("Lỗi khi đọc pending_screenshots từ snapshot {}: {}", snap.getId(), e.getMessage());
+                }
+            }
         }
 
         return GameResponse.builder()
@@ -577,6 +710,11 @@ public class GameServiceImpl implements GameService {
                 .githubBranch(game.getGithubBranch())
                 .pendingUpdateSnapshotId(pendingUpdateSnapshotId)
                 .pendingUpdateFileUrl(pendingUpdateFileUrl)
+                .pendingTitle(pendingTitle)
+                .pendingDescription(pendingDescription)
+                .pendingThumbnailUrl(pendingThumbnailUrl)
+                .pendingVideoUrl(pendingVideoUrl)
+                .pendingScreenshots(pendingScreenshots)
                 .createdAt(game.getCreatedAt())
                 .updatedAt(game.getUpdatedAt())
                 .build();
@@ -618,19 +756,38 @@ public class GameServiceImpl implements GameService {
         assertGameOwner(game, requester);
         validateUpdateDependency(game, fileType);
 
+        boolean isLive = game.getStatus() == GameStatus.published 
+                || game.getStatus() == GameStatus.approved 
+                || game.getStatus() == GameStatus.awaiting_store_build;
+
         if ("thumbnail".equalsIgnoreCase(fileType)) {
             if (objectKey == null) {
                 throw new IllegalArgumentException("objectKey is required to confirm thumbnail upload");
             }
-            String oldKey = extractObjectKeyFromUrl(game.getThumbnailUrl());
-            String thumbnailUrl = seaweedFsService.getFileUrl(objectKey);
-            game.setThumbnailUrl(thumbnailUrl);
-            gameRepository.save(game);
-            if (oldKey != null && !oldKey.equals(objectKey)) {
-                try {
-                    seaweedFsService.deleteObject(oldKey);
-                } catch (Exception e) {
-                    log.warn("Không xóa được thumbnail cũ trên storage: {}", oldKey, e);
+            String mediaUrl = seaweedFsService.getFileUrl(objectKey);
+            if (isLive) {
+                SourceSnapshot snap = game.getPendingUpdateSnapshot();
+                String oldKey = extractObjectKeyFromUrl(snap.getPendingThumbnailUrl());
+                snap.setPendingThumbnailUrl(mediaUrl);
+                sourceSnapshotRepository.save(snap);
+                if (oldKey != null && !oldKey.equals(objectKey)) {
+                    try {
+                        seaweedFsService.deleteObject(oldKey);
+                    } catch (Exception e) {
+                        log.warn("Không xóa được pending thumbnail cũ: {}", oldKey, e);
+                    }
+                }
+            } else {
+                String oldKey = extractObjectKeyFromUrl(game.getThumbnailUrl());
+                String thumbnailUrl = seaweedFsService.getFileUrl(objectKey);
+                game.setThumbnailUrl(thumbnailUrl);
+                gameRepository.save(game);
+                if (oldKey != null && !oldKey.equals(objectKey)) {
+                    try {
+                        seaweedFsService.deleteObject(oldKey);
+                    } catch (Exception e) {
+                        log.warn("Không xóa được thumbnail cũ trên storage: {}", oldKey, e);
+                    }
                 }
             }
         } else if ("screenshot".equalsIgnoreCase(fileType) || "image".equalsIgnoreCase(fileType) || "video".equalsIgnoreCase(fileType)) {
@@ -640,16 +797,53 @@ public class GameServiceImpl implements GameService {
             String mediaUrl = seaweedFsService.getFileUrl(objectKey);
             boolean isVideo = "video".equalsIgnoreCase(fileType);
 
-            // Video chỉ có 1 cái/game → upload mới thay thế cái cũ (không giữ lịch sử).
-            if (isVideo) {
-                mediaRepository.deleteByGame_IdAndMediaType(gameId, "video");
-            }
+            if (isLive) {
+                SourceSnapshot snap = game.getPendingUpdateSnapshot();
+                if (isVideo) {
+                    String oldKey = extractObjectKeyFromUrl(snap.getPendingVideoUrl());
+                    snap.setPendingVideoUrl(mediaUrl);
+                    sourceSnapshotRepository.save(snap);
+                    if (oldKey != null && !oldKey.equals(objectKey)) {
+                        try {
+                            seaweedFsService.deleteObject(oldKey);
+                        } catch (Exception e) {
+                            log.warn("Không xóa được pending video cũ: {}", oldKey, e);
+                        }
+                    }
+                } else {
+                    List<String> list = new java.util.ArrayList<>();
+                    if (snap.getPendingScreenshots() != null) {
+                        try {
+                            List<String> parsed = objectMapper.readValue(snap.getPendingScreenshots(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                            if (parsed != null) {
+                                list.addAll(parsed);
+                            }
+                        } catch (Exception e) {
+                            log.warn("Lỗi đọc pendingScreenshots: {}", e.getMessage());
+                        }
+                    } else {
+                        list.addAll(getLiveScreenshots(gameId));
+                    }
+                    list.add(mediaUrl);
+                    try {
+                        snap.setPendingScreenshots(objectMapper.writeValueAsString(list));
+                    } catch (Exception e) {
+                        log.warn("Lỗi ghi pendingScreenshots: {}", e.getMessage());
+                    }
+                    sourceSnapshotRepository.save(snap);
+                }
+            } else {
+                // Video chỉ có 1 cái/game → upload mới thay thế cái cũ (không giữ lịch sử).
+                if (isVideo) {
+                    mediaRepository.deleteByGame_IdAndMediaType(gameId, "video");
+                }
 
-            Media media = new Media();
-            media.setGame(game);
-            media.setMediaType(isVideo ? "video" : "image");
-            media.setMediaUrl(mediaUrl);
-            mediaRepository.save(media);
+                Media media = new Media();
+                media.setGame(game);
+                media.setMediaType(isVideo ? "video" : "image");
+                media.setMediaUrl(mediaUrl);
+                mediaRepository.save(media);
+            }
         } else {
             // Luồng upload game.zip trực tiếp: chỉ quét virus (file source thật của game đi qua repo + snapshot,
             // không lưu file_url rời trên Game nữa).
@@ -676,29 +870,84 @@ public class GameServiceImpl implements GameService {
         // Upload qua SeaweedFsService
         String mediaUrl = seaweedFsService.uploadWithKey(file, objectKey);
 
+        boolean isLive = game.getStatus() == GameStatus.published 
+                || game.getStatus() == GameStatus.approved 
+                || game.getStatus() == GameStatus.awaiting_store_build;
+
         if ("thumbnail".equalsIgnoreCase(fileType)) {
-            // Xóa ảnh thumbnail cũ trên storage (key random mỗi lần nên không tự động bị ghi đè)
-            String oldKey = extractObjectKeyFromUrl(game.getThumbnailUrl());
-            game.setThumbnailUrl(mediaUrl);
-            gameRepository.save(game);
-            if (oldKey != null && !oldKey.equals(objectKey)) {
-                try {
-                    seaweedFsService.deleteObject(oldKey);
-                } catch (Exception e) {
-                    log.warn("Không xóa được thumbnail cũ trên storage: {}", oldKey, e);
+            if (isLive) {
+                SourceSnapshot snap = game.getPendingUpdateSnapshot();
+                String oldKey = extractObjectKeyFromUrl(snap.getPendingThumbnailUrl());
+                snap.setPendingThumbnailUrl(mediaUrl);
+                sourceSnapshotRepository.save(snap);
+                if (oldKey != null && !oldKey.equals(objectKey)) {
+                    try {
+                        seaweedFsService.deleteObject(oldKey);
+                    } catch (Exception e) {
+                        log.warn("Không xóa được pending thumbnail cũ: {}", oldKey, e);
+                    }
+                }
+            } else {
+                // Xóa ảnh thumbnail cũ trên storage (key random mỗi lần nên không tự động bị ghi đè)
+                String oldKey = extractObjectKeyFromUrl(game.getThumbnailUrl());
+                game.setThumbnailUrl(mediaUrl);
+                gameRepository.save(game);
+                if (oldKey != null && !oldKey.equals(objectKey)) {
+                    try {
+                        seaweedFsService.deleteObject(oldKey);
+                    } catch (Exception e) {
+                        log.warn("Không xóa được thumbnail cũ trên storage: {}", oldKey, e);
+                    }
                 }
             }
         } else {
             boolean isVideo = "video".equalsIgnoreCase(fileType);
-            // Video chỉ 1 cái/game → thay thế cái cũ
-            if (isVideo) {
-                deleteMediaFilesAndRecords(gameId, "video");
+            if (isLive) {
+                SourceSnapshot snap = game.getPendingUpdateSnapshot();
+                if (isVideo) {
+                    String oldKey = extractObjectKeyFromUrl(snap.getPendingVideoUrl());
+                    snap.setPendingVideoUrl(mediaUrl);
+                    sourceSnapshotRepository.save(snap);
+                    if (oldKey != null && !oldKey.equals(objectKey)) {
+                        try {
+                            seaweedFsService.deleteObject(oldKey);
+                        } catch (Exception e) {
+                            log.warn("Không xóa được pending video cũ: {}", oldKey, e);
+                        }
+                    }
+                } else {
+                    List<String> list = new java.util.ArrayList<>();
+                    if (snap.getPendingScreenshots() != null) {
+                        try {
+                            List<String> parsed = objectMapper.readValue(snap.getPendingScreenshots(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                            if (parsed != null) {
+                                list.addAll(parsed);
+                            }
+                        } catch (Exception e) {
+                            log.warn("Lỗi đọc pendingScreenshots: {}", e.getMessage());
+                        }
+                    } else {
+                        list.addAll(getLiveScreenshots(gameId));
+                    }
+                    list.add(mediaUrl);
+                    try {
+                        snap.setPendingScreenshots(objectMapper.writeValueAsString(list));
+                    } catch (Exception e) {
+                        log.warn("Lỗi ghi pendingScreenshots: {}", e.getMessage());
+                    }
+                    sourceSnapshotRepository.save(snap);
+                }
+            } else {
+                // Video chỉ 1 cái/game → thay thế cái cũ
+                if (isVideo) {
+                    deleteMediaFilesAndRecords(gameId, "video");
+                }
+                Media media = new Media();
+                media.setGame(game);
+                media.setMediaType(isVideo ? "video" : "image");
+                media.setMediaUrl(mediaUrl);
+                mediaRepository.save(media);
             }
-            Media media = new Media();
-            media.setGame(game);
-            media.setMediaType(isVideo ? "video" : "image");
-            media.setMediaUrl(mediaUrl);
-            mediaRepository.save(media);
         }
 
         return objectKey;
@@ -729,6 +978,90 @@ public class GameServiceImpl implements GameService {
 
         if (game.getPendingUpdateSnapshot() != null) {
             SourceSnapshot pendingSnapshot = game.getPendingUpdateSnapshot();
+
+            // 1. Merge metadata
+            if (pendingSnapshot.getPendingTitle() != null) {
+                game.setTitle(pendingSnapshot.getPendingTitle());
+            }
+            if (pendingSnapshot.getPendingDescription() != null) {
+                game.setDescription(pendingSnapshot.getPendingDescription());
+            }
+
+            // 2. Merge thumbnail
+            if (pendingSnapshot.getPendingThumbnailUrl() != null) {
+                String oldThumbnailUrl = game.getThumbnailUrl();
+                game.setThumbnailUrl(pendingSnapshot.getPendingThumbnailUrl());
+                if (oldThumbnailUrl != null) {
+                    String oldKey = extractObjectKeyFromUrl(oldThumbnailUrl);
+                    if (oldKey != null) {
+                        try {
+                            seaweedFsService.deleteObject(oldKey);
+                        } catch (Exception e) {
+                            log.warn("Không xóa được thumbnail cũ khi duyệt cập nhật: {}", oldKey, e);
+                        }
+                    }
+                }
+            }
+
+            // 3. Merge video
+            if (pendingSnapshot.getPendingVideoUrl() != null) {
+                if ("DELETE_VIDEO".equals(pendingSnapshot.getPendingVideoUrl())) {
+                    deleteMediaFilesAndRecords(game.getId(), "video");
+                } else {
+                    deleteMediaFilesAndRecords(game.getId(), "video");
+                    Media videoMedia = new Media();
+                    videoMedia.setGame(game);
+                    videoMedia.setMediaType("video");
+                    videoMedia.setMediaUrl(pendingSnapshot.getPendingVideoUrl());
+                    mediaRepository.save(videoMedia);
+                }
+            }
+
+            // 4. Merge screenshots
+            if (pendingSnapshot.getPendingScreenshots() != null) {
+                try {
+                    List<String> newScreenshots = objectMapper.readValue(pendingSnapshot.getPendingScreenshots(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                    if (newScreenshots != null) {
+                        List<Media> currentMedia = mediaRepository.findByGame_IdOrderByCreatedAtDesc(game.getId());
+                        List<Media> liveScreenshots = currentMedia.stream()
+                                .filter(m -> "image".equalsIgnoreCase(m.getMediaType()) || "screenshot".equalsIgnoreCase(m.getMediaType()))
+                                .collect(Collectors.toList());
+
+                        // Delete screenshots that are no longer present
+                        for (Media media : liveScreenshots) {
+                            boolean stillExists = newScreenshots.stream()
+                                    .anyMatch(url -> extractObjectKeyFromUrl(url).equals(extractObjectKeyFromUrl(media.getMediaUrl())));
+                            if (!stillExists) {
+                                mediaRepository.delete(media);
+                                String key = extractObjectKeyFromUrl(media.getMediaUrl());
+                                if (key != null) {
+                                    try {
+                                        seaweedFsService.deleteObject(key);
+                                    } catch (Exception e) {
+                                        log.warn("Không xóa được screenshot cũ khỏi storage: {}", key, e);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Add new screenshots
+                        for (String url : newScreenshots) {
+                            boolean alreadyExists = liveScreenshots.stream()
+                                    .anyMatch(m -> extractObjectKeyFromUrl(m.getMediaUrl()).equals(extractObjectKeyFromUrl(url)));
+                            if (!alreadyExists) {
+                                Media media = new Media();
+                                media.setGame(game);
+                                media.setMediaType("image");
+                                media.setMediaUrl(url);
+                                mediaRepository.save(media);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Lỗi khi đồng bộ screenshots lúc duyệt game cập nhật: {}", e.getMessage());
+                }
+            }
+
             VersionUtils.updateGameVersionFile(game, pendingSnapshot.getBundleUrl(), gameVersionRepository);
 
             game.setPendingUpdateSnapshot(null);
@@ -818,6 +1151,56 @@ public class GameServiceImpl implements GameService {
                 }
             } catch (Exception e) {
                 log.warn("Không xóa được file bundle của snapshot bị từ chối: {}", pendingSnapshot.getId(), e);
+            }
+
+            // Delete pending thumbnail if exists
+            if (pendingSnapshot.getPendingThumbnailUrl() != null) {
+                String key = extractObjectKeyFromUrl(pendingSnapshot.getPendingThumbnailUrl());
+                if (key != null) {
+                    try {
+                        seaweedFsService.deleteObject(key);
+                    } catch (Exception e) {
+                        log.warn("Không xóa được pending thumbnail khi từ chối: {}", key, e);
+                    }
+                }
+            }
+
+            // Delete pending video if exists
+            if (pendingSnapshot.getPendingVideoUrl() != null && !"DELETE_VIDEO".equals(pendingSnapshot.getPendingVideoUrl())) {
+                String key = extractObjectKeyFromUrl(pendingSnapshot.getPendingVideoUrl());
+                if (key != null) {
+                    try {
+                        seaweedFsService.deleteObject(key);
+                    } catch (Exception e) {
+                        log.warn("Không xóa được pending video khi từ chối: {}", key, e);
+                    }
+                }
+            }
+
+            // Delete pending screenshots (only those that are NOT live screenshots)
+            if (pendingSnapshot.getPendingScreenshots() != null) {
+                try {
+                    List<String> pendingUrls = objectMapper.readValue(pendingSnapshot.getPendingScreenshots(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                    if (pendingUrls != null) {
+                        List<String> liveUrls = getLiveScreenshots(gameId);
+                        for (String url : pendingUrls) {
+                            boolean isLiveScreenshot = liveUrls.stream()
+                                    .anyMatch(liveUrl -> extractObjectKeyFromUrl(liveUrl).equals(extractObjectKeyFromUrl(url)));
+                            if (!isLiveScreenshot) {
+                                String key = extractObjectKeyFromUrl(url);
+                                if (key != null) {
+                                    try {
+                                        seaweedFsService.deleteObject(key);
+                                    } catch (Exception e) {
+                                        log.warn("Không xóa được pending screenshot khi từ chối: {}", key, e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Lỗi khi giải phóng pending screenshots khi từ chối: {}", e.getMessage());
+                }
             }
 
             game.setPendingUpdateSnapshot(null);

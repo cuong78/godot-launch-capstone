@@ -873,13 +873,14 @@ class GameServiceImplTest {
 
         when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
         when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
-        when(gameRepository.save(any(Game.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(sourceSnapshotRepository.save(any(SourceSnapshot.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // updateGame should succeed
         UpdateGameRequest updateReq = new UpdateGameRequest();
         updateReq.setTitle("New Title");
         GameResponse resp = gameService.updateGame(gameId, updateReq, devUser.getEmail());
-        assertThat(resp.getTitle()).isEqualTo("New Title");
+        assertThat(resp.getTitle()).isEqualTo("Godot Platformer");
+        assertThat(resp.getPendingTitle()).isEqualTo("New Title");
     }
 
     @Test
@@ -894,5 +895,31 @@ class GameServiceImplTest {
         // getPresignedUploadUrl for "game" should succeed
         String url = gameService.getPresignedUploadUrl(gameId, "game", "application/zip", devUser.getEmail());
         assertThat(url).isEqualTo("http://presigned-url");
+    }
+
+    @Test
+    void approveGame_ShouldMergePendingSnapshotMetadataAndMedia_WhenPendingUpdateSnapshotExists() throws Exception {
+        game.setStatus(GameStatus.published);
+        SourceSnapshot pendingSnapshot = new SourceSnapshot();
+        pendingSnapshot.setId(UUID.randomUUID());
+        pendingSnapshot.setPendingTitle("New Pending Title");
+        pendingSnapshot.setPendingDescription("New Pending Description");
+        pendingSnapshot.setPendingThumbnailUrl("http://seaweed/new-thumb.png");
+        pendingSnapshot.setPendingVideoUrl("http://seaweed/new-video.mp4");
+        pendingSnapshot.setPendingScreenshots("[\"http://seaweed/new-screenshot.png\"]");
+        pendingSnapshot.setBundleUrl("http://seaweed/new-bundle.zip");
+        game.setPendingUpdateSnapshot(pendingSnapshot);
+
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(objectMapper.readValue(anyString(), any(com.fasterxml.jackson.core.type.TypeReference.class)))
+                .thenReturn(List.of("http://seaweed/new-screenshot.png"));
+
+        gameService.approveGame(gameId);
+
+        assertThat(game.getTitle()).isEqualTo("New Pending Title");
+        assertThat(game.getDescription()).isEqualTo("New Pending Description");
+        assertThat(game.getThumbnailUrl()).isEqualTo("http://seaweed/new-thumb.png");
+        assertThat(game.getPendingUpdateSnapshot()).isNull();
+        verify(mediaRepository, atLeastOnce()).save(any());
     }
 }
