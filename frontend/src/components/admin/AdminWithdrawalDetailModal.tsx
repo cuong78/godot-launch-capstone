@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   Clock,
   Copy,
+  FastForward,
   Landmark,
   LoaderCircle,
   RefreshCw,
@@ -41,6 +42,9 @@ interface AdminWithdrawalDetailModalProps {
   onClose: () => void;
   onSync: () => void;
   onReject: () => void;
+  // CHỈ DÙNG CHO DEMO/TEST: lùi createdAt để withdrawal đủ điều kiện tự
+  // động payout ngay, thay vì phải tự chạy UPDATE SQL thủ công.
+  onDemoBackdate: () => void;
   statusNotice?: WithdrawalStatusNotice | null;
   payoutProgress?: WithdrawalPayoutProgress | null;
   onDismissStatusNotice: () => void;
@@ -233,6 +237,7 @@ export const AdminWithdrawalDetailModal: React.FC<
   onClose,
   onSync,
   onReject,
+  onDemoBackdate,
   statusNotice,
   payoutProgress,
   onDismissStatusNotice,
@@ -252,6 +257,8 @@ export const AdminWithdrawalDetailModal: React.FC<
     withdrawal.status === "pending" ||
     withdrawal.status === "approved" ||
     withdrawal.status === "processing";
+  // Backend chỉ chấp nhận demo-backdate cho withdrawal đang pending.
+  const canDemoBackdate = withdrawal.status === "pending";
   const currency = withdrawal.currency || "VND";
   const noticeMeta = statusNotice ? getNoticeMeta(statusNotice.tone) : null;
   const progressMeta = payoutProgress ? getPayoutProgressMeta(payoutProgress, t) : null;
@@ -643,6 +650,18 @@ export const AdminWithdrawalDetailModal: React.FC<
                     disabled={isBusy}
                   >
                     Sync Payout Status
+                  </Button>
+                )}
+                {canDemoBackdate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<FastForward size={14} />}
+                    onClick={onDemoBackdate}
+                    disabled={isBusy}
+                    title={t("withdrawal.detail.demoBackdateHint")}
+                  >
+                    {t("withdrawal.detail.demoBackdate")}
                   </Button>
                 )}
                 {canReject && (

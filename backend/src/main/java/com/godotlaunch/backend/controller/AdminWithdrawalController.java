@@ -68,4 +68,18 @@ public class AdminWithdrawalController {
         WithdrawalDetailResponse response = withdrawalRequestService.rejectWithdrawal(id, request, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal rejected successfully."));
     }
+
+    @PostMapping("/{id}/demo-backdate")
+    @Operation(
+        summary = "[DEMO ONLY] Backdate a pending withdrawal's createdAt to make it immediately eligible for auto-payout",
+        description = "Sets createdAt = now - withdrawalHoldDays - 1 minute, per current PlatformSettings. " +
+                "Replaces manually running an UPDATE SQL statement during demos/testing. Only works on pending requests."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<WithdrawalDetailResponse>> demoBackdateWithdrawal(
+            @PathVariable UUID id,
+            Principal principal) {
+        WithdrawalDetailResponse response = withdrawalRequestService.demoBackdateWithdrawal(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response, "Withdrawal backdated for demo purposes."));
+    }
 }

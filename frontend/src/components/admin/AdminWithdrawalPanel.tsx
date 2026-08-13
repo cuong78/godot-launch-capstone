@@ -579,6 +579,34 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
     }
   };
 
+  const handleDemoBackdate = async () => {
+    if (!selectedWithdrawal) return;
+    setIsBusy(true);
+    setDetailError(null);
+    setPanelStatusFlash(null);
+    try {
+      const response = await walletApi.demoBackdateWithdrawal(selectedWithdrawal.id);
+      if (response.success) {
+        const nextDetail = response.data;
+        if (nextDetail) {
+          updateWithdrawalInList(nextDetail);
+        }
+        setSuccessMessage(t("withdrawal.demoBackdateSuccess"));
+        void loadWithdrawals();
+      } else {
+        setDetailError(response.message || t("withdrawal.demoBackdateError"));
+      }
+    } catch (err: any) {
+      setDetailError(
+        err.response?.data?.message ||
+          err.message ||
+          t("withdrawal.demoBackdateError"),
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   const handleReject = async () => {
     if (!selectedWithdrawal) return;
     if (!rejectRemark.trim()) {
@@ -818,6 +846,7 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
         onClose={closeModal}
         onSync={handleSync}
         onReject={handleReject}
+        onDemoBackdate={handleDemoBackdate}
         statusNotice={statusNotice}
         payoutProgress={payoutProgress}
         onDismissStatusNotice={() => setStatusNotice(null)}

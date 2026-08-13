@@ -4,12 +4,16 @@ import com.godotlaunch.backend.constant.ErrorCode;
 import com.godotlaunch.backend.dto.request.UpdatePlatformSettingsRequest;
 import com.godotlaunch.backend.dto.response.PlatformSettingsResponse;
 import com.godotlaunch.backend.entity.PlatformSettings;
+import com.godotlaunch.backend.event.PlatformSettingsUpdatedEvent;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.PlatformSettingsRepository;
 import com.godotlaunch.backend.service.PlatformSettingsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -32,6 +36,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     private static final String DEFAULT_ANNOUNCEMENT = "GodotLaunch Matrix Engine Upgrade is complete!";
 
     private final PlatformSettingsRepository platformSettingsRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -63,7 +68,25 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
         settings.setMaintenanceMode(Boolean.TRUE.equals(request.getMaintenanceMode()));
         settings.setAnnouncementBanner(normalizeAnnouncement(request.getAnnouncementBanner()));
 
-        return mapToResponse(platformSettingsRepository.save(settings));
+        PlatformSettingsResponse response = mapToResponse(platformSettingsRepository.save(settings));
+
+        // Báo cho DailyMaintenanceScheduler re-schedule ngay theo giờ mới —
+        // KHÔNG publish thẳng ở đây vì transaction hiện tại CHƯA commit
+        // (save() chỉ flush), listener đọc lại DB ngay lúc này có thể vẫn
+        // thấy giá trị cũ. Đợi transaction commit xong mới publish (đã từng
+        // gặp đúng race condition tương tự ở WithdrawalRequestServiceImpl).
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    eventPublisher.publishEvent(new PlatformSettingsUpdatedEvent(PlatformSettingsServiceImpl.this));
+                }
+            });
+        } else {
+            eventPublisher.publishEvent(new PlatformSettingsUpdatedEvent(this));
+        }
+
+        return response;
     }
 
     @Override

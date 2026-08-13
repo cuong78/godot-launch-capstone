@@ -19,9 +19,10 @@ import java.util.List;
  * "cưỡng chế trong hệ thống"; việc thực sự đòi lại tiền lúc này thuộc trách
  * nhiệm admin đi kiện tụng ngoài đời (KYC/FaceID/agreement làm căn cứ).
  *
- * Không dùng @Scheduled cố định — được SchedulingConfig đăng ký chạy 1
- * lần/ngày tại giờ admin cấu hình (DynamicDailyCronTrigger, giờ VN), đọc lại
- * DB mỗi lần lên lịch nên đổi giờ không cần restart app.
+ * Không dùng @Scheduled cố định — được DailyMaintenanceScheduler đăng ký
+ * chạy 1 lần/ngày tại giờ admin cấu hình (DynamicDailyCronTrigger, giờ VN).
+ * DailyMaintenanceScheduler tự re-schedule ngay khi admin đổi giờ (lắng
+ * nghe PlatformSettingsUpdatedEvent) — không cần restart app.
  */
 @Component
 @RequiredArgsConstructor

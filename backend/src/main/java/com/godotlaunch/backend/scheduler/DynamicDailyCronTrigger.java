@@ -15,9 +15,16 @@ import java.util.function.Supplier;
  * (PlatformSettings.dailyMaintenanceTime), luôn tính theo giờ Việt Nam.
  *
  * Khác với @Scheduled(cron=...) cố định lúc khởi động, trigger này đọc lại
- * timeSupplier MỖI LẦN Spring hỏi "lần chạy tiếp theo là khi nào" — nên khi
- * admin đổi giờ qua DB, lần lên lịch kế tiếp sẽ tự phản ánh giá trị mới,
- * không cần restart app.
+ * timeSupplier mỗi lần Spring hỏi "lần chạy tiếp theo là khi nào".
+ *
+ * LƯU Ý QUAN TRỌNG (đã xác nhận qua test thực tế): Spring TaskScheduler chỉ
+ * gọi nextExecution() NGAY SAU KHI lần chạy trước đó hoàn tất, KHÔNG polling
+ * liên tục — nên tự bản thân trigger này KHÔNG đủ để "đổi giờ áp dụng ngay
+ * lập tức". Việc áp dụng ngay (không cần restart app) do
+ * DailyMaintenanceScheduler đảm nhiệm: nó chủ động hủy + gọi lại
+ * taskScheduler.schedule(...) với 1 instance trigger MỚI mỗi khi nhận
+ * PlatformSettingsUpdatedEvent — buộc Spring phải hỏi lại nextExecution()
+ * ngay lập tức thay vì đợi tới lần chạy kế tiếp.
  */
 public class DynamicDailyCronTrigger implements Trigger {
 

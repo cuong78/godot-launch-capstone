@@ -81,5 +81,13 @@ export const walletApi = {
   rejectWithdrawal: async (id: string, data: RejectWithdrawalRequest): Promise<ApiResponse<WithdrawalDetailResponse>> => {
     const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/reject`, data);
     return response.data;
+  },
+
+  // CHỈ DÙNG CHO DEMO/TEST: lùi createdAt của 1 withdrawal đang pending về đủ
+  // điều kiện tự động payout ngay (theo withdrawalHoldDays hiện tại), thay
+  // cho việc phải tự chạy UPDATE SQL thủ công.
+  demoBackdateWithdrawal: async (id: string): Promise<ApiResponse<WithdrawalDetailResponse>> => {
+    const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/demo-backdate`);
+    return response.data;
   }
 };

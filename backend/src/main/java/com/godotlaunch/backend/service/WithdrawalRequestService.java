@@ -22,4 +22,13 @@ public interface WithdrawalRequestService {
     WithdrawalDetailResponse approveWithdrawal(UUID requestId, ApproveWithdrawalRequest request, String adminEmail);
     WithdrawalDetailResponse syncWithdrawalStatus(UUID requestId, String adminEmail);
     WithdrawalDetailResponse rejectWithdrawal(UUID requestId, RejectWithdrawalRequest request, String adminEmail);
+
+    /**
+     * CHỈ DÙNG CHO DEMO/TEST: lùi created_at của 1 withdrawal request về đủ
+     * điều kiện tự động payout (createdAt = now - withdrawalHoldDays - 1
+     * phút, theo đúng cấu hình hiện tại trong PlatformSettings) — thay cho
+     * việc admin phải tự chạy UPDATE SQL thủ công. Chỉ áp dụng cho request
+     * đang ở trạng thái pending.
+     */
+    WithdrawalDetailResponse demoBackdateWithdrawal(UUID requestId, String adminEmail);
 }

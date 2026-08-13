@@ -22,9 +22,10 @@ import java.util.UUID;
  * tự động tạo payout order — trừ khi seller đang có dispute open nhắm vào,
  * trường hợp đó giữ vô thời hạn cho tới khi dispute được resolve.
  *
- * Không dùng @Scheduled cố định — được SchedulingConfig đăng ký chạy 1
- * lần/ngày tại giờ admin cấu hình (DynamicDailyCronTrigger, giờ VN), đọc lại
- * DB mỗi lần lên lịch nên đổi giờ không cần restart app.
+ * Không dùng @Scheduled cố định — được DailyMaintenanceScheduler đăng ký
+ * chạy 1 lần/ngày tại giờ admin cấu hình (DynamicDailyCronTrigger, giờ VN).
+ * DailyMaintenanceScheduler tự re-schedule ngay khi admin đổi giờ (lắng
+ * nghe PlatformSettingsUpdatedEvent) — không cần restart app.
  */
 @Component
 @RequiredArgsConstructor

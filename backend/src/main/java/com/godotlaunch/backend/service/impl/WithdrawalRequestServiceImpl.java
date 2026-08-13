@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.constant.ErrorCode;
+import jakarta.persistence.EntityManager;
 import com.godotlaunch.backend.dto.request.ApproveWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.CreateWithdrawalRequest;
 import com.godotlaunch.backend.dto.request.PayoutGatewayCreateRequest;
@@ -87,6 +88,7 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final EntityManager entityManager;
     private final DisputeRepository disputeRepository;
     private final AuditLogService auditLogService;
     private final PayoutGateway payoutGateway;
@@ -394,6 +396,43 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
         return mapToDetailResponse(updated, wallet, metrics);
+    }
+
+    @Override
+    @Transactional
+    public WithdrawalDetailResponse demoBackdateWithdrawal(UUID requestId, String adminEmail) {
+        getUserByEmail(adminEmail); // chỉ để xác nhận admin hợp lệ, không cần dùng tiếp
+        WithdrawalRequest withdrawal = getWithdrawalForUpdate(requestId);
+
+        if (withdrawal.getStatus() != WithdrawalStatus.pending) {
+            throw new AppException(ErrorCode.INVALID_WITHDRAWAL_STATUS);
+        }
+
+        short holdDays = platformSettingsService.getWithdrawalHoldDays();
+        Instant backdatedCreatedAt = Instant.now().minus(holdDays, ChronoUnit.DAYS).minusSeconds(60);
+
+        // created_at có insertable=false/updatable=false trên entity nên
+        // withdrawal.setCreatedAt(...) + save() sẽ KHÔNG có tác dụng gì —
+        // phải UPDATE thẳng bằng native query (xem repository).
+        withdrawalRequestRepository.demoBackdateCreatedAt(requestId, backdatedCreatedAt);
+
+        // Entity trong persistence context hiện tại vẫn giữ giá trị createdAt
+        // CŨ trong bộ nhớ (Hibernate không tự biết cột vừa bị đổi bởi native
+        // query) — phải nạp lại từ DB để response trả về đúng giá trị mới.
+        entityManager.refresh(withdrawal);
+
+        auditLogService.publishAuto(
+                AuditAction.withdrawal_processing,
+                AuditTarget.withdrawal_request,
+                withdrawal.getId(),
+                Map.of("createdAt", String.valueOf(withdrawal.getCreatedAt())),
+                Map.of("createdAt", String.valueOf(backdatedCreatedAt), "holdDays", holdDays),
+                "[DEMO] Admin backdated withdrawal createdAt to make it eligible for auto-payout immediately."
+        );
+
+        Wallet wallet = getOrCreateWallet(withdrawal.getUser());
+        WalletMetrics metrics = buildWalletMetrics(withdrawal.getUser(), wallet);
+        return mapToDetailResponse(withdrawal, wallet, metrics);
     }
 
     private User getUserByEmail(String email) {
