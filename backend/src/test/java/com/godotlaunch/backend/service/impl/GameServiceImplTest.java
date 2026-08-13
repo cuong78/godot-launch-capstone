@@ -29,6 +29,7 @@ import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.ClamAVService;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.GitHubRepoService;
+import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.service.SeaweedFsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -87,6 +88,8 @@ class GameServiceImplTest {
     private ObjectMapper objectMapper;
     @Mock
     private AiReviewService aiReviewService;
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private GameServiceImpl gameService;
@@ -833,5 +836,93 @@ class GameServiceImplTest {
 
         verify(mediaRepository).delete(m);
         verify(seaweedFsService).deleteObject("games/123/screenshots/key1.png");
+    }
+
+    @Test
+    void validateUpdateDependency_ShouldThrowException_WhenGameIsLiveAndNoPendingSnapshot() {
+        game.setStatus(GameStatus.published);
+        game.setPendingUpdateSnapshot(null);
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+
+        // updateGame should fail
+        UpdateGameRequest updateReq = new UpdateGameRequest();
+        updateReq.setTitle("New Title");
+        AppException ex = assertThrows(AppException.class, () -> 
+            gameService.updateGame(gameId, updateReq, devUser.getEmail())
+        );
+        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.UPDATE_REQUIRES_CODE_UPDATE);
+
+        // getPresignedUploadUrl for thumbnail should fail
+        ex = assertThrows(AppException.class, () -> 
+            gameService.getPresignedUploadUrl(gameId, "thumbnail", "image/png", devUser.getEmail())
+        );
+        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.UPDATE_REQUIRES_CODE_UPDATE);
+
+        // clearGameMedia should fail
+        ex = assertThrows(AppException.class, () -> 
+            gameService.clearGameMedia(gameId, "image", devUser.getEmail())
+        );
+        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.UPDATE_REQUIRES_CODE_UPDATE);
+    }
+
+    @Test
+    void validateUpdateDependency_ShouldSucceed_WhenGameIsLiveAndHasPendingSnapshot() {
+        game.setStatus(GameStatus.published);
+        SourceSnapshot pendingSnapshot = new SourceSnapshot();
+        pendingSnapshot.setId(UUID.randomUUID());
+        game.setPendingUpdateSnapshot(pendingSnapshot);
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.save(any(SourceSnapshot.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // updateGame should succeed
+        UpdateGameRequest updateReq = new UpdateGameRequest();
+        updateReq.setTitle("New Title");
+        GameResponse resp = gameService.updateGame(gameId, updateReq, devUser.getEmail());
+        assertThat(resp.getTitle()).isEqualTo("Godot Platformer");
+        assertThat(resp.getPendingTitle()).isEqualTo("New Title");
+    }
+
+    @Test
+    void validateUpdateDependency_ShouldAllowGameZipUpload_EvenWhenNoPendingSnapshot() {
+        game.setStatus(GameStatus.published);
+        game.setPendingUpdateSnapshot(null);
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(seaweedFsService.generatePresignedUploadUrl(anyString(), anyString())).thenReturn("http://presigned-url");
+
+        // getPresignedUploadUrl for "game" should succeed
+        String url = gameService.getPresignedUploadUrl(gameId, "game", "application/zip", devUser.getEmail());
+        assertThat(url).isEqualTo("http://presigned-url");
+    }
+
+    @Test
+    void approveGame_ShouldMergePendingSnapshotMetadataAndMedia_WhenPendingUpdateSnapshotExists() throws Exception {
+        game.setStatus(GameStatus.published);
+        SourceSnapshot pendingSnapshot = new SourceSnapshot();
+        pendingSnapshot.setId(UUID.randomUUID());
+        pendingSnapshot.setPendingTitle("New Pending Title");
+        pendingSnapshot.setPendingDescription("New Pending Description");
+        pendingSnapshot.setPendingThumbnailUrl("http://seaweed/new-thumb.png");
+        pendingSnapshot.setPendingVideoUrl("http://seaweed/new-video.mp4");
+        pendingSnapshot.setPendingScreenshots("[\"http://seaweed/new-screenshot.png\"]");
+        pendingSnapshot.setBundleUrl("http://seaweed/new-bundle.zip");
+        game.setPendingUpdateSnapshot(pendingSnapshot);
+
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(objectMapper.readValue(anyString(), any(com.fasterxml.jackson.core.type.TypeReference.class)))
+                .thenReturn(List.of("http://seaweed/new-screenshot.png"));
+
+        gameService.approveGame(gameId);
+
+        assertThat(game.getTitle()).isEqualTo("New Pending Title");
+        assertThat(game.getDescription()).isEqualTo("New Pending Description");
+        assertThat(game.getThumbnailUrl()).isEqualTo("http://seaweed/new-thumb.png");
+        assertThat(game.getPendingUpdateSnapshot()).isNull();
+        verify(mediaRepository, atLeastOnce()).save(any());
     }
 }

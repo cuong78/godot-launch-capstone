@@ -1,0 +1,125 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.0" type="device">
+  <diagram id="registration-focused-class-diagram" name="Registration Class Diagram">
+    <mxGraphModel dx="10800" dy="7600" grid="1" gridSize="20" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="10800" pageHeight="7600" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Registration - Focused Application Class Diagram" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=60;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="160" y="60" width="6000" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-signup-otp" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;SignupOtpRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- email: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getEmail(): String&lt;br&gt;+ setEmail(email: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="160" y="300" width="2200" height="650" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-verify-otp" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;VerifyOtpRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- email: String&lt;br&gt;- otp: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getEmail(): String&lt;br&gt;+ getOtp(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="2800" y="300" width="2200" height="700" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-signup" value="&lt;div align=&quot;center&quot;&gt;«request DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;SignUpRequest&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- email: String&lt;br&gt;- password: String&lt;br&gt;- confirmPassword: String&lt;br&gt;- fullName: String&lt;br&gt;- avatarUrl: String&lt;br&gt;- otp: String&lt;br&gt;- recaptchaToken: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getEmail(): String&lt;br&gt;+ getPassword(): String&lt;br&gt;+ getConfirmPassword(): String&lt;br&gt;+ getFullName(): String&lt;br&gt;+ getOtp(): String&lt;br&gt;+ getRecaptchaToken(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="5440" y="300" width="2500" height="1100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dto-user-response" value="&lt;div align=&quot;center&quot;&gt;«response DTO»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;UserResponse&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- email: String&lt;br&gt;- fullName: String&lt;br&gt;- roleName: String&lt;br&gt;- status: String&lt;br&gt;- avatarUrl: String&lt;br&gt;- createdAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ builder(): UserResponseBuilder&lt;br&gt;+ getId(): UUID&lt;br&gt;+ getEmail(): String&lt;br&gt;+ getRoleName(): String&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="8380" y="300" width="2200" height="950" as="geometry" />
+        </mxCell>
+
+        <mxCell id="controller-auth" value="&lt;div align=&quot;center&quot;&gt;«controller»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AuthController&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- authService: AuthService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ requestSignupOtp(request: SignupOtpRequest): ResponseEntity&amp;lt;ApiResponse&amp;lt;Void&amp;gt;&amp;gt;&lt;br&gt;+ verifySignupOtp(request: VerifyOtpRequest): ResponseEntity&amp;lt;ApiResponse&amp;lt;Void&amp;gt;&amp;gt;&lt;br&gt;+ signUp(request: SignUpRequest): ResponseEntity&amp;lt;ApiResponse&amp;lt;UserResponse&amp;gt;&amp;gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3400" y="1700" width="4000" height="1150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-auth" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AuthService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ requestSignupOtp(request: SignupOtpRequest): void&lt;br&gt;+ verifySignupOtp(request: VerifyOtpRequest): void&lt;br&gt;+ signUp(request: SignUpRequest): UserResponse&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="900" y="3300" width="3600" height="950" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-auth-impl" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;AuthServiceImpl&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- passwordEncoder: PasswordEncoder&lt;br&gt;- otpService: OtpService&lt;br&gt;- emailService: EmailService&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ requestSignupOtp(request: SignupOtpRequest): void&lt;br&gt;+ verifySignupOtp(request: VerifyOtpRequest): void&lt;br&gt;+ signUp(request: SignUpRequest): UserResponse&lt;br&gt;- verifyRecaptcha(token: String): void&lt;br&gt;- mapToUserResponse(user: User): UserResponse&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="5900" y="3250" width="3900" height="1250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-otp" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;OtpService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ generateOtp(email: String): String&lt;br&gt;+ validateOtp(email: String, otp: String): boolean&lt;br&gt;+ invalidateOtp(email: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="160" y="5000" width="2500" height="900" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-otp-impl" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;OtpServiceImpl&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- otpCache: ConcurrentHashMap&amp;lt;String, OtpData&amp;gt;&lt;br&gt;- random: Random&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ generateOtp(email: String): String&lt;br&gt;+ validateOtp(email: String, otp: String): boolean&lt;br&gt;+ invalidateOtp(email: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="160" y="6300" width="2500" height="950" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-email" value="&lt;div align=&quot;center&quot;&gt;«interface»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;EmailService&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div align=&quot;center&quot;&gt;&amp;lt;&amp;gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ sendSignupOtpEmail(to: String, otp: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="8140" y="5000" width="2500" height="700" as="geometry" />
+        </mxCell>
+
+        <mxCell id="service-email-impl" value="&lt;div align=&quot;center&quot;&gt;«service»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;EmailServiceImpl&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- mailSender: JavaMailSender&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ sendSignupOtpEmail(to: String, otp: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="8140" y="6300" width="2500" height="700" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-user" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;User&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- role: Role&lt;br&gt;- email: String&lt;br&gt;- passwordHash: String&lt;br&gt;- fullName: String&lt;br&gt;- avatarUrl: String&lt;br&gt;- status: String&lt;br&gt;- createdAt: Instant&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ setEmail(email: String): void&lt;br&gt;+ setPasswordHash(passwordHash: String): void&lt;br&gt;+ setFullName(fullName: String): void&lt;br&gt;+ setRole(role: Role): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="3200" y="5150" width="3100" height="1200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entity-role" value="&lt;div align=&quot;center&quot;&gt;«entity»&lt;br&gt;&lt;span style=&quot;font-size:42px;&quot;&gt;&lt;b&gt;Role&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;- id: UUID&lt;br&gt;- name: String&lt;br&gt;- description: String&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getName(): String&lt;br&gt;+ setName(name: String): void&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=24;overflow=fill;fontSize=40;fillColor=#ffffff;strokeColor=#000000;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="4000" y="6700" width="2300" height="750" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-controller-auth-service" value="authService" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.35;exitY=1;entryX=0.72;entryY=0;" edge="1" parent="1" source="controller-auth" target="service-auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-auth-impl-realizes" value="implements" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=block;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="service-auth-impl" target="service-auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-controller-signup-otp" value="receives email" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.08;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="controller-auth" target="dto-signup-otp">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="3720" y="1500" /><mxPoint x="1260" y="1500" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-controller-verify-otp" value="receives OTP" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.3;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="controller-auth" target="dto-verify-otp">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="4600" y="1560" /><mxPoint x="3900" y="1560" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-controller-signup-request" value="receives registration data" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.67;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="controller-auth" target="dto-signup">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-controller-user-response" value="returns registered user" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.92;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="controller-auth" target="dto-user-response">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="7080" y="1500" /><mxPoint x="9480" y="1500" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-auth-impl-otp" value="generates and validates OTP" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0;exitY=0.75;entryX=1;entryY=0.3;" edge="1" parent="1" source="service-auth-impl" target="service-otp">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="5500" y="4188" /><mxPoint x="5500" y="4870" /><mxPoint x="2660" y="4870" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-auth-impl-email" value="sends signup OTP" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.85;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="service-auth-impl" target="service-email">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-otp-impl-realizes" value="implements" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=block;endFill=0;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="service-otp-impl" target="service-otp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-email-impl-realizes" value="implements" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=block;endFill=0;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="service-email-impl" target="service-email">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-auth-impl-user" value="creates account" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.08;exitY=1;entryX=1;entryY=0.35;" edge="1" parent="1" source="service-auth-impl" target="entity-user">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="6212" y="4720" /><mxPoint x="6500" y="4720" /><mxPoint x="6500" y="5570" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-auth-impl-role" value="assigns customer role" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;dashPattern=16 12;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.2;exitY=1;entryX=1;entryY=0.35;" edge="1" parent="1" source="service-auth-impl" target="entity-role">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="6680" y="4800" /><mxPoint x="6800" y="4800" /><mxPoint x="6800" y="6963" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-user-role" value="has role" style="strokeWidth=5;fontSize=40;edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endFill=0;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="entity-user" target="entity-role">
+          <mxGeometry relative="1" as="geometry" />
+          <mxCell id="edge-user-role-user-multiplicity" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-role">
+            <mxGeometry x="-0.82" y="-1" relative="1" as="geometry"><mxPoint x="100" y="-20" as="offset" /></mxGeometry>
+          </mxCell>
+          <mxCell id="edge-user-role-role-multiplicity" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=40;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="edge-user-role">
+            <mxGeometry x="0.82" y="-1" relative="1" as="geometry"><mxPoint x="100" y="-20" as="offset" /></mxGeometry>
+          </mxCell>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

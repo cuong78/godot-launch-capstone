@@ -37,6 +37,8 @@ import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.repository.WithdrawalRequestRepository;
+import com.godotlaunch.backend.service.NotificationService;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.service.OrderService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.WalletService;
@@ -60,6 +62,7 @@ public class OrderServiceImpl implements OrderService {
     private final PlatformSettingsService platformSettingsService;
     private final PaymentRepository paymentRepository;
     private final WithdrawalRequestRepository withdrawalRequestRepository;
+    private final NotificationService notificationService;
 
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
     private static final Set<WithdrawalStatus> RESERVED_WITHDRAWAL_STATUSES = EnumSet.of(
@@ -244,6 +247,34 @@ public class OrderServiceImpl implements OrderService {
         txnPlatform.setOrder(order);
         txnPlatform.setDescription("Credit platform wallet with commission fee");
         transactionRepository.save(txnPlatform);
+
+        String productTitle = asset != null ? asset.getTitle() : (game != null ? game.getTitle() : "sản phẩm");
+
+        // Send Realtime Notification to Buyer
+        try {
+            notificationService.createAndSendNotification(
+                    buyer,
+                    null,
+                    NotificationType.PAYMENT_SUCCESS,
+                    "Bạn đã thanh toán thành công đơn hàng \"" + productTitle + "\" với giá " + price.setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ.",
+                    order.getId().toString()
+            );
+        } catch (Exception e) {
+            log.warn("Lỗi gửi notification PAYMENT_SUCCESS: {}", e.getMessage());
+        }
+
+        // Send Realtime Notification to Seller
+        try {
+            notificationService.createAndSendNotification(
+                    seller,
+                    buyer,
+                    NotificationType.NEW_SALE,
+                    "Chúc mừng! Người dùng " + (buyer.getFullName() != null ? buyer.getFullName() : buyer.getEmail()) + " vừa mua sản phẩm \"" + productTitle + "\" của bạn.",
+                    (asset != null ? asset.getId() : game.getId()).toString()
+            );
+        } catch (Exception e) {
+            log.warn("Lỗi gửi notification NEW_SALE: {}", e.getMessage());
+        }
 
         log.info("Direct wallet purchase completed: orderId={}, buyer={}, price={}, sellerRevenue={}, commission={}",
                 order.getId(), buyerEmail, price, sellerRevenue, platformCommission);

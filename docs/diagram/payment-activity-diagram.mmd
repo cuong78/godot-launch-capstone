@@ -1,0 +1,53 @@
+flowchart LR
+    %% PAYMENT ACTIVITY DIAGRAM - SWIMLANE VIEW
+    %% Copy this file into draw.io: Arrange > Insert > Mermaid.
+    %% Current behavior: purchases use wallet balance; PayOS is used for wallet top-ups.
+
+    subgraph CUSTOMER["CUSTOMER"]
+        direction TB
+        CStart((Start))
+        CSelect[Select product<br/>and checkout]
+        CPay[Complete top-up<br/>on PayOS]
+        CAccess[Access or download<br/>purchased product]
+        CEnd((End))
+
+        CStart ~~~ CSelect ~~~ CPay ~~~ CAccess ~~~ CEnd
+    end
+
+    subgraph SYSTEM["SYSTEM"]
+        direction TB
+        SValidate[Validate purchase request]
+        SBalance{Sufficient wallet balance?}
+        SCreateTopUp[Create PENDING<br/>top-up Payment]
+        SRedirect[Save checkout URL<br/>and redirect Buyer]
+        SVerify[Verify webhook or<br/>payment confirmation]
+        SPaid{Payment confirmed?}
+        SCredit[Credit Buyer wallet]
+        SProcess[Process wallet purchase<br/>and create PAID Order and Payment]
+        SResult[Display purchase success]
+        SFailed[Display payment failure]
+
+        SValidate --> SBalance
+        SCreateTopUp ~~~ SRedirect ~~~ SVerify ~~~ SPaid ~~~ SCredit ~~~ SProcess ~~~ SResult ~~~ SFailed
+    end
+
+    subgraph GATEWAY["PAYMENT GATEWAY"]
+        direction TB
+        GCreateLink[Generate PayOS<br/>payment link or QR code]
+        GConfirm[Confirm transaction result]
+
+        GCreateLink ~~~ GConfirm
+    end
+
+    CStart --> CSelect --> SValidate
+
+    SBalance -- Yes --> SProcess
+    SBalance -- No --> SCreateTopUp
+
+    SCreateTopUp --> GCreateLink --> SRedirect --> CPay
+    CPay --> GConfirm --> SVerify --> SPaid
+
+    SPaid -- Yes --> SCredit --> SProcess
+    SPaid -- No --> SFailed --> CEnd
+
+    SProcess --> SResult --> CAccess --> CEnd

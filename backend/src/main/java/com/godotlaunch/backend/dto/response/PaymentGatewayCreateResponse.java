@@ -11,5 +11,8 @@ public class PaymentGatewayCreateResponse {
     private final String paymentLinkId;
     private final String checkoutUrl;
     private final String qrCode;
+    private final String bin;
+    private final String bankAccountNumber;
+    private final String bankAccountName;
     private final PaymentStatus status;
 }

@@ -32,11 +32,17 @@ import com.godotlaunch.backend.repository.PayoutGateway;
 import com.godotlaunch.backend.scheduler.WithdrawalPayoutSyncScheduler;
 import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.service.NotificationService;
+import com.godotlaunch.backend.entity.enums.NotificationType;
+import org.springframework.data.domain.PageRequest;
 import com.godotlaunch.backend.service.PlatformSettingsService;
+import com.godotlaunch.backend.service.PaymentService;
+import com.godotlaunch.backend.entity.enums.PaymentStatus;
 import com.godotlaunch.backend.service.WithdrawalRequestService;
 import com.godotlaunch.backend.util.BankBinResolver;
 import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
 import com.godotlaunch.backend.util.WalletBalancePolicy;
+import java.util.Collections;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -91,11 +97,13 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
     private final EntityManager entityManager;
     private final DisputeRepository disputeRepository;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
     private final PayoutGateway payoutGateway;
     private final EncryptionUtils encryptionUtils;
     private final WithdrawalStatusSynchronizer withdrawalStatusSynchronizer;
     private final PlatformSettingsService platformSettingsService;
     private final WithdrawalPayoutSyncScheduler withdrawalPayoutSyncScheduler;
+    private final PaymentService paymentService;
 
     @Override
     @Transactional
@@ -119,11 +127,13 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 transactionRepository.sumAmountByWalletIdAndTypeIn(wallet.getId(), EnumSet.of(TxnType.revenue_share))
         );
 
+        Map<UUID, Map<PaymentStatus, Long>> statusStats = paymentService.getPaymentStatusStatsBySeller(developer.getId());
+
         List<ProductSalesResponse> products = Stream.concat(
                         transactionRepository.sumAssetSalesByWalletIdAndType(wallet.getId(), TxnType.revenue_share)
-                                .stream().map(row -> mapProductRow(row, "ASSET")),
+                                .stream().map(row -> mapProductRow(row, "ASSET", statusStats)),
                         transactionRepository.sumGameSalesByWalletIdAndType(wallet.getId(), TxnType.revenue_share)
-                                .stream().map(row -> mapProductRow(row, "GAME")))
+                                .stream().map(row -> mapProductRow(row, "GAME", statusStats)))
                 .sorted(Comparator.comparing(ProductSalesResponse::getRevenue).reversed())
                 .collect(Collectors.toList());
 
@@ -138,7 +148,13 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .build();
     }
 
-    private ProductSalesResponse mapProductRow(ProductSalesRow row, String productType) {
+    private ProductSalesResponse mapProductRow(ProductSalesRow row, String productType, Map<UUID, Map<PaymentStatus, Long>> statusStats) {
+        Map<PaymentStatus, Long> counts = statusStats.getOrDefault(row.productId(), Collections.emptyMap());
+        long pendingCount = counts.getOrDefault(PaymentStatus.PENDING, 0L) + counts.getOrDefault(PaymentStatus.PROCESSING, 0L);
+        long failedCount = counts.getOrDefault(PaymentStatus.FAILED, 0L);
+        long cancelledCount = counts.getOrDefault(PaymentStatus.CANCELLED, 0L);
+        long expiredCount = counts.getOrDefault(PaymentStatus.EXPIRED, 0L);
+
         return ProductSalesResponse.builder()
                 .productId(row.productId())
                 .productType(productType)
@@ -146,6 +162,10 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 .thumbnailUrl(row.thumbnailUrl())
                 .unitsSold(row.unitsSold() == null ? 0 : row.unitsSold())
                 .revenue(row.revenue() == null ? BigDecimal.ZERO : row.revenue())
+                .pendingCount(pendingCount)
+                .failedCount(failedCount)
+                .cancelledCount(cancelledCount)
+                .expiredCount(expiredCount)
                 .build();
     }
 
@@ -189,6 +209,21 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 ),
                 "Developer submitted a withdrawal request."
         );
+
+        try {
+            List<User> admins = userRepository.findAdminsOrderByCreatedAtAsc(PageRequest.of(0, 10));
+            for (User admin : admins) {
+                notificationService.createAndSendNotification(
+                        admin,
+                        developer,
+                        NotificationType.WITHDRAWAL_REQUEST,
+                        "Nhà phát triển " + (developer.getFullName() != null ? developer.getFullName() : developer.getEmail()) + " vừa gửi yêu cầu rút " + saved.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ.",
+                        saved.getId().toString()
+                );
+            }
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo withdrawal request tới admin: {}", ex.getMessage());
+        }
 
         WalletMetrics afterMetrics = buildWalletMetrics(developer, wallet);
         log.info("Created withdrawal request {} for user {} with amount={}", saved.getId(), developer.getId(), requestedAmount);
@@ -349,6 +384,18 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
             withdrawalPayoutSyncScheduler.ensureRunning();
         }
 
+        try {
+            notificationService.createAndSendNotification(
+                    updated.getUser(),
+                    null,
+                    NotificationType.WITHDRAWAL_RESULT,
+                    "Yêu cầu rút " + updated.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ của bạn đã được phê duyệt và đang xử lý chuyển khoản.",
+                    updated.getId().toString()
+            );
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo approve withdrawal: {}", ex.getMessage());
+        }
+
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);
         return mapToDetailResponse(updated, wallet, metrics);
@@ -392,6 +439,18 @@ public class WithdrawalRequestServiceImpl implements WithdrawalRequestService {
                 Map.of("status", updated.getStatus().name(), "remark", updated.getRemark()),
                 "Admin rejected a withdrawal request."
         );
+
+        try {
+            notificationService.createAndSendNotification(
+                    updated.getUser(),
+                    admin,
+                    NotificationType.WITHDRAWAL_RESULT,
+                    "Yêu cầu rút " + updated.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ của bạn đã bị từ chối." + (request != null && StringUtils.hasText(request.getRemark()) ? " Lý do: " + request.getRemark() : ""),
+                    updated.getId().toString()
+            );
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo reject withdrawal: {}", ex.getMessage());
+        }
 
         Wallet wallet = getOrCreateWallet(updated.getUser());
         WalletMetrics metrics = buildWalletMetrics(updated.getUser(), wallet);

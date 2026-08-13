@@ -42,6 +42,8 @@
   "app.toast.createOrderFailedFor": "Không thể tạo đơn hàng thanh toán cho {{title}}.",
   "app.toast.buySuccess": "Mua thành công!",
   "app.toast.walletShortfall": "Ví không đủ tiền — bạn cần nạp thêm {{amount}} để mua sản phẩm này.",
+  "app.toast.topUpSuccess": "Nạp tiền thành công. Số dư ví của bạn đã được cập nhật.",
+  "app.toast.topUpSuccessResumeCheckout": "Nạp tiền thành công. Bạn có thể tiếp tục thanh toán đơn hàng đang chờ.",
   "app.toast.dataConflict": "Sản phẩm này có thể vừa được mua hoặc có yêu cầu trùng lặp. Vui lòng tải lại trang và kiểm tra lại.",
   "app.toast.walletPurchaseFailed": "Không thể thực hiện mua bằng ví.",
   "app.toast.cancelPaymentSuccess": "Payment session đã được hủy.",

@@ -75,6 +75,22 @@ public class SourceSnapshot {
     @Column(name = "plagiarism_completed_at")
     private Instant plagiarismCompletedAt;
 
+    @Column(name = "pending_title", length = 200)
+    private String pendingTitle;
+
+    @Column(name = "pending_description", columnDefinition = "TEXT")
+    private String pendingDescription;
+
+    @Column(name = "pending_thumbnail_url", columnDefinition = "TEXT")
+    private String pendingThumbnailUrl;
+
+    @Column(name = "pending_video_url", columnDefinition = "TEXT")
+    private String pendingVideoUrl;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "pending_screenshots", columnDefinition = "jsonb")
+    private String pendingScreenshots;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 }

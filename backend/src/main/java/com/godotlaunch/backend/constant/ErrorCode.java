@@ -96,6 +96,7 @@ public enum ErrorCode {
     NOT_GODOT_PROJECT(HttpStatus.UNPROCESSABLE_ENTITY, "Repo không phải là dự án Godot hợp lệ. Cần có file project.godot ở thư mục gốc và các file mã nguồn .gd/.tscn."),
     REPO_NEEDS_BOT(HttpStatus.FORBIDDEN, "Repo này đang ở chế độ private hoặc sai link. Vui lòng mời tài khoản hệ thống vào repo để cấp quyền."),
     SOURCE_NO_CHANGES(HttpStatus.BAD_REQUEST, "Mã nguồn hiện tại trên GitHub không có thay đổi nào mới so với phiên bản hiện tại trên hệ thống."),
+    UPDATE_REQUIRES_CODE_UPDATE(HttpStatus.BAD_REQUEST, "Bạn phải gửi bản cập nhật mã nguồn (Source Code) trước khi chỉnh sửa thông tin hoặc tải lên media mới cho game đã phát hành."),
 
     // Payment
     OWN_PRODUCT_PURCHASE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "You cannot purchase your own marketplace item."),

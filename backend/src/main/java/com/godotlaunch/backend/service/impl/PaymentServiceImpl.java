@@ -44,6 +44,8 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import com.godotlaunch.backend.service.NotificationService;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -75,6 +77,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentGateway paymentGateway;
     private final PlatformSettingsService platformSettingsService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final GameRepository gameRepository;
 
     @Value("${app.frontend-url:http://localhost:3000}")
@@ -160,7 +163,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
         payment.setPaidAt(null);
 
-        return mapToResponse(paymentRepository.save(payment));
+        return mapToResponse(paymentRepository.save(payment), gatewayResponse);
     }
 
     @Override
@@ -198,7 +201,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPayosPaymentLinkId(gatewayResponse.getPaymentLinkId());
         payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
 
-        return mapToResponse(paymentRepository.save(payment));
+        return mapToResponse(paymentRepository.save(payment), gatewayResponse);
     }
 
     @Override
@@ -345,6 +348,45 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentRepository.findTop50ByOrderByCreatedAtDesc().stream()
                 .map(this::safeMapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<UUID, java.util.Map<PaymentStatus, Long>> getPaymentStatusStatsBySeller(UUID sellerId) {
+        java.util.Map<UUID, java.util.Map<PaymentStatus, Long>> result = new java.util.HashMap<>();
+        List<Payment> payments = paymentRepository.findAllProductPurchasePayments();
+
+        for (Payment p : payments) {
+            String ref = p.getPaymentReference();
+            if (!StringUtils.hasText(ref)) continue;
+
+            UUID productId = null;
+            UUID productSellerId = null;
+
+            if (ref.startsWith("BUY_ASSET:")) {
+                try {
+                    productId = UUID.fromString(ref.substring("BUY_ASSET:".length()));
+                    Asset asset = assetRepository.findById(productId).orElse(null);
+                    if (asset != null && asset.getSeller() != null) {
+                        productSellerId = asset.getSeller().getId();
+                    }
+                } catch (Exception ignored) {}
+            } else if (ref.startsWith("BUY_GAME:")) {
+                try {
+                    productId = UUID.fromString(ref.substring("BUY_GAME:".length()));
+                    Game game = gameRepository.findById(productId).orElse(null);
+                    if (game != null && game.getCreator() != null) {
+                        productSellerId = game.getCreator().getId();
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            if (productId != null && sellerId.equals(productSellerId)) {
+                result.computeIfAbsent(productId, k -> new java.util.EnumMap<>(PaymentStatus.class))
+                        .merge(p.getPaymentStatus(), 1L, Long::sum);
+            }
+        }
+        return result;
     }
 
     private Order createOrder(User buyer, Asset item) {
@@ -622,6 +664,112 @@ public class PaymentServiceImpl implements PaymentService {
                 platformTxn.setOrder(order);
                 platformTxn.setDescription("Credit platform wallet with commission fee");
                 transactionRepository.save(platformTxn);
+
+                // Send Realtime Notification to Buyer
+                notificationService.createAndSendNotification(
+                        buyer,
+                        null,
+                        NotificationType.PAYMENT_SUCCESS,
+                        "Bạn đã thanh toán thành công đơn hàng \"" + item.getTitle() + "\" với giá " + payment.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ.",
+                        order.getId().toString()
+                );
+
+                // Send Realtime Notification to Seller
+                notificationService.createAndSendNotification(
+                        item.getSeller(),
+                        buyer,
+                        NotificationType.NEW_SALE,
+                        "Chúc mừng! Người dùng " + (buyer.getFullName() != null ? buyer.getFullName() : buyer.getEmail()) + " vừa mua sản phẩm \"" + item.getTitle() + "\" của bạn.",
+                        item.getId().toString()
+                );
+            }
+        } else if (paymentReference != null && paymentReference.startsWith("BUY_GAME:")) {
+            UUID gameId = UUID.fromString(paymentReference.substring("BUY_GAME:".length()));
+            Game game = gameRepository.findById(gameId)
+                    .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+            User platformAdmin = getPlatformAdmin();
+            Map<UUID, Wallet> wallets = lockWallets(buyer, game.getCreator(), platformAdmin);
+            Wallet buyerWallet = wallets.get(buyer.getId());
+            Wallet sellerWallet = wallets.get(game.getCreator().getId());
+            Wallet platformWallet = wallets.get(platformAdmin.getId());
+            payment.setWallet(buyerWallet);
+
+            Order order = orderRepository.findByBuyerIdAndGameId(buyer.getId(), game.getId()).orElse(null);
+            if (order == null) {
+                order = new Order();
+                order.setBuyer(buyer);
+                order.setGame(game);
+                order.setOrderType(OrderType.source_code_purchase);
+                order.setPricePaid(game.getPriceProposed());
+                order = orderRepository.save(order);
+            }
+
+            if (!transactionRepository.existsByOrderId(order.getId())) {
+                BigDecimal platformCommission = calculatePlatformCommission(payment.getAmount());
+                BigDecimal sellerRevenue = payment.getAmount().subtract(platformCommission);
+
+                WalletBalancePolicy.creditRestricted(buyerWallet, payment.getAmount());
+
+                Transaction sellerTxn = new Transaction();
+                sellerTxn.setWallet(sellerWallet);
+                sellerTxn.setRelatedUser(buyer);
+                sellerTxn.setGame(game);
+                sellerTxn.setAsset(null);
+                sellerTxn.setAmount(sellerRevenue);
+                sellerTxn.setType(TxnType.revenue_share);
+                sellerTxn.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+                sellerTxn.setOrder(order);
+                sellerTxn.setDescription("Credit seller wallet with net sales revenue");
+                transactionRepository.save(sellerTxn);
+
+                WalletBalancePolicy.creditSalesRevenue(sellerWallet, sellerRevenue);
+                walletRepository.save(sellerWallet);
+
+                WalletBalancePolicy.creditRestricted(platformWallet, platformCommission);
+                walletRepository.save(platformWallet);
+
+                WalletBalancePolicy.debitPurchaseRestrictedFirst(buyerWallet, payment.getAmount(), BigDecimal.ZERO);
+                walletRepository.save(buyerWallet);
+
+                Transaction buyerTxn = new Transaction();
+                buyerTxn.setWallet(buyerWallet);
+                buyerTxn.setRelatedUser(game.getCreator());
+                buyerTxn.setGame(game);
+                buyerTxn.setAmount(payment.getAmount().negate());
+                buyerTxn.setType(TxnType.source_code_purchase);
+                buyerTxn.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+                buyerTxn.setOrder(order);
+                buyerTxn.setPayment(payment);
+                transactionRepository.save(buyerTxn);
+
+                Transaction platformTxn = new Transaction();
+                platformTxn.setWallet(platformWallet);
+                platformTxn.setRelatedUser(buyer);
+                platformTxn.setGame(game);
+                platformTxn.setAmount(platformCommission);
+                platformTxn.setType(TxnType.commission);
+                platformTxn.setReferenceId(firstNonBlank(transactionReference, payment.getPaymentReference(), order.getId().toString()));
+                platformTxn.setOrder(order);
+                platformTxn.setDescription("Credit platform wallet with commission fee");
+                transactionRepository.save(platformTxn);
+
+                // Send Realtime Notification to Buyer
+                notificationService.createAndSendNotification(
+                        buyer,
+                        null,
+                        NotificationType.PAYMENT_SUCCESS,
+                        "Bạn đã thanh toán thành công đơn hàng \"" + game.getTitle() + "\" với giá " + payment.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString() + " VNĐ.",
+                        order.getId().toString()
+                );
+
+                // Send Realtime Notification to Seller
+                notificationService.createAndSendNotification(
+                        game.getCreator(),
+                        buyer,
+                        NotificationType.NEW_SALE,
+                        "Chúc mừng! Người dùng " + (buyer.getFullName() != null ? buyer.getFullName() : buyer.getEmail()) + " vừa mua sản phẩm \"" + game.getTitle() + "\" của bạn.",
+                        game.getId().toString()
+                );
             }
         } else if (isTopUpReference(paymentReference)) {
             completeWalletTopUp(payment, buyer, transactionReference);
@@ -666,6 +814,19 @@ public class PaymentServiceImpl implements PaymentService {
         transactionRepository.save(transaction);
 
         sendTopUpConfirmationEmail(buyerWallet.getUser(), payment);
+
+        try {
+            String amountStr = payment.getAmount().setScale(0, RoundingMode.HALF_UP).toPlainString();
+            notificationService.createAndSendNotification(
+                    buyerWallet.getUser(),
+                    null,
+                    NotificationType.PAYMENT_SUCCESS,
+                    "Bạn đã nạp thành công " + amountStr + " VNĐ vào ví tài khoản.",
+                    payment.getId().toString()
+            );
+        } catch (Exception e) {
+            log.warn("Lỗi gửi thông báo Nạp tiền thành công: {}", e.getMessage());
+        }
     }
 
     private BigDecimal calculatePlatformCommission(BigDecimal paymentAmount) {
@@ -889,6 +1050,18 @@ public class PaymentServiceImpl implements PaymentService {
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();
+    }
+
+    private PaymentResponse mapToResponse(
+            Payment payment,
+            PaymentGatewayCreateResponse gatewayResponse
+    ) {
+        PaymentResponse response = mapToResponse(payment);
+        response.setQrCode(gatewayResponse.getQrCode());
+        response.setBin(gatewayResponse.getBin());
+        response.setBankAccountNumber(gatewayResponse.getBankAccountNumber());
+        response.setBankAccountName(gatewayResponse.getBankAccountName());
+        return response;
     }
 
     private PaymentResponse safeMapToResponse(Payment payment) {

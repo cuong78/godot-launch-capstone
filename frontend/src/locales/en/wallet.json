@@ -63,6 +63,8 @@
   "topup.submitting": "Creating payment link...",
   "topup.subtitle": "Add funds via PayOS to purchase items. Top-up funds cannot be withdrawn to a bank account.",
   "topup.title": "Top Up Wallet",
+  "topup.suggestionTitle": "Your order is waiting",
+  "topup.suggestionDescription": "You need {{amount}} more to finish checkout. A suitable amount has been filled in below.",
   "pendingTopup.title": "You have an unfinished top-up",
   "pendingTopup.description": "Amount {{amount}}, created at {{createdAt}}. Continue the payment or cancel it to start a new one.",
   "pendingTopup.resume": "Continue Payment",

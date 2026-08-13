@@ -42,6 +42,8 @@ class AiReviewServiceImplTest {
     @Mock private SourceSnapshotRepository sourceSnapshotRepository;
     @Mock private AuditLogService auditLogService;
     @Mock private ObjectMapper objectMapper;
+    @Mock private com.godotlaunch.backend.service.PlagiarismService plagiarismService;
+    @Mock private com.godotlaunch.backend.service.SourceReviewStatusService sourceReviewStatusService;
 
     @InjectMocks private AiReviewServiceImpl service;
 
@@ -68,8 +70,8 @@ class AiReviewServiceImplTest {
         AiReviewResult result = new AiReviewResult();
         result.setOverallRecommendation("review");
 
-        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
-        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.of(snapshot));
+        when(gameRepository.findForAiReviewById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findForReviewById(snapshotId)).thenReturn(Optional.of(snapshot));
         when(mediaRepository.findByGame_IdAndMediaType(eq(gameId), any())).thenReturn(List.of());
         when(aiReviewClient.review(
                 eq("code"), eq(snapshotId), eq(snapshot.getBundleUrl()),
@@ -99,7 +101,7 @@ class AiReviewServiceImplTest {
     void reviewGameSnapshotAsync_ShouldReturn_WhenGameNotFound() {
         UUID gameId = UUID.randomUUID();
         UUID snapshotId = UUID.randomUUID();
-        when(gameRepository.findById(gameId)).thenReturn(Optional.empty());
+        when(gameRepository.findForAiReviewById(gameId)).thenReturn(Optional.empty());
 
         service.reviewGameSnapshotAsync(gameId, snapshotId);
 
@@ -113,8 +115,8 @@ class AiReviewServiceImplTest {
         Game game = new Game();
         game.setId(gameId);
 
-        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
-        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.empty());
+        when(gameRepository.findForAiReviewById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findForReviewById(snapshotId)).thenReturn(Optional.empty());
 
         service.reviewGameSnapshotAsync(gameId, snapshotId);
 
@@ -131,8 +133,8 @@ class AiReviewServiceImplTest {
         snapshot.setGame(game);
         snapshot.setBundleUrl(null);
 
-        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
-        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.of(snapshot));
+        when(gameRepository.findForAiReviewById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findForReviewById(snapshotId)).thenReturn(Optional.of(snapshot));
 
         service.reviewGameSnapshotAsync(gameId, snapshotId);
 
@@ -193,8 +195,8 @@ class AiReviewServiceImplTest {
         snapshot.setGame(game);
         snapshot.setBundleUrl("http://bundle.zip");
 
-        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
-        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.of(snapshot));
+        when(gameRepository.findForAiReviewById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findForReviewById(snapshotId)).thenReturn(Optional.of(snapshot));
         when(mediaRepository.findByGame_IdAndMediaType(eq(gameId), any())).thenReturn(List.of());
         when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("AI client error"));
@@ -245,8 +247,8 @@ class AiReviewServiceImplTest {
         snapshot.setBundleUrl("http://bundle.zip");
 
         when(sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(gameId)).thenReturn(Optional.of(snapshot));
-        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
-        when(sourceSnapshotRepository.findById(snapshotId)).thenReturn(Optional.of(snapshot));
+        when(gameRepository.findForAiReviewById(gameId)).thenReturn(Optional.of(game));
+        when(sourceSnapshotRepository.findForReviewById(snapshotId)).thenReturn(Optional.of(snapshot));
         when(mediaRepository.findByGame_IdAndMediaType(eq(gameId), any())).thenReturn(List.of());
         when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new AiReviewResult());

@@ -639,6 +639,9 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
   return (
     <div className="space-y-6">
       <div className="rounded-[24px] border border-slate-200/90 bg-white/95 p-6 shadow-[0_18px_44px_rgba(148,163,184,0.14)] backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="font-bold text-slate-900 dark:text-white">Danh sách Yêu cầu Rút tiền</h3>
+        </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px]">
           <input
             type="text"

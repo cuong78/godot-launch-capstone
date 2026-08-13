@@ -11,7 +11,7 @@ interface CheckoutPageProps {
   onClose: () => void;
   onPlaceOrder: () => void;
   onRemoveItem: (id: string) => void;
-  onGoToWallet: () => void;
+  onGoToWallet: (shortfall: number) => void;
 }
 
 const resolveLocale = (language: string) => {
@@ -293,7 +293,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 size="md"
                 className="mt-5 w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-orange-500/10 transition-all duration-300"
                 icon={<Wallet2 size={16} />}
-                onClick={onGoToWallet}
+                onClick={() =>
+                  onGoToWallet(Math.max(totalAmount - spendableBalance, 0))
+                }
               >
                 {t('payment:checkout.wallet.topUpAction')}
               </Button>

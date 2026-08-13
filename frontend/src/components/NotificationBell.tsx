@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, Check, MessageSquare, Heart, Share2, CornerDownRight, ShieldAlert } from 'lucide-react';
+import { 
+  Bell, Check, ShieldAlert, ShoppingBag, DollarSign, Wallet, CreditCard, 
+  Star, FileWarning, CheckCircle2 
+} from 'lucide-react';
 import { useWebSocket } from '../context/WebSocketContext';
 import { NotificationResponse } from '../types';
 import { PROFILE_AVATAR_YOU } from '../../assets/images';
@@ -38,15 +41,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const formatNotificationTimestamp = (value: string) => {
+    if (!value) return '';
     const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      return value;
-    }
-
+    if (isNaN(parsed.getTime())) return '';
     return new Intl.DateTimeFormat(locale, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
+      month: 'short',
+      day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     }).format(parsed);
@@ -71,24 +71,58 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       await markNotificationAsRead(notif.id);
     }
     
-    // 2. Perform redirect navigation
+    // 2. Perform intelligent redirect navigation
     if (notif.targetId) {
-      setSelectedAssetId(notif.targetId);
-      setCurrentScreen('detail');
+      switch (notif.type) {
+        case 'CONTRACT_OFFERED':
+        case 'SELLER_RESPONSE':
+        case 'GAME_REVIEW_RESULT':
+        case 'NEW_SALE':
+        case 'SECURITY_ALERT':
+        case 'STORE_PUBLISH_RESULT':
+          setCurrentScreen('dashboard');
+          break;
+        case 'WITHDRAWAL_RESULT':
+          setCurrentScreen('wallet');
+          break;
+        case 'WITHDRAWAL_REQUEST':
+        case 'PLAGIARISM_ALERT':
+          setCurrentScreen('admin');
+          break;
+        case 'PAYMENT_SUCCESS':
+          setCurrentScreen('payment');
+          break;
+        case 'NEW_REVIEW':
+        case 'REVIEW_REMOVED':
+        default:
+          setSelectedAssetId(notif.targetId);
+          setCurrentScreen('detail');
+          break;
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'COMMENT':
-        return <MessageSquare className="w-3.5 h-3.5 text-sky-400" />;
-      case 'REACTION':
-        return <Heart className="w-3.5 h-3.5 text-rose-500 fill-current" />;
-      case 'SHARE':
-        return <Share2 className="w-3.5 h-3.5 text-amber-500" />;
-      case 'CHAT_MESSAGE':
-        return <CornerDownRight className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'PAYMENT_SUCCESS':
+        return <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'NEW_SALE':
+        return <DollarSign className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'WITHDRAWAL_REQUEST':
+        return <Wallet className="w-3.5 h-3.5 text-amber-400" />;
+      case 'WITHDRAWAL_RESULT':
+        return <CreditCard className="w-3.5 h-3.5 text-sky-400" />;
+      case 'NEW_REVIEW':
+        return <Star className="w-3.5 h-3.5 text-amber-400 fill-current" />;
+      case 'SECURITY_ALERT':
+        return <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />;
+      case 'PLAGIARISM_ALERT':
+        return <FileWarning className="w-3.5 h-3.5 text-amber-500" />;
+      case 'STORE_PUBLISH_RESULT':
+        return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />;
+      case 'REVIEW_REMOVED':
+        return <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />;
       default:
         return <Bell className="w-3.5 h-3.5 text-slate-400" />;
     }
@@ -150,8 +184,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                   <div className="w-8.5 h-8.5 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-800/60 shrink-0">
                     <img 
                       referrerPolicy="no-referrer" 
-                      src={notif.sender.avatarUrl || PROFILE_AVATAR_YOU} 
-                      alt={notif.sender.fullName} 
+                      src={notif.sender?.avatarUrl || PROFILE_AVATAR_YOU} 
+                      alt={notif.sender?.fullName || 'GodotLaunch'} 
                       className="w-full h-full object-cover"
                     />
                   </div>

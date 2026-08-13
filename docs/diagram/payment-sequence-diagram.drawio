@@ -1,0 +1,287 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.0" type="device">
+  <diagram id="payment-sequence" name="Payment Sequence Diagram">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="3.6.5 Payment Sequence Diagram" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=3;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="30" y="10" width="360" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Participants -->
+        <mxCell id="participant-buyer" value="BUYER" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontStyle=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="60" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="participant-frontend" value="FRONTEND" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontStyle=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="305" y="60" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="participant-order" value="ORDER SERVICE" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontStyle=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="555" y="60" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="participant-payment" value="PAYMENT SERVICE" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontStyle=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="805" y="60" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="participant-database" value="DATABASE" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontStyle=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1055" y="60" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="participant-payos" value="PAYOS" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontStyle=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1305" y="60" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Lifelines -->
+        <mxCell id="lifeline-buyer" style="edgeStyle=none;html=1;dashed=1;dashPattern=4 4;startArrow=none;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="110" as="sourcePoint" />
+            <mxPoint x="130" y="1410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lifeline-frontend" style="edgeStyle=none;html=1;dashed=1;dashPattern=4 4;startArrow=none;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="110" as="sourcePoint" />
+            <mxPoint x="380" y="1410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lifeline-order" style="edgeStyle=none;html=1;dashed=1;dashPattern=4 4;startArrow=none;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="630" y="110" as="sourcePoint" />
+            <mxPoint x="630" y="1410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lifeline-payment" style="edgeStyle=none;html=1;dashed=1;dashPattern=4 4;startArrow=none;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="110" as="sourcePoint" />
+            <mxPoint x="880" y="1410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lifeline-database" style="edgeStyle=none;html=1;dashed=1;dashPattern=4 4;startArrow=none;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="110" as="sourcePoint" />
+            <mxPoint x="1130" y="1410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lifeline-payos" style="edgeStyle=none;html=1;dashed=1;dashPattern=4 4;startArrow=none;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1380" y="110" as="sourcePoint" />
+            <mxPoint x="1380" y="1410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Combined fragments -->
+        <mxCell id="frame-balance" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="30" y="300" width="1450" height="1080" as="geometry" />
+        </mxCell>
+        <mxCell id="label-alt-balance" value="alt [Sufficient wallet balance]" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="42" y="304" width="280" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="separator-balance" style="edgeStyle=none;html=1;dashed=1;startArrow=none;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="30" y="510" as="sourcePoint" />
+            <mxPoint x="1480" y="510" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-else-balance" value="else [Insufficient wallet balance]" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="42" y="514" width="290" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="frame-confirmation" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="285" y="970" width="1120" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="label-alt-webhook" value="alt [PayOS webhook]" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="297" y="974" width="220" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="separator-confirmation" style="edgeStyle=none;html=1;dashed=1;startArrow=none;endArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="285" y="1038" as="sourcePoint" />
+            <mxPoint x="1405" y="1038" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-else-confirmation" value="else [Frontend confirmation fallback]" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="297" y="1042" width="300" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- Initial purchase request -->
+        <mxCell id="m-select-checkout" value="Select product and checkout" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="150" as="sourcePoint" />
+            <mxPoint x="380" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-create-order" value="POST /api/orders" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="190" as="sourcePoint" />
+            <mxPoint x="630" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-validate-balance" value="Validate item and check wallet balance" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="630" y="230" as="sourcePoint" />
+            <mxPoint x="1130" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-purchase-data" value="Purchase data and spendable balance" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="270" as="sourcePoint" />
+            <mxPoint x="630" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Sufficient balance branch -->
+        <mxCell id="m-settle-purchase" value="Process wallet purchase atomically" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="630" y="350" as="sourcePoint" />
+            <mxPoint x="1130" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-purchase-created" value="Order and PAID Payment created" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="390" as="sourcePoint" />
+            <mxPoint x="630" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-order-success" value="orderId / purchase success" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="630" y="430" as="sourcePoint" />
+            <mxPoint x="380" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-grant-access" value="Grant ownership and download access" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="470" as="sourcePoint" />
+            <mxPoint x="130" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Insufficient balance and PayOS top-up branch -->
+        <mxCell id="m-insufficient" value="INSUFFICIENT_BALANCE" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="630" y="555" as="sourcePoint" />
+            <mxPoint x="380" y="555" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-request-topup" value="Request wallet top-up" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="595" as="sourcePoint" />
+            <mxPoint x="130" y="595" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-enter-amount" value="Enter top-up amount" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="635" as="sourcePoint" />
+            <mxPoint x="380" y="635" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-create-topup" value="POST /api/v1/payments/topup" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="675" as="sourcePoint" />
+            <mxPoint x="880" y="675" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-save-pending" value="Create PENDING top-up Payment" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="715" as="sourcePoint" />
+            <mxPoint x="1130" y="715" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-create-link" value="Create payment link" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="755" as="sourcePoint" />
+            <mxPoint x="1380" y="755" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-checkout-url" value="checkoutUrl" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1380" y="795" as="sourcePoint" />
+            <mxPoint x="880" y="795" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-save-gateway" value="Save orderCode and checkoutUrl" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="835" as="sourcePoint" />
+            <mxPoint x="1130" y="835" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-return-checkout" value="checkoutUrl" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="875" as="sourcePoint" />
+            <mxPoint x="380" y="875" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-redirect-payos" value="Redirect to PayOS" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="915" as="sourcePoint" />
+            <mxPoint x="130" y="915" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-complete-payment" value="Complete payment" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="955" as="sourcePoint" />
+            <mxPoint x="1380" y="955" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Webhook or frontend confirmation -->
+        <mxCell id="m-webhook" value="POST /api/v1/payments/webhook" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1380" y="1010" as="sourcePoint" />
+            <mxPoint x="880" y="1010" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-success-redirect" value="Redirect /payment/success" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1380" y="1075" as="sourcePoint" />
+            <mxPoint x="380" y="1075" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-confirm-payment" value="POST /payments/{paymentId}/confirm" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="1110" as="sourcePoint" />
+            <mxPoint x="880" y="1110" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Payment finalization -->
+        <mxCell id="m-query-status" value="Query authoritative payment status" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="1155" as="sourcePoint" />
+            <mxPoint x="1380" y="1155" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-paid-status" value="PAID" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1380" y="1195" as="sourcePoint" />
+            <mxPoint x="880" y="1195" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-credit-wallet" value="Credit wallet and mark Payment PAID" style="edgeStyle=none;html=1;endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="1235" as="sourcePoint" />
+            <mxPoint x="1130" y="1235" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-committed" value="Committed" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="1275" as="sourcePoint" />
+            <mxPoint x="880" y="1275" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-payment-paid" value="Payment PAID" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="1315" as="sourcePoint" />
+            <mxPoint x="380" y="1315" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m-retry-checkout" value="Wallet updated; retry checkout" style="edgeStyle=none;html=1;dashed=1;endArrow=open;endFill=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="1355" as="sourcePoint" />
+            <mxPoint x="130" y="1355" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="architecture-note" value="Current frontend behavior: product purchases use wallet balance; PayOS is used for wallet top-ups." style="shape=note;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;size=15;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="505" y="1425" width="590" height="45" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -72,6 +72,7 @@ export type ScreenType =
   | "author-profile"
   | "checkout"
   | "payment"
+  | "payment-qr"
   | "payment-success"
   | "payment-failed"
   | "payment-cancelled"
@@ -118,6 +119,10 @@ export interface ProductSalesResponse {
   thumbnailUrl?: string | null;
   unitsSold: number;
   revenue: number;
+  pendingCount?: number;
+  failedCount?: number;
+  cancelledCount?: number;
+  expiredCount?: number;
 }
 
 export interface DeveloperSalesStatsResponse {
@@ -496,6 +501,11 @@ export interface GameResponse {
   githubBranch?: string;
   pendingUpdateSnapshotId?: string;
   pendingUpdateFileUrl?: string;
+  pendingTitle?: string;
+  pendingDescription?: string;
+  pendingThumbnailUrl?: string;
+  pendingVideoUrl?: string;
+  pendingScreenshots?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -618,6 +628,10 @@ export interface PaymentResponse {
   payosPaymentLinkId?: string | null;
   payosTransactionId?: string | null;
   checkoutUrl?: string | null;
+  qrCode?: string | null;
+  bin?: string | null;
+  bankAccountNumber?: string | null;
+  bankAccountName?: string | null;
   paymentReference?: string | null;
   paidAt?: string | null;
   downloadUrl?: string | null;
@@ -638,7 +652,21 @@ export type NotificationType =
   | "COMMENT"
   | "REACTION"
   | "SHARE"
-  | "CHAT_MESSAGE";
+  | "CHAT_MESSAGE"
+  | "PAYMENT_SUCCESS"
+  | "NEW_SALE"
+  | "GAME_REVIEW_RESULT"
+  | "CONTRACT_OFFERED"
+  | "SELLER_RESPONSE"
+  | "REVIEW_REMOVED"
+  | "NEW_REVIEW"
+  | "WITHDRAWAL_REQUEST"
+  | "WITHDRAWAL_RESULT"
+  | "REPLY_COMMENT"
+  | "SECURITY_ALERT"
+  | "PLAGIARISM_ALERT"
+  | "STORE_PUBLISH_RESULT"
+  | (string & {});
 
 export interface NotificationResponse {
   id: string;

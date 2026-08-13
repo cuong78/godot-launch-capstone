@@ -8,6 +8,8 @@ import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.GameVersionRepository;
+import com.godotlaunch.backend.repository.SourceSnapshotRepository;
+import com.godotlaunch.backend.entity.SourceSnapshot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,9 @@ class AsyncVirusScanServiceTest {
 
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private SourceSnapshotRepository sourceSnapshotRepository;
 
     @InjectMocks
     private AsyncVirusScanService asyncVirusScanService;
@@ -205,5 +210,24 @@ class AsyncVirusScanServiceTest {
 
         // Assert
         verifyNoInteractions(clamAVService);
+    }
+
+    @Test
+    @DisplayName("shouldSaveToPendingSnapshot_WhenCleanAndLive")
+    void shouldSaveToPendingSnapshot_WhenCleanAndLive() {
+        // Arrange
+        mockGame.setStatus(GameStatus.published);
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(mockGame));
+        when(seaweedFsService.getObjectStream("game.zip")).thenReturn(new ByteArrayInputStream(new byte[0]));
+        when(clamAVService.scanStream(any())).thenReturn(true);
+        when(seaweedFsService.getFileUrl("game.zip")).thenReturn("http://file-url");
+        when(sourceSnapshotRepository.save(any(SourceSnapshot.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // Act
+        asyncVirusScanService.scanAndProcessGame(gameId, "game.zip");
+
+        // Assert
+        verify(sourceSnapshotRepository, times(1)).save(any(SourceSnapshot.class));
+        verify(gameRepository, times(1)).save(mockGame);
     }
 }

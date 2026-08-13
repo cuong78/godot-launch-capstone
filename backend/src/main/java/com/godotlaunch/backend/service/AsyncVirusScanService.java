@@ -8,6 +8,8 @@ import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.GameVersionRepository;
 import com.godotlaunch.backend.util.SafeZipUnpacker;
 import com.godotlaunch.backend.util.VersionUtils;
+import com.godotlaunch.backend.entity.SourceSnapshot;
+import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.godotlaunch.backend.entity.Game;
@@ -36,6 +38,7 @@ public class AsyncVirusScanService {
     private final GameVersionRepository gameVersionRepository;
     private final AssetRepository assetRepository;
     private final AuditLogService auditLogService;
+    private final SourceSnapshotRepository sourceSnapshotRepository;
 
     /**
      * Thực hiện kiểm duyệt tệp tin ZIP tải lên từ storage bất đồng bộ (Background thread).
@@ -90,12 +93,30 @@ public class AsyncVirusScanService {
                 SafeZipUnpacker.unzipSafely(inputStream, tempDir);
             }
 
-            // Sạch và hợp lệ -> chuyển trạng thái sang PENDING để Admin duyệt thủ công
-            updateGameStatus(gameId, GameStatus.pending);
-
-            // Cập nhật hoặc nâng cấp GameVersion
+            // Sạch và hợp lệ
             String fileUrl = seaweedFsService.getFileUrl(objectKey);
-            VersionUtils.updateGameVersionFile(game, fileUrl, gameVersionRepository);
+            boolean isLive = game.getStatus() == GameStatus.published
+                    || game.getStatus() == GameStatus.approved
+                    || game.getStatus() == GameStatus.awaiting_store_build;
+
+            if (isLive) {
+                // Tạo hoặc cập nhật pending snapshot
+                SourceSnapshot snap = game.getPendingUpdateSnapshot();
+                if (snap == null) {
+                    snap = new SourceSnapshot();
+                    snap.setGame(game);
+                    snap.setCommitSha("ZIP_UPLOAD");
+                    snap.setBundleHash("ZIP_UPLOAD_HASH");
+                }
+                snap.setBundleUrl(fileUrl);
+                snap = sourceSnapshotRepository.save(snap);
+
+                game.setPendingUpdateSnapshot(snap);
+                gameRepository.save(game);
+            } else {
+                updateGameStatus(gameId, GameStatus.pending);
+                VersionUtils.updateGameVersionFile(game, fileUrl, gameVersionRepository);
+            }
 
             auditLogService.publish(
                     game.getCreator().getId(),
@@ -103,9 +124,10 @@ public class AsyncVirusScanService {
                     AuditAction.game_submitted,
                     AuditTarget.game,
                     gameId,
-                    GameStatus.draft.name(),
-                    GameStatus.pending.name(),
-                    "Game '" + game.getTitle() + "' successfully verified and submitted for review.",
+                    isLive ? game.getStatus().name() : GameStatus.draft.name(),
+                    isLive ? game.getStatus().name() : GameStatus.pending.name(),
+                    isLive ? "Bản cập nhật game '" + game.getTitle() + "' qua tệp ZIP đã được quét bảo mật và chờ duyệt."
+                            : "Game '" + game.getTitle() + "' successfully verified and submitted for review.",
                     null
             );
 

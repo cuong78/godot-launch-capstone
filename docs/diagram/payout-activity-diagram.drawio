@@ -1,0 +1,171 @@
+<mxfile host="app.diagrams.net" agent="Codex" version="26.0.0" type="device">
+  <diagram id="payout-activity" name="Payout Activity Diagram">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="3.6.4 Payout Activity Diagram" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=3;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lane-developer" value="DEVELOPER" style="swimlane;horizontal=1;startSize=30;collapsible=0;html=1;whiteSpace=wrap;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;swimlaneFillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="20" y="50" width="250" height="1210" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-system" value="SYSTEM" style="swimlane;horizontal=1;startSize=30;collapsible=0;html=1;whiteSpace=wrap;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;swimlaneFillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="270" y="50" width="520" height="1210" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-admin" value="ADMIN" style="swimlane;horizontal=1;startSize=30;collapsible=0;html=1;whiteSpace=wrap;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;swimlaneFillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="790" y="50" width="250" height="1210" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-gateway" value="PAYOUT GATEWAY" style="swimlane;horizontal=1;startSize=30;collapsible=0;html=1;whiteSpace=wrap;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;swimlaneFillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="50" width="320" height="1210" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="133" y="90" width="24" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="submit" value="Submit withdrawal request" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="55" y="145" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="validate" value="Validate amount, bank details,&lt;br&gt;and withdrawable balance" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="145" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="valid" value="Request valid?" style="rhombus;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="480" y="225" width="100" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="validation-error" value="Display validation error" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="55" y="240" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="end-invalid" value="" style="ellipse;shape=endState;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="133" y="315" width="24" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pending" value="Create PENDING withdrawal&lt;br&gt;and reserve withdrawable funds" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="340" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="cooling" value="Wait configured&lt;br&gt;cooling-off period" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="440" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="eligible" value="Eligible for automatic&lt;br&gt;payout?" style="rhombus;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="480" y="525" width="100" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="held" value="Keep withdrawal PENDING" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="300" y="645" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="view-pending" value="View pending or held status" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="55" y="645" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="end-pending" value="" style="ellipse;shape=endState;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="133" y="720" width="24" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="create-payout" value="Check payout balance&lt;br&gt;and create PayOS payout" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="580" y="645" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gateway-execute" value="Create payout order&lt;br&gt;and execute bank transfer" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="725" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="processing" value="Save payout ID and mark&lt;br&gt;withdrawal PROCESSING" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="420" y="805" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="admin-sync" value="Optional manual&lt;br&gt;status synchronization" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="825" y="810" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gateway-status" value="Return payout status" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="895" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="result" value="Payout successful?" style="rhombus;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="480" y="925" width="100" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="failed" value="Mark FAILED&lt;br&gt;Wallet remains unchanged" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1040" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="completed" value="Debit wallet, create Transaction,&lt;br&gt;and mark COMPLETED" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="590" y="1040" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="view-final" value="View final payout status" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="55" y="1135" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="end" value="" style="ellipse;shape=endState;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="133" y="1210" width="24" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e-start-submit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="start" target="submit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-submit-validate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="submit" target="validate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-validate-valid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="validate" target="valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-valid-no" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="valid" target="validation-error">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-error-end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="validation-error" target="end-invalid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-valid-yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="valid" target="pending">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-pending-cooling" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="pending" target="cooling">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-cooling-eligible" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="cooling" target="eligible">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-eligible-no" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="eligible" target="held">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-held-view" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="held" target="view-pending">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-view-pending-end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="view-pending" target="end-pending">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-eligible-yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="eligible" target="create-payout">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-create-execute" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="create-payout" target="gateway-execute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-execute-processing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="gateway-execute" target="processing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-processing-status" value="Auto-poll every 30s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="processing" target="gateway-status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-processing-admin" value="Optional" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="processing" target="admin-sync">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-admin-status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="admin-sync" target="gateway-status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-status-result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="gateway-status" target="result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-result-no" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="result" target="failed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-result-yes" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="result" target="completed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-failed-view" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="failed" target="view-final">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-completed-view" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="completed" target="view-final">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="685" y="1160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-view-end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="view-final" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -42,6 +42,10 @@ public class PaymentResponse {
     private String payosPaymentLinkId;
     private String payosTransactionId;
     private String checkoutUrl;
+    private String qrCode;
+    private String bin;
+    private String bankAccountNumber;
+    private String bankAccountName;
     private String paymentReference;
     private Instant paidAt;
     private String downloadUrl;

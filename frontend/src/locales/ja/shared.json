@@ -42,6 +42,8 @@
   "app.toast.createOrderFailedFor": "Unable to create a payment order for {{title}}.",
   "app.toast.buySuccess": "Purchase completed successfully!",
   "app.toast.walletShortfall": "Wallet balance is insufficient — you need to top up {{amount}} to buy this product.",
+  "app.toast.topUpSuccess": "チャージが完了し、ウォレット残高が更新されました。",
+  "app.toast.topUpSuccessResumeCheckout": "チャージが完了しました。保留中の注文を続けられます。",
   "app.toast.dataConflict": "This product may have just been purchased already or has a duplicate request. Please reload the page and check again.",
   "app.toast.walletPurchaseFailed": "Unable to complete wallet purchase.",
   "app.toast.cancelPaymentSuccess": "Payment session has been cancelled.",

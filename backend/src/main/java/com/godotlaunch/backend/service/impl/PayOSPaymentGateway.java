@@ -65,6 +65,9 @@ public class PayOSPaymentGateway implements PaymentGateway {
                     .paymentLinkId(response.getPaymentLinkId())
                     .checkoutUrl(response.getCheckoutUrl())
                     .qrCode(response.getQrCode())
+                    .bin(response.getBin())
+                    .bankAccountNumber(response.getAccountNumber())
+                    .bankAccountName(response.getAccountName())
                     .status(mapStatus(response.getStatus()))
                     .build();
         } catch (Exception ex) {
