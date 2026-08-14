@@ -5,6 +5,7 @@ export type ToastType = 'info' | 'success' | 'warning' | 'error';
 
 export interface ToastContextType {
   showToast: (message: string, type?: ToastType) => void;
+  showConfirm: (message: string, onConfirm: () => void, onCancel?: () => void) => void;
 }
 
 export const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -26,9 +27,18 @@ const TOAST_DURATION_MS = 5000;
  */
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    message: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  } | null>(null);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
     setToast({ message, type });
+  }, []);
+
+  const showConfirm = useCallback((message: string, onConfirm: () => void, onCancel?: () => void) => {
+    setConfirmConfig({ message, onConfirm, onCancel });
   }, []);
 
   useEffect(() => {
@@ -38,7 +48,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [toast]);
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, showConfirm }}>
       {children}
       {toast && (
         <div
@@ -69,6 +79,47 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           >
             <X className="h-4 w-4" />
           </button>
+        </div>
+      )}
+      {confirmConfig && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-amber-500/20 bg-white dark:bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-500 mb-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+              </div>
+              <h3 className="text-base font-bold text-slate-850 dark:text-white">
+                Xác nhận hành động
+              </h3>
+            </div>
+            
+            <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed mb-6">
+              {confirmConfig.message}
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmConfig.onCancel) confirmConfig.onCancel();
+                  setConfirmConfig(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold border border-slate-300 dark:border-slate-750 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-xl transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  confirmConfig.onConfirm();
+                  setConfirmConfig(null);
+                }}
+                className="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-450 text-slate-950 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </ToastContext.Provider>

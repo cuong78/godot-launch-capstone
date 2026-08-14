@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { bannerApi, BannerPayload, BannerResponse } from '../../api/bannerApi';
+import { useToast } from '../../hooks/useToast';
 
 const EMPTY_FORM: BannerPayload = {
   title: '',
@@ -24,6 +25,7 @@ const getErrorMessage = (error: any, fallback: string) =>
 
 export const AdminBannerPanel: React.FC = () => {
   const { t } = useTranslation(['admin']);
+  const { showConfirm } = useToast();
   const [banners, setBanners] = React.useState<BannerResponse[]>([]);
   const [form, setForm] = React.useState<BannerPayload>(EMPTY_FORM);
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -130,20 +132,21 @@ export const AdminBannerPanel: React.FC = () => {
     }
   };
 
-  const handleDelete = async (banner: BannerResponse) => {
-    if (!window.confirm(t('bannerPanel.deleteConfirm', { title: banner.title }))) return;
-    setError(null);
-    try {
-      const response = await bannerApi.deleteBanner(banner.id);
-      if (!response.success) {
-        throw new Error(response.message || t('bannerPanel.deleteError'));
+  const handleDelete = (banner: BannerResponse) => {
+    showConfirm(t('bannerPanel.deleteConfirm', { title: banner.title }), async () => {
+      setError(null);
+      try {
+        const response = await bannerApi.deleteBanner(banner.id);
+        if (!response.success) {
+          throw new Error(response.message || t('bannerPanel.deleteError'));
+        }
+        if (editingId === banner.id) resetForm();
+        setSuccess(t('bannerPanel.deleteSuccess'));
+        await loadBanners();
+      } catch (deleteError) {
+        setError(getErrorMessage(deleteError, t('bannerPanel.deleteError')));
       }
-      if (editingId === banner.id) resetForm();
-      setSuccess(t('bannerPanel.deleteSuccess'));
-      await loadBanners();
-    } catch (deleteError) {
-      setError(getErrorMessage(deleteError, t('bannerPanel.deleteError')));
-    }
+    });
   };
 
   return (

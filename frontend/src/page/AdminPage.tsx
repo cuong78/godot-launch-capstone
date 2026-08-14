@@ -431,7 +431,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   currentUser,
 }) => {
   const { t, i18n } = useTranslation(["admin"]);
-  const { showToast } = useToast();
+  const { showToast, showConfirm } = useToast();
   const locale = useMemo(
     () => resolveLocale(i18n.resolvedLanguage || i18n.language || "vi"),
     [i18n.language, i18n.resolvedLanguage],
@@ -1110,38 +1110,36 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  const handleApproveGame = async (game: GameResponse) => {
+  const handleApproveGame = (game: GameResponse) => {
     if (!game.publishingType || game.publishingType === "marketplace_listing") {
-      if (
-        !window.confirm(
-          t("moderationQueue.messages.approveGameConfirm", {
-            title: game.title,
-          }),
-        )
-      ) {
-        return;
-      }
-      try {
-        const res = await gameApi.approveGame(game.id);
-        if (res.success) {
-          showToast(
-            t("moderationQueue.messages.approveGameSuccess", {
-              title: game.title,
-            }),
-            'success',
-          );
-          fetchPendingGamesAndContracts();
-        } else {
-          showToast(res.message || t("errors.approveGame"), 'error');
+      showConfirm(
+        t("moderationQueue.messages.approveGameConfirm", {
+          title: game.title,
+        }),
+        async () => {
+          try {
+            const res = await gameApi.approveGame(game.id);
+            if (res.success) {
+              showToast(
+                t("moderationQueue.messages.approveGameSuccess", {
+                  title: game.title,
+                }),
+                'success',
+              );
+              fetchPendingGamesAndContracts();
+            } else {
+              showToast(res.message || t("errors.approveGame"), 'error');
+            }
+          } catch (err: any) {
+            showToast(
+              err.response?.data?.message ||
+              err.message ||
+              t("errors.approveGame"),
+              'error',
+            );
+          }
         }
-      } catch (err: any) {
-        showToast(
-            err.response?.data?.message ||
-            err.message ||
-            t("errors.approveGame"),
-            'error',
-        );
-      }
+      );
     } else {
       // Contract-based game: Open contract creation modal directly upon approval!
       handleOpenContractModal(game);
@@ -1207,39 +1205,37 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleApproveMarketplaceItem = async (
+  const handleApproveMarketplaceItem = (
     item: MarketplaceItemResponse,
   ) => {
-    if (
-      !window.confirm(
-        t("moderationQueue.messages.approveAssetConfirm", {
-          title: item.title,
-        }),
-      )
-    ) {
-      return;
-    }
-    try {
-      const res = await marketplaceApi.approveMarketplaceItem(item.id);
-      if (res.success) {
-        showToast(
-          t("moderationQueue.messages.approveAssetSuccess", {
-            title: item.title,
-          }),
-          'success',
-        );
-        fetchPendingMarketplaceItems();
-      } else {
-        showToast(res.message || t("errors.approveMarketplaceItem"), 'error');
+    showConfirm(
+      t("moderationQueue.messages.approveAssetConfirm", {
+        title: item.title,
+      }),
+      async () => {
+        try {
+          const res = await marketplaceApi.approveMarketplaceItem(item.id);
+          if (res.success) {
+            showToast(
+              t("moderationQueue.messages.approveAssetSuccess", {
+                title: item.title,
+              }),
+              'success',
+            );
+            fetchPendingMarketplaceItems();
+          } else {
+            showToast(res.message || t("errors.approveMarketplaceItem"), 'error');
+          }
+        } catch (err: any) {
+          showToast(
+            err.response?.data?.message ||
+              err.message ||
+              t("errors.approveMarketplaceItem"),
+            'error',
+          );
+        }
       }
-    } catch (err: any) {
-      showToast(
-        err.response?.data?.message ||
-          err.message ||
-          t("errors.approveMarketplaceItem"),
-        'error',
-      );
-    }
+    );
   };
 
   const handleRejectMarketplaceItem = (id: string, title: string) => {

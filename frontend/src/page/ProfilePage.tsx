@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { userApi } from '../api/userApi';
 import { authApi } from '../api/authApi';
 import { tokenStorage } from '../utils/tokenStorage';
@@ -40,6 +41,7 @@ interface ProfilePageProps {
 export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
   const { currentUser, updateUser } = useAuth();
   const { t } = useTranslation(['profile']);
+  const { showConfirm } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState(currentUser?.fullName || '');
@@ -102,29 +104,30 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
     }
   };
 
-  const handleUnlinkGitHub = async () => {
-    if (!window.confirm(t('confirm.unlinkGithub'))) return;
-    setIsUnlinking(true);
-    setStatusMessage(null);
-    try {
-      const res = await userApi.unlinkGitHub();
-      if (res.success && res.data) {
-        tokenStorage.setToken(res.data.token);
-        localStorage.setItem("accessToken", res.data.token);
-        updateUser(res.data.user);
-        setStatusMessage({ type: 'success', text: t('messages.githubUnlinked') });
-        setGithubStatus({ linked: false, githubUsername: null, githubLinkedAt: null });
-      } else {
-        setStatusMessage({ type: 'error', text: res.message || t('errors.unlinkGithub') });
+  const handleUnlinkGitHub = () => {
+    showConfirm(t('confirm.unlinkGithub'), async () => {
+      setIsUnlinking(true);
+      setStatusMessage(null);
+      try {
+        const res = await userApi.unlinkGitHub();
+        if (res.success && res.data) {
+          tokenStorage.setToken(res.data.token);
+          localStorage.setItem("accessToken", res.data.token);
+          updateUser(res.data.user);
+          setStatusMessage({ type: 'success', text: t('messages.githubUnlinked') });
+          setGithubStatus({ linked: false, githubUsername: null, githubLinkedAt: null });
+        } else {
+          setStatusMessage({ type: 'error', text: res.message || t('errors.unlinkGithub') });
+        }
+      } catch (err: any) {
+        setStatusMessage({ 
+          type: 'error', 
+          text: err.response?.data?.message || err.message || t('errors.unlinkGithub')
+        });
+      } finally {
+        setIsUnlinking(false);
       }
-    } catch (err: any) {
-      setStatusMessage({ 
-        type: 'error', 
-        text: err.response?.data?.message || err.message || t('errors.unlinkGithub')
-      });
-    } finally {
-      setIsUnlinking(false);
-    }
+    });
   };
 
   if (!currentUser) {

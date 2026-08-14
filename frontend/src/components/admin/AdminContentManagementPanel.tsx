@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AdminBannerPanel } from './AdminBannerPanel';
 import { AdminReviewManagementPanel } from './AdminReviewManagementPanel';
+import { useToast } from '../../hooks/useToast';
 import {
   contentApi,
   ContentCategory,
@@ -134,6 +135,7 @@ const getCategoryTypeLabel = (type: string, t: (key: string) => string) =>
 
 export const AdminContentManagementPanel: React.FC = () => {
   const { t } = useTranslation(['admin']);
+  const { showConfirm } = useToast();
   const [tab, setTab] = React.useState<Tab>('layout');
   const [collections, setCollections] = React.useState<ContentCollection[]>([]);
   const [sections, setSections] = React.useState<HomepageSection[]>([]);
@@ -232,18 +234,19 @@ export const AdminContentManagementPanel: React.FC = () => {
     }
   };
 
-  const deleteCollection = async (item: ContentCollection) => {
-    if (!window.confirm(t('contentPanel.collections.deleteConfirm', { title: item.title }))) return;
-    setBusyKey(`collection-delete-${item.id}`);
-    setError('');
-    try {
-      await contentApi.deleteCollection(item.id);
-      await load();
-    } catch (err: any) {
-      setError(getErrorMessage(err, t('contentPanel.errors.deleteCollection')));
-    } finally {
-      setBusyKey('');
-    }
+  const deleteCollection = (item: ContentCollection) => {
+    showConfirm(t('contentPanel.collections.deleteConfirm', { title: item.title }), async () => {
+      setBusyKey(`collection-delete-${item.id}`);
+      setError('');
+      try {
+        await contentApi.deleteCollection(item.id);
+        await load();
+      } catch (err: any) {
+        setError(getErrorMessage(err, t('contentPanel.errors.deleteCollection')));
+      } finally {
+        setBusyKey('');
+      }
+    });
   };
 
   const saveSection = async (section: HomepageSection, patch: Partial<HomepageSection> = {}, reload = true) => {
@@ -311,19 +314,20 @@ export const AdminContentManagementPanel: React.FC = () => {
     window.requestAnimationFrame(() => document.getElementById('tag-editor')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   };
 
-  const deleteTag = async (item: ContentTag) => {
-    if (!window.confirm(t('contentPanel.tags.deleteConfirm', { name: item.name }))) return;
-    setBusyKey(`tag-delete-${item.id}`);
-    setError('');
-    try {
-      await contentApi.deleteTag(item.id);
-      if (tagForm.id === item.id) setTagForm({ id: '', name: '', nameVi: '', nameEn: '', nameJa: '', slug: '' });
-      await load();
-    } catch (err: any) {
-      setError(getErrorMessage(err, t('contentPanel.errors.deleteTag')));
-    } finally {
-      setBusyKey('');
-    }
+  const deleteTag = (item: ContentTag) => {
+    showConfirm(t('contentPanel.tags.deleteConfirm', { name: item.name }), async () => {
+      setBusyKey(`tag-delete-${item.id}`);
+      setError('');
+      try {
+        await contentApi.deleteTag(item.id);
+        if (tagForm.id === item.id) setTagForm({ id: '', name: '', nameVi: '', nameEn: '', nameJa: '', slug: '' });
+        await load();
+      } catch (err: any) {
+        setError(getErrorMessage(err, t('contentPanel.errors.deleteTag')));
+      } finally {
+        setBusyKey('');
+      }
+    });
   };
 
   const saveCategory = async (event: React.FormEvent) => {
@@ -373,19 +377,20 @@ export const AdminContentManagementPanel: React.FC = () => {
     window.requestAnimationFrame(() => document.getElementById('category-editor')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   };
 
-  const deleteCategory = async (item: ContentCategory) => {
-    if (!window.confirm(t('contentPanel.categories.deleteConfirm', { name: item.name }))) return;
-    setBusyKey(`category-delete-${item.id}`);
-    setError('');
-    try {
-      await contentApi.deleteCategory(item.id);
-      if (categoryForm.id === item.id) setCategoryForm(createEmptyCategory());
-      await load();
-    } catch (err: any) {
-      setError(getErrorMessage(err, t('contentPanel.errors.deleteCategory')));
-    } finally {
-      setBusyKey('');
-    }
+  const deleteCategory = (item: ContentCategory) => {
+    showConfirm(t('contentPanel.categories.deleteConfirm', { name: item.name }), async () => {
+      setBusyKey(`category-delete-${item.id}`);
+      setError('');
+      try {
+        await contentApi.deleteCategory(item.id);
+        if (categoryForm.id === item.id) setCategoryForm(createEmptyCategory());
+        await load();
+      } catch (err: any) {
+        setError(getErrorMessage(err, t('contentPanel.errors.deleteCategory')));
+      } finally {
+        setBusyKey('');
+      }
+    });
   };
 
   const tabs: Array<[Tab, string]> = [

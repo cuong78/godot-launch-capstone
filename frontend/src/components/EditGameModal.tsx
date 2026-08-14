@@ -40,7 +40,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   item,
 }) => {
   const { t } = useTranslation(["dashboard", "upload"]);
-  const { showToast } = useToast();
+  const { showToast, showConfirm } = useToast();
 
   // Form Fields
   const [title, setTitle] = useState("");
@@ -64,17 +64,21 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const formRef = useRef<HTMLFormElement>(null);
   const tagPickerRef = useRef<HTMLDivElement>(null);
 
-  const isMediaLocked = item?.type === "asset" && (
-    item?.originalItem?.status === "active" || 
-    item?.originalItem?.status === "published" || 
-    item?.originalItem?.status === "approved" || 
-    item?.originalItem?.status === "awaiting_store_build"
-  );
+  const statusStr = item?.originalItem?.status?.toLowerCase();
+  const isMediaLocked = !item || 
+    statusStr === "active" || 
+    statusStr === "published" || 
+    statusStr === "approved" || 
+    statusStr === "awaiting_store_build";
 
   // Media
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
+  // Drag and Drop ordering for screenshots
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   // Upload state tracking
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
@@ -294,8 +298,17 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
     }
   };
 
-  const handleDeleteMediaItem = async (url: string, fileType: "screenshot" | "video") => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa tệp này?")) return;
+  const handleDeleteMediaItem = (url: string, fileType: "screenshot" | "video") => {
+    const mediaName = fileType === "screenshot" ? "ảnh chụp màn hình" : "video demo";
+    showConfirm(
+      `Bạn có chắc chắn muốn xóa ${mediaName} này không? Hành động này không thể hoàn tác.`,
+      () => {
+        executeDeleteMedia(url, fileType);
+      }
+    );
+  };
+
+  const executeDeleteMedia = async (url: string, fileType: "screenshot" | "video") => {
     try {
       if (item.type === "game") {
         await gameApi.deleteMediaItem(item.id, url);
@@ -309,9 +322,35 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
       } else {
         setVideoUrl(null);
       }
+      showToast("Xóa tệp media thành công.", 'success');
     } catch (err: any) {
       console.error("Xóa media thất bại", err);
       const errMsg = err.response?.data?.message || err.message || "Xóa media thất bại.";
+      showToast(errMsg, 'error');
+    }
+  };
+
+  const handleDrop = async (targetIdx: number) => {
+    if (draggedIdx === null || draggedIdx === targetIdx || !item) return;
+
+    const newScreenshots = [...screenshots];
+    const [draggedItem] = newScreenshots.splice(draggedIdx, 1);
+    newScreenshots.splice(targetIdx, 0, draggedItem);
+
+    setScreenshots(newScreenshots);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+
+    try {
+      if (item.type === "game") {
+        await gameApi.reorderGameScreenshots(item.id, newScreenshots);
+      } else {
+        await marketplaceApi.reorderScreenshots(item.id, newScreenshots);
+      }
+      showToast("Đã thay đổi thứ tự ảnh chụp màn hình.", 'success');
+    } catch (err: any) {
+      console.error("Lỗi khi sắp xếp lại ảnh chụp màn hình", err);
+      const errMsg = err.response?.data?.message || err.message || "Không thể lưu thứ tự ảnh chụp màn hình.";
       showToast(errMsg, 'error');
     }
   };
@@ -643,22 +682,47 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Ảnh chụp màn hình (Screenshots)
+                  Ảnh chụp màn hình (Screenshots) {!isMediaLocked && " - Kéo thả các ảnh để thay đổi thứ tự hiển thị"}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {screenshots.map((url, idx) => (
-                  <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-slate-205 dark:border-slate-800 bg-slate-100 dark:bg-slate-955 group">
-                    <img src={url} alt={`Screenshot ${idx}`} className="w-full h-full object-cover" />
+                  <div
+                    key={url}
+                    draggable={!isMediaLocked}
+                    onDragStart={() => setDraggedIdx(idx)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragEnter={() => setDragOverIdx(idx)}
+                    onDragLeave={() => setDragOverIdx(null)}
+                    onDrop={() => handleDrop(idx)}
+                    className={`relative aspect-video rounded-xl overflow-hidden border bg-slate-100 dark:bg-slate-955 transition-all duration-200 group ${
+                      !isMediaLocked ? "cursor-grab active:cursor-grabbing" : ""
+                    } ${
+                      draggedIdx === idx ? "opacity-30 border-dashed border-amber-500 scale-95" : ""
+                    } ${
+                      dragOverIdx === idx ? "border-amber-500 scale-105 shadow-md shadow-amber-500/20" : "border-slate-205 dark:border-slate-800"
+                    }`}
+                  >
+                    <img src={url} alt={`Screenshot ${idx}`} className="w-full h-full object-cover pointer-events-none" />
                     {!isMediaLocked && (
                       <button
                         type="button"
-                        onClick={() => handleDeleteMediaItem(url, "screenshot")}
-                        className="absolute top-2 right-2 p-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteMediaItem(url, "screenshot");
+                        }}
+                        className="absolute top-2 right-2 p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
                       >
                         <Trash2 size={10} />
                       </button>
+                    )}
+                    
+                    {/* Tiny drag indicator */}
+                    {!isMediaLocked && draggedIdx !== idx && (
+                      <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-slate-900/60 backdrop-blur-sm rounded text-[8px] text-white font-semibold pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        Kéo thả
+                      </div>
                     )}
                   </div>
                 ))}
@@ -737,8 +801,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
             )}
           </button>
         </footer>
-      </div>
-    </div>,
+      </div>    </div>,
     document.body
   );
 };
