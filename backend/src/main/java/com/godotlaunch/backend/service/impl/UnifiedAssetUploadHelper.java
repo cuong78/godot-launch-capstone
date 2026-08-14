@@ -2,6 +2,7 @@ package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.entity.Asset;
 import com.godotlaunch.backend.entity.Media;
+import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.repository.AssetRepository;
 import com.godotlaunch.backend.repository.MediaRepository;
 import com.godotlaunch.backend.service.AiReviewService;
@@ -41,6 +42,12 @@ public class UnifiedAssetUploadHelper {
         try {
             Asset item = assetRepository.findById(itemId)
                     .orElseThrow(() -> new IllegalArgumentException("Asset not found: " + itemId));
+
+            // Calculate SHA-256 hash of the uploaded ZIP and verify if it is different
+            String newHash = calculateSha256(rawZipFile);
+            if (newHash != null && "SUCCESS".equals(item.getUploadStatus()) && newHash.equals(item.getZipHash())) {
+                throw new IllegalArgumentException("Nội dung file ZIP tài nguyên trùng khớp hoàn toàn với phiên bản hiện tại. Vui lòng thực hiện cập nhật trước khi tải lên.");
+            }
 
             // 1. Tạo thư mục tạm để giải nén
             tempDir = Files.createTempDirectory("unified-upload-" + itemId).toFile();
@@ -150,6 +157,8 @@ public class UnifiedAssetUploadHelper {
             // 8. Cập nhật trạng thái thành công
             item.setUploadStatus("SUCCESS");
             item.setUploadError(null);
+            item.setZipHash(newHash);
+            item.setStatus(ItemStatus.pending);
             assetRepository.save(item);
             log.info("Unified asset upload processing completed successfully for item {}", itemId);
 
@@ -318,5 +327,29 @@ public class UnifiedAssetUploadHelper {
         if (lower.endsWith(".mov")) return "video/quicktime";
         if (lower.endsWith(".zip")) return "application/zip";
         return "application/octet-stream";
+    }
+
+    private String calculateSha256(File file) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            try (InputStream is = new FileInputStream(file)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = is.read(buffer)) > 0) {
+                    digest.update(buffer, 0, read);
+                }
+            }
+            byte[] hash = digest.digest();
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            log.error("Failed to calculate SHA-256 for file: " + file.getName(), e);
+            return null;
+        }
     }
 }

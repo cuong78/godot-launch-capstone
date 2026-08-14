@@ -304,6 +304,7 @@ class AssetServiceImplTest {
 
     @Test
     void updateAsset_ShouldModifyAssetDetails_WhenOwnerRequests() {
+        asset.setPrice(new java.math.BigDecimal("99.99"));
         UpdateAssetRequest request = new UpdateAssetRequest();
         request.setTitle("New Asset Title");
         request.setPrice(new java.math.BigDecimal("99.99"));
@@ -342,8 +343,15 @@ class AssetServiceImplTest {
     }
 
     @Test
-    void uploadItemFile_ShouldUploadAndTriggerReview() {
+    void uploadItemFile_ShouldUploadAndTriggerReview() throws Exception {
         org.springframework.web.multipart.MultipartFile file = org.mockito.Mockito.mock(org.springframework.web.multipart.MultipartFile.class);
+        byte[] content = "test content".getBytes();
+        java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(content);
+        when(file.getInputStream()).thenReturn(bis);
+
+        asset.setVersion("1.0.0");
+        asset.setZipHash("old-hash");
+
         when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
         when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
         when(seaweedFsService.uploadWithKey(eq(file), anyString())).thenReturn("http://seaweedfs/zip");
@@ -352,8 +360,37 @@ class AssetServiceImplTest {
         assetService.uploadItemFile(asset.getId(), file, developerUser.getEmail());
 
         assertEquals("http://seaweedfs/zip", asset.getFileUrl());
+        assertEquals("1.0.1", asset.getVersion());
+        assertThat(asset.getZipHash()).isNotNull();
         verify(asyncVirusScanService).scanAndProcessAsset(eq(asset.getId()), anyString());
         verify(aiReviewService).reviewAssetAsync(asset.getId());
+    }
+
+    @Test
+    void uploadItemFile_ShouldThrowException_WhenDuplicateFileUploaded() throws Exception {
+        org.springframework.web.multipart.MultipartFile file = org.mockito.Mockito.mock(org.springframework.web.multipart.MultipartFile.class);
+        byte[] content = "test content".getBytes();
+        java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(content);
+        when(file.getInputStream()).thenReturn(bis);
+
+        // Pre-calculate SHA-256 hash of "test content"
+        java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(content);
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        asset.setZipHash(hexString.toString());
+
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+
+        AppException ex = assertThrows(AppException.class, () ->
+                assetService.uploadItemFile(asset.getId(), file, developerUser.getEmail())
+        );
+        assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
     }
 
     @Test

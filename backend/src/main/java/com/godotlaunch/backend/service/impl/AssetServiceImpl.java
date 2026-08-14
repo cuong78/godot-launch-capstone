@@ -31,6 +31,8 @@ import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.service.AuditLogService;
 
+import java.io.InputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -189,19 +191,19 @@ public class AssetServiceImpl implements AssetService {
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
         assertAssetOwner(item, updater);
 
+        if (request.getPrice() != null && item.getPrice() != null
+                && request.getPrice().compareTo(item.getPrice()) != 0) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Không thể thay đổi giá bán khi cập nhật sản phẩm.");
+        }
+        if (request.getCategoryId() != null && (item.getCategory() == null || !request.getCategoryId().equals(item.getCategory().getId()))) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Không thể thay đổi danh mục khi cập nhật sản phẩm.");
+        }
+
         if (request.getTitle() != null) {
             item.setTitle(request.getTitle());
         }
         if (request.getDescription() != null) {
             item.setDescription(request.getDescription());
-        }
-        if (request.getPrice() != null) {
-            item.setPrice(request.getPrice());
-        }
-        if (request.getCategoryId() != null) {
-            Category category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
-            item.setCategory(category);
         }
         if (request.getFileUrl() != null) {
             item.setFileUrl(request.getFileUrl());
@@ -211,6 +213,9 @@ public class AssetServiceImpl implements AssetService {
         }
 
 
+
+        // Set status back to pending upon update so it goes back to admin moderation queue
+        item.setStatus(ItemStatus.pending);
 
         Asset updatedItem = assetRepository.save(item);
         return mapToResponse(updatedItem, true);
@@ -238,10 +243,31 @@ public class AssetServiceImpl implements AssetService {
                 .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
         assertAssetOwner(item, uploader);
 
+        // Calculate hash of the new file
+        String newHash = null;
+        try (InputStream is = file.getInputStream()) {
+            newHash = calculateSha256(is);
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "Không thể đọc tệp để tính toán checksum: " + e.getMessage());
+        }
+
+        if (newHash == null) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "Không thể tính toán mã hash SHA-256 cho tệp tài nguyên tải lên.");
+        }
+
+        log.info("Asset update upload {}: Calculated hash = {}, Current hash = {}", itemId, newHash, item.getZipHash());
+
+        if (newHash.equals(item.getZipHash())) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "Nội dung tệp tài nguyên tải lên trùng khớp hoàn toàn với phiên bản hiện tại. Vui lòng thực hiện cập nhật nội dung trước khi tải lên.");
+        }
+
         String objectKey = buildObjectKey(item.getId());
         // Upload qua SeaweedFsService
         String fileUrl = seaweedFsService.uploadWithKey(file, objectKey);
         item.setFileUrl(fileUrl);
+        item.setZipHash(newHash);
+        item.setVersion(incrementVersion(item.getVersion())); // Auto-increment version
+        item.setStatus(ItemStatus.pending); // Reset status to pending for admin moderation!
         assetRepository.save(item);
 
         asyncVirusScanService.scanAndProcessAsset(itemId, objectKey);
@@ -639,7 +665,7 @@ public class AssetServiceImpl implements AssetService {
         assertAssetOwner(item, requester);
 
         // 1. Lấy tất cả screenshot hiện tại
-        java.util.List<         Media> screenshots = mediaRepository.findByAsset_IdAndMediaType(itemId, "screenshot");
+        java.util.List<Media> screenshots = mediaRepository.findByAsset_IdAndMediaType(itemId, "screenshot");
 
         // 2. Cập nhật createdAt theo thứ tự của orderedUrls
         java.time.Instant now = java.time.Instant.now();
@@ -663,5 +689,50 @@ public class AssetServiceImpl implements AssetService {
                 mediaRepository.save(match);
             }
         }
+    }
+
+    private String calculateSha256(InputStream is) {
+        if (is == null) return null;
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = is.read(buffer)) > 0) {
+                digest.update(buffer, 0, read);
+            }
+            byte[] hash = digest.digest();
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            log.error("Failed to calculate SHA-256", e);
+            return null;
+        }
+    }
+
+    private String incrementVersion(String currentVersion) {
+        if (currentVersion == null || currentVersion.trim().isEmpty()) {
+            return "1.0.1";
+        }
+        try {
+            String[] parts = currentVersion.split("\\.");
+            if (parts.length > 0) {
+                int lastIdx = parts.length - 1;
+                try {
+                    int lastNum = Integer.parseInt(parts[lastIdx]);
+                    parts[lastIdx] = String.valueOf(lastNum + 1);
+                    return String.join(".", parts);
+                } catch (NumberFormatException e) {
+                    return currentVersion + ".1";
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not increment version: {}", currentVersion, e);
+        }
+        return "1.0.1";
     }
 }

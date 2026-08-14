@@ -61,8 +61,15 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const [selectedTags, setSelectedTags] = useState<TagResponse[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
-  const tagPickerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const tagPickerRef = useRef<HTMLDivElement>(null);
+
+  const isMediaLocked = item?.type === "asset" && (
+    item?.originalItem?.status === "active" || 
+    item?.originalItem?.status === "published" || 
+    item?.originalItem?.status === "approved" || 
+    item?.originalItem?.status === "awaiting_store_build"
+  );
 
   // Media
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
@@ -76,9 +83,9 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const isLiveGame = item?.type === "game" && (
-    item.originalItem.status?.toLowerCase() === "published" ||
-    item.originalItem.status?.toLowerCase() === "approved" ||
-    item.originalItem.status?.toLowerCase() === "awaiting_store_build"
+    item?.originalItem?.status?.toLowerCase() === "published" ||
+    item?.originalItem?.status?.toLowerCase() === "approved" ||
+    item?.originalItem?.status?.toLowerCase() === "awaiting_store_build"
   );
 
   const MAX_SELECTED_TAGS = 10;
@@ -164,7 +171,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
 
   // Load Initial Item Data
   useEffect(() => {
-    if (!isOpen || !item) return;
+    if (!isOpen || !item || !item.originalItem) return;
 
     const raw = item.originalItem;
     setTitle(raw.pendingTitle || raw.title || "");
@@ -528,10 +535,21 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
           </div>
 
           {/* Media Section */}
-          <div className="border-t border-slate-250 dark:border-slate-800 pt-6 space-y-6">
+          <div className="border-t border-slate-250 dark:border-slate-800 pt-6 space-y-4">
             <h4 className="font-display font-bold text-sm text-slate-800 dark:text-white">
-              Quản lý Media & Tệp hình ảnh
+              Thông tin Media & Tệp hình ảnh
             </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {isMediaLocked ? (
+                <span className="text-amber-600 dark:text-amber-400">
+                  💡 Hình ảnh và video hiện đang KHÓA (đã được duyệt/xuất bản). Để thay đổi hình ảnh hoặc video mới, vui lòng tải lên tệp ZIP (phiên bản mới) trên Dashboard để đưa sản phẩm về trạng thái "Chờ duyệt" trước.
+                </span>
+              ) : (
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  💡 Quyền cập nhật hình ảnh & video đang MỞ KHÓA. Bạn có thể thay đổi hoặc thêm ảnh bìa, video demo và ảnh chụp màn hình trực tiếp bên dưới.
+                </span>
+              )}
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
@@ -540,33 +558,42 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
                   Ảnh bìa (Thumbnail)
                 </span>
-                <div className="relative group aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+                <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-955 flex items-center justify-center group">
                   {thumbnailUrl ? (
                     <>
                       <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 text-slate-855 rounded-lg text-xs font-bold shadow-md cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95">
-                          <Upload size={12} />
-                          Thay đổi
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => e.target.files?.[0] && handleUploadMedia(e.target.files[0], "thumbnail")}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
+                      {!isMediaLocked && (
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <label className="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg cursor-pointer transition-colors text-xs font-semibold">
+                            Thay đổi
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleUploadMedia(file, "thumbnail");
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
                     </>
                   ) : (
-                    <label className="flex flex-col items-center gap-1.5 text-slate-500 cursor-pointer">
-                      <Upload size={24} />
-                      <span className="text-[10px]">Tải ảnh bìa lên</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => e.target.files?.[0] && handleUploadMedia(e.target.files[0], "thumbnail")}
-                        className="hidden"
-                      />
+                    <label className={`text-xs text-slate-405 flex flex-col items-center gap-1 w-full h-full justify-center ${!isMediaLocked ? "cursor-pointer" : ""}`}>
+                      <ImageIcon size={24} className="text-slate-500" />
+                      <span>{isMediaLocked ? "Chưa có ảnh bìa" : "Chọn ảnh bìa"}</span>
+                      {!isMediaLocked && (
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadMedia(file, "thumbnail");
+                          }}
+                        />
+                      )}
                     </label>
                   )}
                 </div>
@@ -577,28 +604,35 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
                   Video Demo (mp4)
                 </span>
-                <div className="relative group aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+                <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-955 flex items-center justify-center group">
                   {videoUrl ? (
-                    <div className="relative w-full h-full">
+                    <>
                       <video src={videoUrl} controls className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMediaItem(videoUrl, "video")}
-                        className="absolute top-2 right-2 p-1.5 bg-rose-600 hover:bg-rose-550 text-white rounded-lg transition-transform active:scale-90"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+                      {!isMediaLocked && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMediaItem(videoUrl, "video")}
+                          className="absolute top-2 right-2 p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </>
                   ) : (
-                    <label className="flex flex-col items-center gap-1.5 text-slate-500 cursor-pointer">
-                      <Upload size={24} />
-                      <span className="text-[10px]">Tải video demo lên</span>
-                      <input
-                        type="file"
-                        accept="video/mp4"
-                        onChange={(e) => e.target.files?.[0] && handleUploadMedia(e.target.files[0], "video")}
-                        className="hidden"
-                      />
+                    <label className={`text-xs text-slate-405 flex flex-col items-center gap-1 w-full h-full justify-center ${!isMediaLocked ? "cursor-pointer" : ""}`}>
+                      <VideoIcon size={24} className="text-slate-500" />
+                      <span>{isMediaLocked ? "Chưa có video demo" : "Chọn video demo (.mp4)"}</span>
+                      {!isMediaLocked && (
+                        <input
+                          type="file"
+                          accept="video/mp4"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadMedia(file, "video");
+                          }}
+                        />
+                      )}
                     </label>
                   )}
                 </div>
@@ -609,52 +643,48 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Ảnh chụp màn hình (Screenshots) - Tối đa 5 ảnh
+                  Ảnh chụp màn hình (Screenshots)
                 </span>
-                {screenshots.length < 5 && (
-                  <label className="flex items-center gap-1 text-[10px] font-bold text-sky-500 hover:text-sky-400 cursor-pointer">
-                    <PlusIcon size={12} />
-                    Thêm ảnh
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {screenshots.map((url, idx) => (
+                  <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-slate-205 dark:border-slate-800 bg-slate-100 dark:bg-slate-955 group">
+                    <img src={url} alt={`Screenshot ${idx}`} className="w-full h-full object-cover" />
+                    {!isMediaLocked && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMediaItem(url, "screenshot")}
+                        className="absolute top-2 right-2 p-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {!isMediaLocked && (
+                  <label className="flex flex-col items-center justify-center aspect-video rounded-xl border border-dashed border-slate-350 hover:border-slate-400 text-slate-400 hover:text-slate-500 cursor-pointer transition-colors text-[10px] font-semibold gap-1">
+                    <Upload size={14} />
+                    <span>Thêm ảnh</span>
                     <input
                       type="file"
                       accept="image/*"
-                      multiple
-                      onChange={(e) => {
-                        if (e.target.files) {
-                          const files = Array.from(e.target.files);
-                          files.forEach((file) => handleUploadMedia(file, "screenshot"));
-                        }
-                      }}
                       className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadMedia(file, "screenshot");
+                      }}
                     />
                   </label>
                 )}
               </div>
-
-              {screenshots.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  {screenshots.map((url, idx) => (
-                    <div key={idx} className="relative group aspect-video rounded-xl overflow-hidden border border-slate-205 dark:border-slate-800 bg-slate-100 dark:bg-slate-955">
-                      <img src={url} alt={`Screenshot ${idx}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMediaItem(url, "screenshot")}
-                        className="absolute top-1.5 right-1.5 p-1 bg-rose-600 hover:bg-rose-550 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={10} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
+              {screenshots.length === 0 && isMediaLocked && (
                 <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-6 text-slate-400 text-xs">
-                  <ImageIcon size={20} className="mb-1 text-slate-300" />
-                  Chưa có ảnh chụp màn hình nào
+                  Chưa có ảnh chụp màn hình
                 </div>
               )}
             </div>
 
-            {/* Upload progresses */}
             {Object.keys(uploadStatus).some((key) => uploadStatus[key] === "uploading") && (
               <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">

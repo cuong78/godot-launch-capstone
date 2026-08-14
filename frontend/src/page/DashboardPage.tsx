@@ -299,9 +299,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         }
       }
     } catch (err: any) {
-      setZipError(
-        err.response?.data?.message || err.message || "Lỗi khi tải lên file ZIP."
-      );
+      const errMsg = err.response?.data?.message || err.message || "Lỗi khi tải lên tệp ZIP.";
+      setZipError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setZippingId(null);
     }
@@ -400,6 +400,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       setIsLoadingMarketplace(false);
     }
   };
+
+  // Poll processing items
+  useEffect(() => {
+    const hasProcessingGames = myGames.some(g => g.uploadStatus === "PROCESSING");
+    const hasProcessingAssets = myMarketplaceItems.some(a => a.uploadStatus === "PROCESSING");
+
+    if (hasProcessingGames || hasProcessingAssets) {
+      const interval = setInterval(() => {
+        if (hasProcessingGames) fetchMyGames();
+        if (hasProcessingAssets) fetchMyMarketplaceItems();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [myGames, myMarketplaceItems]);
 
   const handleConfirmDelete = async () => {
     if (!deleteConfirmItem) return;
@@ -1188,7 +1202,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 Cập nhật sản phẩm trực tiếp (Tệp ZIP)
                                               </h4>
                                               
-                                              {game.pendingUpdateSnapshotId ? (
+                                              {game.uploadStatus === "PROCESSING" ? (
+                                                <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg text-[10px] leading-relaxed flex items-center gap-2 animate-pulse">
+                                                  <RefreshCw size={12} className="animate-spin" />
+                                                  Đang giải nén, kiểm tra cấu trúc ZIP và quét bảo mật bản build mới của bạn... Vui lòng đợi trong giây lát.
+                                                </div>
+                                              ) : game.uploadStatus === "FAILED" ? (
+                                                <div className="space-y-2">
+                                                  <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg text-[10px] leading-relaxed">
+                                                    ❌ <strong>Lỗi xử lý file gộp:</strong> {game.uploadError || "Cấu trúc tệp ZIP không hợp lệ."}
+                                                  </div>
+                                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                                                    Hãy kiểm tra lại cấu trúc tệp ZIP của bạn (đầy đủ các thư mục bắt buộc như thumbnail, screenshots, video, web_demo) và thử tải lên lại.
+                                                  </p>
+                                                  <label
+                                                    htmlFor={`zip-upload-game-${game.id}`}
+                                                    className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer disabled:bg-slate-350 disabled:cursor-not-allowed"
+                                                  >
+                                                    <Upload size={12} />
+                                                    Tải lên lại file ZIP mới
+                                                  </label>
+                                                  <input
+                                                    type="file"
+                                                    id={`zip-upload-game-${game.id}`}
+                                                    accept=".zip"
+                                                    disabled={zippingId !== null}
+                                                    onChange={(e) => {
+                                                      const file = e.target.files?.[0];
+                                                      if (file) {
+                                                        handleUploadZip(game.id, "game", file);
+                                                      }
+                                                    }}
+                                                    className="hidden"
+                                                  />
+                                                </div>
+                                              ) : game.pendingUpdateSnapshotId ? (
                                                 <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
                                                   Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
                                                 </div>
@@ -1775,37 +1823,71 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               {item.type === "game" ? "Cập nhật sản phẩm trực tiếp (Tệp ZIP)" : "Cập nhật tài nguyên (Tệp ZIP)"}
                                             </h4>
 
-                                            {item.type === "game" && item.originalItem.pendingUpdateSnapshotId ? (
-                                              <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
-                                                Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
-                                              </div>
-                                            ) : (
-                                              <div className="space-y-2">
-                                                <p className="text-[11px] text-slate-505 dark:text-slate-400 leading-normal">
-                                                  Chọn tệp ZIP phiên bản mới để tải lên. Tệp sẽ được quét virus tự động trước khi kiểm duyệt.
-                                                </p>
-                                                <label
-                                                  htmlFor={`zip-upload-item-${item.id}`}
-                                                  className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer disabled:bg-slate-350 disabled:cursor-not-allowed"
-                                                >
-                                                  <Upload size={12} />
-                                                  {item.type === "game" ? "Tải lên file ZIP mới" : "Tải lên file ZIP tài nguyên mới"}
-                                                </label>
-                                                <input
-                                                  type="file"
-                                                  id={`zip-upload-item-${item.id}`}
-                                                  accept=".zip"
-                                                  disabled={zippingId !== null}
-                                                  onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                      handleUploadZip(item.id, item.type, file);
-                                                    }
-                                                  }}
-                                                  className="hidden"
-                                                />
-                                              </div>
-                                            )}
+                                            {item.originalItem.uploadStatus === "PROCESSING" ? (
+                                               <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg text-[10px] leading-relaxed flex items-center gap-2 animate-pulse">
+                                                 <RefreshCw size={12} className="animate-spin" />
+                                                 Đang giải nén, kiểm tra cấu trúc ZIP và quét bảo mật bản build mới của bạn... Vui lòng đợi trong giây lát.
+                                               </div>
+                                             ) : item.originalItem.uploadStatus === "FAILED" ? (
+                                               <div className="space-y-2">
+                                                 <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg text-[10px] leading-relaxed">
+                                                   ❌ <strong>Lỗi xử lý file gộp:</strong> {item.originalItem.uploadError || "Cấu trúc tệp ZIP không hợp lệ."}
+                                                 </div>
+                                                 <p className="text-[11px] text-slate-505 dark:text-slate-400 leading-normal">
+                                                   Hãy kiểm tra lại cấu trúc tệp ZIP của bạn (đầy đủ các thư mục bắt buộc như thumbnail, screenshots, video, web_demo) và thử tải lên lại.
+                                                 </p>
+                                                 <label
+                                                   htmlFor={`zip-upload-item-${item.id}`}
+                                                   className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer disabled:bg-slate-350 disabled:cursor-not-allowed"
+                                                 >
+                                                   <Upload size={12} />
+                                                   Tải lên lại file ZIP tài nguyên
+                                                 </label>
+                                                 <input
+                                                   type="file"
+                                                   id={`zip-upload-item-${item.id}`}
+                                                   accept=".zip"
+                                                   disabled={zippingId !== null}
+                                                   onChange={(e) => {
+                                                     const file = e.target.files?.[0];
+                                                     if (file) {
+                                                       handleUploadZip(item.id, item.type, file);
+                                                     }
+                                                   }}
+                                                   className="hidden"
+                                                 />
+                                               </div>
+                                             ) : item.type === "game" && item.originalItem.pendingUpdateSnapshotId ? (
+                                               <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
+                                                 Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
+                                               </div>
+                                             ) : (
+                                               <div className="space-y-2">
+                                                 <p className="text-[11px] text-slate-505 dark:text-slate-400 leading-normal">
+                                                   Chọn tệp ZIP phiên bản mới để tải lên. Tệp sẽ được quét virus tự động trước khi kiểm duyệt.
+                                                 </p>
+                                                 <label
+                                                   htmlFor={`zip-upload-item-${item.id}`}
+                                                   className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio cursor-pointer disabled:bg-slate-350 disabled:cursor-not-allowed"
+                                                 >
+                                                   <Upload size={12} />
+                                                   {item.type === "game" ? "Tải lên file ZIP mới" : "Tải lên file ZIP tài nguyên mới"}
+                                                 </label>
+                                                 <input
+                                                   type="file"
+                                                   id={`zip-upload-item-${item.id}`}
+                                                   accept=".zip"
+                                                   disabled={zippingId !== null}
+                                                   onChange={(e) => {
+                                                     const file = e.target.files?.[0];
+                                                     if (file) {
+                                                       handleUploadZip(item.id, item.type, file);
+                                                     }
+                                                   }}
+                                                   className="hidden"
+                                                 />
+                                               </div>
+                                             )}
 
                                             {zippingId === item.id && (
                                               <div className="space-y-1.5 mt-2">

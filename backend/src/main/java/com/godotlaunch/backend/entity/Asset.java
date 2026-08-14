@@ -84,6 +84,9 @@ public class Asset {
     @Column(name = "upload_error", columnDefinition = "TEXT")
     private String uploadError;
 
+    @Column(name = "zip_hash", length = 64)
+    private String zipHash;
+
     @Column(name = "version", nullable = false, length = 50)
     private String version = "1.0.0";
 
