@@ -16,6 +16,8 @@ import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.entity.enums.ActorRole;
+import com.godotlaunch.backend.entity.User;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,8 @@ public class AsyncVirusScanService {
     private final AssetRepository assetRepository;
     private final AuditLogService auditLogService;
     private final SourceSnapshotRepository sourceSnapshotRepository;
+    private final com.godotlaunch.backend.repository.UserRepository userRepository;
+    private final NotificationService notificationService;
 
     /**
      * Thực hiện kiểm duyệt tệp tin ZIP tải lên từ storage bất đồng bộ (Background thread).
@@ -130,6 +134,27 @@ public class AsyncVirusScanService {
                             : "Game '" + game.getTitle() + "' successfully verified and submitted for review.",
                     null
             );
+
+            try {
+                org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+                java.util.List<User> admins = userRepository.findAdminsOrderByCreatedAtAsc(pageable);
+                String devName = game.getCreator().getFullName() != null && !game.getCreator().getFullName().isBlank()
+                        ? game.getCreator().getFullName() : game.getCreator().getEmail();
+                String notifMsg = isLive
+                        ? "Nhà phát triển " + devName + " vừa gửi bản cập nhật ZIP mới cho Game: \"" + game.getTitle() + "\"."
+                        : "Nhà phát triển " + devName + " vừa tải lên Game ZIP mới chờ phê duyệt: \"" + game.getTitle() + "\".";
+                for (User admin : admins) {
+                    notificationService.createAndSendNotification(
+                            admin,
+                            game.getCreator(),
+                            NotificationType.NEW_SUBMISSION,
+                            notifMsg,
+                            gameId.toString()
+                    );
+                }
+            } catch (Exception ex) {
+                log.warn("Lỗi gửi thông báo NEW_SUBMISSION tới admin khi quét ZIP game thành công: {}", ex.getMessage());
+            }
 
         } catch (SecurityException | IllegalStateException e) {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với gameId: {}: {}", gameId, e.getMessage());
@@ -256,6 +281,24 @@ public class AsyncVirusScanService {
                     "Marketplace item '" + item.getTitle() + "' successfully scanned (clean) and pending review.",
                     null
             );
+
+            try {
+                org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+                java.util.List<User> admins = userRepository.findAdminsOrderByCreatedAtAsc(pageable);
+                String devName = item.getSeller().getFullName() != null && !item.getSeller().getFullName().isBlank()
+                        ? item.getSeller().getFullName() : item.getSeller().getEmail();
+                for (User admin : admins) {
+                    notificationService.createAndSendNotification(
+                            admin,
+                            item.getSeller(),
+                            NotificationType.NEW_SUBMISSION,
+                            "Nhà phát triển " + devName + " vừa tải lên tài nguyên mới chờ phê duyệt: \"" + item.getTitle() + "\".",
+                            itemId.toString()
+                    );
+                }
+            } catch (Exception ex) {
+                log.warn("Lỗi gửi thông báo NEW_SUBMISSION tới admin khi quét tệp asset thành công: {}", ex.getMessage());
+            }
 
         } catch (SecurityException | IllegalStateException e) {
             log.error("Tệp ZIP vi phạm quy định an toàn hệ thống (Zip Slip hoặc Zip Bomb) đối với marketplace item: {}: {}", itemId, e.getMessage());

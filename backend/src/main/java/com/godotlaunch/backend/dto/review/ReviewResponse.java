@@ -32,6 +32,18 @@ public class ReviewResponse {
 
     private String comment;
 
+    private String sellerReply;
+
+    private Instant sellerRepliedAt;
+
+    private String adminReply;
+
+    private Instant adminRepliedAt;
+
+    private UUID adminRepliedByUserId;
+
+    private String adminRepliedUserName;
+
     private Instant createdAt;
 
     private Instant updatedAt;

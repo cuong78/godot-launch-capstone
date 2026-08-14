@@ -10,6 +10,12 @@ export interface ReviewResponse {
   assetId?: string;
   rating: number;
   comment?: string;
+  sellerReply?: string;
+  sellerRepliedAt?: string;
+  adminReply?: string;
+  adminRepliedAt?: string;
+  adminRepliedByUserId?: string;
+  adminRepliedUserName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,6 +38,11 @@ export interface CreateReviewRequest {
 export const reviewApi = {
   createOrUpdateReview: async (data: CreateReviewRequest): Promise<ApiResponse<ReviewResponse>> => {
     const response = await api.post<ApiResponse<ReviewResponse>>('/api/reviews', data);
+    return response.data;
+  },
+
+  replyToReview: async (reviewId: string, replyComment: string): Promise<ApiResponse<ReviewResponse>> => {
+    const response = await api.post<ApiResponse<ReviewResponse>>(`/api/reviews/${reviewId}/reply`, { replyComment });
     return response.data;
   },
 

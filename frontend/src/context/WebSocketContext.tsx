@@ -65,24 +65,45 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       onConnect: () => {
         setIsConnected(true);
         console.log("WebSocket connected via SockJS + STOMP Broker.");
+        fetchNotifications();
+
+        const handleIncomingNotification = (notif: NotificationResponse) => {
+          if (notif && notif.id) {
+            setNotifications((prev) => {
+              const exists = prev.some((n) => n.id === notif.id);
+              if (exists) return prev;
+              setUnreadNotificationsCount((count) => count + 1);
+              if (notif.message) {
+                showToast(notif.message, 'info');
+              }
+              return [notif, ...prev];
+            });
+          } else {
+            fetchNotifications();
+          }
+        };
 
         // Subscribe to user notifications
         client.subscribe('/user/queue/notifications', (message) => {
           try {
             const notif = JSON.parse(message.body) as NotificationResponse;
-            if (notif && notif.id) {
-              setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
-              setUnreadNotificationsCount((prev) => prev + 1);
-              if (notif.message) {
-                showToast(notif.message, 'info');
-              }
-            } else {
-              fetchNotifications();
-            }
+            handleIncomingNotification(notif);
           } catch (err) {
             fetchNotifications();
           }
         });
+
+        // Subscribe to admin topic if current user is admin
+        if (currentUser?.role === 'admin') {
+          client.subscribe('/topic/admin/notifications', (message) => {
+            try {
+              const notif = JSON.parse(message.body) as NotificationResponse;
+              handleIncomingNotification(notif);
+            } catch (err) {
+              fetchNotifications();
+            }
+          });
+        }
 
         // Subscribe to public community updates
         client.subscribe('/topic/community/updates', (message) => {

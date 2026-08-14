@@ -8,9 +8,13 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
+import com.godotlaunch.backend.dto.review.ReplyReviewRequest;
+
 public interface ReviewService {
 
     ReviewResponse createOrUpdateReview(String userEmail, CreateReviewRequest request);
+
+    ReviewResponse replyToReview(UUID reviewId, ReplyReviewRequest request, String replierEmail);
 
     ReviewSummaryDto getGameReviewSummary(UUID gameId, String currentEmail);
 

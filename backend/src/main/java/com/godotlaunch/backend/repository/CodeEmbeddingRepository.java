@@ -16,24 +16,21 @@ public interface CodeEmbeddingRepository extends JpaRepository<CodeEmbedding, UU
     Optional<CodeEmbedding> findBySourceSnapshotIdAndModelNameAndModelVersion(
             UUID sourceSnapshotId, String modelName, String modelVersion);
 
-    @Query(value = """
-            SELECT ranked.embedding_id AS "embeddingId",
-                   ranked.similarity_score AS "similarityScore"
-            FROM (
-                SELECT DISTINCT ON (candidate.game_id)
-                       candidate.id AS embedding_id,
-                       (1 - (candidate.embedding <=> CAST(:embedding AS vector)))::real AS similarity_score,
-                       candidate.game_id
-                FROM code_embeddings candidate
-                WHERE candidate.game_id <> :gameId
-                  AND candidate.model_name = :modelName
-                  AND candidate.model_version = :modelVersion
-                ORDER BY candidate.game_id,
-                         candidate.embedding <=> CAST(:embedding AS vector)
-            ) ranked
-            ORDER BY ranked.similarity_score DESC
-            LIMIT :resultLimit
-            """, nativeQuery = true)
+    @Query(value = "SELECT ranked.embedding_id AS embeddingId, "
+            + "ranked.similarity_score AS similarityScore "
+            + "FROM ( "
+            + "SELECT DISTINCT ON (candidate.game_id) "
+            + "candidate.id AS embedding_id, "
+            + "(1 - cosine_distance(candidate.embedding, cast(:embedding as vector))) AS similarity_score, "
+            + "candidate.game_id "
+            + "FROM code_embeddings candidate "
+            + "WHERE candidate.game_id != :gameId "
+            + "AND candidate.model_name = :modelName "
+            + "AND candidate.model_version = :modelVersion "
+            + "ORDER BY candidate.game_id, cosine_distance(candidate.embedding, cast(:embedding as vector)) "
+            + ") ranked "
+            + "ORDER BY ranked.similarity_score DESC "
+            + "LIMIT :resultLimit", nativeQuery = true)
     List<CodeEmbeddingMatchProjection> findClosestFromOtherGames(
             @Param("gameId") UUID gameId,
             @Param("modelName") String modelName,

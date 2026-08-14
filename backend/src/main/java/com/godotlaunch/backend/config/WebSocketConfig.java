@@ -72,6 +72,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (token != null && jwtProvider.validateToken(token)) {
                         try {
                             String email = jwtProvider.getUsernameFromToken(token);
+                            if (email != null) {
+                                email = email.toLowerCase().trim();
+                            }
                             log.info("[WS Conn] Token validated successfully for email: {}", email);
                             
                             String role = jwtProvider.getRoleFromToken(token);

@@ -72,6 +72,7 @@ public enum ErrorCode {
     
     // Community Chat
     CHAT_NOT_FOUND(HttpStatus.NOT_FOUND, "Post not found."),
+    CHAT_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Phiên hội thoại không tồn tại hoặc bạn không có quyền truy cập."),
     CHAT_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "Post has already been deleted."),
     REACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Reaction not found."),
     CHAT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "You do not have permission to modify this post."),

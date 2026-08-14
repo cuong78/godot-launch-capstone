@@ -388,7 +388,10 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             productId={focusedAsset.id}
             productType={focusedAsset.itemType === 'asset' ? 'asset' : 'game'}
             currentUserId={currentUser?.id}
+            currentUserEmail={currentUser?.email}
             isAdmin={currentUser?.role === 'admin'}
+            sellerId={(focusedAsset as any).sellerId || (focusedAsset as any).seller?.id || (focusedAsset as any).creator?.id}
+            sellerEmail={focusedAsset.sellerEmail}
           />
         </div>
 

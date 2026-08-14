@@ -78,6 +78,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
+        String tokenParam = request.getParameter("token");
+        if (StringUtils.hasText(tokenParam)) {
+            return tokenParam;
+        }
+        String accessTokenParam = request.getParameter("access_token");
+        if (StringUtils.hasText(accessTokenParam)) {
+            return accessTokenParam;
+        }
         if (request.getCookies() != null) {
             return Arrays.stream(request.getCookies())
                     .filter(c -> "app_token".equals(c.getName()))

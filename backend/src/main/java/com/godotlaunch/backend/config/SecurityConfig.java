@@ -44,6 +44,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(authorize -> authorize
+                .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC, jakarta.servlet.DispatcherType.ERROR).permitAll()
                 .requestMatchers(
                     "/api/v1/auth/github",
                     "/api/v1/auth/github/callback",
@@ -52,6 +53,7 @@ public class SecurityConfig {
                     "/api/auth/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
+                    "/v3/api-docs",
                     "/v3/api-docs/**",
                     "/ws/**"
                 ).permitAll()
