@@ -50,7 +50,7 @@ import { gameApi } from "../api/gameApi";
 import { useFormattedAmountInput } from "../hooks/useFormattedAmountInput";
 import { useToast } from "../hooks/useToast";
 import { marketplaceApi } from "../api/marketplaceApi";
-import { CategoryResponse } from "../types";
+import { CategoryResponse, GameResponse, MarketplaceItemResponse } from "../types";
 import axios from "axios";
 
 interface SortableScreenshotItemProps {
@@ -235,7 +235,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [unifiedFile, setUnifiedFile] = useState<File | null>(null);
   const [unifiedUploadStatus, setUnifiedUploadStatus] = useState<"idle" | "uploading" | "processing" | "success" | "failed">("idle");
   const [unifiedUploadProgress, setUnifiedUploadProgress] = useState<number>(0);
-  const [unifiedExtractedMedia, setUnifiedExtractedMedia] = useState<MarketplaceItemResponse | null>(null);
+  const [unifiedExtractedMedia, setUnifiedExtractedMedia] = useState<MarketplaceItemResponse | GameResponse | null>(null);
   const [unifiedError, setUnifiedError] = useState<string | null>(null);
 
   // Backend Security Scan State
@@ -397,13 +397,15 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     };
   }, [scanStatus, gameId, publishProgram, t]);
 
-  // Polling logic for unified asset upload processing
+  // Polling logic for unified asset/game upload processing
   useEffect(() => {
     let intervalId: any;
     if (unifiedUploadStatus === "processing" && gameId) {
       intervalId = setInterval(async () => {
         try {
-          const res = await marketplaceApi.getUploadStatus(gameId);
+          const res = publishProgram === "game"
+            ? await gameApi.getGameUploadStatus(gameId)
+            : await marketplaceApi.getUploadStatus(gameId);
           if (res.success && res.data) {
             const status = res.data.uploadStatus;
             if (status === "SUCCESS") {
@@ -430,7 +432,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [unifiedUploadStatus, gameId, t]);
+  }, [unifiedUploadStatus, gameId, t, publishProgram]);
 
   const handleUnifiedUpload = async (file: File) => {
     if (!gameId) return;
@@ -441,9 +443,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     setScanStatus("idle");
 
     try {
-      const res = await marketplaceApi.uploadUnifiedAsset(gameId, file, (percent) => {
-        setUnifiedUploadProgress(percent);
-      });
+      const res = publishProgram === "game"
+        ? await gameApi.uploadUnifiedGame(gameId, file, (percent) => {
+            setUnifiedUploadProgress(percent);
+          })
+        : await marketplaceApi.uploadUnifiedAsset(gameId, file, (percent) => {
+            setUnifiedUploadProgress(percent);
+          });
       if (res.success) {
         setUnifiedUploadStatus("processing");
         setScanStatus("scanning");
@@ -484,7 +490,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     // 2. Gọi API cập nhật thứ tự xuống DB
     if (gameId) {
       try {
-        await marketplaceApi.reorderScreenshots(gameId, newOrderedList);
+        if (publishProgram === "game") {
+          await gameApi.reorderGameScreenshots(gameId, newOrderedList);
+        } else {
+          await marketplaceApi.reorderScreenshots(gameId, newOrderedList);
+        }
         showToast("Đã cập nhật thứ tự ảnh chụp màn hình", "success");
       } catch (err: any) {
         console.error("Failed to save screenshots order:", err);
@@ -1535,7 +1545,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         </form>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* File Selection Column */}
           <div className="lg:col-span-2 space-y-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 p-6 rounded-2xl shadow-md">
             <h2 className="font-display font-bold text-lg text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800">
               {t("artifacts.title")}
@@ -1548,486 +1557,269 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
 
-            {publishProgram === "marketplace" && (
-              <div className="space-y-6 animate-fade-in">
-                {/* Hướng dẫn cấu trúc thư mục */}
-                <div className="p-5 bg-slate-50 dark:bg-slate-900/45 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <Sparkles size={16} className="text-amber-500" />
-                        Hướng dẫn đóng gói thư mục tài nguyên (.zip)
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                        Để tự động phân tách hình ảnh, video và tệp tin dự án, vui lòng chuẩn bị cấu trúc thư mục của bạn đúng theo sơ đồ bên dưới trước khi nén thành file ZIP.
-                      </p>
-                    </div>
-                    <a
-                      href={`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/v1/assets/template`}
-                      download="asset_template.zip"
-                      className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 active:scale-95"
-                    >
-                      <Download size={13} /> Tải Template Mẫu
-                    </a>
+            {/* Unified Upload Area for both Marketplace and Game */}
+            <div className="space-y-6 animate-fade-in">
+              {/* Hướng dẫn cấu trúc thư mục */}
+              <div className="p-5 bg-slate-50 dark:bg-slate-900/45 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Sparkles size={16} className="text-amber-500" />
+                      {publishProgram === "game"
+                        ? "Hướng dẫn đóng gói hình ảnh, trailer và bản Web chơi thử (.zip)"
+                        : "Hướng dẫn đóng gói thư mục tài nguyên (.zip)"}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      {publishProgram === "game"
+                        ? "Để tự động phân tách hình ảnh, video trailer và bản chạy thử Web HTML5 của game, vui lòng chuẩn bị cấu trúc thư mục đúng sơ đồ bên dưới trước khi nén thành file ZIP."
+                        : "Để tự động phân tách hình ảnh, video và tệp tin dự án, vui lòng chuẩn bị cấu trúc thư mục của bạn đúng theo sơ đồ bên dưới trước khi nén thành file ZIP."}
+                    </p>
                   </div>
-
-                  {/* Sơ đồ cây thư mục trực quan */}
-                  <div className="bg-slate-100 dark:bg-slate-950/60 p-5 rounded-2xl font-mono text-xs text-slate-700 dark:text-slate-350 border border-slate-200/50 dark:border-slate-850 leading-relaxed">
-                    <div className="text-amber-500 font-bold flex items-center gap-1.5">📦 asset_template.zip</div>
-                    <div className="pl-4 border-l border-slate-300 dark:border-slate-800 ml-1.5 space-y-1">
-                      {/* thumbnail folder */}
-                      <div>├── 📁 <span className="font-bold text-sky-500">thumbnail/</span></div>
-                      <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400">
-                        └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">thumbnail.png</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Ảnh đại diện chính, định dạng PNG/JPG/JPEG)</span>
-                      </div>
-                      
-                      {/* screenshots folder */}
-                      <div>├── 📁 <span className="font-bold text-sky-500">screenshots/</span></div>
-                      <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400 space-y-0.5">
-                        ├── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot1.png</span><br />
-                        ├── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot2.png</span><br />
-                        └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot3.png</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Tối đa 10 ảnh screenshot mô tả sản phẩm)</span>
-                      </div>
-                      
-                      {/* video folder */}
-                      <div>├── 📁 <span className="font-bold text-sky-500">video/</span></div>
-                      <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400">
-                        └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">preview.mp4</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Video giới thiệu, định dạng MP4 - không bắt buộc)</span>
-                      </div>
-                      
-                      {/* assets folder */}
-                      <div>└── 📁 <span className="font-bold text-emerald-500">assets/</span></div>
-                      <div className="pl-6 ml-1.5 text-slate-500 dark:text-slate-400">
-                        └── 📁 <span className="text-slate-650 dark:text-slate-300 font-bold">src/</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Thư mục chứa source code, audio, 3D model... đóng gói gửi cho khách hàng)</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Drag-n-drop Upload Area */}
-                <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <FileText size={18} className="text-amber-500" /> Tải lên File ZIP tài nguyên gộp
-                  </label>
-                  
-                  {unifiedUploadStatus === "idle" && (
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="file"
-                        accept=".zip"
-                        onChange={(e) => {
-                          const file = e.target.files ? e.target.files[0] : null;
-                          if (file) handleUnifiedUpload(file);
-                        }}
-                        className="hidden"
-                        id="unified-zip-input"
-                      />
-                      <label
-                        htmlFor="unified-zip-input"
-                        className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
-                      >
-                        <Upload size={14} /> Chọn File ZIP
-                      </label>
-                      <span className="text-xs text-slate-500 font-mono">
-                        Chưa chọn file (.zip)
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Trạng thái Uploading */}
-                  {unifiedUploadStatus === "uploading" && (
-                    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-                      <div className="flex justify-between items-center text-xs font-bold font-mono">
-                        <span className="text-sky-500 flex items-center gap-1">
-                          <RefreshCw size={12} className="animate-spin" /> Đang tải file lên máy chủ...
-                        </span>
-                        <span className="text-slate-600 dark:text-slate-400">{unifiedUploadProgress}%</span>
-                      </div>
-                      <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
-                        <div
-                          className="bg-sky-500 h-full rounded-full transition-all duration-350"
-                          style={{ width: `${unifiedUploadProgress}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Trạng thái Processing */}
-                  {unifiedUploadStatus === "processing" && (
-                    <div className="p-4 bg-sky-500/5 dark:bg-sky-500/10 rounded-xl border border-sky-500/20 space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold text-sky-500">
-                        <RefreshCw className="animate-spin" size={14} />
-                        <span>Hệ thống đang giải nén và phân tách tài nguyên chạy nền...</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 leading-relaxed pl-6">
-                        Chúng tôi đang thực hiện kiểm tra cấu trúc ZIP, quét virus, kiểm định bảo mật (Zip Slip / Zip Bomb) và tải các file con lên máy chủ lưu trữ. Bạn có thể đợi ở trang này, trạng thái sẽ tự động cập nhật.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Trạng thái Success */}
-                  {unifiedUploadStatus === "success" && (
-                    <div className="space-y-4">
-                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-xl text-xs font-semibold flex items-center gap-2">
-                        <CheckCircle2 size={16} className="shrink-0" />
-                        Phân tách và tối ưu hóa tài nguyên thành công!
-                      </div>
-
-                      {/* Hiển thị Preview kết quả trích xuất */}
-                      {unifiedExtractedMedia && (
-                        <div className="p-4 border border-slate-150 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 space-y-4 animate-fade-in">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Xem trước tài nguyên đã trích xuất:</h4>
-                          
-                          {/* Thumbnail */}
-                          {unifiedExtractedMedia.thumbnailUrl && (
-                            <div className="space-y-1.5">
-                              <span className="text-xs text-slate-500 font-semibold block">Ảnh đại diện (Thumbnail):</span>
-                              <img
-                                src={unifiedExtractedMedia.thumbnailUrl}
-                                alt="Extracted Thumbnail"
-                                className="w-24 h-24 object-cover rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm"
-                              />
-                            </div>
-                          )}
-
-                          {/* Screenshots */}
-                          {unifiedExtractedMedia.screenshots && unifiedExtractedMedia.screenshots.length > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs text-slate-500 font-semibold block">
-                                  Ảnh chụp màn hình (Screenshots) ({unifiedExtractedMedia.screenshots.length}):
-                                </span>
-                                <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-1">
-                                  💡 Kéo thả ảnh để sắp xếp thứ tự hiển thị
-                                </span>
-                              </div>
-                              <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                onDragEnd={handleDragEnd}
-                              >
-                                <SortableContext
-                                  items={unifiedExtractedMedia.screenshots}
-                                  strategy={horizontalListSortingStrategy}
-                                >
-                                  <div className="flex flex-wrap gap-2.5 p-2.5 bg-slate-100/40 dark:bg-slate-950/20 rounded-xl border border-slate-200/50 dark:border-slate-850/50">
-                                    {unifiedExtractedMedia.screenshots.map((url, index) => (
-                                      <SortableScreenshotItem
-                                        key={url}
-                                        url={url}
-                                        index={index}
-                                      />
-                                    ))}
-                                  </div>
-                                </SortableContext>
-                              </DndContext>
-                            </div>
-                          )}
-
-                          {/* Video */}
-                          {unifiedExtractedMedia.videoUrl && (
-                            <div className="space-y-1.5">
-                              <span className="text-xs text-slate-550 font-semibold block">Video preview:</span>
-                              <video
-                                src={unifiedExtractedMedia.videoUrl}
-                                controls
-                                className="max-w-xs rounded-lg border border-slate-200 dark:border-slate-800"
-                              />
-                            </div>
-                          )}
-                          
-                          {/* Re-upload button */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setUnifiedUploadStatus("idle");
-                              setUploadStatus((prev) => ({ ...prev, game: "idle" }));
-                            }}
-                            className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 mt-1 transition-colors"
-                          >
-                            <Upload size={13} /> Tải lên file zip khác
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Trạng thái Failed */}
-                  {unifiedUploadStatus === "failed" && (
-                    <div className="space-y-3">
-                      <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold flex items-center gap-2">
-                        <AlertTriangle size={16} className="shrink-0" />
-                        <div>
-                          <div className="font-bold">Lỗi xử lý file gộp:</div>
-                          <div className="mt-0.5 font-normal">{unifiedError}</div>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setUnifiedUploadStatus("idle")}
-                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 font-semibold rounded-lg text-xs transition-colors"
-                      >
-                        Thử lại
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 2. Thumbnail image */}
-            {publishProgram === "game" && (
-              <div className="space-y-2.5 pt-2 border-t border-[rgba(96,119,148,0.15)]">
-                <label className="text-sm font-bold text-[#b1bdcc] flex items-center gap-1.5">
-                  <Image size={16} className="text-[#fbbf24]" /> {t("artifacts.thumbnailLabel")}
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files ? e.target.files[0] : null;
-                      if (file && file.size > 10 * 1024 * 1024) {
-                        showToast(t("errors.thumbnailTooLarge"), 'warning');
-                        e.target.value = "";
-                        return;
-                      }
-                      setThumbnailFile(file);
-                      if (file) uploadFileToStorage(file, "thumbnail", "thumbnail");
-                    }}
-                    className="hidden"
-                    id="thumb-input"
-                  />
-                  <label
-                    htmlFor="thumb-input"
-                    className="px-4 py-2 bg-transparent hover:bg-[#0e1520] border border-[rgba(96,119,148,0.34)] rounded-md text-xs font-semibold text-[#f4f7fb] cursor-pointer flex items-center gap-1.5 transition-all active:scale-[0.98]"
+                  <a
+                    href={
+                      publishProgram === "game"
+                        ? `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/v1/games/template`
+                        : `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/v1/assets/template`
+                    }
+                    download={publishProgram === "game" ? "game_template.zip" : "asset_template.zip"}
+                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 active:scale-95"
                   >
-                    <Upload size={14} /> {t("artifacts.selectThumbnail")}
-                  </label>
-                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
-                    {thumbnailFile ? thumbnailFile.name : t("artifacts.noImageChosen")}
-                  </span>
+                    <Download size={13} /> Tải Template Mẫu
+                  </a>
                 </div>
-                {thumbnailFile && (
-                  <div className="mt-2 relative w-20 h-20 animate-fade-in">
-                    <img
-                      src={URL.createObjectURL(thumbnailFile)}
-                      alt="Thumbnail preview"
-                      className="w-20 h-20 object-cover rounded border border-[rgba(96,119,148,0.34)]"
-                    />
-                    {uploadStatus["thumbnail"] === "uploading" && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded">
-                        ${uploadProgress["thumbnail"]}%
-                      </span>
-                    )}
-                    {uploadStatus["thumbnail"] === "failed" && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-rose-955/60 text-rose-500 text-[10px] rounded font-semibold">
-                        Err
-                      </span>
-                    )}
+
+                {/* Sơ đồ cây thư mục trực quan */}
+                <div className="bg-slate-100 dark:bg-slate-955/60 p-5 rounded-2xl font-mono text-xs text-slate-700 dark:text-slate-350 border border-slate-200/50 dark:border-slate-850 leading-relaxed">
+                  <div className="text-amber-500 font-bold flex items-center gap-1.5">
+                    📦 {publishProgram === "game" ? "game_template.zip" : "asset_template.zip"}
                   </div>
-                )}
-                {uploadStatus["thumbnail"] === "completed" && (
-                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> {t("status.uploadComplete")}
-                  </span>
-                )}
-              </div>
-            )}
-            {/* 3. Screenshots (Multiple) */}
-            {publishProgram === "game" && (
-              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Image size={16} className="text-amber-500" /> {t("artifacts.screenshotsLabel")}
-                  </span>
-                  <span className="text-xs font-mono font-bold text-slate-500">
-                    {screenshots.length} / 5
-                  </span>
-                </label>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleScreenshotAdd}
-                    className="hidden"
-                    id="screenshot-input"
-                    disabled={screenshots.length >= 5}
-                  />
-                  <label
-                    htmlFor="screenshot-input"
-                    className={`px-4 py-2.5 border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-studio cursor-pointer ${
-                      screenshots.length >= 5
-                        ? "bg-slate-255 dark:bg-slate-955 opacity-50 cursor-not-allowed border-transparent text-slate-400"
-                        : "bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border-slate-250 dark:border-slate-800 text-slate-700 dark:text-slate-350"
-                    }`}
-                  >
-                    <Upload size={14} /> {t("artifacts.addScreenshots")}
-                  </label>
-                </div>
-
-                {screenshots.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {screenshots.map((file, idx) => {
-                      const key = getFileKey(file);
-                      return (
-                        <div key={idx} className="relative animate-fade-in">
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt="Screenshot preview"
-                            className="w-20 h-20 object-cover rounded border border-[rgba(96,119,148,0.34)]"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeScreenshot(idx)}
-                            className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs z-10 hover:bg-rose-600 transition-colors"
-                          >
-                            ×
-                          </button>
-                          {uploadStatus[key] === "uploading" && (
-                            <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded">
-                              ${uploadProgress[key]}%
-                            </span>
-                          )}
-                          {uploadStatus[key] === "failed" && (
-                            <span className="absolute inset-0 flex items-center justify-center bg-rose-955/60 text-rose-500 text-[10px] rounded font-semibold">
-                              Err
-                            </span>
-                          )}
-                          {uploadStatus[key] === "idle" && (
-                            <button
-                              type="button"
-                              onClick={() => uploadFileToStorage(file, "screenshot", key)}
-                              className="absolute inset-0 flex items-center justify-center bg-sky-955/80 text-[#38bdf8] text-[10px] font-bold rounded hover:bg-sky-900/90 transition-colors"
-                            >
-                              Upload
-                            </button>
-                          )}
+                  <div className="pl-4 border-l border-slate-300 dark:border-slate-800 ml-1.5 space-y-1">
+                    {/* thumbnail folder */}
+                    <div>├── 📁 <span className="font-bold text-sky-500">thumbnail/</span></div>
+                    <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400">
+                      └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">thumbnail.png</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Ảnh đại diện chính, định dạng PNG/JPG/JPEG)</span>
+                    </div>
+                    
+                    {/* screenshots folder */}
+                    <div>├── 📁 <span className="font-bold text-sky-500">screenshots/</span></div>
+                    <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400 space-y-0.5">
+                      ├── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot1.png</span><br />
+                      ├── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot2.png</span><br />
+                      └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot3.png</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Tối đa 10 ảnh screenshot mô tả)</span>
+                    </div>
+                    
+                    {/* video folder */}
+                    <div>├── 📁 <span className="font-bold text-sky-500">video/</span></div>
+                    <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400">
+                      └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">{publishProgram === "game" ? "trailer.mp4" : "preview.mp4"}</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Video giới thiệu, định dạng MP4 - không bắt buộc)</span>
+                    </div>
+                    
+                    {/* assets/web_demo folder */}
+                    {publishProgram === "game" ? (
+                      <>
+                        <div>└── 📁 <span className="font-bold text-emerald-500">web_demo/</span></div>
+                        <div className="pl-6 ml-1.5 text-slate-500 dark:text-slate-400">
+                          └── 📁 <span className="text-slate-650 dark:text-slate-300 font-bold">html5_files/</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Thư mục chứa bản xuất chạy trên web: index.html, index.js, index.wasm, index.pck...)</span>
                         </div>
-                      );
-                    })}
+                      </>
+                    ) : (
+                      <>
+                        <div>└── 📁 <span className="font-bold text-emerald-500">assets/</span></div>
+                        <div className="pl-6 ml-1.5 text-slate-500 dark:text-slate-400">
+                          └── 📁 <span className="text-slate-650 dark:text-slate-300 font-bold">src/</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Thư mục chứa source code, audio, 3D model... đóng gói gửi cho khách hàng)</span>
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* 4. Video upload */}
-            {publishProgram === "game" && (
-              <div className="space-y-2.5 pt-2 border-t border-[rgba(96,119,148,0.15)]">
-                <label className="text-sm font-bold text-[#b1bdcc] flex items-center gap-1.5">
-                  <Video size={16} className="text-[#fbbf24]" /> {t("artifacts.videoLabel")}
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => {
-                      const file = e.target.files ? e.target.files[0] : null;
-                      setVideoFile(file);
-                      if (file) uploadFileToStorage(file, "video", "video");
-                    }}
-                    className="hidden"
-                    id="video-input"
-                  />
-                  <label
-                    htmlFor="video-input"
-                    className="px-4 py-2 bg-transparent hover:bg-[#0e1520] border border-[rgba(96,119,148,0.34)] rounded-md text-xs font-semibold text-[#f4f7fb] cursor-pointer flex items-center gap-1.5 transition-all active:scale-[0.98]"
-                  >
-                    <Upload size={14} /> {t("artifacts.selectVideo")}
-                  </label>
-                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
-                    {videoFile ? videoFile.name : t("artifacts.noVideoChosen")}
-                  </span>
                 </div>
-                {videoFile && (
-                  <div className="mt-2 relative max-w-xs animate-fade-in">
-                    <video
-                      src={URL.createObjectURL(videoFile)}
-                      className="w-48 h-28 object-cover rounded border border-[rgba(96,119,148,0.34)] bg-black"
-                      controls
-                    />
-                    {uploadStatus["video"] === "uploading" && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded">
-                        ${uploadProgress["video"]}%
-                      </span>
-                    )}
-                    {uploadStatus["video"] === "failed" && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-rose-955/60 text-rose-500 text-[10px] rounded font-semibold">
-                        Err
-                      </span>
-                    )}
-                  </div>
-                )}
-                {uploadStatus["video"] === "completed" && (
-                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> {t("status.uploadComplete")}
-                  </span>
-                )}
               </div>
-            )}
-            {/* 5. Web Demo ZIP (Optional) */}
-            {publishProgram === "game" && gameId && publishingType === "marketplace_listing" && (
-              <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+
+              {/* Drag-n-drop Upload Area */}
+              <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Upload size={16} className="text-amber-500" /> {t("artifacts.webDemoLabel")}
+                  <FileText size={18} className="text-amber-500" /> Tải lên File ZIP tài nguyên gộp
                 </label>
-                <p className="text-xs text-slate-500">
-                  {t("artifacts.webDemoDescription")}
-                </p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept=".zip"
-                    onChange={async (e) => {
-                      const file = e.target.files ? e.target.files[0] : null;
-                      if (file) {
-                        setDemoFile(file);
-                        await handleUploadDemo(file);
-                      }
-                    }}
-                    className="hidden"
-                    id="web-demo-zip-input"
-                  />
-                  <label
-                  htmlFor="web-demo-zip-input"
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-255 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer flex items-center gap-1.5 transition-studio"
-                >
-                    <Upload size={14} /> {t("artifacts.selectDemoZip")}
-                  </label>
-                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
-                    {demoFile
-                      ? `${demoFile.name} (${(demoFile.size / (1024 * 1024)).toFixed(2)} MB)`
-                      : t("artifacts.noDemoChosen")}
-                  </span>
-                </div>
-                {demoUploadStatus === "uploading" && (
-                  <div className="space-y-1.5 mt-1.5">
-                    <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>{t("artifacts.uploadingDemo")}</span>
-                      <span>{demoUploadProgress}%</span>
+                
+                {unifiedUploadStatus === "idle" && (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept=".zip"
+                      onChange={(e) => {
+                        const file = e.target.files ? e.target.files[0] : null;
+                        if (file) handleUnifiedUpload(file);
+                      }}
+                      className="hidden"
+                      id="unified-zip-input"
+                    />
+                    <label
+                      htmlFor="unified-zip-input"
+                      className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer flex items-center gap-1.5 transition-studio"
+                    >
+                      <Upload size={14} /> Chọn File ZIP
+                    </label>
+                    <span className="text-xs text-slate-500 font-mono">
+                      Chưa chọn file (.zip)
+                    </span>
+                  </div>
+                )}
+
+                {/* Trạng thái Uploading */}
+                {unifiedUploadStatus === "uploading" && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold font-mono">
+                      <span className="text-sky-500 flex items-center gap-1">
+                        <RefreshCw size={12} className="animate-spin" /> Đang tải file lên máy chủ...
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-400">{unifiedUploadProgress}%</span>
                     </div>
                     <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-sky-500 h-full rounded-full transition-all duration-350"
-                        style={{ width: `${demoUploadProgress}%` }}
+                        style={{ width: `${unifiedUploadProgress}%` }}
                       ></div>
                     </div>
                   </div>
                 )}
-                {demoUploadStatus === "completed" && (
-                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> {t("artifacts.webDemoUploaded")}
-                  </span>
+
+                {/* Trạng thái Processing */}
+                {unifiedUploadStatus === "processing" && (
+                  <div className="p-4 bg-sky-500/5 dark:bg-sky-500/10 rounded-xl border border-sky-500/20 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-sky-500">
+                      <RefreshCw className="animate-spin" size={14} />
+                      <span>Hệ thống đang giải nén và phân tách tài nguyên chạy nền...</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed pl-6">
+                      Chúng tôi đang thực hiện kiểm tra cấu trúc ZIP, quét virus, kiểm định bảo mật (Zip Slip / Zip Bomb) và tải các file con lên máy chủ lưu trữ. Bạn có thể đợi ở trang này, trạng thái sẽ tự động cập nhật.
+                    </p>
+                  </div>
                 )}
-                {demoUploadStatus === "failed" && (
-                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={13} /> {t("artifacts.webDemoFailed")}
-                  </span>
+
+                {/* Trạng thái Success */}
+                {unifiedUploadStatus === "success" && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-xl text-xs font-semibold flex items-center gap-2">
+                      <CheckCircle2 size={16} className="shrink-0" />
+                      Phân tách và tối ưu hóa tài nguyên thành công!
+                    </div>
+
+                    {/* Hiển thị Preview kết quả trích xuất */}
+                    {unifiedExtractedMedia && (
+                      <div className="p-4 border border-slate-150 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-955/20 space-y-4 animate-fade-in">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Xem trước tài nguyên đã trích xuất:</h4>
+                        
+                        {/* Thumbnail */}
+                        {unifiedExtractedMedia.thumbnailUrl && (
+                          <div className="space-y-1.5">
+                            <span className="text-xs text-slate-500 font-semibold block">Ảnh đại diện (Thumbnail):</span>
+                            <img
+                              src={unifiedExtractedMedia.thumbnailUrl}
+                              alt="Extracted Thumbnail"
+                              className="w-24 h-24 object-cover rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm"
+                            />
+                          </div>
+                        )}
+
+                        {/* Screenshots */}
+                        {unifiedExtractedMedia.screenshots && unifiedExtractedMedia.screenshots.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-slate-500 font-semibold block">
+                                Ảnh chụp màn hình (Screenshots) ({unifiedExtractedMedia.screenshots.length}):
+                              </span>
+                              <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-1">
+                                💡 Kéo thả ảnh để sắp xếp thứ tự hiển thị
+                              </span>
+                            </div>
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handleDragEnd}
+                            >
+                              <SortableContext
+                                items={unifiedExtractedMedia.screenshots}
+                                strategy={horizontalListSortingStrategy}
+                              >
+                                <div className="flex flex-wrap gap-2.5 p-2.5 bg-slate-100/40 dark:bg-slate-950/20 rounded-xl border border-slate-200/50 dark:border-slate-855/50">
+                                  {unifiedExtractedMedia.screenshots.map((url, index) => (
+                                    <SortableScreenshotItem
+                                      key={url}
+                                      url={url}
+                                      index={index}
+                                    />
+                                  ))}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
+                          </div>
+                        )}
+
+                        {/* Video */}
+                        {unifiedExtractedMedia.videoUrl && (
+                          <div className="space-y-1.5">
+                            <span className="text-xs text-slate-550 font-semibold block">Video preview:</span>
+                            <video
+                              src={unifiedExtractedMedia.videoUrl}
+                              controls
+                              className="max-w-xs rounded-lg border border-slate-200 dark:border-slate-800"
+                            />
+                          </div>
+                        )}
+
+                        {/* Game Playable Web Demo (Chỉ dành cho Game) */}
+                        {publishProgram === "game" && (unifiedExtractedMedia as GameResponse).webDemoUrl && (
+                          <div className="space-y-1.5 pt-1">
+                            <span className="text-xs text-slate-505 font-semibold block">Bản chơi thử (Web Demo):</span>
+                            <a
+                              href={(unifiedExtractedMedia as GameResponse).webDemoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl text-xs inline-flex items-center gap-1.5 transition-all shadow-sm shrink-0 active:scale-95"
+                            >
+                              <Gamepad2 size={13} /> Chạy thử Web Demo
+                            </a>
+                          </div>
+                        )}
+                        
+                        {/* Re-upload button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUnifiedFile(null);
+                            setUnifiedUploadStatus("idle");
+                            setUnifiedExtractedMedia(null);
+                            setUploadStatus((prev) => ({ ...prev, game: "idle" }));
+                          }}
+                          className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 mt-1 transition-colors"
+                        >
+                          <Upload size={13} /> Tải lên file zip khác
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Trạng thái Failed */}
+                {unifiedUploadStatus === "failed" && (
+                  <div className="space-y-3">
+                    <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold flex items-center gap-2">
+                      <AlertTriangle size={16} className="shrink-0" />
+                      <div>
+                        <div className="font-bold">Lỗi xử lý file gộp:</div>
+                        <div className="mt-0.5 font-normal">{unifiedError}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUnifiedUploadStatus("idle")}
+                      className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-355 font-semibold rounded-lg text-xs transition-colors"
+                    >
+                      Thử lại
+                    </button>
+                  </div>
                 )}
               </div>
-            )}
+            </div>
 
             {/* 6. GitHub Repository */}
             {publishProgram === "game" && (
@@ -2039,7 +1831,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   {t("artifacts.githubDescription")}
                 </p>
                 
-                {uploadStatus["thumbnail"] !== "completed" ? (
+                {unifiedUploadStatus !== "success" ? (
                   <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-semibold flex items-center gap-2 animate-fade-in">
                     <AlertTriangle size={15} />
                     {t("artifacts.thumbnailRequiredBeforeRepo")}
@@ -2060,7 +1852,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       value={gameRepoBranch}
                       onChange={(e) => setGameRepoBranch(e.target.value)}
                       disabled={repoSubmitted}
-                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-955 border border-slate-250 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-350 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-955 border border-slate-250 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-355 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
                     />
                     {!repoSubmitted ? (
                       <button
@@ -2120,10 +1912,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 size="md"
                 disabled={
                   (publishProgram === "game" &&
-                    (!repoSubmitted ||
-                      uploadStatus["thumbnail"] !== "completed")) ||
+                    (!repoSubmitted || unifiedUploadStatus !== "success")) ||
                   (publishProgram === "marketplace" &&
-                    uploadStatus["game"] !== "completed") ||
+                    unifiedUploadStatus !== "success") ||
                   scanStatus === "scanning"
                 }
                 onClick={() => {

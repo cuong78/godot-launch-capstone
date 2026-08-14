@@ -65,4 +65,19 @@ public interface GameService {
      * @param relativePath đường dẫn tương đối bên trong thư mục web_demo (VD: "{version}/index.html")
      */
     void streamWebDemoFile(UUID gameId, String relativePath, HttpServletResponse response) throws IOException;
+
+    /**
+     * Nhận file zip gộp của Game và khởi chạy tác vụ xử lý chạy nền bất đồng bộ.
+     */
+    void startUnifiedGameUpload(UUID gameId, MultipartFile file, String uploaderEmail);
+
+    /**
+     * Lấy trạng thái xử lý upload hiện tại của Game.
+     */
+    GameResponse getUploadStatus(UUID gameId, String requesterEmail);
+
+    /**
+     * Sắp xếp lại thứ tự hình ảnh screenshots của Game.
+     */
+    void reorderScreenshots(UUID gameId, java.util.List<String> orderedUrls, String requesterEmail);
 }

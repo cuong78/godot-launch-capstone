@@ -71,6 +71,12 @@ public class Game {
     @Column(name = "status", nullable = false, columnDefinition = "game_status_enum")
     private GameStatus status = GameStatus.draft;
 
+    @Column(name = "upload_status", nullable = false, length = 50)
+    private String uploadStatus = "PENDING_UPLOAD";
+
+    @Column(name = "upload_error", columnDefinition = "TEXT")
+    private String uploadError;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "publishing_type", columnDefinition = "publishing_type_enum")

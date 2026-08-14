@@ -508,6 +508,8 @@ export interface GameResponse {
   pendingScreenshots?: string[];
   createdAt?: string;
   updatedAt?: string;
+  uploadStatus?: string;
+  uploadError?: string;
 }
 
 export interface ContractResponse {

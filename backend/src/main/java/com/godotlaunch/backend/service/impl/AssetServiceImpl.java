@@ -639,7 +639,7 @@ public class AssetServiceImpl implements AssetService {
         assertAssetOwner(item, requester);
 
         // 1. Lấy tất cả screenshot hiện tại
-        java.util.List< Media> screenshots = mediaRepository.findByAsset_IdAndMediaType(itemId, "screenshot");
+        java.util.List<         Media> screenshots = mediaRepository.findByAsset_IdAndMediaType(itemId, "screenshot");
 
         // 2. Cập nhật createdAt theo thứ tự của orderedUrls
         java.time.Instant now = java.time.Instant.now();

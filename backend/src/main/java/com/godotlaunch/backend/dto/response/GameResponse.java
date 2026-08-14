@@ -24,6 +24,8 @@ public class GameResponse {
     private BigDecimal downloadPrice;
     private boolean communityAvailable;
     private String status;
+    private String uploadStatus;
+    private String uploadError;
     private String creatorName;
     private String creatorFullName;
     private String categoryName;

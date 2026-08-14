@@ -199,4 +199,49 @@ public class GameController {
         String relativePath = org.springframework.web.util.UriUtils.decode(rawRelativePath, java.nio.charset.StandardCharsets.UTF_8);
         gameService.streamWebDemoFile(id, relativePath, response);
     }
+
+    @GetMapping("/template")
+    @Operation(summary = "Download game folder structure template zip file")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadTemplate() {
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.ClassPathResource("static/templates/game_template.zip");
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"game_template.zip\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
+    }
+
+    @PostMapping(value = "/{id}/upload-unified", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    @Operation(summary = "Upload unified zip containing game description media and playable web demo")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> uploadUnifiedGame(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        gameService.startUnifiedGameUpload(id, file, principal.getName());
+        return ResponseEntity.accepted().body(ApiResponse.success(
+                Map.of("gameId", id, "status", "PROCESSING"),
+                "File has been uploaded successfully and is being processed in the background."
+        ));
+    }
+
+    @GetMapping("/{id}/upload-status")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    @Operation(summary = "Get progress of the background unified zip processing")
+    public ResponseEntity<ApiResponse<GameResponse>> getUploadStatus(
+            @PathVariable UUID id,
+            Principal principal) {
+        GameResponse response = gameService.getUploadStatus(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response, "Upload status retrieved successfully"));
+    }
+
+    @PutMapping("/{id}/reorder-screenshots")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    @Operation(summary = "Update the display sequence of game screenshots")
+    public ResponseEntity<ApiResponse<Map<String, String>>> reorderScreenshots(
+            @PathVariable UUID id,
+            @RequestBody List<String> orderedUrls,
+            Principal principal) {
+        gameService.reorderScreenshots(id, orderedUrls, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Screenshots reordered successfully"), "Success"));
+    }
 }

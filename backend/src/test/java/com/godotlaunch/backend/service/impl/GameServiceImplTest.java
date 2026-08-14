@@ -90,6 +90,8 @@ class GameServiceImplTest {
     private AiReviewService aiReviewService;
     @Mock
     private NotificationService notificationService;
+    @Mock
+    private UnifiedGameUploadHelper unifiedGameUploadHelper;
 
     @InjectMocks
     private GameServiceImpl gameService;

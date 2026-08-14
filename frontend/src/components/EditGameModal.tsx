@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+      import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -429,66 +429,18 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Category Dropdown */}
-            <div ref={categoryPickerRef} className="relative flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-555 dark:text-slate-350 flex justify-between items-center">
+            {/* Category (Read-only) */}
+            <div className="relative flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-555 dark:text-slate-350">
                 <span>Danh mục sản phẩm</span>
-                {isLiveGame && (
-                  <span className="text-[10px] text-amber-500 font-normal">
-                    (Không thể sửa khi đã phát hành)
-                  </span>
-                )}
               </label>
-              {isLoadingCategories ? (
-                <div className="text-xs text-slate-400 animate-pulse py-2">
-                  Đang tải danh mục...
-                </div>
-              ) : (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => !isLiveGame && setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                    disabled={isLiveGame}
-                    className="w-full flex justify-between items-center px-3.5 py-2 bg-white dark:bg-slate-955 border border-slate-300 dark:border-slate-855 rounded-lg text-sm outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 text-left dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <span>
-                      {categories.find((cat) => cat.id === categoryId)?.name || "Chọn danh mục..."}
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={`text-slate-400 transition-transform duration-200 ${
-                        isCategoryDropdownOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  {isCategoryDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-205 bg-white dark:bg-slate-905 p-1.5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-                      {categories.map((cat) => {
-                        const active = cat.id === categoryId;
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              setCategoryId(cat.id);
-                              setIsCategoryDropdownOpen(false);
-                            }}
-                            className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-xs transition-colors ${
-                              active
-                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-350 font-semibold"
-                                : "text-slate-700 hover:bg-slate-100 dark:text-slate-350 dark:hover:bg-slate-800"
-                            }`}
-                          >
-                            <span>{cat.name}</span>
-                            {active && <Check size={12} className="text-amber-500" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+              <input
+                type="text"
+                readOnly
+                disabled
+                value={categories.find((cat) => cat.id === categoryId)?.name || item.originalItem?.categoryName || "—"}
+                className="w-full px-3.5 py-2 bg-slate-100 dark:bg-slate-955 border border-slate-300 dark:border-slate-855 rounded-lg text-sm text-slate-700 dark:text-slate-400 opacity-80 cursor-not-allowed outline-none"
+              />
             </div>
 
             {/* Tags Picker */}

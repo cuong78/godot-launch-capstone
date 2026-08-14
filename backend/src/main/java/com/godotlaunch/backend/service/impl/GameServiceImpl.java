@@ -44,6 +44,8 @@ import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -68,6 +70,7 @@ public class GameServiceImpl implements GameService {
     private final CategoryRepository categoryRepository;
     private final MediaRepository mediaRepository;
     private final com.godotlaunch.backend.repository.TagRepository tagRepository;
+    private final UnifiedGameUploadHelper unifiedGameUploadHelper;
 
     /** Helper: tìm media của game này. */
     private List<Media> gameMedia(UUID gameId) {
@@ -710,6 +713,8 @@ public class GameServiceImpl implements GameService {
                 .downloadPrice(null)
                 .communityAvailable(game.isSourceListed())
                 .status(game.getStatus().name())
+                .uploadStatus(game.getUploadStatus())
+                .uploadError(game.getUploadError())
                 .creatorName(game.getCreator().getEmail())
                 .creatorFullName(game.getCreator().getFullName())
                 .categoryName(game.getCategory() != null ? game.getCategory().getName() : null)
@@ -1580,5 +1585,89 @@ public class GameServiceImpl implements GameService {
             }
         }
         path.delete();
+    }
+
+    @Override
+    @Transactional
+    public void startUnifiedGameUpload(UUID gameId, MultipartFile file, String uploaderEmail) {
+        User uploader = getRequesterWithRole(uploaderEmail);
+        assertDeveloper(uploader);
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+        assertGameOwner(game, uploader);
+
+        // Lưu file tạm ra đĩa để helper đọc chạy nền
+        File tempDir = new File(System.getProperty("java.io.tmpdir"));
+        File rawZipFile = new File(tempDir, "raw-game-zip-" + gameId + "-" + System.currentTimeMillis() + ".zip");
+        try {
+            file.transferTo(rawZipFile);
+        } catch (IOException e) {
+            throw new RuntimeException("Không thể lưu file ZIP tải lên tạm thời", e);
+        }
+
+        // Cập nhật trạng thái PROCESSING
+        game.setUploadStatus("PROCESSING");
+        game.setUploadError(null);
+        gameRepository.save(game);
+
+        // Chạy bất đồng bộ sau khi transaction commit
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    unifiedGameUploadHelper.processUnifiedGameZipAsync(gameId, rawZipFile);
+                }
+            });
+        } else {
+            unifiedGameUploadHelper.processUnifiedGameZipAsync(gameId, rawZipFile);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GameResponse getUploadStatus(UUID gameId, String requesterEmail) {
+        User requester = getRequesterWithRole(requesterEmail);
+        assertDeveloper(requester);
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+        assertGameOwner(game, requester);
+
+        return mapToResponse(game);
+    }
+
+    @Override
+    @Transactional
+    public void reorderScreenshots(UUID gameId, List<String> orderedUrls, String requesterEmail) {
+        User requester = getRequesterWithRole(requesterEmail);
+        assertDeveloper(requester);
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+        assertGameOwner(game, requester);
+
+        // 1. Lấy tất cả screenshot hiện tại
+        List<Media> screenshots = mediaRepository.findByGame_IdAndMediaType(gameId, "screenshot");
+
+        // 2. Cập nhật createdAt theo thứ tự của orderedUrls
+        java.time.Instant now = java.time.Instant.now();
+        // Đối với OrderByCreatedAtDesc: phần tử đầu tiên hiển thị trước -> phần tử đầu tiên phải có createdAt LỚN NHẤT.
+        for (int i = 0; i < orderedUrls.size(); i++) {
+            String url = orderedUrls.get(i);
+            String objectKey = extractObjectKeyFromUrl(url);
+            if (objectKey == null) continue;
+
+            Media match = null;
+            for (Media m : screenshots) {
+                if (m.getMediaUrl().contains(objectKey)) {
+                    match = m;
+                    break;
+                }
+            }
+
+            if (match != null) {
+                // Giảm dần createdAt cho mỗi vị trí tiếp theo
+                match.setCreatedAt(now.minusSeconds(i));
+                mediaRepository.save(match);
+            }
+        }
     }
 }

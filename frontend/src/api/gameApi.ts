@@ -161,5 +161,35 @@ export const gameApi = {
       }
     );
     return response.data;
+  },
+
+  uploadUnifiedGame: async (
+    gameId: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<{ gameId: string; status: string }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<ApiResponse<{ gameId: string; status: string }>>(
+      `/api/v1/games/${gameId}/upload-unified`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
+        },
+      }
+    );
+    return response.data;
+  },
+
+  getGameUploadStatus: async (id: string): Promise<ApiResponse<GameResponse>> => {
+    const response = await api.get<ApiResponse<GameResponse>>(`/api/v1/games/${id}/upload-status`);
+    return response.data;
+  },
+
+  reorderGameScreenshots: async (id: string, orderedUrls: string[]): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.put<ApiResponse<{ message: string }>>(`/api/v1/games/${id}/reorder-screenshots`, orderedUrls);
+    return response.data;
   }
 };
