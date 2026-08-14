@@ -65,11 +65,14 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const tagPickerRef = useRef<HTMLDivElement>(null);
 
   const statusStr = item?.originalItem?.status?.toLowerCase();
+  const hasPendingUpdate = item?.type === "game" && !!item?.originalItem?.pendingUpdateSnapshotId;
   const isMediaLocked = !item || 
-    statusStr === "active" || 
-    statusStr === "published" || 
-    statusStr === "approved" || 
-    statusStr === "awaiting_store_build";
+    (!hasPendingUpdate && (
+      statusStr === "active" || 
+      statusStr === "published" || 
+      statusStr === "approved" || 
+      statusStr === "awaiting_store_build"
+    ));
 
   // Media
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
