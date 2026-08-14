@@ -6,10 +6,15 @@ interface ReviewSectionProps {
   productId: string;
   productType: 'game' | 'asset';
   currentUserId?: string;
+  currentUserEmail?: string;
   isAdmin?: boolean;
+  sellerId?: string;
+  sellerEmail?: string;
 }
 
-export const ReviewSection: React.FC<ReviewSectionProps> = ({ productId, productType, currentUserId, isAdmin }) => {
+export const ReviewSection: React.FC<ReviewSectionProps> = ({ 
+  productId, productType, currentUserId, currentUserEmail, isAdmin, sellerId, sellerEmail 
+}) => {
   const [summary, setSummary] = useState<ReviewSummaryDto | null>(null);
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +27,35 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({ productId, product
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [comment, setComment] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
+
+  // Reply State
+  const [replyingReviewId, setReplyingReviewId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState<string>('');
+  const [replySubmitting, setReplySubmitting] = useState(false);
+
+  const isSeller = Boolean(
+    (currentUserId && sellerId && currentUserId === sellerId) ||
+    (currentUserEmail && sellerEmail && currentUserEmail.toLowerCase() === sellerEmail.toLowerCase())
+  );
+  const isSellerOrAdmin = Boolean(isAdmin || isSeller);
+
+  const handleSendReply = async (reviewId: string) => {
+    if (!replyText.trim()) return;
+    try {
+      setReplySubmitting(true);
+      setErrorMsg(null);
+      await reviewApi.replyToReview(reviewId, replyText.trim());
+      setSuccessMsg('Phản hồi đánh giá thành công!');
+      setReplyingReviewId(null);
+      setReplyText('');
+      fetchReviewData();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Có lỗi xảy ra khi gửi phản hồi.';
+      setErrorMsg(msg);
+    } finally {
+      setReplySubmitting(false);
+    }
+  };
 
   const fetchReviewData = async () => {
     try {
@@ -311,6 +345,44 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({ productId, product
                           ))}
                         </div>
 
+                        {/* Reply Option for Seller */}
+                        {isSeller && (
+                          <button
+                            onClick={() => {
+                              if (replyingReviewId === rev.id) {
+                                setReplyingReviewId(null);
+                              } else {
+                                setReplyingReviewId(rev.id);
+                                setReplyText(rev.sellerReply || '');
+                              }
+                            }}
+                            title="Tác giả phản hồi nhận xét này"
+                            className="px-2.5 py-1 text-xs font-semibold text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            {rev.sellerReply ? 'Sửa phản hồi (Tác giả)' : 'Trả lời (Tác giả)'}
+                          </button>
+                        )}
+
+                        {/* Reply Option for Admin */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              if (replyingReviewId === rev.id) {
+                                setReplyingReviewId(null);
+                              } else {
+                                setReplyingReviewId(rev.id);
+                                setReplyText(rev.adminReply || '');
+                              }
+                            }}
+                            title="Admin phản hồi nhận xét này"
+                            className="px-2.5 py-1 text-xs font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            {rev.adminReply ? 'Sửa phản hồi (Admin)' : 'Trả lời (Admin)'}
+                          </button>
+                        )}
+
                         {(isAdmin || (currentUserId && currentUserId === rev.userId)) && (
                           <button
                             onClick={() => setReviewToDeleteId(rev.id)}
@@ -327,6 +399,88 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({ productId, product
                       <p className="text-sm text-slate-300 mt-1 pl-11 whitespace-pre-line leading-relaxed">
                         {rev.comment}
                       </p>
+                    )}
+
+                    {/* Existing Seller Reply Display */}
+                    {rev.sellerReply && (
+                      <div className="mt-3 ml-11 p-3.5 bg-indigo-950/40 border border-indigo-500/30 rounded-xl space-y-1.5 animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-indigo-200">Phản hồi từ Tác giả sản phẩm</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              👤 Tác giả
+                            </span>
+                          </div>
+                          {rev.sellerRepliedAt && (
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {new Date(rev.sellerRepliedAt).toLocaleDateString('vi-VN')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-200 whitespace-pre-line leading-relaxed pl-1">
+                          {rev.sellerReply}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Existing Admin Reply Display */}
+                    {rev.adminReply && (
+                      <div className="mt-3 ml-11 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl space-y-1.5 animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-rose-200">
+                              {rev.adminRepliedUserName || 'Quản trị viên'}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                              🛡️ Admin
+                            </span>
+                          </div>
+                          {rev.adminRepliedAt && (
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {new Date(rev.adminRepliedAt).toLocaleDateString('vi-VN')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-200 whitespace-pre-line leading-relaxed pl-1">
+                          {rev.adminReply}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Inline Reply Form */}
+                    {replyingReviewId === rev.id && (
+                      <div className="mt-3 ml-11 p-4 bg-slate-900 border border-indigo-500/40 rounded-xl space-y-3 animate-fade-in">
+                        <label className="block text-xs font-semibold text-indigo-300">
+                          {isAdmin ? '🛡️ Quản trị viên phản hồi:' : '👤 Tác giả sản phẩm phản hồi:'}
+                        </label>
+                        <textarea
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          maxLength={1000}
+                          rows={3}
+                          placeholder="Nhập câu trả lời/phản hồi của bạn dành cho người mua này..."
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setReplyingReviewId(null)}
+                            disabled={replySubmitting}
+                            className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-700 transition cursor-pointer"
+                          >
+                            Hủy bỏ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSendReply(rev.id)}
+                            disabled={replySubmitting || !replyText.trim()}
+                            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                          >
+                            <Send className="w-3 h-3" />
+                            {replySubmitting ? 'Đang gửi...' : 'Gửi phản hồi'}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}

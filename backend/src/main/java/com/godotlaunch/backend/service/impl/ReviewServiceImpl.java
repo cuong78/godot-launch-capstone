@@ -148,6 +148,62 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Transactional
+    public ReviewResponse replyToReview(UUID reviewId, com.godotlaunch.backend.dto.review.ReplyReviewRequest request, String replierEmail) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new AppException(ErrorCode.REVIEW_NOT_FOUND));
+
+        User replier = userRepository.findByEmail(replierEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        boolean isAdmin = replier.getRole() != null && "admin".equalsIgnoreCase(replier.getRole().getName());
+        boolean isSeller = false;
+        if (review.getGame() != null) {
+            isSeller = review.getGame().getCreator().getId().equals(replier.getId());
+        } else if (review.getAsset() != null) {
+            isSeller = review.getAsset().getSeller().getId().equals(replier.getId());
+        }
+
+        if (!isAdmin && !isSeller) {
+            throw new AppException(ErrorCode.ACCESS_DENIED, "Chỉ tác giả sản phẩm hoặc Admin mới có quyền phản hồi đánh giá này.");
+        }
+
+        String cleanReply = request.getReplyComment();
+        if (cleanReply != null) {
+            cleanReply = cleanReply.replaceAll("<[^>]*>", "").trim();
+        }
+
+        if (isAdmin) {
+            review.setAdminReply(cleanReply);
+            review.setAdminRepliedAt(java.time.Instant.now());
+            review.setAdminRepliedByUser(replier);
+        } else if (isSeller) {
+            review.setSellerReply(cleanReply);
+            review.setSellerRepliedAt(java.time.Instant.now());
+        }
+
+        Review saved = reviewRepository.save(review);
+
+        try {
+            String prodTitle = review.getGame() != null ? review.getGame().getTitle() : (review.getAsset() != null ? review.getAsset().getTitle() : "sản phẩm");
+            String targetId = review.getGame() != null ? review.getGame().getId().toString() : (review.getAsset() != null ? review.getAsset().getId().toString() : null);
+            String roleLabel = isAdmin ? "Quản trị viên" : "Tác giả sản phẩm";
+            String notifMsg = roleLabel + " đã phản hồi đánh giá của bạn trên sản phẩm \"" + prodTitle + "\".";
+            notificationService.createAndSendNotification(
+                    review.getUser(),
+                    replier,
+                    NotificationType.NEW_REVIEW,
+                    notifMsg,
+                    targetId
+            );
+        } catch (Exception e) {
+            // Ignore notification error
+        }
+
+        return mapToResponse(saved);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public ReviewSummaryDto getGameReviewSummary(UUID gameId, String currentEmail) {
         Game game = gameRepository.findById(gameId)
@@ -330,6 +386,8 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private ReviewResponse mapToResponse(Review review) {
+        User adminReplier = review.getAdminRepliedByUser();
+
         return ReviewResponse.builder()
                 .id(review.getId())
                 .userId(review.getUser().getId())
@@ -339,6 +397,12 @@ public class ReviewServiceImpl implements ReviewService {
                 .assetId(review.getAsset() != null ? review.getAsset().getId() : null)
                 .rating(review.getRating())
                 .comment(review.getComment())
+                .sellerReply(review.getSellerReply())
+                .sellerRepliedAt(review.getSellerRepliedAt())
+                .adminReply(review.getAdminReply())
+                .adminRepliedAt(review.getAdminRepliedAt())
+                .adminRepliedByUserId(adminReplier != null ? adminReplier.getId() : null)
+                .adminRepliedUserName(adminReplier != null ? adminReplier.getFullName() : null)
                 .createdAt(review.getCreatedAt())
                 .updatedAt(review.getUpdatedAt())
                 .build();

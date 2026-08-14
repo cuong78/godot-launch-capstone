@@ -43,6 +43,22 @@ public class Review {
     @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
+    @Column(name = "seller_reply", columnDefinition = "TEXT")
+    private String sellerReply;
+
+    @Column(name = "seller_replied_at")
+    private Instant sellerRepliedAt;
+
+    @Column(name = "admin_reply", columnDefinition = "TEXT")
+    private String adminReply;
+
+    @Column(name = "admin_replied_at")
+    private Instant adminRepliedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_replied_by_user_id")
+    private User adminRepliedByUser;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 

@@ -93,6 +93,18 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success(reviews, "Lấy tất cả đánh giá thành công."));
     }
 
+    @PostMapping("/{id}/reply")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Reply to a review", description = "Allows seller of the game/asset or Admin to reply to a review comment.")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ApiResponse<ReviewResponse>> replyToReview(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.godotlaunch.backend.dto.review.ReplyReviewRequest request,
+            Principal principal) {
+        ReviewResponse response = reviewService.replyToReview(id, request, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response, "Phản hồi đánh giá thành công."));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Delete a review", description = "Deletes a review by ID (Owner or Admin).")
