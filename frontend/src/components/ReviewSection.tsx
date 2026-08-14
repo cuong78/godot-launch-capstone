@@ -151,10 +151,10 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-md shadow-xl text-slate-100 mt-8">
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
-        <MessageSquare className="w-6 h-6 text-indigo-400" />
-        <h2 className="text-xl font-bold tracking-tight">Đánh giá & Bình luận từ người mua</h2>
+    <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 backdrop-blur-md shadow-xl text-slate-850 dark:text-slate-100 mt-8">
+      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <MessageSquare className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
+        <h2 className="text-xl font-bold tracking-tight text-slate-850 dark:text-white">Đánh giá & Bình luận từ người mua</h2>
       </div>
 
       {loading ? (
@@ -162,10 +162,10 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
       ) : (
         <div className="space-y-8">
           {/* Summary Header & Star Breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-950/60 p-6 rounded-xl border border-slate-800/80">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 dark:bg-slate-955/60 p-6 rounded-xl border border-slate-200 dark:border-slate-800/80">
             {/* Average Rating Score */}
-            <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0">
-              <span className="text-5xl font-extrabold text-white tracking-tight">
+            <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-4 md:pb-0">
+              <span className="text-5xl font-extrabold text-slate-850 dark:text-white tracking-tight">
                 {summary?.averageRating ? summary.averageRating.toFixed(1) : '0.0'}
               </span>
               <div className="flex items-center gap-1 my-2">
@@ -175,12 +175,12 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                     className={`w-5 h-5 ${
                       star <= Math.round(summary?.averageRating || 0)
                         ? 'fill-amber-400 text-amber-400'
-                        : 'text-slate-700'
+                        : 'text-slate-300 dark:text-slate-700'
                     }`}
                   />
                 ))}
               </div>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 Dựa trên {summary?.totalReviews || 0} lượt đánh giá
               </span>
             </div>
@@ -194,16 +194,16 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
 
                 return (
                   <div key={star} className="flex items-center gap-3 text-xs">
-                    <span className="w-12 text-slate-400 flex items-center gap-1 font-medium">
+                    <span className="w-12 text-slate-500 dark:text-slate-400 flex items-center gap-1 font-medium">
                       {star} <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                     </span>
-                    <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div className="flex-1 bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                       <div
                         className="bg-amber-400 h-full rounded-full transition-all duration-300"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <span className="w-10 text-right text-slate-500">{count} ({percentage}%)</span>
+                    <span className="w-10 text-right text-slate-650 dark:text-slate-500">{count} ({percentage}%)</span>
                   </div>
                 );
               })}
@@ -212,26 +212,26 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
 
           {/* Feedback Alerts */}
           {errorMsg && (
-            <div className="p-4 bg-red-950/50 border border-red-800 text-red-300 rounded-xl flex items-center gap-3 text-sm">
-              <AlertCircle className="w-5 h-5 shrink-0 text-red-400" />
+            <div className="p-4 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl flex items-center gap-3 text-sm">
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-500 dark:text-red-400" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-4 bg-emerald-950/50 border border-emerald-800 text-emerald-300 rounded-xl flex items-center gap-3 text-sm">
-              <CheckCircle className="w-5 h-5 shrink-0 text-emerald-400" />
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-xl flex items-center gap-3 text-sm">
+              <CheckCircle className="w-5 h-5 shrink-0 text-emerald-500 dark:text-emerald-400" />
               <span>{successMsg}</span>
             </div>
           )}
 
           {/* Review Form (Only for eligible buyers) */}
           {summary?.userCanReview ? (
-            <form onSubmit={handleSubmit} className="bg-slate-950/40 p-6 rounded-xl border border-indigo-500/20">
-              <h3 className="text-md font-semibold mb-4 text-indigo-300 flex items-center justify-between">
+            <form onSubmit={handleSubmit} className="bg-slate-50 dark:bg-slate-950/40 p-6 rounded-xl border border-indigo-200 dark:border-indigo-500/20">
+              <h3 className="text-md font-semibold mb-4 text-indigo-600 dark:text-indigo-300 flex items-center justify-between">
                 <span>{isEditing ? 'Chỉnh sửa đánh giá của bạn' : 'Viết đánh giá của bạn'}</span>
                 {isEditing && (
-                  <span className="text-xs font-normal text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-normal text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
                     Đã đánh giá trước đó
                   </span>
                 )}
@@ -239,7 +239,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
 
               {/* Star Rating Picker */}
               <div className="mb-4">
-                <label className="block text-xs font-medium text-slate-400 mb-2">Chọn mức đánh giá:</label>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Chọn mức đánh giá:</label>
                 <div className="flex items-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -254,12 +254,12 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                         className={`w-7 h-7 cursor-pointer ${
                           star <= (hoverRating || rating)
                             ? 'fill-amber-400 text-amber-400'
-                            : 'text-slate-700 hover:text-slate-500'
+                            : 'text-slate-300 dark:text-slate-700 hover:text-slate-500'
                         }`}
                       />
                     </button>
                   ))}
-                  <span className="ml-3 text-sm font-semibold text-amber-300">
+                  <span className="ml-3 text-sm font-semibold text-amber-600 dark:text-amber-300">
                     {hoverRating || rating} sao
                   </span>
                 </div>
@@ -267,7 +267,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
 
               {/* Comment Textarea */}
               <div className="mb-4">
-                <label className="block text-xs font-medium text-slate-400 mb-2">
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                   Nhận xét ngắn (Tối đa 1000 ký tự):
                 </label>
                 <textarea
@@ -276,9 +276,9 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                   maxLength={1000}
                   rows={3}
                   placeholder="Chia sẻ cảm nhận của bạn về chất lượng game/asset này..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
                 />
-                <div className="text-right text-xs text-slate-500 mt-1">
+                <div className="text-right text-xs text-slate-450 dark:text-slate-500 mt-1">
                   {comment.length}/1000 ký tự
                 </div>
               </div>
@@ -295,17 +295,17 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
               </div>
             </form>
           ) : (
-            <div className="p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl text-slate-400 text-xs text-center">
+            <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 rounded-xl text-slate-550 dark:text-slate-400 text-xs text-center">
               Chỉ những người đã mua sản phẩm này mới có thể viết đánh giá & nhận xét.
             </div>
           )}
 
           {/* List of Reviews */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-300">Tất cả nhận xét ({reviews.length})</h3>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tất cả nhận xét ({reviews.length})</h3>
 
             {reviews.length === 0 ? (
-              <div className="py-8 text-center text-slate-500 text-sm">
+              <div className="py-8 text-center text-slate-400 dark:text-slate-500 text-sm">
                 Chưa có đánh giá nào cho sản phẩm này. Hãy là người đầu tiên mua và đánh giá!
               </div>
             ) : (
@@ -313,11 +313,11 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                 {reviews.map((rev) => (
                   <div
                     key={rev.id}
-                    className="p-4 bg-slate-950/40 border border-slate-800/60 rounded-xl flex flex-col gap-2 relative group hover:border-slate-700 transition-colors"
+                    className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/60 rounded-xl flex flex-col gap-2 relative group hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center font-bold text-xs text-indigo-300">
+                        <div className="w-8 h-8 rounded-full bg-indigo-600/10 dark:bg-indigo-600/30 border border-indigo-200 dark:border-indigo-500/40 flex items-center justify-center font-bold text-xs text-indigo-600 dark:text-indigo-300">
                           {rev.userAvatarUrl ? (
                             <img src={rev.userAvatarUrl} alt={rev.userName} className="w-full h-full rounded-full object-cover" />
                           ) : (
@@ -325,8 +325,8 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                           )}
                         </div>
                         <div>
-                          <span className="font-semibold text-sm text-slate-200 block">{rev.userName}</span>
-                          <span className="text-[10px] text-slate-500">
+                          <span className="font-semibold text-sm text-slate-800 dark:text-slate-200 block">{rev.userName}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
                             {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
                           </span>
                         </div>
@@ -339,7 +339,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                             <Star
                               key={star}
                               className={`w-4 h-4 ${
-                                star <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-800'
+                                star <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200 dark:text-slate-800'
                               }`}
                             />
                           ))}
@@ -357,7 +357,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                               }
                             }}
                             title="Tác giả phản hồi nhận xét này"
-                            className="px-2.5 py-1 text-xs font-semibold text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                           >
                             <MessageSquare className="w-3 h-3" />
                             {rev.sellerReply ? 'Sửa phản hồi (Tác giả)' : 'Trả lời (Tác giả)'}
@@ -376,7 +376,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                               }
                             }}
                             title="Admin phản hồi nhận xét này"
-                            className="px-2.5 py-1 text-xs font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/30 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                           >
                             <MessageSquare className="w-3 h-3" />
                             {rev.adminReply ? 'Sửa phản hồi (Admin)' : 'Trả lời (Admin)'}
@@ -387,7 +387,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                           <button
                             onClick={() => setReviewToDeleteId(rev.id)}
                             title={isAdmin ? "Admin xóa đánh giá này" : "Xóa đánh giá"}
-                            className="p-1 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                            className="p-1 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -396,28 +396,28 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                     </div>
 
                     {rev.comment && (
-                      <p className="text-sm text-slate-300 mt-1 pl-11 whitespace-pre-line leading-relaxed">
+                      <p className="text-sm text-slate-655 dark:text-slate-300 mt-1 pl-11 whitespace-pre-line leading-relaxed">
                         {rev.comment}
                       </p>
                     )}
 
                     {/* Existing Seller Reply Display */}
                     {rev.sellerReply && (
-                      <div className="mt-3 ml-11 p-3.5 bg-indigo-950/40 border border-indigo-500/30 rounded-xl space-y-1.5 animate-fade-in">
+                      <div className="mt-3 ml-11 p-3.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-500/30 rounded-xl space-y-1.5 animate-fade-in">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-indigo-200">Phản hồi từ Tác giả sản phẩm</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            <span className="font-bold text-xs text-indigo-800 dark:text-indigo-200">Phản hồi từ Tác giả sản phẩm</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                               👤 Tác giả
                             </span>
                           </div>
                           {rev.sellerRepliedAt && (
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                               {new Date(rev.sellerRepliedAt).toLocaleDateString('vi-VN')}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-200 whitespace-pre-line leading-relaxed pl-1">
+                        <p className="text-xs text-slate-655 dark:text-slate-200 whitespace-pre-line leading-relaxed pl-1">
                           {rev.sellerReply}
                         </p>
                       </div>
@@ -425,23 +425,23 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
 
                     {/* Existing Admin Reply Display */}
                     {rev.adminReply && (
-                      <div className="mt-3 ml-11 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl space-y-1.5 animate-fade-in">
+                      <div className="mt-3 ml-11 p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-500/30 rounded-xl space-y-1.5 animate-fade-in">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-rose-200">
+                            <span className="font-bold text-xs text-rose-800 dark:text-rose-200">
                               {rev.adminRepliedUserName || 'Quản trị viên'}
                             </span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30">
                               🛡️ Admin
                             </span>
                           </div>
                           {rev.adminRepliedAt && (
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                               {new Date(rev.adminRepliedAt).toLocaleDateString('vi-VN')}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-200 whitespace-pre-line leading-relaxed pl-1">
+                        <p className="text-xs text-slate-655 dark:text-slate-200 whitespace-pre-line leading-relaxed pl-1">
                           {rev.adminReply}
                         </p>
                       </div>
@@ -449,8 +449,8 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
 
                     {/* Inline Reply Form */}
                     {replyingReviewId === rev.id && (
-                      <div className="mt-3 ml-11 p-4 bg-slate-900 border border-indigo-500/40 rounded-xl space-y-3 animate-fade-in">
-                        <label className="block text-xs font-semibold text-indigo-300">
+                      <div className="mt-3 ml-11 p-4 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/40 rounded-xl space-y-3 animate-fade-in">
+                        <label className="block text-xs font-semibold text-indigo-650 dark:text-indigo-300">
                           {isAdmin ? '🛡️ Quản trị viên phản hồi:' : '👤 Tác giả sản phẩm phản hồi:'}
                         </label>
                         <textarea
@@ -459,14 +459,14 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                           maxLength={1000}
                           rows={3}
                           placeholder="Nhập câu trả lời/phản hồi của bạn dành cho người mua này..."
-                          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
                         />
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => setReplyingReviewId(null)}
                             disabled={replySubmitting}
-                            className="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-medium rounded-lg hover:bg-slate-700 transition cursor-pointer"
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 text-xs font-medium rounded-lg transition cursor-pointer"
                           >
                             Hủy bỏ
                           </button>
@@ -497,14 +497,14 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
           onClick={() => setReviewToDeleteId(null)}
         >
           <div
-            className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl space-y-4"
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-205 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 text-rose-400">
+            <div className="flex items-center gap-3 text-rose-500 dark:text-rose-400">
               <AlertCircle className="w-6 h-6 shrink-0" />
-              <h3 className="text-lg font-bold text-white">Xác nhận xóa đánh giá</h3>
+              <h3 className="text-lg font-bold text-slate-850 dark:text-white">Xác nhận xóa đánh giá</h3>
             </div>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-655 dark:text-slate-300">
               {isAdmin
                 ? "Bạn có chắc chắn muốn xóa đánh giá này khỏi hệ thống? Tác giả đánh giá sẽ nhận được thông báo giải thích do vi phạm quy định."
                 : "Bạn có chắc chắn muốn xóa đánh giá của mình? Hành động này không thể hoàn tác."}
@@ -514,7 +514,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
                 type="button"
                 onClick={() => setReviewToDeleteId(null)}
                 disabled={deleting}
-                className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-750 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-slate-305 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 transition cursor-pointer"
               >
                 Hủy bỏ
               </button>

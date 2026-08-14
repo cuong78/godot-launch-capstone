@@ -224,7 +224,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   };
 
   return (
-    <div className="min-h-[100dvh] space-y-6 bg-slate-50/70 text-slate-900 animate-fade-in dark:bg-[#06090f] dark:text-[#f4f7fb]">
+    <div className="min-h-[100dvh] space-y-6 bg-slate-50/80 dark:bg-[#06090f]/80 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-6 md:p-8 backdrop-blur-md shadow-sm text-slate-900 animate-fade-in dark:text-[#f4f7fb]">
       {/* Two-column layout grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8">
         
