@@ -250,26 +250,32 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
     ) or "(không có file mẫu)"
 
     system_prompt = (
-        "Bạn là chuyên gia review code Godot Engine cho marketplace. "
-        "Đánh giá chất lượng code, đối chiếu mô tả của developer với code thật, "
-        "và GỢI Ý GIÁ bán hợp lý (USD) dựa trên độ hoàn thiện/quy mô/độ hữu ích. "
-        "Nếu đây là bản cập nhật (có phần THÔNG TIN CẬP NHẬT/Git Diff), hãy đặc biệt chú ý "
-        "phân tích các thay đổi trong commit mới này so với mã nguồn cũ. Đánh giá xem bản cập nhật "
-        "có thực sự nâng cấp tính năng, sửa lỗi hay chỉ là cập nhật rác/nhỏ không đáng kể (ví dụ: "
-        "chỉ thêm một file văn bản trống/không liên quan như test.md để kích hoạt update nhằm bypass hệ thống). "
-        "Hãy phản ánh điều này vào phần nhận xét (summary) và lý giải giá (pricingRationale) để cảnh báo cho admin. "
-        "Bạn CHỈ đưa ĐỀ XUẤT — admin con người quyết định cuối. "
-        "Trả về DUY NHẤT một JSON object, không markdown, không giải thích thêm. "
-        "Schema: {\"codeQualityScore\": int 0-100, \"descriptionMatchScore\": int 0-100, "
-        "\"completeness\": \"low|medium|high\", "
-        "\"issues\": [{\"type\": string, \"severity\": \"low|medium|high\", \"detail\": string}], "
-        "\"suggestedPrice\": number (USD, 0 nếu nên miễn phí), "
-        "\"suggestedRevenueSplit\": int 0-100 (% doanh thu dành cho developer khi co-publishing, "
-        "thường 50-80), "
-        "\"pricingRationale\": string (tiếng Việt, lý do mức giá), "
-        "\"summary\": string (tiếng Việt, ngắn gọn)}. "
-        "descriptionMatchScore thấp nếu mô tả phóng đại / claim tính năng (vd multiplayer, AI) "
-        "mà code không có dấu hiệu tương ứng."
+        "Bạn là chuyên gia kiểm duyệt và review code Godot Engine cho marketplace. "
+        "Nhiệm vụ của bạn là đánh giá chất lượng mã nguồn, độ trung thực của mô tả so với thực tế code, "
+        "và chỉ ra chi tiết các vấn đề hoặc tiêu chí đánh giá. "
+        "Yêu cầu đặc biệt:\n"
+        "1. KHÔNG được đưa ra bất kỳ đề xuất giá bán hoặc tỉ lệ ăn chia doanh thu nào.\n"
+        "2. Giải thích cực kỳ chi tiết lý do cho các điểm số trong danh sách `issues`:\n"
+        "   - Phải có một mục issue loại 'code_quality_analysis' giải thích rõ tại sao lại đạt điểm số `codeQualityScore` đó, "
+        "được đánh giá trên tiêu chí nào (cấu trúc thư mục, đặt tên, tổ chức mã nguồn, code smell, comment, độ hoàn thiện) và bị trừ điểm bởi những lỗi/vấn đề cụ thể gì.\n"
+        "   - Phải có một mục issue loại 'description_match_analysis' giải thích rõ tại sao lại đạt điểm số `descriptionMatchScore` đó, "
+        "mô tả của developer có phóng đại hay không đúng thực tế code không, có chứa ngôn từ nhạy cảm/bậy bạ hay không.\n"
+        "3. Nếu đây là bản cập nhật (có Git Diff), hãy phân tích chi tiết xem các thay đổi có thực sự nâng cấp tính năng/sửa lỗi hay chỉ là update rác nhằm bypass hệ thống.\n\n"
+        "Trả về DUY NHẤT một JSON object, không markdown, không giải thích thêm.\n"
+        "Schema:\n"
+        "{\n"
+        "  \"codeQualityScore\": int 0-100,\n"
+        "  \"descriptionMatchScore\": int 0-100,\n"
+        "  \"completeness\": \"low|medium|high\",\n"
+        "  \"issues\": [\n"
+        "    {\n"
+        "      \"type\": \"code_quality_analysis\"|\"description_match_analysis\"|string,\n"
+        "      \"severity\": \"low\"|\"medium\"|\"high\",\n"
+        "      \"detail\": string (giải thích rất chi tiết bằng tiếng Việt về tiêu chí đánh giá, lý do điểm số, các lỗi/vấn đề phát hiện)\n"
+        "    }\n"
+        "  ],\n"
+        "  \"summary\": string (tiếng Việt, tóm tắt nhận xét tổng quan chi tiết)\n"
+        "}"
     )
 
     user_prompt = (
@@ -321,9 +327,9 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
             "descriptionMatchScore": _clamp(parsed.get("descriptionMatchScore")),
             "completeness": parsed.get("completeness"),
             "issues": parsed.get("issues", []) if isinstance(parsed.get("issues"), list) else [],
-            "suggestedPrice": _num(parsed.get("suggestedPrice")),
-            "suggestedRevenueSplit": _clamp(parsed.get("suggestedRevenueSplit")),
-            "pricingRationale": str(parsed.get("pricingRationale", "")),
+            "suggestedPrice": None,
+            "suggestedRevenueSplit": None,
+            "pricingRationale": None,
             "summary": str(parsed.get("summary", "")),
         }
     except Exception as e:
@@ -331,7 +337,7 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
                 "codeQualityScore": None, "descriptionMatchScore": None,
                 "completeness": None, "issues": [],
                 "suggestedPrice": None, "suggestedRevenueSplit": None,
-                "pricingRationale": "", "summary": ""}
+                "pricingRationale": None, "summary": ""}
 
 
 def _clamp(v):

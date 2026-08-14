@@ -503,6 +503,43 @@ def ai_review(req: AiReviewRequest):
     # ── 5. Tổng hợp đề xuất ──
     recommendation = _recommend(code_quality, media_match, description_match, nsfw_flag, flags)
 
+    # Dịch các mã loại sự cố sang nhãn tiếng Việt thân thiện với Admin
+    _TYPE_TRANSLATIONS = {
+        # Code issues
+        "code_code_quality_analysis": "Phân tích chất lượng code",
+        "code_description_match_analysis": "Đối chiếu mô tả với thực tế code",
+        "secret_hardcoded": "Lộ mật khẩu / API Key bảo mật",
+        "missing_license": "Thiếu tệp bản quyền (LICENSE)",
+        "missing_readme": "Thiếu tệp tài liệu hướng dẫn (README.md)",
+        "unwanted_cache_pushed": "Mã nguồn chứa tệp tin rác/cache (.godot/.import)",
+        
+        # Text issues
+        "text_misleading": "Thông tin mô tả không chính xác / gây hiểu lầm",
+        "text_offensive_language": "Từ ngữ nhạy cảm / Thiếu lịch sự",
+        "text_adult_content": "Chứa nội dung người lớn (18+)",
+        "text_gambling": "Nội dung liên quan đến cờ bạc / Cá cược",
+        "text_violence": "Nội dung liên quan đến bạo lực",
+        "text_tags_mismatch": "Các thẻ tags phân loại không khớp với game",
+        
+        # Media issues
+        "media_mismatch": "Ảnh/video quảng bá không khớp mô tả game",
+        "nsfw": "Hình ảnh chứa nội dung nhạy cảm (NSFW)",
+        "media_ocr_sensitive": "Phát hiện chữ viết nhạy cảm trong hình ảnh/video",
+        "source_bundle_error": "Lỗi tệp tin nén Source Snapshot",
+        "source_bundle_missing": "Thiếu tệp tin nén Source Snapshot"
+    }
+
+    translated_flags = []
+    for f in flags:
+        t_type = f.get("type", "")
+        friendly_type = _TYPE_TRANSLATIONS.get(t_type, t_type.replace("_", " ").title())
+        translated_flags.append({
+            "type": friendly_type,
+            "severity": f.get("severity", "low"),
+            "detail": f.get("detail", ""),
+            "evidenceIndex": f.get("evidenceIndex")
+        })
+
     return AiReviewResponse(
         codeQualityScore=code_quality,
         mediaMatchScore=media_match,
@@ -513,7 +550,7 @@ def ai_review(req: AiReviewRequest):
         suggestedPrice=suggested_price,
         suggestedRevenueSplit=revenue_split,
         pricingRationale=pricing_rationale,
-        flags=flags,
+        flags=translated_flags,
         raw=raw,
     )
 

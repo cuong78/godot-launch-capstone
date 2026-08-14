@@ -34,8 +34,8 @@ public class AiReviewReportResponse {
     private Short suggestedRevenueSplit;     // % chia doanh thu 0-100
     private String pricingRationale;
 
-    private JsonNode flags;                 // [{type, severity, detail, evidenceIndex?}]
-    private JsonNode rawOutput;             // output thô từng module (debug)
+    private Object flags;                 // [{type, severity, detail, evidenceIndex?}]
+    private Object rawOutput;             // output thô từng module (debug)
 
     private Instant createdAt;
 }

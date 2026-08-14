@@ -5,23 +5,33 @@ echo ======================================
 echo Starting GodotLaunch Development...
 echo ======================================
 
-set PROJECT=E:\godot-launch-capstone
+set PROJECT=%~dp0
+if "%PROJECT:~-1%"=="\" set PROJECT=%PROJECT:~0,-1%
 
 REM ===========================
 REM Backend
 REM ===========================
 echo Starting Backend...
 
-start "GodotLaunch Backend" cmd /k "cd /d %PROJECT%\backend && mvn spring-boot:run"
+start "GodotLaunch Backend" cmd /k "cd /d "%PROJECT%\backend" && mvn spring-boot:run"
 
 timeout /t 8 > nul
+
+REM ===========================
+REM Python AI Service
+REM ===========================
+echo Starting Python AI Service...
+
+start "GodotLaunch AI Service" cmd /k "cd /d "%PROJECT%\python-face-service" && run-ai.bat"
+
+timeout /t 5 > nul
 
 REM ===========================
 REM Frontend
 REM ===========================
 echo Starting Frontend...
 
-start "GodotLaunch Frontend" cmd /k "cd /d %PROJECT%\frontend && npm run dev"
+start "GodotLaunch Frontend" cmd /k "cd /d "%PROJECT%\frontend" && npm run dev"
 
 timeout /t 5 > nul
 
@@ -43,6 +53,7 @@ echo.
 echo ======================================
 echo Backend  : http://localhost:8080
 echo Frontend : http://localhost:5173
+echo AI Service: http://localhost:8001
 echo Ngrok UI : http://127.0.0.1:4040
 echo ======================================
 

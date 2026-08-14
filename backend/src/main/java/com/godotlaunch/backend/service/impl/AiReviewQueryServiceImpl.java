@@ -138,10 +138,10 @@ public class AiReviewQueryServiceImpl implements AiReviewQueryService {
                 .build();
     }
 
-    private JsonNode parseJson(String json) {
+    private Object parseJson(String json) {
         if (json == null || json.isBlank()) return null;
         try {
-            return objectMapper.readTree(json);
+            return objectMapper.readValue(json, Object.class);
         } catch (Exception ignored) {
             return null;
         }

@@ -82,43 +82,43 @@ services:
       - seaweedfs-net
     restart: unless-stopped
 
-  ai-service:
-    build: ./python-face-service
-    container_name: godotlaunch-ai-service
-    ports:
-      - "8001:8001"
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=godot_launch
-      - DB_USER=user_godot_launch
-      - DB_PASSWORD=password_godot_launch
-      - FACE_SIMILARITY_THRESHOLD=0.45
-      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-vision.json
-      # AI review — DeepSeek text (đổ key thật vào .env hoặc shell env). Trống → module DeepSeek bị skip.
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
-      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
-      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
-      # Self-host model HF (CLIP, NSFW) — tên model có thể override
-      - CLIP_MODEL=${CLIP_MODEL:-openai/clip-vit-base-patch32}
-      - NSFW_MODEL=${NSFW_MODEL:-Falconsai/nsfw_image_detection}
-      - CODE_EMBEDDING_MODEL=${CODE_EMBEDDING_MODEL:-microsoft/codebert-base}
-      - CODE_EMBEDDING_MODEL_REVISION=${CODE_EMBEDDING_MODEL_REVISION:-3b0952feddeffad0063f274080e3c23d75e7eb39}
-      - HF_HOME=/models
-    volumes:
-      - ./python-face-service/gcp-vision.json:/run/secrets/gcp-vision.json:ro
-      - hf-model-cache:/models
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - seaweedfs-net
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+#  ai-service:
+#    build: ./python-face-service
+#    container_name: godotlaunch-ai-service
+#    ports:
+#      - "8001:8001"
+#    environment:
+#      - DB_HOST=postgres
+#      - DB_PORT=5432
+#      - DB_NAME=godot_launch
+#      - DB_USER=user_godot_launch
+#      - DB_PASSWORD=password_godot_launch
+#      - FACE_SIMILARITY_THRESHOLD=0.45
+#      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-vision.json
+#      # AI review — DeepSeek text (đổ key thật vào .env hoặc shell env). Trống → module DeepSeek bị skip.
+#      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+#      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+#      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
+#      # Self-host model HF (CLIP, NSFW) — tên model có thể override
+#      - CLIP_MODEL=${CLIP_MODEL:-openai/clip-vit-base-patch32}
+#      - NSFW_MODEL=${NSFW_MODEL:-Falconsai/nsfw_image_detection}
+#      - CODE_EMBEDDING_MODEL=${CODE_EMBEDDING_MODEL:-microsoft/codebert-base}
+#      - CODE_EMBEDDING_MODEL_REVISION=${CODE_EMBEDDING_MODEL_REVISION:-3b0952feddeffad0063f274080e3c23d75e7eb39}
+#      - HF_HOME=/models
+#    volumes:
+#      - ./python-face-service/gcp-vision.json:/run/secrets/gcp-vision.json:ro
+#      - hf-model-cache:/models
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#    networks:
+#      - seaweedfs-net
+#    restart: unless-stopped
+#    healthcheck:
+#      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
 
   clamav:
     image: clamav/clamav:latest
