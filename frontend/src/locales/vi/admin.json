@@ -2,10 +2,10 @@
   "sidebar": {
     "overview": { "label": "Tổng quan", "description": "Tổng quan nền tảng, hoạt động marketplace, kiểm duyệt và người dùng." },
     "moderation": { "label": "Kiểm duyệt", "description": "Game, asset, AI review và kiểm tra demo." },
-    "finance": { "label": "Tài chính", "description": "Ví, thanh toán, rút tiền và vận hành chi trả." },
+    "finance": { "label": "Tài chính", "description": "Ví, thanh toán, rút tiền, vận hành chi trả và tranh chấp." },
     "users": { "label": "Người dùng", "description": "Danh bạ, thay đổi vai trò và trạng thái tài khoản." },
     "content": { "label": "Nội dung", "description": "Homepage, banner, collection, tag và category." },
-    "system": { "label": "Hệ thống", "description": "Nhật ký, lưu trữ, cấu hình và tranh chấp." }
+    "system": { "label": "Hệ thống", "description": "Nhật ký, lưu trữ, cấu hình và thỏa thuận." }
   },
   "tabs": {
     "queue": "Hàng chờ",

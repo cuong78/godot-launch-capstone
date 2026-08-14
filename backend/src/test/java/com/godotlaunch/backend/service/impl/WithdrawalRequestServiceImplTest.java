@@ -23,6 +23,7 @@ import com.godotlaunch.backend.security.EncryptionUtils;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.service.WithdrawalStatusSynchronizer;
+import com.godotlaunch.backend.service.PaymentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -87,6 +88,9 @@ class WithdrawalRequestServiceImplTest {
 
     @Mock
     private WithdrawalPayoutSyncScheduler withdrawalPayoutSyncScheduler;
+
+    @Mock
+    private PaymentService paymentService;
 
     @InjectMocks
     private WithdrawalRequestServiceImpl withdrawalRequestService;
@@ -347,6 +351,7 @@ class WithdrawalRequestServiceImplTest {
         when(walletRepository.findByUserId(developerUser.getId())).thenReturn(Optional.of(wallet));
         when(transactionRepository.countByWalletIdAndType(wallet.getId(), com.godotlaunch.backend.entity.enums.TxnType.revenue_share)).thenReturn(10L);
         when(transactionRepository.sumAmountByWalletIdAndTypeIn(eq(wallet.getId()), anySet())).thenReturn(new BigDecimal("1000.00"));
+        when(paymentService.getPaymentStatusStatsBySeller(developerUser.getId())).thenReturn(java.util.Collections.emptyMap());
 
         com.godotlaunch.backend.dto.response.DeveloperSalesStatsResponse response = withdrawalRequestService.getDeveloperSalesStats(developerUser.getEmail());
 

@@ -2,10 +2,10 @@
   "sidebar": {
     "overview": { "label": "Overview", "description": "Platform summary, marketplace activity, moderation, and user operations visibility." },
     "moderation": { "label": "Moderation", "description": "Games, assets, AI review, and demo checks." },
-    "finance": { "label": "Finance Ops", "description": "Wallet, payments, withdrawals, and payout operations." },
+    "finance": { "label": "Finance Ops", "description": "Wallet, payments, withdrawals, payout operations, and disputes." },
     "users": { "label": "User Ops", "description": "Directory, role changes, and account status." },
     "content": { "label": "Content", "description": "Homepage, banners, collections, tags, and categories." },
-    "system": { "label": "System Ops", "description": "Logs, storage, settings, and disputes." }
+    "system": { "label": "System Ops", "description": "Logs, storage, settings, and agreements." }
   },
   "tabs": {
     "queue": "Queue",

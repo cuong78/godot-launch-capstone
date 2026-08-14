@@ -25,9 +25,11 @@ import com.godotlaunch.backend.repository.RoleRepository;
 import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
+import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.security.JwtProvider;
 import com.godotlaunch.backend.service.AuditLogService;
 import com.godotlaunch.backend.service.DisputeService;
+import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
 import com.godotlaunch.backend.util.WalletBalancePolicy;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +60,7 @@ public class DisputeServiceImpl implements DisputeService {
     private final TransactionRepository transactionRepository;
     private final PlatformSettingsService platformSettingsService;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
 
     private static final int SPAM_REPORT_LIMIT = 3;
     private static final String DEFAULT_CURRENCY = "VND";
@@ -96,7 +99,41 @@ public class DisputeServiceImpl implements DisputeService {
 
         Dispute saved = disputeRepository.save(dispute);
 
-        // Notify admin + seller (không email — dùng notification nội bộ)
+        // Notify reporter, seller and admin
+        try {
+            // 1. Notify reporter (B)
+            notificationService.createAndSendNotification(
+                    reporter,
+                    reporter,
+                    NotificationType.PLAGIARISM_ALERT,
+                    "Khiếu nại bản quyền của bạn cho game '" + game.getTitle() + "' đã được gửi thành công. Sản phẩm đã bị tạm gỡ để phục vụ điều tra.",
+                    saved.getId().toString()
+            );
+
+            // 2. Notify reported seller (A)
+            notificationService.createAndSendNotification(
+                    seller,
+                    reporter,
+                    NotificationType.PLAGIARISM_ALERT,
+                    "Sản phẩm '" + game.getTitle() + "' của bạn bị tố cáo vi phạm bản quyền và đã bị tạm gỡ. Vui lòng chuẩn bị bằng chứng đối chiếu.",
+                    saved.getId().toString()
+            );
+
+            // 3. Notify admins
+            List<User> admins = userRepository.findByRole_NameIgnoreCase("admin");
+            for (User ad : admins) {
+                notificationService.createAndSendNotification(
+                        ad,
+                        reporter,
+                        NotificationType.PLAGIARISM_ALERT,
+                        "Có khiếu nại bản quyền mới được gửi cho sản phẩm '" + game.getTitle() + "' bởi " + reporter.getEmail(),
+                        saved.getId().toString()
+                );
+            }
+        } catch (Exception e) {
+            log.error("Failed to send dispute notifications: {}", e.getMessage(), e);
+        }
+
         safeNotify(seller.getId(),
                 "Sản phẩm của bạn bị tố vi phạm bản quyền và đã tạm gỡ. Chờ admin điều tra.");
 
@@ -131,6 +168,24 @@ public class DisputeServiceImpl implements DisputeService {
                     // cho tới khi admin xác nhận đã nhận đủ tiền hoàn qua confirmRefund().
                     lockSellerForRefund(dispute.getReportedSeller(), dispute);
                 }
+                
+                // Notify seller (A)
+                notificationService.createAndSendNotification(
+                        dispute.getReportedSeller(),
+                        admin,
+                        NotificationType.PLAGIARISM_ALERT,
+                        "Bạn bị kết luận vi phạm bản quyền cho game '" + dispute.getGame().getTitle() + "'. Vui lòng hoàn trả " + request.getRefundAmount() + " VND trong " + refundDays + " ngày để tránh bị xử lý pháp lý.",
+                        dispute.getId().toString()
+                );
+                // Notify reporter (B)
+                notificationService.createAndSendNotification(
+                        dispute.getReporter(),
+                        admin,
+                        NotificationType.PLAGIARISM_ALERT,
+                        "Khiếu nại bản quyền của bạn cho game '" + dispute.getGame().getTitle() + "' được kết luận là chính xác. Seller vi phạm phải hoàn trả tiền trong vòng " + refundDays + " ngày.",
+                        dispute.getId().toString()
+                );
+
                 safeNotify(dispute.getReportedSeller().getId(),
                         "Bạn bị kết luận vi phạm bản quyền. Hoàn trả " + request.getRefundAmount()
                                 + " trong " + refundDays + " ngày, nếu không sẽ bị xử lý pháp lý.");
@@ -150,10 +205,48 @@ public class DisputeServiceImpl implements DisputeService {
                     safeNotify(dispute.getReporter().getId(),
                             "Khiếu nại của bạn bị bác. Vu cáo nhiều lần sẽ bị cấm tài khoản.");
                 }
+
+                // Notify reporter (B)
+                String repMessage = spamCount >= SPAM_REPORT_LIMIT || request.isBanUser()
+                        ? "Khiếu nại của bạn cho game '" + dispute.getGame().getTitle() + "' được kết luận là vu cáo. Bạn đã vu cáo quá " + SPAM_REPORT_LIMIT + " lần và tài khoản bị cấm."
+                        : "Khiếu nại của bạn cho game '" + dispute.getGame().getTitle() + "' được kết luận là vu cáo. Vu cáo nhiều lần sẽ bị cấm tài khoản.";
+                notificationService.createAndSendNotification(
+                        dispute.getReporter(),
+                        admin,
+                        NotificationType.PLAGIARISM_ALERT,
+                        repMessage,
+                        dispute.getId().toString()
+                );
+                // Notify seller (A)
+                notificationService.createAndSendNotification(
+                        dispute.getReportedSeller(),
+                        admin,
+                        NotificationType.PLAGIARISM_ALERT,
+                        "Khiếu nại bản quyền đối với game '" + dispute.getGame().getTitle() + "' đã được bác bỏ. Sản phẩm của bạn đã được khôi phục hoạt động.",
+                        dispute.getId().toString()
+                );
             }
             case "resolved_inconclusive" -> {
                 // TH1: không kết luận được → khôi phục sản phẩm, không phạt ai
                 restoreProduct(dispute);
+                
+                // Notify seller (A)
+                notificationService.createAndSendNotification(
+                        dispute.getReportedSeller(),
+                        admin,
+                        NotificationType.PLAGIARISM_ALERT,
+                        "Khiếu nại bản quyền đối với game '" + dispute.getGame().getTitle() + "' không đủ căn cứ kết luận. Sản phẩm của bạn đã được khôi phục hoạt động.",
+                        dispute.getId().toString()
+                );
+                // Notify reporter (B)
+                notificationService.createAndSendNotification(
+                        dispute.getReporter(),
+                        admin,
+                        NotificationType.PLAGIARISM_ALERT,
+                        "Khiếu nại bản quyền của bạn cho game '" + dispute.getGame().getTitle() + "' không đủ căn cứ kết luận. Sản phẩm đã được khôi phục hoạt động.",
+                        dispute.getId().toString()
+                );
+
                 safeNotify(dispute.getReportedSeller().getId(),
                         "Khiếu nại đã được điều tra nhưng không đủ căn cứ. Sản phẩm được khôi phục.");
             }

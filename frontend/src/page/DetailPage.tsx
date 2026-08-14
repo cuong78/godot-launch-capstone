@@ -1,11 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Star, Film, X, ChevronRight, Download } from "lucide-react";
+import { Check, Star, Film, X, ChevronRight, Download, AlertTriangle, Flag } from "lucide-react";
 import { Asset, User, CategoryResponse, PaymentResponse } from "../types";
 import { resolveApiUrl } from "../utils/apiUrl";
 import { IMAGE_SEED_MAP } from "../../assets/images";
 import { gameApi } from "../api/gameApi";
 import { ReviewSection } from "../components/ReviewSection";
+import ReportDisputeModal from "../components/ReportDisputeModal";
 
 interface DetailPageProps {
   focusedAsset: Asset;
@@ -68,11 +69,18 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   handleTagClick,
   handleAuthorClick,
 }) => {
-  const { t, i18n } = useTranslation(["marketplace"]);
+  const { t, i18n } = useTranslation(["marketplace", "shared"]);
   const isOwned = ownedProductIds.has(focusedAsset.id);
   const isCreatorOwnedAsset = (asset: Asset) =>
     creatorOwnedProductIds.has(asset.id);
-  const isCreatorOwner = isCreatorOwnedAsset(focusedAsset);
+  const isCreatorOwner = React.useMemo(() => {
+    const currentEmail = currentUser?.email?.trim().toLowerCase();
+    const sellerEmail = focusedAsset.sellerEmail?.trim().toLowerCase();
+    return Boolean(
+      (currentEmail && sellerEmail && currentEmail === sellerEmail) ||
+      creatorOwnedProductIds.has(focusedAsset.id)
+    );
+  }, [currentUser?.email, focusedAsset.sellerEmail, creatorOwnedProductIds, focusedAsset.id]);
   
   const downloadUrl = React.useMemo(() => {
     if (!purchaseOrderPayments) return null;
@@ -87,6 +95,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   );
 
   const [isPlayDemoOpen, setIsPlayDemoOpen] = React.useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = React.useState(false);
   const [categories, setCategories] = React.useState<CategoryResponse[]>([]);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -401,17 +410,29 @@ export const DetailPage: React.FC<DetailPageProps> = ({
           {/* Purchase Configuration Card */}
           <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[rgba(96,119,148,0.34)] dark:bg-[#090e16] dark:shadow-none">
             
-            {/* Author profile tag */}
-            <div className="inline-flex max-w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-[rgba(96,119,148,0.34)] dark:bg-[#0e1520]">
-              <img
-                referrerPolicy="no-referrer"
-                src={focusedAsset.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80'}
-                alt={cleanText(focusedAsset.author)}
-                className="w-5 h-5 rounded-full object-cover"
-              />
-              <span className="text-[11px] font-bold text-slate-800 dark:text-[#f4f7fb]">
-                {cleanText(focusedAsset.author)}
-              </span>
+            {/* Header row with Author profile tag and Flag icon */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="inline-flex max-w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-[rgba(96,119,148,0.34)] dark:bg-[#0e1520]">
+                <img
+                  referrerPolicy="no-referrer"
+                  src={focusedAsset.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80&q=80'}
+                  alt={cleanText(focusedAsset.author)}
+                  className="w-5 h-5 rounded-full object-cover"
+                />
+                <span className="text-[11px] font-bold text-slate-800 dark:text-[#f4f7fb]">
+                  {cleanText(focusedAsset.author)}
+                </span>
+              </div>
+              
+              {currentUser && (currentUser.role === 'developer' || currentUser.role === 'admin') && !isCreatorOwner && (
+                <button
+                  onClick={() => setIsReportModalOpen(true)}
+                  title={t("reportDispute.title", { ns: "shared" })}
+                  className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 dark:hover:bg-rose-500/20 rounded-md transition-all cursor-pointer"
+                >
+                  <Flag size={14} />
+                </button>
+              )}
             </div>
 
             {/* Game / Asset Title */}
@@ -704,6 +725,17 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             {t("detail.demo.modalNote")}
           </p>
         </div>
+      )}
+
+      {isReportModalOpen && (
+        <ReportDisputeModal
+          gameId={focusedAsset.id}
+          productTitle={focusedAsset.title}
+          onClose={() => setIsReportModalOpen(false)}
+          onSuccess={() => {
+            showToast(t("reportDispute.doneTitle", { ns: "shared" }), "success");
+          }}
+        />
       )}
     </div>
   );

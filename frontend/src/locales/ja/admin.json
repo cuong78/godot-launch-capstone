@@ -2,10 +2,10 @@
   "sidebar": {
     "overview": { "label": "概要", "description": "プラットフォーム概要、マーケットプレイス活動、審査、ユーザー運用の可視化。" },
     "moderation": { "label": "審査", "description": "ゲーム、アセット、AIレビュー、デモ確認。" },
-    "finance": { "label": "財務運用", "description": "ウォレット、決済、出金、支払い運用。" },
+    "finance": { "label": "財務運用", "description": "ウォレット、決済、出金、支払い運用、紛争処理。" },
     "users": { "label": "ユーザー運用", "description": "ディレクトリ、役割変更、アカウント状態。" },
     "content": { "label": "コンテンツ", "description": "ホーム、バナー、コレクション、タグ、カテゴリ。" },
-    "system": { "label": "システム運用", "description": "ログ、ストレージ、設定、紛争処理。" }
+    "system": { "label": "システム運用", "description": "ログ、ストレージ、設定、規約同意。" }
   },
   "tabs": {
     "queue": "キュー",

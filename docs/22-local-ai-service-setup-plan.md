@@ -68,28 +68,7 @@ Vô hiệu hóa container `ai-service` trong file `docker-compose.yml` để tr�
 ### 3.2 Tạo file môi trường local `.env` cho Python
 Tạo file [python-face-service/.env](file:///c:/Users/Admin/Desktop/SEP/godot-launch-capstone/python-face-service/.env) chứa các tham số để ứng dụng kết nối tới cơ sở dữ liệu Postgres trong Docker:
 ```env
-# Database Connection (trỏ về localhost thay vì alias postgres)
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=godot_launch
-DB_USER=user_godot_launch
-DB_PASSWORD=password_godot_launch
 
-# AI review & Thresholds
-FACE_SIMILARITY_THRESHOLD=0.45
-GOOGLE_APPLICATION_CREDENTIALS=gcp-vision.json
-
-# DeepSeek Configuration
-DEEPSEEK_API_KEY=
-DEEPSEEK_BASE_URL=
-DEEPSEEK_MODEL=
-
-# Hugging Face Models Configuration
-CLIP_MODEL=openai/clip-vit-base-patch32
-NSFW_MODEL=Falconsai/nsfw_image_detection
-CODE_EMBEDDING_MODEL=microsoft/codebert-base
-CODE_EMBEDDING_MODEL_REVISION=3b0952feddeffad0063f274080e3c23d75e7eb39
-```
 
 ### 3.3 Thiết lập Script tự động khởi tạo Môi trường ảo (`setup-venv.bat`)
 Tạo script [python-face-service/setup-venv.bat](file:///c:/Users/Admin/Desktop/SEP/godot-launch-capstone/python-face-service/setup-venv.bat) để tự động hóa toàn bộ việc cài đặt thư viện cần thiết:

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Loader2, ShieldCheck, Scale, Ban, BadgeDollarSign } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, Loader2, ShieldCheck, Scale, Ban, BadgeDollarSign, HelpCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { disputeApi, DisputeResponse, ResolveDisputePayload } from '../../api/disputeApi';
 
@@ -25,6 +26,12 @@ export default function AdminDisputePanel() {
   const locale = resolveLocale(i18n.resolvedLanguage || i18n.language);
   const [disputes, setDisputes] = useState<DisputeResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const filteredDisputes = useMemo(() => {
+    if (statusFilter === 'all') return disputes;
+    return disputes.filter((d) => d.status === statusFilter);
+  }, [disputes, statusFilter]);
   const [selected, setSelected] = useState<DisputeResponse | null>(null);
   const [confirmingRefundId, setConfirmingRefundId] = useState<string | null>(null);
   const [refundError, setRefundError] = useState<string | null>(null);
@@ -91,11 +98,42 @@ export default function AdminDisputePanel() {
         <div className="rounded-lg bg-rose-400/10 px-3 py-2 text-xs text-rose-400">{refundError}</div>
       )}
 
-      {disputes.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500 dark:text-white/40">{t('disputePanel.empty')}</p>
+      {/* Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 pb-2">
+        {[
+          { key: 'all', label: t('disputePanel.filter.all', { defaultValue: 'Tất cả' }) },
+          { key: 'open', label: t('disputePanel.filter.open', { defaultValue: 'Chờ xử lý' }) },
+          { key: 'resolved_seller_fault', label: t('disputePanel.filter.sellerFault', { defaultValue: 'Lỗi thuộc về Seller' }) },
+          { key: 'resolved_reporter_fault', label: t('disputePanel.filter.reporterFault', { defaultValue: 'Lỗi thuộc về Reporter' }) },
+          { key: 'resolved_inconclusive', label: t('disputePanel.filter.inconclusive', { defaultValue: 'Không đủ căn cứ' }) },
+        ].map((tab) => {
+          const isActive = statusFilter === tab.key;
+          const count = tab.key === 'all' ? disputes.length : disputes.filter(d => d.status === tab.key).length;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setStatusFilter(tab.key)}
+              className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all cursor-pointer border ${
+                isActive
+                  ? 'bg-amber-500 text-black border-amber-500 shadow-sm'
+                  : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-600 dark:bg-white/5 dark:hover:bg-white/10 dark:border-slate-800 dark:text-[#a0aec0]'
+              }`}
+            >
+              {tab.label}
+              <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isActive ? 'bg-black/10 text-black' : 'bg-slate-250 dark:bg-white/10 text-slate-500 dark:text-slate-400'}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {filteredDisputes.length === 0 ? (
+        <p className="py-12 text-center text-sm text-slate-500 dark:text-white/40 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-white/[0.02]">{t('disputePanel.emptyFiltered', { defaultValue: 'Không có khiếu nại nào thuộc trạng thái này.' })}</p>
       ) : (
         <div className="space-y-2">
-          {disputes.map((d) => {
+          {filteredDisputes.map((d) => {
             const statusColor = STATUS_COLOR[d.status] || STATUS_COLOR.open;
             const awaitingRefund = d.status === 'resolved_seller_fault' && !d.refundConfirmedAt;
             return (
@@ -177,6 +215,7 @@ function ResolveModal({ dispute, onClose, onResolved }: {
   const [banUser, setBanUser] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
   const resolutionOptions = useMemo(
     () =>
       ([
@@ -215,66 +254,165 @@ function ResolveModal({ dispute, onClose, onResolved }: {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="dark-depth-card w-full max-w-lg space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700/70 dark:bg-night-850">
-        <h3 className="flex items-center gap-2 font-semibold text-slate-950 dark:text-white"><Scale className="w-5 h-5 text-amber-400" /> {t('disputePanel.modal.title')}</h3>
-
-        {dispute.evidenceRepoUrl && (
-          <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-white/5 dark:text-white/60">
-            {t('disputePanel.modal.evidenceRepoLabel')}{' '}
-            <a href={dispute.evidenceRepoUrl} target="_blank" rel="noreferrer" className="text-sky-400 underline">{dispute.evidenceRepoUrl}</a>
-          </div>
-        )}
-
-        <div>
-          <label className="mb-1.5 block text-xs text-slate-500 dark:text-white/60">{t('disputePanel.modal.resolutionLabel')}</label>
-          <div className="space-y-2">
-            {resolutionOptions.map((option) => (
-              <label key={option.value} className="flex cursor-pointer items-start gap-2 text-xs text-slate-700 dark:text-white/80">
-                <input type="radio" name="res" checked={resolution === option.value} onChange={() => setResolution(option.value)} className="mt-0.5" />
-                {option.label}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {resolution === 'resolved_seller_fault' && (
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+      <div className="dark-depth-card w-full max-w-lg space-y-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl transition-all dark:border-slate-800 dark:bg-[#0c121e]">
+        
+        {/* Header */}
+        <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <span className="rounded-lg bg-amber-500/10 p-2 text-amber-500 dark:bg-amber-500/15">
+            <Scale className="w-5 h-5" />
+          </span>
           <div>
-            <label className="mb-1 block text-xs text-slate-500 dark:text-white/60">{t('disputePanel.modal.refundAmountLabel')}</label>
-            <input
-              type="number"
-              value={refundAmount}
-              onChange={(e) => setRefundAmount(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
-            />
+            <h3 className="font-display font-bold text-slate-900 dark:text-[#f4f7fb]">
+              {t('disputePanel.modal.title')}
+            </h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+              ID: {dispute.id}
+            </p>
+          </div>
+        </div>
+
+        {/* Evidence Link */}
+        {dispute.evidenceRepoUrl && (
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-xs text-slate-600 dark:border-slate-800/60 dark:bg-slate-900/40 dark:text-slate-300">
+            <span className="font-semibold block text-[10px] uppercase font-mono tracking-wider text-slate-500 mb-1">
+              {t('disputePanel.modal.evidenceRepoLabel')}
+            </span>
+            <a 
+              href={dispute.evidenceRepoUrl} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="text-sky-500 hover:text-sky-400 font-medium break-all hover:underline"
+            >
+              {dispute.evidenceRepoUrl}
+            </a>
           </div>
         )}
 
-        <div>
-          <label className="mb-1 block text-xs text-slate-500 dark:text-white/60">{t('disputePanel.modal.resolutionNoteLabel')}</label>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-amber-400/60 focus:outline-none resize-none dark:border-white/10 dark:bg-white/5 dark:text-white" />
+        {/* Resolution Radio Cards */}
+        <div className="space-y-2">
+          <label className="block text-[10px] font-bold uppercase font-mono tracking-wider text-slate-500">
+            {t('disputePanel.modal.resolutionLabel')}
+          </label>
+          <div className="grid grid-cols-1 gap-2.5">
+            {resolutionOptions.map((option) => {
+              const isActive = resolution === option.value;
+              let icon = <HelpCircle className="w-4 h-4" />;
+              let activeClass = 'border-slate-500 bg-slate-50 dark:bg-slate-900/40 text-slate-900 dark:text-white';
+              let hoverClass = 'hover:border-slate-350 dark:hover:border-slate-700';
+              
+              if (option.value === 'resolved_seller_fault') {
+                icon = <BadgeDollarSign className="w-4 h-4" />;
+                activeClass = 'border-rose-500/80 bg-rose-500/[0.03] dark:bg-rose-950/10 text-rose-600 dark:text-rose-400';
+                hoverClass = 'hover:border-rose-300 dark:hover:border-rose-900/60';
+              } else if (option.value === 'resolved_reporter_fault') {
+                icon = <Ban className="w-4 h-4" />;
+                activeClass = 'border-purple-500/80 bg-purple-500/[0.03] dark:bg-purple-950/10 text-purple-600 dark:text-purple-400';
+                hoverClass = 'hover:border-purple-300 dark:hover:border-purple-900/60';
+              }
+              
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setResolution(option.value)}
+                  className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                    isActive
+                      ? `border-2 ${activeClass} shadow-sm font-semibold`
+                      : 'border-slate-200 dark:border-slate-800 bg-transparent text-slate-700 dark:text-[#a0aec0] ' + hoverClass
+                  }`}
+                >
+                  <span className={`rounded-lg p-1.5 ${isActive ? 'bg-current/10' : 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500'}`}>
+                    {icon}
+                  </span>
+                  <span className="text-xs font-semibold">{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
+        {/* Refund Field */}
+        {resolution === 'resolved_seller_fault' && (
+          <div className="space-y-1.5 animate-fadeIn">
+            <label className="block text-[10px] font-bold uppercase font-mono tracking-wider text-slate-500">
+              {t('disputePanel.modal.refundAmountLabel')}
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 dark:border-slate-800 dark:bg-[#0e1525] dark:text-[#f4f7fb]"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Note Field */}
+        <div className="space-y-1.5">
+          <label className="block text-[10px] font-bold uppercase font-mono tracking-wider text-slate-500">
+            {t('disputePanel.modal.resolutionNoteLabel')}
+          </label>
+          <textarea 
+            value={note} 
+            onChange={(e) => setNote(e.target.value)} 
+            rows={3}
+            placeholder="..."
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 resize-none dark:border-slate-800 dark:bg-[#0e1525] dark:text-[#f4f7fb]" 
+          />
+        </div>
+
+        {/* Ban Action checkbox */}
         {(resolution === 'resolved_seller_fault' || resolution === 'resolved_reporter_fault') && (
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700 dark:text-white/80">
-            <input type="checkbox" checked={banUser} onChange={(e) => setBanUser(e.target.checked)} />
-            <Ban className="w-3.5 h-3.5 text-rose-400" />
-            {t('disputePanel.modal.banUser')}
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200/60 p-3 text-xs text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800/80 dark:text-[#a0aec0] dark:hover:bg-slate-900/30">
+            <input 
+              type="checkbox" 
+              checked={banUser} 
+              onChange={(e) => setBanUser(e.target.checked)}
+              className="rounded text-amber-500 focus:ring-amber-500/20"
+            />
+            <Ban className="w-4 h-4 text-rose-500" />
+            <span className="font-semibold text-rose-500 dark:text-rose-400">
+              {t('disputePanel.modal.banUser')}
+            </span>
           </label>
         )}
 
-        {error && <div className="text-rose-400 text-xs bg-rose-400/10 rounded-lg px-3 py-2">{error}</div>}
+        {/* Error alert */}
+        {error && (
+          <div className="text-rose-500 text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2.5 flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
-        <div className="flex gap-3 pt-1">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 bg-slate-100 py-2.5 text-sm text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:text-white">{t('common.cancel')}</button>
-          <button onClick={submit} disabled={submitting}
-            className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm py-2.5 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
-            {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('disputePanel.modal.submitting')}</> : t('disputePanel.modal.submit')}
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-2">
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="flex-1 rounded-xl border border-slate-200 bg-slate-100/50 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 dark:border-slate-800 dark:bg-[#0e1525] dark:text-slate-400 dark:hover:text-white cursor-pointer transition-all"
+          >
+            {t('common.cancel')}
+          </button>
+          <button 
+            type="button"
+            onClick={submit} 
+            disabled={submitting}
+            className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs py-2.5 rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/10 hover:shadow-amber-400/20 transition-all"
+          >
+            {submitting ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> {t('disputePanel.modal.submitting')}</>
+            ) : (
+              t('disputePanel.modal.submit')
+            )}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

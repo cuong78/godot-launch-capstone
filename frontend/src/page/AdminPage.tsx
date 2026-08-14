@@ -137,10 +137,10 @@ const ADMIN_SECTION_TABS: Record<
   AdminTabKey[]
 > = {
   moderation: ["moderation"],
-  finance: ["wallet", "payments", "withdrawal"],
+  finance: ["wallet", "payments", "withdrawal", "disputes"],
   users: ["users"],
   content: ["content"],
-  system: ["logs", "settings", "storage", "disputes", "agreement"],
+  system: ["logs", "settings", "storage", "agreement"],
 };
 
 const ADMIN_DEFAULT_TAB_BY_SECTION: Record<
@@ -1761,10 +1761,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
                           <h3 className="font-display text-2xl font-bold text-slate-900 dark:text-white sm:text-[28px]">
-                            {t("finance.platformWalletTitle")}
+                            {activeTab === "disputes" ? t("sectionTitle.disputes") : t("finance.platformWalletTitle")}
                           </h3>
                           <p className="max-w-3xl text-sm text-slate-500 dark:text-slate-400">
-                            {t("finance.platformWalletDescription")}
+                            {activeTab === "disputes"
+                              ? t("disputePanel.description", { defaultValue: "Quản lý và giải quyết các khiếu nại tranh chấp bản quyền mã nguồn giữa các nhà phát triển." })
+                              : t("finance.platformWalletDescription")}
                           </p>
                         </div>
 
