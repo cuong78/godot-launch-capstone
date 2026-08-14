@@ -49,4 +49,19 @@ public interface AssetService {
      * Xóa 1 file media cụ thể của Asset theo URL.
      */
     void deleteAssetMediaByUrl(UUID id, String mediaUrl, String uploaderEmail);
+
+    /**
+     * Nhận file zip gộp và khởi chạy tác vụ xử lý chạy nền bất đồng bộ.
+     */
+    void startUnifiedAssetUpload(UUID itemId, MultipartFile file, String uploaderEmail);
+
+    /**
+     * Lấy trạng thái xử lý upload hiện tại của Asset.
+     */
+    AssetResponse getUploadStatus(UUID itemId, String requesterEmail);
+
+    /**
+     * Sắp xếp lại thứ tự hình ảnh chụp màn hình (screenshots) của Asset.
+     */
+    void reorderScreenshots(UUID itemId, java.util.List<String> orderedUrls, String requesterEmail);
 }

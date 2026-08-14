@@ -27,8 +27,24 @@ import {
   Sparkles,
   Layers3,
   CircleDollarSign,
+  Download,
 } from "lucide-react";
 import { Button } from "../components/Button";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Input, TextArea } from "../components/Input";
 import { gameApi } from "../api/gameApi";
 import { useFormattedAmountInput } from "../hooks/useFormattedAmountInput";
@@ -36,6 +52,45 @@ import { useToast } from "../hooks/useToast";
 import { marketplaceApi } from "../api/marketplaceApi";
 import { CategoryResponse } from "../types";
 import axios from "axios";
+
+interface SortableScreenshotItemProps {
+  url: string;
+  index: number;
+}
+
+function SortableScreenshotItem({ url, index }: SortableScreenshotItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: url });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 50 : "auto",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="relative group cursor-grab active:cursor-grabbing hover:scale-[1.03] transition-transform duration-200"
+    >
+      <img
+        src={url}
+        alt={`Extracted Shot ${index + 1}`}
+        className="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm"
+      />
+    </div>
+  );
+}
 
 interface UploadPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -145,12 +200,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // New Marketplace Fields
 
   const [version, setVersion] = useState("1.0.0");
-  const [supportedPlatforms, setSupportedPlatforms] = useState<string[]>([
-    "Windows",
-    "macOS",
-    "Linux",
-    "Web",
-  ]);
 
   // File State (Step 2)
   const [gameFile, setGameFile] = useState<File | null>(null);
@@ -181,6 +230,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Unified upload states
+  const [unifiedFile, setUnifiedFile] = useState<File | null>(null);
+  const [unifiedUploadStatus, setUnifiedUploadStatus] = useState<"idle" | "uploading" | "processing" | "success" | "failed">("idle");
+  const [unifiedUploadProgress, setUnifiedUploadProgress] = useState<number>(0);
+  const [unifiedExtractedMedia, setUnifiedExtractedMedia] = useState<MarketplaceItemResponse | null>(null);
+  const [unifiedError, setUnifiedError] = useState<string | null>(null);
 
   // Backend Security Scan State
   const [scanStatus, setScanStatus] = useState<
@@ -341,6 +397,102 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
     };
   }, [scanStatus, gameId, publishProgram, t]);
 
+  // Polling logic for unified asset upload processing
+  useEffect(() => {
+    let intervalId: any;
+    if (unifiedUploadStatus === "processing" && gameId) {
+      intervalId = setInterval(async () => {
+        try {
+          const res = await marketplaceApi.getUploadStatus(gameId);
+          if (res.success && res.data) {
+            const status = res.data.uploadStatus;
+            if (status === "SUCCESS") {
+              setUnifiedUploadStatus("success");
+              setUnifiedExtractedMedia(res.data);
+              setUploadStatus((prev) => ({ ...prev, game: "completed" }));
+              setScanStatus("clean");
+              setScanMessage("Gói tài nguyên đã được giải nén, tối ưu hóa và quét sạch mối đe dọa bảo mật.");
+              clearInterval(intervalId);
+            } else if (status === "FAILED") {
+              setUnifiedUploadStatus("failed");
+              setUnifiedError(res.data.uploadError || "Giải nén hoặc phân tách tài nguyên thất bại.");
+              setUploadStatus((prev) => ({ ...prev, game: "failed" }));
+              setScanStatus("failed");
+              setScanMessage(res.data.uploadError || "Lỗi xử lý file gộp.");
+              clearInterval(intervalId);
+            }
+          }
+        } catch (err: any) {
+          console.error("Error polling unified upload status:", err);
+        }
+      }, 3000);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [unifiedUploadStatus, gameId, t]);
+
+  const handleUnifiedUpload = async (file: File) => {
+    if (!gameId) return;
+    setUnifiedFile(file);
+    setUnifiedUploadStatus("uploading");
+    setUnifiedUploadProgress(0);
+    setUnifiedError(null);
+    setScanStatus("idle");
+
+    try {
+      const res = await marketplaceApi.uploadUnifiedAsset(gameId, file, (percent) => {
+        setUnifiedUploadProgress(percent);
+      });
+      if (res.success) {
+        setUnifiedUploadStatus("processing");
+        setScanStatus("scanning");
+        setScanMessage("Đang thực hiện giải nén, kiểm tra virus và phân tích mã nguồn chạy nền...");
+      } else {
+        setUnifiedUploadStatus("failed");
+        setUnifiedError(res.message || "Tải lên thất bại.");
+      }
+    } catch (err: any) {
+      setUnifiedUploadStatus("failed");
+      setUnifiedError(err.response?.data?.message || err.message || "Lỗi kết nối khi tải lên.");
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !unifiedExtractedMedia || !unifiedExtractedMedia.screenshots) return;
+
+    const oldIndex = unifiedExtractedMedia.screenshots.indexOf(active.id as string);
+    const newIndex = unifiedExtractedMedia.screenshots.indexOf(over.id as string);
+
+    const newOrderedList = arrayMove(unifiedExtractedMedia.screenshots, oldIndex, newIndex);
+
+    // 1. Cập nhật UI ngay lập tức
+    setUnifiedExtractedMedia((prev) => {
+      if (!prev) return prev;
+      return { ...prev, screenshots: newOrderedList };
+    });
+
+    // 2. Gọi API cập nhật thứ tự xuống DB
+    if (gameId) {
+      try {
+        await marketplaceApi.reorderScreenshots(gameId, newOrderedList);
+        showToast("Đã cập nhật thứ tự ảnh chụp màn hình", "success");
+      } catch (err: any) {
+        console.error("Failed to save screenshots order:", err);
+        showToast("Không thể lưu thứ tự screenshots: " + (err.message || err), "error");
+      }
+    }
+  };
+
   // Logic API tách riêng để có thể gọi lại sau khi face verify xong
   const submitDraft = async (priceNum: number) => {
     if (publishProgram === "marketplace") {
@@ -351,8 +503,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         categoryId: categoryId || undefined,
         tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         version: version.trim() || undefined,
-
-        supportedPlatforms: supportedPlatforms.length > 0 ? supportedPlatforms.join(", ") : undefined,
       });
       if (res.success && res.data?.itemId) {
         setGameId(res.data.itemId);
@@ -1036,51 +1186,59 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 </span>
               </div>
 
-              {selectedTags.length > 0 && (
-                <div className="flex min-h-9 flex-wrap gap-1.5 rounded-xl border border-slate-300 bg-white p-2 dark:border-slate-800 dark:bg-slate-950/60">
-                  {selectedTags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="inline-flex items-center gap-1 rounded-full border border-amber-500/35 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300"
-                    >
-                      {tag.name}
-                      <button
-                        type="button"
-                        onClick={() => toggleTag(tag)}
-                        className="rounded-full p-0.5 transition-colors hover:bg-amber-500/20"
-                        aria-label={t("form.removeTagAria", { name: tag.name })}
-                      >
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="relative">
+              <div
+                className="relative flex min-h-12 w-full flex-wrap items-center gap-1.5 rounded-xl border border-slate-300 bg-white p-2.5 outline-none transition-studio focus-within:border-amber-400 focus-within:ring-4 focus-within:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900"
+                onClick={() => document.getElementById("tag-search")?.focus()}
+              >
+                {/* Search icon */}
                 <Search
                   size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  className="text-slate-500 shrink-0 ml-1.5 mr-1"
                 />
+
+                {/* Selected tag chips inside */}
+                {selectedTags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-500/35 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300 shrink-0"
+                  >
+                    {tag.name}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTag(tag);
+                      }}
+                      className="rounded-full p-0.5 transition-colors hover:bg-amber-500/20"
+                      aria-label={t("form.removeTagAria", { name: tag.name })}
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+
+                {/* Search text input cursor right after chips */}
                 <input
                   id="tag-search"
-                  type="search"
+                  type="text"
                   value={tagQuery}
                   onChange={(event) => {
                     setTagQuery(event.target.value);
                     setIsTagDropdownOpen(true);
                   }}
                   onFocus={() => setIsTagDropdownOpen(true)}
-                  placeholder={t("form.searchTagsPlaceholder")}
+                  placeholder={selectedTags.length === 0 ? t("form.searchTagsPlaceholder") : ""}
                   autoComplete="off"
-                  className="h-12 w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-800 outline-none transition-studio placeholder:text-slate-500 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                  className="flex-grow min-w-[120px] bg-transparent border-none outline-none py-1.5 px-1.5 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-500 focus:ring-0 focus:border-none focus:outline-none"
                   aria-expanded={isTagDropdownOpen}
                   aria-controls="tag-search-results"
                 />
+
+                {/* Spinner loading */}
                 {isLoadingTags && (
                   <RefreshCw
                     size={15}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-slate-500"
+                    className="animate-spin text-slate-500 mr-2 shrink-0"
                   />
                 )}
               </div>
@@ -1328,47 +1486,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               <Input
                 label={t("form.version")}
                 placeholder={t("form.versionPlaceholder")}
-                value={publishProgram === "game" ? "1.0.0" : version}
-                onChange={(e) => publishProgram !== "game" && setVersion(e.target.value)}
-                disabled={publishProgram === "game"}
-                helperText={publishProgram === "game" ? t("form.versionHelper") : undefined}
+                value="1.0.0"
+                disabled={true}
+                helperText={t("form.versionHelper")}
                 className="[&_input]:h-12 [&_input]:rounded-xl"
               />
             </div>
-
-            {publishProgram === "marketplace" && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                  {t("form.supportedPlatforms")}
-                </label>
-                <div className="mt-1 flex flex-wrap gap-2.5">
-                  {PLATFORM_OPTIONS.map((platform) => {
-                    const active = supportedPlatforms.includes(platform.value);
-                    return (
-                      <button
-                        key={platform.value}
-                        type="button"
-                        onClick={() => {
-                          setSupportedPlatforms((prev) =>
-                            prev.includes(platform.value)
-                              ? prev.filter((p) => p !== platform.value)
-                              : [...prev, platform.value]
-                          );
-                        }}
-                        className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                          active
-                            ? "border-amber-400 bg-amber-400 text-slate-950 shadow-md shadow-amber-500/15"
-                            : "border-slate-300 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-amber-400 hover:text-amber-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-amber-300"
-                        }`}
-                      >
-                        {active && <Check size={12} strokeWidth={3} />}
-                        {t(platform.labelKey)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </section>
 
           <TextArea
@@ -1426,114 +1549,234 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             )}
 
             {publishProgram === "marketplace" && (
-              <div className="space-y-2.5">
-                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <FileText size={16} className="text-amber-500" /> {t("artifacts.marketplaceZipLabel")}
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept=".zip"
-                    onChange={(e) => {
-                      const file = e.target.files ? e.target.files[0] : null;
-                      setGameFile(file);
-                      if (file) uploadFileToStorage(file, "game", "game");
-                    }}
-                    className="hidden"
-                    id="game-zip-input"
-                  />
-                  <label
-                  htmlFor="game-zip-input"
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
-                >
-                    <Upload size={14} /> {t("artifacts.selectZipFile")}
-                  </label>
-                  <span className="text-xs text-slate-500 font-mono truncate max-w-xs">
-                    {gameFile
-                      ? `${gameFile.name} (${(gameFile.size / (1024 * 1024)).toFixed(2)} MB)`
-                      : t("artifacts.noZipSelected")}
-                  </span>
-                </div>
-                {uploadStatus["game"] === "uploading" && (
-                  <div className="space-y-1.5 mt-1.5">
-                    <div className="flex justify-between text-[10px] text-sky-500 font-bold font-mono">
-                      <span>{t("status.uploading")}</span>
-                      <span>{uploadProgress["game"]}%</span>
+              <div className="space-y-6 animate-fade-in">
+                {/* Hướng dẫn cấu trúc thư mục */}
+                <div className="p-5 bg-slate-50 dark:bg-slate-900/45 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Sparkles size={16} className="text-amber-500" />
+                        Hướng dẫn đóng gói thư mục tài nguyên (.zip)
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Để tự động phân tách hình ảnh, video và tệp tin dự án, vui lòng chuẩn bị cấu trúc thư mục của bạn đúng theo sơ đồ bên dưới trước khi nén thành file ZIP.
+                      </p>
                     </div>
-                    <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-sky-500 h-full rounded-full transition-all duration-350"
-                        style={{ width: `${uploadProgress["game"]}%` }}
-                      ></div>
-                    </div>
+                    <a
+                      href={`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/v1/assets/template`}
+                      download="asset_template.zip"
+                      className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 active:scale-95"
+                    >
+                      <Download size={13} /> Tải Template Mẫu
+                    </a>
                   </div>
-                )}
-                {uploadStatus["game"] === "completed" && (
-                  <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
-                    <CheckCircle2 size={13} /> {t("status.uploadComplete")}
-                  </span>
-                )}
-                {uploadStatus["game"] === "failed" && (
-                  <span className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={13} /> {t("status.uploadFailed")}
-                  </span>
-                )}
-              </div>
-            )}
 
-            {/* Preview Images for Asset */}
-            {publishProgram === "marketplace" && (
-              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <Image size={16} className="text-amber-500" /> {t("artifacts.previewImagesLabel")}{" "}
-                  <span className="text-xs font-normal text-slate-500">
-                    {t("artifacts.previewImagesHint")}
-                  </span>
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleAssetImageAdd}
-                  className="hidden"
-                  id="asset-img-input"
-                />
-                <label
-                  htmlFor="asset-img-input"
-                  className="inline-flex px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-355 cursor-pointer items-center gap-1.5"
-                >
-                  <Upload size={14} /> {t("artifacts.addImage")}
-                </label>
-                {assetImages.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {assetImages.map((img, idx) => (
-                      <div key={idx} className="relative">
-                        <img
-                          src={URL.createObjectURL(img.file)}
-                          alt={t("artifacts.previewImageAlt")}
-                          className="w-20 h-20 object-cover rounded-lg border border-slate-300 dark:border-slate-800"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeAssetImage(idx)}
-                          className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                        >
-                          ×
-                        </button>
-                        {!img.objectKey && (
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] rounded-lg">
-                            ...
-                          </span>
-                        )}
+                  {/* Sơ đồ cây thư mục trực quan */}
+                  <div className="bg-slate-100 dark:bg-slate-950/60 p-5 rounded-2xl font-mono text-xs text-slate-700 dark:text-slate-350 border border-slate-200/50 dark:border-slate-850 leading-relaxed">
+                    <div className="text-amber-500 font-bold flex items-center gap-1.5">📦 asset_template.zip</div>
+                    <div className="pl-4 border-l border-slate-300 dark:border-slate-800 ml-1.5 space-y-1">
+                      {/* thumbnail folder */}
+                      <div>├── 📁 <span className="font-bold text-sky-500">thumbnail/</span></div>
+                      <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400">
+                        └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">thumbnail.png</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Ảnh đại diện chính, định dạng PNG/JPG/JPEG)</span>
                       </div>
-                    ))}
+                      
+                      {/* screenshots folder */}
+                      <div>├── 📁 <span className="font-bold text-sky-500">screenshots/</span></div>
+                      <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400 space-y-0.5">
+                        ├── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot1.png</span><br />
+                        ├── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot2.png</span><br />
+                        └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">screenshot3.png</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Tối đa 10 ảnh screenshot mô tả sản phẩm)</span>
+                      </div>
+                      
+                      {/* video folder */}
+                      <div>├── 📁 <span className="font-bold text-sky-500">video/</span></div>
+                      <div className="pl-6 border-l border-slate-300 dark:border-slate-800 ml-1.5 text-slate-500 dark:text-slate-400">
+                        └── 📄 <span className="text-slate-650 dark:text-slate-300 font-semibold">preview.mp4</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Video giới thiệu, định dạng MP4 - không bắt buộc)</span>
+                      </div>
+                      
+                      {/* assets folder */}
+                      <div>└── 📁 <span className="font-bold text-emerald-500">assets/</span></div>
+                      <div className="pl-6 ml-1.5 text-slate-500 dark:text-slate-400">
+                        └── 📁 <span className="text-slate-650 dark:text-slate-300 font-bold">src/</span> <span className="text-[10px] text-slate-400 dark:text-slate-500">(Thư mục chứa source code, audio, 3D model... đóng gói gửi cho khách hàng)</span>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* Drag-n-drop Upload Area */}
+                <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <FileText size={18} className="text-amber-500" /> Tải lên File ZIP tài nguyên gộp
+                  </label>
+                  
+                  {unifiedUploadStatus === "idle" && (
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept=".zip"
+                        onChange={(e) => {
+                          const file = e.target.files ? e.target.files[0] : null;
+                          if (file) handleUnifiedUpload(file);
+                        }}
+                        className="hidden"
+                        id="unified-zip-input"
+                      />
+                      <label
+                        htmlFor="unified-zip-input"
+                        className="px-4 py-2.5 bg-slate-100 dark:bg-slate-955 hover:bg-slate-200 border border-slate-250 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-350 cursor-pointer flex items-center gap-1.5 transition-studio"
+                      >
+                        <Upload size={14} /> Chọn File ZIP
+                      </label>
+                      <span className="text-xs text-slate-500 font-mono">
+                        Chưa chọn file (.zip)
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Trạng thái Uploading */}
+                  {unifiedUploadStatus === "uploading" && (
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold font-mono">
+                        <span className="text-sky-500 flex items-center gap-1">
+                          <RefreshCw size={12} className="animate-spin" /> Đang tải file lên máy chủ...
+                        </span>
+                        <span className="text-slate-600 dark:text-slate-400">{unifiedUploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-150 dark:bg-slate-955 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-sky-500 h-full rounded-full transition-all duration-350"
+                          style={{ width: `${unifiedUploadProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Trạng thái Processing */}
+                  {unifiedUploadStatus === "processing" && (
+                    <div className="p-4 bg-sky-500/5 dark:bg-sky-500/10 rounded-xl border border-sky-500/20 space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold text-sky-500">
+                        <RefreshCw className="animate-spin" size={14} />
+                        <span>Hệ thống đang giải nén và phân tách tài nguyên chạy nền...</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed pl-6">
+                        Chúng tôi đang thực hiện kiểm tra cấu trúc ZIP, quét virus, kiểm định bảo mật (Zip Slip / Zip Bomb) và tải các file con lên máy chủ lưu trữ. Bạn có thể đợi ở trang này, trạng thái sẽ tự động cập nhật.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Trạng thái Success */}
+                  {unifiedUploadStatus === "success" && (
+                    <div className="space-y-4">
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-xl text-xs font-semibold flex items-center gap-2">
+                        <CheckCircle2 size={16} className="shrink-0" />
+                        Phân tách và tối ưu hóa tài nguyên thành công!
+                      </div>
+
+                      {/* Hiển thị Preview kết quả trích xuất */}
+                      {unifiedExtractedMedia && (
+                        <div className="p-4 border border-slate-150 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 space-y-4 animate-fade-in">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Xem trước tài nguyên đã trích xuất:</h4>
+                          
+                          {/* Thumbnail */}
+                          {unifiedExtractedMedia.thumbnailUrl && (
+                            <div className="space-y-1.5">
+                              <span className="text-xs text-slate-500 font-semibold block">Ảnh đại diện (Thumbnail):</span>
+                              <img
+                                src={unifiedExtractedMedia.thumbnailUrl}
+                                alt="Extracted Thumbnail"
+                                className="w-24 h-24 object-cover rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm"
+                              />
+                            </div>
+                          )}
+
+                          {/* Screenshots */}
+                          {unifiedExtractedMedia.screenshots && unifiedExtractedMedia.screenshots.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-slate-500 font-semibold block">
+                                  Ảnh chụp màn hình (Screenshots) ({unifiedExtractedMedia.screenshots.length}):
+                                </span>
+                                <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-1">
+                                  💡 Kéo thả ảnh để sắp xếp thứ tự hiển thị
+                                </span>
+                              </div>
+                              <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                              >
+                                <SortableContext
+                                  items={unifiedExtractedMedia.screenshots}
+                                  strategy={horizontalListSortingStrategy}
+                                >
+                                  <div className="flex flex-wrap gap-2.5 p-2.5 bg-slate-100/40 dark:bg-slate-950/20 rounded-xl border border-slate-200/50 dark:border-slate-850/50">
+                                    {unifiedExtractedMedia.screenshots.map((url, index) => (
+                                      <SortableScreenshotItem
+                                        key={url}
+                                        url={url}
+                                        index={index}
+                                      />
+                                    ))}
+                                  </div>
+                                </SortableContext>
+                              </DndContext>
+                            </div>
+                          )}
+
+                          {/* Video */}
+                          {unifiedExtractedMedia.videoUrl && (
+                            <div className="space-y-1.5">
+                              <span className="text-xs text-slate-550 font-semibold block">Video preview:</span>
+                              <video
+                                src={unifiedExtractedMedia.videoUrl}
+                                controls
+                                className="max-w-xs rounded-lg border border-slate-200 dark:border-slate-800"
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Re-upload button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUnifiedUploadStatus("idle");
+                              setUploadStatus((prev) => ({ ...prev, game: "idle" }));
+                            }}
+                            className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 mt-1 transition-colors"
+                          >
+                            <Upload size={13} /> Tải lên file zip khác
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Trạng thái Failed */}
+                  {unifiedUploadStatus === "failed" && (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold flex items-center gap-2">
+                        <AlertTriangle size={16} className="shrink-0" />
+                        <div>
+                          <div className="font-bold">Lỗi xử lý file gộp:</div>
+                          <div className="mt-0.5 font-normal">{unifiedError}</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUnifiedUploadStatus("idle")}
+                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 font-semibold rounded-lg text-xs transition-colors"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
             {/* 2. Thumbnail image */}
-            {(publishProgram === "game" || publishProgram === "marketplace") && (
+            {publishProgram === "game" && (
               <div className="space-y-2.5 pt-2 border-t border-[rgba(96,119,148,0.15)]">
                 <label className="text-sm font-bold text-[#b1bdcc] flex items-center gap-1.5">
                   <Image size={16} className="text-[#fbbf24]" /> {t("artifacts.thumbnailLabel")}
@@ -1671,7 +1914,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             )}
 
             {/* 4. Video upload */}
-            {(publishProgram === "game" || publishProgram === "marketplace") && (
+            {publishProgram === "game" && (
               <div className="space-y-2.5 pt-2 border-t border-[rgba(96,119,148,0.15)]">
                 <label className="text-sm font-bold text-[#b1bdcc] flex items-center gap-1.5">
                   <Video size={16} className="text-[#fbbf24]" /> {t("artifacts.videoLabel")}
@@ -1862,6 +2105,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   setDemoFile(null);
                   setScreenshots([]);
                   setScreenshotKeys({});
+                  setUnifiedFile(null);
+                  setUnifiedUploadStatus("idle");
+                  setUnifiedUploadProgress(0);
+                  setUnifiedExtractedMedia(null);
+                  setUnifiedError(null);
                 }}
               >
                 {t("status.backToDetails")}

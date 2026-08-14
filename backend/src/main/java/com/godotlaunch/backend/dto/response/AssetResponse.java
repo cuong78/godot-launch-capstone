@@ -34,6 +34,8 @@ public class AssetResponse {
     private String supportedPlatforms;
     private List<String> tags;
     private ItemStatus status;
+    private String uploadStatus;
+    private String uploadError;
     private List<String> mediaUrls;
     private String videoUrl;
     private List<String> screenshots;

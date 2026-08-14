@@ -588,6 +588,8 @@ export interface MarketplaceItemResponse {
   screenshots?: string[];
   videoUrl?: string;
   status: "active" | "removed" | "pending" | "rejected";
+  uploadStatus?: string;
+  uploadError?: string;
   mediaUrls?: string[];
   createdAt?: string;
   updatedAt?: string;

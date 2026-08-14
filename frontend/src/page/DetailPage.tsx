@@ -508,14 +508,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   </span>
                 </div>
 
-                {focusedAsset.supportedPlatforms && (
-                  <div className="flex justify-between border-b border-slate-100 pb-1.5 dark:border-[rgba(96,119,148,0.1)]">
-                    <span className="text-slate-500 dark:text-[#718096]">{t("detail.meta.platforms")}</span>
-                    <span className="font-bold text-slate-800 dark:text-[#f4f7fb]">
-                      {cleanText(focusedAsset.supportedPlatforms)}
-                    </span>
-                  </div>
-                )}
+
                 <div className="flex justify-between border-b border-slate-100 pb-1.5 dark:border-[rgba(96,119,148,0.1)]">
                   <span className="text-slate-500 dark:text-[#718096]">{t("detail.meta.lastUpdated")}</span>
                   <span className="font-bold text-slate-800 dark:text-[#f4f7fb]">

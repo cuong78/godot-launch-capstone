@@ -155,5 +155,43 @@ export const marketplaceApi = {
   rejectMarketplaceItem: async (id: string, reason: string): Promise<ApiResponse<void>> => {
     const response = await api.post<ApiResponse<void>>(`/api/v1/assets/${id}/reject`, { reason });
     return response.data;
+  },
+
+  uploadUnifiedAsset: async (
+    id: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<{ assetId: string; status: string }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<ApiResponse<{ assetId: string; status: string }>>(
+      `/api/v1/assets/${id}/upload-unified`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
+        },
+      }
+    );
+    return response.data;
+  },
+
+  getUploadStatus: async (
+    id: string
+  ): Promise<ApiResponse<MarketplaceItemResponse>> => {
+    const response = await api.get<ApiResponse<MarketplaceItemResponse>>(`/api/v1/assets/${id}/upload-status`);
+    return response.data;
+  },
+
+  reorderScreenshots: async (
+    id: string,
+    orderedUrls: string[]
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.put<ApiResponse<{ message: string }>>(
+      `/api/v1/assets/${id}/reorder-screenshots`,
+      orderedUrls
+    );
+    return response.data;
   }
 };

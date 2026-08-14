@@ -78,6 +78,15 @@ public class Asset {
     @Column(name = "status", nullable = false, columnDefinition = "item_status_enum")
     private ItemStatus status = ItemStatus.active;
 
+    @Column(name = "upload_status", nullable = false, length = 50)
+    private String uploadStatus = "PENDING_UPLOAD";
+
+    @Column(name = "upload_error", columnDefinition = "TEXT")
+    private String uploadError;
+
+    @Column(name = "version", nullable = false, length = 50)
+    private String version = "1.0.0";
+
     @Column(name = "average_rating", nullable = false, precision = 3, scale = 2)
     private BigDecimal averageRating = BigDecimal.ZERO;
 

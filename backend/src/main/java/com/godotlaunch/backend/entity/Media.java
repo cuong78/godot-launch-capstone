@@ -42,6 +42,6 @@ public class Media {
     @Column(name = "media_url", nullable = false, columnDefinition = "TEXT")
     private String mediaUrl;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt = Instant.now();
 }

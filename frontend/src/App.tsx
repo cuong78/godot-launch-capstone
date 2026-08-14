@@ -158,7 +158,6 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse, t: TranslateFn
     videoUrl: item.videoUrl,
     documentation: '',
 
-    supportedPlatforms: item.supportedPlatforms || '',
     lastUpdated: formatMarketplaceDate(item.updatedAt || item.createdAt, t),
     details: {
       tilesCount: t('app.marketplace.packArchive'),

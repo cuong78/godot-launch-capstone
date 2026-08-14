@@ -6,6 +6,7 @@ import com.godotlaunch.backend.dto.request.UpdateAssetRequest;
 import com.godotlaunch.backend.dto.response.AssetResponse;
 import com.godotlaunch.backend.entity.Category;
 import com.godotlaunch.backend.entity.Asset;
+import com.godotlaunch.backend.entity.Media;
 import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.ItemStatus;
 import com.godotlaunch.backend.exception.AppException;
@@ -61,6 +62,7 @@ public class AssetServiceImpl implements AssetService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
     private final AuditLogService auditLogService;
+    private final UnifiedAssetUploadHelper unifiedAssetUploadHelper;
 
     /** ObjectKey cố định cho zip của 1 marketplace item. */
     private String buildObjectKey(UUID itemId) {
@@ -102,6 +104,7 @@ public class AssetServiceImpl implements AssetService {
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
         item.setStatus(ItemStatus.pending);
+        item.setVersion(request.getVersion() != null && !request.getVersion().isBlank() ? request.getVersion() : "1.0.0");
 
         if (request.getCategoryId() != null) {
             Category category = categoryRepository.findById(request.getCategoryId())
@@ -202,6 +205,9 @@ public class AssetServiceImpl implements AssetService {
         }
         if (request.getFileUrl() != null) {
             item.setFileUrl(request.getFileUrl());
+        }
+        if (request.getVersion() != null) {
+            item.setVersion(request.getVersion());
         }
 
 
@@ -534,6 +540,9 @@ public class AssetServiceImpl implements AssetService {
                 .price(item.getPrice())
                 .fileUrl(includePrivateAccess ? getPresignedGetUrl(item.getFileUrl()) : null)
                 .status(item.getStatus())
+                .uploadStatus(item.getUploadStatus())
+                .uploadError(item.getUploadError())
+                .version(item.getVersion())
                 .tags(item.getTags() == null ? java.util.List.of() :
                         item.getTags().stream()
                                 .map(com.godotlaunch.backend.utils.TranslationUtils::resolveTagName)
@@ -566,5 +575,93 @@ public class AssetServiceImpl implements AssetService {
         }
 
         return url;
+    }
+
+    @Override
+    @Transactional
+    public void startUnifiedAssetUpload(UUID itemId, MultipartFile file, String uploaderEmail) {
+        User uploader = getRequesterWithRole(uploaderEmail);
+        assertDeveloper(uploader);
+        Asset item = assetRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+        assertAssetOwner(item, uploader);
+
+        // 1. Cập nhật trạng thái PROCESSING
+        item.setUploadStatus("PROCESSING");
+        item.setUploadError(null);
+        assetRepository.saveAndFlush(item);
+
+        // 2. Lưu file MultipartFile tạm thời ra đĩa để chuyển tiếp cho Async Worker
+        java.io.File rawZipFile;
+        try {
+            rawZipFile = java.io.File.createTempFile("unified-raw-" + itemId, ".zip");
+            file.transferTo(rawZipFile);
+        } catch (java.io.IOException e) {
+            log.error("Failed to save temporary raw zip upload for item {}", itemId, e);
+            item.setUploadStatus("FAILED");
+            item.setUploadError("Không thể lưu tệp tải lên tạm thời: " + e.getMessage());
+            assetRepository.save(item);
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "Failed to initialize upload payload: " + e.getMessage());
+        }
+
+        // 3. Khởi chạy tác vụ nền (Async) sau khi transaction hiện tại commit
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    unifiedAssetUploadHelper.processUnifiedAssetZipAsync(itemId, rawZipFile);
+                }
+            });
+        } else {
+            unifiedAssetUploadHelper.processUnifiedAssetZipAsync(itemId, rawZipFile);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AssetResponse getUploadStatus(UUID itemId, String requesterEmail) {
+        User requester = getRequesterWithRole(requesterEmail);
+        assertDeveloper(requester);
+        Asset item = assetRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+        assertAssetOwner(item, requester);
+
+        return mapToResponse(item, true);
+    }
+
+    @Override
+    @Transactional
+    public void reorderScreenshots(UUID itemId, java.util.List<String> orderedUrls, String requesterEmail) {
+        User requester = getRequesterWithRole(requesterEmail);
+        assertDeveloper(requester);
+        Asset item = assetRepository.findById(itemId)
+                .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
+        assertAssetOwner(item, requester);
+
+        // 1. Lấy tất cả screenshot hiện tại
+        java.util.List< Media> screenshots = mediaRepository.findByAsset_IdAndMediaType(itemId, "screenshot");
+
+        // 2. Cập nhật createdAt theo thứ tự của orderedUrls
+        java.time.Instant now = java.time.Instant.now();
+        // Đối với OrderByCreatedAtDesc: phần tử đầu tiên hiển thị trước -> phần tử đầu tiên phải có createdAt LỚN NHẤT.
+        for (int i = 0; i < orderedUrls.size(); i++) {
+            String url = orderedUrls.get(i);
+            String objectKey = extractObjectKeyFromUrl(url);
+            if (objectKey == null) continue;
+
+            Media match = null;
+            for (Media m : screenshots) {
+                if (m.getMediaUrl().contains(objectKey)) {
+                    match = m;
+                    break;
+                }
+            }
+
+            if (match != null) {
+                // Giảm dần createdAt cho mỗi vị trí tiếp theo
+                match.setCreatedAt(now.minusSeconds(i));
+                mediaRepository.save(match);
+            }
+        }
     }
 }

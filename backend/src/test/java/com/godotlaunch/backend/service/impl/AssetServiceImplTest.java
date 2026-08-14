@@ -86,6 +86,10 @@ class AssetServiceImplTest {
     private AiReviewService aiReviewService;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private com.godotlaunch.backend.service.NotificationService notificationService;
+    @Mock
+    private UnifiedAssetUploadHelper unifiedAssetUploadHelper;
 
     @InjectMocks
     private AssetServiceImpl assetService;
@@ -517,5 +521,34 @@ class AssetServiceImplTest {
         assertThrows(AppException.class, () ->
                 assetService.removeAsset(asset.getId(), otherDeveloperUser.getEmail())
         );
+    }
+
+    @Test
+    void getUploadStatus_ShouldReturnMappedResponse() {
+        asset.setUploadStatus("PROCESSING");
+        asset.setUploadError("Some Error");
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+
+        AssetResponse response = assetService.getUploadStatus(asset.getId(), developerUser.getEmail());
+
+        assertEquals("PROCESSING", response.getUploadStatus());
+        assertEquals("Some Error", response.getUploadError());
+    }
+
+    @Test
+    void startUnifiedAssetUpload_ShouldSetProcessingAndSave() throws Exception {
+        when(assetRepository.findById(asset.getId())).thenReturn(Optional.of(asset));
+        when(userRepository.findWithRoleByEmail(developerUser.getEmail())).thenReturn(Optional.of(developerUser));
+        when(assetRepository.saveAndFlush(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        org.springframework.web.multipart.MultipartFile mockFile = org.mockito.Mockito.mock(org.springframework.web.multipart.MultipartFile.class);
+
+        assetService.startUnifiedAssetUpload(asset.getId(), mockFile, developerUser.getEmail());
+
+        assertEquals("PROCESSING", asset.getUploadStatus());
+        assertThat(asset.getUploadError()).isNull();
+        verify(mockFile).transferTo(any(java.io.File.class));
+        verify(unifiedAssetUploadHelper).processUnifiedAssetZipAsync(eq(asset.getId()), any(java.io.File.class));
     }
 }

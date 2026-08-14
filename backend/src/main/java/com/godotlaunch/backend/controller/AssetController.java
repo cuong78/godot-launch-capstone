@@ -28,6 +28,19 @@ public class AssetController {
 
     private final AssetService assetService;
 
+    @GetMapping("/template")
+    @Operation(summary = "Tải file template upload mẫu cho Asset", description = "Trả về file template zip cấu trúc thư mục gộp.")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadTemplate() {
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.ClassPathResource("static/templates/asset_template.zip");
+        if (!resource.exists()) {
+            throw new com.godotlaunch.backend.exception.AppException(com.godotlaunch.backend.constant.ErrorCode.FILE_NOT_FOUND, "Không tìm thấy file template mẫu trên server.");
+        }
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"asset_template.zip\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Create marketplace item", description = "Initializes a marketplace item. Bypasses GitHub verification automatically for now.")
@@ -97,6 +110,39 @@ public class AssetController {
             Principal principal) {
         assetService.uploadItemFile(id, file, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(Map.of("message", "File uploaded successfully"), "Success"));
+    }
+
+    @PostMapping(value = "/{id}/upload-unified", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    @Operation(summary = "Upload unified asset ZIP", description = "Upload file ZIP gộp (chứa thumbnail, screenshots, video, assets). Xử lý bất đồng bộ trong nền.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadUnifiedAsset(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        assetService.startUnifiedAssetUpload(id, file, principal.getName());
+        return ResponseEntity.status(org.springframework.http.HttpStatus.ACCEPTED)
+                .body(ApiResponse.success(Map.of("assetId", id.toString(), "status", "PROCESSING"), "File upload received and is being processed in background."));
+    }
+
+    @GetMapping("/{id}/upload-status")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    @Operation(summary = "Lấy trạng thái xử lý upload gộp", description = "Trả về trạng thái xử lý zip gộp hiện tại (PROCESSING, SUCCESS, FAILED).")
+    public ResponseEntity<ApiResponse<AssetResponse>> getUploadStatus(
+            @PathVariable UUID id,
+            Principal principal) {
+        AssetResponse response = assetService.getUploadStatus(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response, "Upload status retrieved successfully."));
+    }
+
+    @PutMapping("/{id}/reorder-screenshots")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    @Operation(summary = "Sắp xếp thứ tự ảnh screenshots", description = "Nhận danh sách URL screenshots đã sắp xếp và cập nhật trong DB.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> reorderScreenshots(
+            @PathVariable UUID id,
+            @RequestBody java.util.List<String> orderedUrls,
+            Principal principal) {
+        assetService.reorderScreenshots(id, orderedUrls, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("message", "Screenshots reordered successfully"), "Success"));
     }
 
     @PostMapping(value = "/{id}/media", consumes = "multipart/form-data")
