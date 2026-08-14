@@ -15,6 +15,23 @@ spring:
 
   application:
     name: backend
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration
+      - org.springframework.ai.autoconfigure.vectorstore.pgvector.PgVectorStoreAutoConfiguration
+  ai:
+    openai:
+      base-url: ${GEMINI_OPENAI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai/}
+      api-key: ${GEMINI_API_KEY:}
+      chat:
+        options:
+          model: ${GEMINI_MODEL:gemini-flash-lite-latest}
+          temperature: 0.2
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE
+        dimensions: 768
   servlet:
     multipart:
       max-file-size: 100MB
@@ -39,7 +56,7 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:

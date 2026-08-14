@@ -38,6 +38,7 @@ import { PaymentResultPage } from './page/PaymentResultPage';
 import { PaymentQrPage } from './page/PaymentQrPage';
 import { DeveloperOnboardingPage } from './page/DeveloperOnboardingPage';
 import { ConfirmResumeCheckoutModal } from './components/ConfirmResumeCheckoutModal';
+import { AiChatWidget } from './components/AiChatWidget';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
@@ -1543,6 +1544,9 @@ export default function App() {
           noTopMargin={displayScreen === 'developer-onboarding'}
         />
       )}
+
+      {/* FLOATING AI CHATBOT WIDGET */}
+      <AiChatWidget />
 
     </div>
   );
