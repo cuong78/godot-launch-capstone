@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Bell, Check, ShieldAlert, ShoppingBag, DollarSign, Wallet, CreditCard, 
-  Star, FileWarning, CheckCircle2 
+  Star, FileWarning, CheckCircle2, Gamepad2 
 } from 'lucide-react';
 import { useWebSocket } from '../context/WebSocketContext';
 import { NotificationResponse } from '../types';
@@ -87,6 +87,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
           break;
         case 'WITHDRAWAL_REQUEST':
         case 'PLAGIARISM_ALERT':
+        case 'NEW_SUBMISSION':
           setCurrentScreen('admin');
           break;
         case 'PAYMENT_SUCCESS':
@@ -123,6 +124,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />;
       case 'REVIEW_REMOVED':
         return <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />;
+      case 'NEW_SUBMISSION':
+        return <Gamepad2 className="w-3.5 h-3.5 text-sky-400" />;
       default:
         return <Bell className="w-3.5 h-3.5 text-slate-400" />;
     }

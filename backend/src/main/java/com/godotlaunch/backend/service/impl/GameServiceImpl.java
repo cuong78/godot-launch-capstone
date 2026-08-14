@@ -300,6 +300,26 @@ public class GameServiceImpl implements GameService {
                 isUpdate ? "Game '" + gameToSave.getTitle() + "' đã gửi bản cập nhật mới qua repo. Chờ duyệt."
                         : "Game '" + gameToSave.getTitle() + "' submit qua repo, verified & snapshot. Chờ duyệt.", null);
 
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+            List<User> admins = userRepository.findAdminsOrderByCreatedAtAsc(pageable);
+            String devName = creator.getFullName() != null && !creator.getFullName().isBlank() ? creator.getFullName() : creator.getEmail();
+            String notifMsg = isUpdate
+                    ? "Nhà phát triển " + devName + " vừa gửi bản cập nhật mới cho Game: \"" + gameToSave.getTitle() + "\"."
+                    : "Nhà phát triển " + devName + " vừa tải lên Game mới chờ phê duyệt: \"" + gameToSave.getTitle() + "\".";
+            for (User admin : admins) {
+                notificationService.createAndSendNotification(
+                        admin,
+                        creator,
+                        NotificationType.NEW_SUBMISSION,
+                        notifMsg,
+                        gameId.toString()
+                );
+            }
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo NEW_SUBMISSION tới admin khi submit game repo: {}", ex.getMessage());
+        }
+
         // AI review async (sau snapshot sạch, trước admin) để tạo report đề xuất. Fail-soft.
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
