@@ -1,4 +1,4 @@
--- Migration V26: Create 7 Pre-defined Whitelist Views for AI Chatbot SQL Tool Sandbox
+-- Migration V29: Create 7 Pre-defined Whitelist Views for AI Chatbot SQL Tool Sandbox
 
 -- 1. View: v_seller_wallet_balance (Ví Seller & Số dư có thể rút)
 CREATE OR REPLACE VIEW v_seller_wallet_balance AS
