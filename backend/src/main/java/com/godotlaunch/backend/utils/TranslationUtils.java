@@ -27,6 +27,11 @@ public class TranslationUtils {
         return (val != null && !val.trim().isEmpty()) ? val : fallback;
     }
 
+    public static String resolveCategoryName(Category category) {
+        if (category == null) return null;
+        return resolve(category.getNameVi(), category.getNameEn(), category.getNameJa(), category.getName());
+    }
+
     public static CategoryResponse mapCategory(Category category) {
         if (category == null) return null;
         String name = resolve(category.getNameVi(), category.getNameEn(), category.getNameJa(), category.getName());

@@ -737,7 +737,7 @@ public class GameServiceImpl implements GameService {
                 .uploadError(game.getUploadError())
                 .creatorName(game.getCreator().getEmail())
                 .creatorFullName(game.getCreator().getFullName())
-                .categoryName(game.getCategory() != null ? game.getCategory().getName() : null)
+                .categoryName(com.godotlaunch.backend.utils.TranslationUtils.resolveCategoryName(game.getCategory()))
                 .publishingType(game.getPublishingType() != null ? game.getPublishingType().name() : null)
                 .screenshots(screenshots)
                 .videoUrl(videoUrl)

@@ -1169,8 +1169,18 @@ export default function App() {
       
       // Category Checkboxes Filter
       if (selectedCategories.length > 0) {
-        const allowedCategories = getCategoryAndDescendants(selectedCategories);
-        if (!allowedCategories.some(catName => catName.toLowerCase() === (item.category || '').toLowerCase())) return false;
+        const firstSelCat = selectedCategories[0];
+        const categoryEntity = categories.find(c => c.name.toLowerCase() === firstSelCat.toLowerCase());
+        const categoryType = categoryEntity?.type; // 'game' or 'asset'
+
+        const itemMatchesCategoryType = 
+          (item.itemType === 'source_code' && categoryType === 'game') ||
+          (item.itemType === 'asset' && categoryType === 'asset');
+
+        if (itemMatchesCategoryType) {
+          const allowedCategories = getCategoryAndDescendants(selectedCategories);
+          if (!allowedCategories.some(catName => catName.toLowerCase() === (item.category || '').toLowerCase())) return false;
+        }
       }
 
       // Max price filter

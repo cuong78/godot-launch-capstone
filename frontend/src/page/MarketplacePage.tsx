@@ -495,7 +495,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               >
                 <span>{t("filters.catalogType.game", "Game")}</span>
                 <span className="text-[10px] opacity-75 px-1 rounded bg-slate-200/60 dark:bg-slate-700/60">
-                  {filteredAssets.filter(a => a.itemType === 'source_code').length}
+                  {allAssets.filter(a => a.itemType === 'source_code').length}
                 </span>
               </button>
               <button
@@ -509,7 +509,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
               >
                 <span>{t("filters.catalogType.asset", "Asset")}</span>
                 <span className="text-[10px] opacity-75 px-1 rounded bg-slate-200/60 dark:bg-slate-700/60">
-                  {filteredAssets.filter(a => a.itemType === 'asset').length}
+                  {allAssets.filter(a => a.itemType === 'asset').length}
                 </span>
               </button>
             </div>

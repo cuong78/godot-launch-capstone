@@ -560,7 +560,7 @@ public class AssetServiceImpl implements AssetService {
                 .sellerEmail(item.getSeller().getEmail())
                 .sellerFullName(item.getSeller().getFullName())
                 .categoryId(item.getCategory() != null ? item.getCategory().getId() : null)
-                .categoryName(item.getCategory() != null ? item.getCategory().getName() : null)
+                .categoryName(com.godotlaunch.backend.utils.TranslationUtils.resolveCategoryName(item.getCategory()))
                 .title(item.getTitle())
                 .description(item.getDescription())
                 .price(item.getPrice())
