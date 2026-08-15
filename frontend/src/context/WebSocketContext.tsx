@@ -86,6 +86,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (notif.message) {
               showToast(notif.message, 'info');
             }
+
+            if (notif.type === 'NEW_REVIEW' || notif.type === 'REVIEW_REMOVED' || notif.type === 'REPLY_COMMENT') {
+              window.dispatchEvent(
+                new CustomEvent('godotlaunch:review-updated', {
+                  detail: { productId: notif.targetId },
+                })
+              );
+            }
           } else {
             fetchNotifications();
           }

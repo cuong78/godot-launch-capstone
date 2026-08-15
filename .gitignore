@@ -19,4 +19,12 @@ workspace.xml
 # CodeGraph local runtime data (daemon pid, db, cache) — machine-specific
 .codegraph/
 
+# Python cache & virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+
 

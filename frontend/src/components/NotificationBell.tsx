@@ -110,6 +110,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         default:
           setSelectedAssetId(notif.targetId);
           setCurrentScreen('detail');
+          window.dispatchEvent(
+            new CustomEvent('godotlaunch:review-updated', {
+              detail: { productId: notif.targetId },
+            })
+          );
           break;
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });

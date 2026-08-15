@@ -128,6 +128,18 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
     if (productId) {
       fetchReviewData();
     }
+
+    const handleReviewUpdated = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      if (!customEvt.detail?.productId || customEvt.detail.productId === productId) {
+        fetchReviewData();
+      }
+    };
+
+    window.addEventListener('godotlaunch:review-updated', handleReviewUpdated);
+    return () => {
+      window.removeEventListener('godotlaunch:review-updated', handleReviewUpdated);
+    };
   }, [productId, productType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
