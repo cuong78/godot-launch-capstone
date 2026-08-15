@@ -130,13 +130,15 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   const isCreatorOwnedAsset = (asset: Asset) =>
     creatorOwnedProductIds.has(asset.id);
   const isCreatorOwner = React.useMemo(() => {
+    const currentUserId = currentUser?.id;
     const currentEmail = currentUser?.email?.trim().toLowerCase();
     const sellerEmail = focusedAsset.sellerEmail?.trim().toLowerCase();
     return Boolean(
+      (currentUserId && focusedAsset.sellerId === currentUserId) ||
       (currentEmail && sellerEmail && currentEmail === sellerEmail) ||
       creatorOwnedProductIds.has(focusedAsset.id)
     );
-  }, [currentUser?.email, focusedAsset.sellerEmail, creatorOwnedProductIds, focusedAsset.id]);
+  }, [currentUser?.id, currentUser?.email, focusedAsset.sellerId, focusedAsset.sellerEmail, creatorOwnedProductIds, focusedAsset.id]);
   
   const downloadUrl = React.useMemo(() => {
     if (!purchaseOrderPayments) return null;
@@ -548,7 +550,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             currentUserId={currentUser?.id}
             currentUserEmail={currentUser?.email}
             isAdmin={currentUser?.role === 'admin'}
-            sellerId={(focusedAsset as any).sellerId || (focusedAsset as any).seller?.id || (focusedAsset as any).creator?.id}
+            sellerId={focusedAsset.sellerId}
             sellerEmail={focusedAsset.sellerEmail}
           />
         </div>

@@ -346,6 +346,8 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
     handleViewAssetDetails({
       id: product.id,
+      sellerId: product.creatorId,
+      sellerEmail: product.creatorEmail,
       title: product.title,
       price: product.price ?? 0,
       rating: 0,

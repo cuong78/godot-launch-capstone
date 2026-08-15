@@ -59,6 +59,7 @@ interface DashboardPageProps {
   onRefreshPayments: () => void;
   onCancelPayment: (paymentId: string) => Promise<void>;
   setCurrentScreen: (screen: any) => void;
+  initialTab?: DashboardWorkspaceId;
 }
 
 const getContractStatusLabel = (status: string, t: (key: string) => string) => {
@@ -149,6 +150,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onRefreshPayments,
   onCancelPayment,
   setCurrentScreen,
+  initialTab,
 }) => {
   const { t, i18n } = useTranslation(["dashboard", "payment"]);
   const { showToast } = useToast();
@@ -161,7 +163,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   // Tab control: 'my-games' | 'marketplace-items' | 'sales' | 'payment-center'
   const [activeTab, setActiveTab] =
-    useState<DashboardWorkspaceId>(isDeveloperOrAdmin ? "my-games" : "payment-center");
+    useState<DashboardWorkspaceId>(initialTab || (isDeveloperOrAdmin ? "my-games" : "payment-center"));
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Game & Asset status filters
   const [gameStatusFilter, setGameStatusFilter] = useState<string>("all");

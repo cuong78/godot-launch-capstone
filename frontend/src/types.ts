@@ -1,5 +1,6 @@
 export interface Asset {
   id: string;
+  sellerId?: string;
   sellerEmail?: string;
   title: string;
   price: number;
@@ -487,6 +488,8 @@ export interface GameResponse {
   downloadPrice?: number;
   communityAvailable?: boolean;
   status?: string;
+  creatorId?: string;
+  creatorEmail?: string;
   creatorName?: string;
   creatorFullName?: string;
   categoryName?: string;
@@ -577,6 +580,7 @@ export interface UpdateMarketplaceItemRequest {
 
 export interface MarketplaceItemResponse {
   id: string;
+  sellerId?: string;
   sellerEmail: string;
   sellerFullName?: string;
   categoryId?: string;

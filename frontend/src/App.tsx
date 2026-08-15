@@ -141,6 +141,7 @@ const mapMarketplaceItemToAsset = (item: MarketplaceItemResponse, t: TranslateFn
 
   return {
     id: item.id,
+    sellerId: item.sellerId,
     sellerEmail: item.sellerEmail,
     title: item.title,
     price: Number(item.price || 0),
@@ -405,6 +406,13 @@ export default function App() {
   const [selectedPost, setSelectedPost] = useState<CommunityChatResponse | null>(null);
   const [selectedAuthor, setSelectedAuthor] = useState<UserSummary | null>(null);
   const [searchText, setSearchText] = useState<string>('');
+  const [dashboardTab, setDashboardTab] = useState<any>(undefined);
+
+  const handleNavigateToDashboardTab = useCallback((tab: any = 'sales') => {
+    setDashboardTab(tab);
+    setCurrentScreen('dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
   
   const [assets, setAssets] = useState<Asset[]>([]);
   
@@ -467,17 +475,23 @@ export default function App() {
   );
 
   const creatorOwnedProductIds = useMemo(() => {
+    const currentUserId = currentUser?.id;
     const currentEmail = currentUser?.email?.trim().toLowerCase();
-    if (!currentEmail) return new Set<string>();
+    if (!currentUserId && !currentEmail) return new Set<string>();
 
     return new Set(
       assets
         .filter(
-          (asset) => asset.sellerEmail?.trim().toLowerCase() === currentEmail,
+          (asset) =>
+            Boolean(currentUserId && asset.sellerId === currentUserId) ||
+            Boolean(
+              currentEmail &&
+              asset.sellerEmail?.trim().toLowerCase() === currentEmail,
+            ),
         )
         .map((asset) => asset.id),
     );
-  }, [assets, currentUser?.email]);
+  }, [assets, currentUser?.id, currentUser?.email]);
 
   useEffect(() => {
     sessionStorage.setItem(PAYMENT_SESSION_STORAGE_KEY, JSON.stringify(paymentOrders));
@@ -598,6 +612,8 @@ export default function App() {
 
   const mapGameToAsset = (game: any): Asset => ({
     id: game.id,
+    sellerId: game.creatorId,
+    sellerEmail: game.creatorEmail || game.creatorName,
     title: game.title,
     price: game.priceProposed || 0,
     rating: game.averageRating !== undefined && game.averageRating !== null ? game.averageRating : 5.0,
@@ -1268,6 +1284,7 @@ export default function App() {
           setSelectedAssetId={setSelectedAssetId}
           setSelectedPost={setSelectedPost}
           setSelectedAuthor={setSelectedAuthor}
+          onNavigateToDashboardTab={handleNavigateToDashboardTab}
         />
       ) : (
         <Header
@@ -1287,6 +1304,7 @@ export default function App() {
           setSelectedAuthor={setSelectedAuthor}
           searchText={searchText}
           setSearchText={setSearchText}
+          onNavigateToDashboardTab={handleNavigateToDashboardTab}
         />
       )}
 
@@ -1454,6 +1472,7 @@ export default function App() {
               onRefreshPayments={refreshTrackedPayments}
               onCancelPayment={handleCancelPayment}
               setCurrentScreen={setCurrentScreen}
+              initialTab={dashboardTab}
             />
           </ProtectedRoute>
         )}

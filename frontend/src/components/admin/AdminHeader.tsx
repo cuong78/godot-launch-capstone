@@ -20,6 +20,7 @@ interface AdminHeaderProps {
   setSelectedAssetId?: (id: string) => void;
   setSelectedPost?: (post: any) => void;
   setSelectedAuthor?: (author: any) => void;
+  onNavigateToDashboardTab?: (tab: any) => void;
 }
 
 export function AdminHeader({
@@ -31,6 +32,7 @@ export function AdminHeader({
   setSelectedAssetId,
   setSelectedPost,
   setSelectedAuthor,
+  onNavigateToDashboardTab,
 }: AdminHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const { t } = useTranslation(["common", "payment", "admin"]);
@@ -104,6 +106,7 @@ export function AdminHeader({
               setSelectedAssetId={setSelectedAssetId || (() => {})}
               setSelectedPost={setSelectedPost || (() => {})}
               setSelectedAuthor={setSelectedAuthor || (() => {})}
+              onNavigateToDashboardTab={onNavigateToDashboardTab}
             />
           )}
 

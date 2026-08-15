@@ -26,6 +26,8 @@ public class GameResponse {
     private String status;
     private String uploadStatus;
     private String uploadError;
+    private UUID creatorId;
+    private String creatorEmail;
     private String creatorName;
     private String creatorFullName;
     private String categoryName;

@@ -39,7 +39,8 @@ export interface ContentCollectionPayload {
 }
 export interface HomepageProduct {
   id: string; itemType: 'GAME' | 'ASSET'; title: string; description?: string;
-  thumbnailUrl?: string; price?: number; creatorName?: string; categoryName?: string;
+  thumbnailUrl?: string; price?: number; creatorId?: string; creatorEmail?: string;
+  creatorName?: string; categoryName?: string;
   tags: string[]; popularity?: number; createdAt?: string;
 }
 export interface HomepageSection {
