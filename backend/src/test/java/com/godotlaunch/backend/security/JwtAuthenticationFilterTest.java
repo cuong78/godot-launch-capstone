@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -95,6 +96,11 @@ class JwtAuthenticationFilterTest {
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_CUSTOMER"));
 
         verify(filterChain, times(1)).doFilter(request, response);
+        verify(response).addCookie(argThat(cookie ->
+                "app_token".equals(cookie.getName())
+                        && validToken.equals(cookie.getValue())
+                        && cookie.isHttpOnly()
+                        && "/".equals(cookie.getPath())));
     }
 
     @Test
@@ -119,6 +125,7 @@ class JwtAuthenticationFilterTest {
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_DEVELOPER"));
 
         verify(filterChain, times(1)).doFilter(request, response);
+        verify(response, never()).addCookie(any(Cookie.class));
     }
 
     @Test
@@ -139,6 +146,7 @@ class JwtAuthenticationFilterTest {
         // Assert
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verify(filterChain, times(1)).doFilter(request, response);
+        verify(response, never()).addCookie(any(Cookie.class));
     }
 
     @Test
@@ -154,5 +162,6 @@ class JwtAuthenticationFilterTest {
         // Assert
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verify(filterChain, times(1)).doFilter(request, response);
+        verify(response, never()).addCookie(any(Cookie.class));
     }
 }

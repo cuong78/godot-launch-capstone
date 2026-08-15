@@ -23,7 +23,7 @@ public class IntentRouterService {
                 2. SQL_DATA_QUERY: Tra cứu dữ liệu số dư ví, danh sách game, đơn hàng, doanh thu, lịch sử giao dịch.
                 3. PLAGIARISM_REPORT: Hỏi về kết quả kiểm tra đạo văn code, tỷ lệ trùng lặp AST MinHash của game.
                 4. HYBRID: Kết hợp hoặc không chắc chắn (Confidence < 0.70).
-
+                5.Nếu user là Guest, hãy yêu cầu họ đăng nhập để có thể đặt câu hỏi cho AI.
                 Phản hồi của bạn PHẢI tuân theo đúng định dạng JSON sau:
                 %s
 

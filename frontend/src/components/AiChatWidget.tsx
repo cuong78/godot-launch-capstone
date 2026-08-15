@@ -79,6 +79,26 @@ export const AiChatWidget: React.FC = () => {
 
     setMessages((prev) => [...prev, botMsg]);
 
+    if (!currentUser || !token) {
+      setTimeout(() => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === botMessageId
+              ? {
+                  ...msg,
+                  content:
+                    '🔒 **Vui lòng đăng nhập tài khoản** để trò chuyện với Trợ lý AI và trải nghiệm đầy đủ các tính năng của Godot Launch!',
+                  isStreaming: false,
+                }
+              : msg
+          )
+        );
+        setIsSending(false);
+        setCurrentReasoning(null);
+      }, 500);
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:8080/api/v1/chat/stream', {
         method: 'POST',
@@ -159,14 +179,17 @@ export const AiChatWidget: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error in chat stream:', error);
+      const isAuthError = !token || error.message?.includes('401') || error.message?.includes('403');
+      const fallbackMsg = isAuthError
+        ? '🔒 **Vui lòng đăng nhập tài khoản** để sử dụng tính năng Trợ lý AI!'
+        : '⚠️ Rất tiếc, đã có lỗi xảy ra khi kết nối với AI. Vui lòng thử lại sau giây lát!';
+
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === botMessageId
             ? {
                 ...msg,
-                content:
-                  msg.content ||
-                  '⚠️ Rất tiếc, đã có lỗi xảy ra khi kết nối với AI. Vui lòng thử lại sau giây lát!',
+                content: msg.content || fallbackMsg,
                 isStreaming: false,
               }
             : msg
@@ -196,13 +219,6 @@ export const AiChatWidget: React.FC = () => {
     <>
       {/* Floating Robot Trigger Button */}
       <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
-        {!isOpen && (
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 text-white text-xs font-medium border border-indigo-500/30 backdrop-blur-md shadow-lg shadow-indigo-500/10 animate-bounce">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Trợ lý AI Godot Launch
-          </div>
-        )}
-
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={`relative group flex items-center justify-center w-14 h-14 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${

@@ -7,7 +7,7 @@
 > - Private repo: clone bằng **token của chính developer** (scope `repo`)
 > - Anti-theft: **cả 2** — snapshot/timestamp (giai đoạn 1) + AI similarity (giai đoạn 2)
 > - Review: **AI service** (chưa lên plan chi tiết, để placeholder)
-> - Runtime nặng: mở rộng **python-face-service** thành source-processing service
+> - Runtime nặng: mở rộng **ai-service** thành source-processing service
 > - Dispute: **KHÔNG escrow** — trả tiền ngay, dùng **cưỡng chế hoàn trả + KYC/FaceID + admin backstop**
 >
 > Quy ước vai trò (thống nhất toàn bộ tài liệu):
@@ -108,7 +108,7 @@ Nền tảng là trung gian truy trách nhiệm người bán, không phải bê
 
 ---
 
-## 2. Source Processing Service (mở rộng python-face-service)
+## 2. Source Processing Service (mở rộng ai-service)
 
 Service Python hiện có (Docker, port 8001) được mở rộng thêm các endpoint xử lý source.
 
@@ -138,7 +138,7 @@ Backend Java (submit code — có githubRepoUrl)
 > (asset không phải code, không có repo, không tranh chấp source theft kiểu code).
 
 ### Tasks giai đoạn 1
-- [ ] Thêm `git` vào Dockerfile python-face-service
+- [ ] Thêm `git` vào Dockerfile ai-service
 - [ ] `source_service.py`: clone (shallow `--depth 50` để có ít history), cleanup temp
 - [ ] Tích hợp ClamAV (đã có container clamav trong docker-compose)
 - [ ] `/source/snapshot`: commit SHA hiện tại + SHA-256 mỗi file + bundle hash
@@ -346,7 +346,7 @@ Thêm bank account:
 |---|---|
 | GitHub OAuth + verify owner | Cổng verify trước clone (chỉ cần nâng scope) |
 | ClamAV container | Virus scan source sau clone |
-| `python-face-service` + Docker | Mở rộng thành source processing |
+| `ai-service` + Docker | Mở rộng thành source processing |
 | pgvector | Lưu fingerprint cho similarity (giai đoạn 2) |
 | Tier 2 KYC | Danh tính thật người bán → indemnity contract có hiệu lực + truy A vô thời hạn |
 | Tier 1 FaceID (`face_embeddings`) | Copy sang `banned_identities` để chặn đăng ký lại |

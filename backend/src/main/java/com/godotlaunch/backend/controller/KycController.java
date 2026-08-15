@@ -71,7 +71,7 @@ public class KycController {
     private final VietQrLookupClient vietQrLookupClient;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${app.face-service.url:http://localhost:8001}")
+    @Value("${app.ai-service.url:http://localhost:8001}")
     private String faceServiceUrl;
 
     @GetMapping("/status")

@@ -130,7 +130,7 @@ CREATE EXTENSION IF NOT EXISTS vector;   -- pgvector extension
 CREATE TABLE face_embeddings (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    embedding  vector(128) NOT NULL,     -- 128-dim dlib HOG embedding
+    embedding  vector(512) NOT NULL,     -- 512-dim normalized ArcFace embedding
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -145,15 +145,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS face_verified BOOLEAN NOT NULL DEFAUL
 
 ```python
 # face_service.py
-import face_recognition  # dlib HOG model
+from face_service import analyze_face  # InsightFace buffalo_l / ArcFace
 
 def extract_embedding(image_base64: str) -> list[float] | None:
-    img = decode_image(image_base64)
-    face_locations = face_recognition.face_locations(img)
-    if len(face_locations) != 1:
-        return None   # 0 faces hoặc >1 face → từ chối
-    encodings = face_recognition.face_encodings(img, face_locations)
-    return encodings[0].tolist()   # 128 float values
+    return analyze_face(image_base64).embedding  # 512 normalized floats
 ```
 
 ```sql
@@ -168,17 +163,13 @@ LIMIT 1
 > Cosine distance 0 = giống hệt nhau, 1 = hoàn toàn khác.
 > Threshold 0.5 đủ chặt để phân biệt 2 người khác nhau, đủ rộng để chịu thay đổi lighting/góc chụp.
 
-### Fail-open policy
+### Fail-closed policy
 
 ```
-Python service down?
-  → FaceServiceClient.isDuplicateFace() bắt exception
-  → throw FaceServiceException (không phải AppException)
-  → FaceVerifyController không ném lỗi về client
-  → Cho phép đăng ký (tránh block user vì hạ tầng lỗi)
-
-Lý do: Face service là optional security layer, không phải hard gate.
-Business risk của "allow one duplicate" < risk của "block all publishers".
+AI service down?
+  → FaceServiceClient ném FaceServiceUnavailableException
+  → Backend trả FACE_SERVICE_UNAVAILABLE (503)
+  → Không đánh dấu face_verified và không lưu embedding thiếu kiểm tra.
 ```
 
 ### Frontend trigger
@@ -215,9 +206,9 @@ success   → CheckCircle xanh → auto-close 1.5s → gọi onSuccess()
 
 | File | Vai trò |
 |---|---|
-| `python-face-service/main.py` | FastAPI endpoints |
-| `python-face-service/face_service.py` | decode ảnh, extract 128-dim embedding |
-| `python-face-service/db.py` | pgvector INSERT, cosine query, DELETE |
+| `ai-service/main.py` | FastAPI endpoints |
+| `ai-service/face_service.py` | decode ảnh, extract 128-dim embedding |
+| `ai-service/db.py` | pgvector INSERT, cosine query, DELETE |
 | `FaceServiceClient.java` | RestTemplate gọi Python service, fail-open logic |
 | `FaceVerifyController.java` | `GET /status`, `POST /api/developer/face-verify` |
 | `MarketplaceItemServiceImpl.java` | check `face_verified` trước khi tạo item |
@@ -346,8 +337,8 @@ success    → CheckCircle xanh → auto-close → auto-fill form hợp đồng
 
 | File | Vai trò |
 |---|---|
-| `python-face-service/ocr_service.py` | Google Vision OCR, parse CCCD + Passport |
-| `python-face-service/main.py` | `POST /ocr/document` endpoint |
+| `ai-service/ocr_service.py` | Google Vision OCR, parse CCCD + Passport |
+| `ai-service/main.py` | `POST /ocr/document` endpoint |
 | `KycController.java` | `GET /status`, `POST /ocr`, `POST /confirm` |
 | `KycOcrRequest.java` | `imageBase64` + `documentType` (cccd/passport) |
 | `KycConfirmRequest.java` | 5 fields + validation |
@@ -360,7 +351,7 @@ success    → CheckCircle xanh → auto-close → auto-fill form hợp đồng
 
 ---
 
-## Python Face Service — Setup & Infrastructure
+## AI Service — Setup & Infrastructure
 
 ### Docker Compose
 
@@ -370,23 +361,23 @@ postgres:
   image: pgvector/pgvector:pg16  # PHẢI dùng image này để có pgvector extension
   # KHÔNG dùng postgres:16-alpine (không có pgvector)
 
-face-service:
-  build: ./python-face-service
+ai-service:
+  build: ./ai-service
   ports: ["8001:8001"]
   depends_on: [postgres]
-  env_file: ./python-face-service/.env
+  env_file: ./ai-service/.env
 ```
 
 ### Environment
 
 ```env
-# python-face-service/.env
+# ai-service/.env
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=godotlaunch
 DB_USER=...
 DB_PASSWORD=...
-FACE_SIMILARITY_THRESHOLD=0.5
+ARCFACE_MAX_COSINE_DISTANCE=0.55
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 ```
 
@@ -394,11 +385,11 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
 ```dockerfile
 FROM python:3.11-slim
-# Build deps cho dlib (C++ library)
-RUN apt-get install -y build-essential cmake libopenblas-dev liblapack-dev libx11-dev libgtk-3-dev
+# OpenCV runtime + ffmpeg cho xử lý media
+RUN apt-get install -y libgl1 libglib2.0-0 ffmpeg
 ```
 
-> `dlib` cần compile từ source → build time ~5-10 phút lần đầu. Cache Docker layer sau đó nhanh hơn.
+> `buffalo_l` được tải vào `INSIGHTFACE_HOME` lần đầu và tái sử dụng từ model cache.
 
 ### Google Cloud Vision credentials
 
@@ -431,13 +422,13 @@ GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-vision.json
 - [ ] Site Key trong frontend `.env` (public, không sao nếu lộ)
 
 ### Tier 1
-- [ ] `FACE_SIMILARITY_THRESHOLD` test kỹ với diverse dataset trước khi deploy
+- [ ] `ARCFACE_MAX_COSINE_DISTANCE` test kỹ với diverse dataset trước khi deploy
 - [ ] Face service health check endpoint `/health` được monitor
 - [ ] `pgvector/pgvector:pg16` image cho postgres (không phải `postgres:16-alpine`)
 - [ ] Xem xét tăng `ivfflat lists` khi DB > 10,000 embeddings
 
 ### Tier 2
-- [ ] `GOOGLE_APPLICATION_CREDENTIALS` mounted vào face-service container
+- [ ] `GOOGLE_APPLICATION_CREDENTIALS` mounted vào ai-service container
 - [ ] Giới hạn Vision API quota để tránh bill đột biến
 - [ ] Không lưu ảnh gốc CCCD/Passport vào DB (chỉ lưu text đã parse)
 - [ ] OCR kết quả cho user confirm trước khi lưu — không tự động save raw OCR

@@ -11,13 +11,14 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 @Component
 @Slf4j
 public class FaceServiceClient {
 
-    @Value("${app.face-service.url:http://localhost:8001}")
+    @Value("${app.ai-service.url:http://localhost:8001}")
     private String faceServiceUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -70,6 +71,41 @@ public class FaceServiceClient {
     }
 
     public record FaceCheckResult(boolean isDuplicate, boolean isBanned) {}
+
+    public FaceLivenessResult verifyLiveness(UUID userId, String challengeId,
+                                             List<Map<String, Object>> frames) {
+        try {
+            String url = faceServiceUrl + "/face/liveness/verify";
+            Map<String, Object> body = Map.of(
+                    "userId", userId.toString(),
+                    "challengeId", challengeId,
+                    "frames", frames
+            );
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, new HttpEntity<>(body),
+                    new ParameterizedTypeReference<Map<String, Object>>() {});
+            Map<String, Object> result = response.getBody();
+            if (result == null) {
+                throw new FaceServiceException("AI service trả về response rỗng.");
+            }
+            return new FaceLivenessResult(
+                    Boolean.TRUE.equals(result.get("success")),
+                    Boolean.TRUE.equals(result.get("isDuplicate")),
+                    Boolean.TRUE.equals(result.get("isBanned")),
+                    String.valueOf(result.getOrDefault("message", ""))
+            );
+        } catch (FaceServiceException exception) {
+            throw exception;
+        } catch (HttpClientErrorException exception) {
+            throw new FaceServiceException(extractDetail(exception.getResponseBodyAsString()));
+        } catch (Exception exception) {
+            log.error("AI service unavailable during liveness verification: {}", exception.getMessage());
+            throw new FaceServiceUnavailableException("AI service unavailable.");
+        }
+    }
+
+    public record FaceLivenessResult(boolean success, boolean isDuplicate,
+                                     boolean isBanned, String message) {}
 
     /**
      * Lưu face embedding sau khi user đã được tạo thành công.
@@ -130,6 +166,12 @@ public class FaceServiceClient {
 
     public static class FaceServiceException extends RuntimeException {
         public FaceServiceException(String message) {
+            super(message);
+        }
+    }
+
+    public static class FaceServiceUnavailableException extends FaceServiceException {
+        public FaceServiceUnavailableException(String message) {
             super(message);
         }
     }

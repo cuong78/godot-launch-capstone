@@ -21,7 +21,7 @@ import java.util.Map;
 @Slf4j
 public class SourceProcessingClient {
 
-    @Value("${app.face-service.url:http://localhost:8001}")
+    @Value("${app.ai-service.url:http://localhost:8001}")
     private String serviceUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();

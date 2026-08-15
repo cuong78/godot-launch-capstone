@@ -26,6 +26,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String AUTH_COOKIE_NAME = "app_token";
+    private static final int AUTH_COOKIE_MAX_AGE = 24 * 60 * 60;
+
     private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
 
@@ -63,6 +66,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     username, null, authorities);
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            // Browser navigation, iframe and Godot's .js/.wasm/.pck requests cannot
+            // attach the SPA's Authorization header. Mirror a valid/revocation-checked
+            // Bearer/query token into an HttpOnly cookie so those follow-up requests
+            // remain authenticated without exposing the JWT to Web Demo JavaScript.
+            syncAuthCookie(request, response, token);
         }
 
         filterChain.doFilter(request, response);
@@ -71,7 +80,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /**
      * Lấy JWT từ:
      * 1. Authorization: Bearer header (SPA / mobile)
-     * 2. httpOnly cookie "app_token" (SSR / fallback)
+     * 2. query parameter token/access_token (navigation bootstrap)
+     * 3. httpOnly cookie "app_token" (iframe/static Web Demo requests)
      */
     private String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
@@ -88,11 +98,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         if (request.getCookies() != null) {
             return Arrays.stream(request.getCookies())
-                    .filter(c -> "app_token".equals(c.getName()))
+                    .filter(c -> AUTH_COOKIE_NAME.equals(c.getName()))
                     .map(Cookie::getValue)
                     .findFirst()
                     .orElse(null);
         }
         return null;
+    }
+
+    private void syncAuthCookie(HttpServletRequest request, HttpServletResponse response, String token) {
+        boolean alreadySynced = request.getCookies() != null && Arrays.stream(request.getCookies())
+                .anyMatch(cookie -> AUTH_COOKIE_NAME.equals(cookie.getName()) && token.equals(cookie.getValue()));
+        if (alreadySynced) {
+            return;
+        }
+
+        Cookie cookie = new Cookie(AUTH_COOKIE_NAME, token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(request.isSecure());
+        cookie.setPath("/");
+        cookie.setMaxAge(AUTH_COOKIE_MAX_AGE);
+        cookie.setAttribute("SameSite", "Lax");
+        response.addCookie(cookie);
     }
 }
