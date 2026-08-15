@@ -1,5 +1,5 @@
 import React from 'react';
-import { Boxes, ChevronDown, ChevronUp, Code2, Download, ReceiptText, ShoppingBag, X, FileText } from 'lucide-react';
+import { Boxes, ChevronDown, ChevronUp, Code2, Download, ReceiptText, ShoppingBag, X, FileText, Check } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { agreementApi } from '../api/agreementApi';
 import { Button } from './Button';
