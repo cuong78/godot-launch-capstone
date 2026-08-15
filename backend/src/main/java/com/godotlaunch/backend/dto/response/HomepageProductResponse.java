@@ -13,6 +13,8 @@ public class HomepageProductResponse {
     private String description;
     private String thumbnailUrl;
     private BigDecimal price;
+    private UUID creatorId;
+    private String creatorEmail;
     private String creatorName;
     private String categoryName;
     private List<String> tags;

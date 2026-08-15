@@ -85,13 +85,15 @@ public class HomepageServiceImpl implements HomepageService {
     private boolean isFree(BigDecimal price) { return price == null || price.compareTo(BigDecimal.ZERO) == 0; }
     private HomepageProductResponse mapGame(Game game) {
         return HomepageProductResponse.builder().id(game.getId()).itemType("GAME").title(game.getTitle()).description(game.getDescription())
-                .thumbnailUrl(game.getThumbnailUrl()).price(game.getPriceProposed()).creatorName(game.getCreator().getFullName())
+                .thumbnailUrl(game.getThumbnailUrl()).price(game.getPriceProposed())
+                .creatorId(game.getCreator().getId()).creatorEmail(game.getCreator().getEmail()).creatorName(game.getCreator().getFullName())
                 .categoryName(game.getCategory() == null ? null : game.getCategory().getName())
                 .tags(game.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(game.getDownloadCount()).createdAt(game.getCreatedAt()).build();
     }
     private HomepageProductResponse mapAsset(Asset asset) {
         return HomepageProductResponse.builder().id(asset.getId()).itemType("ASSET").title(asset.getTitle()).description(asset.getDescription())
-                .thumbnailUrl(asset.getThumbnailUrl()).price(asset.getPrice()).creatorName(asset.getSeller().getFullName())
+                .thumbnailUrl(asset.getThumbnailUrl()).price(asset.getPrice())
+                .creatorId(asset.getSeller().getId()).creatorEmail(asset.getSeller().getEmail()).creatorName(asset.getSeller().getFullName())
                 .categoryName(asset.getCategory() == null ? null : asset.getCategory().getName())
                 .tags(asset.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(0).createdAt(asset.getCreatedAt()).build();
     }

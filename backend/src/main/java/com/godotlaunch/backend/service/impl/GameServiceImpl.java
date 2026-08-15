@@ -735,6 +735,8 @@ public class GameServiceImpl implements GameService {
                 .status(game.getStatus().name())
                 .uploadStatus(game.getUploadStatus())
                 .uploadError(game.getUploadError())
+                .creatorId(game.getCreator().getId())
+                .creatorEmail(game.getCreator().getEmail())
                 .creatorName(game.getCreator().getEmail())
                 .creatorFullName(game.getCreator().getFullName())
                 .categoryName(game.getCategory() != null ? game.getCategory().getName() : null)

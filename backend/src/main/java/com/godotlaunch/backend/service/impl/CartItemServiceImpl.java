@@ -41,12 +41,21 @@ public class CartItemServiceImpl implements CartItemService {
     private final SeaweedFsService seaweedFsService;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<CartItemResponse> getCart(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        return cartItemRepository.findByUserIdOrderByAddedAtDesc(user.getId()).stream()
+        List<CartItem> items = cartItemRepository.findByUserIdOrderByAddedAtDesc(user.getId());
+        List<CartItem> invalidOwnItems = items.stream()
+                .filter(item -> isOwnedBy(item, user))
+                .toList();
+        if (!invalidOwnItems.isEmpty()) {
+            cartItemRepository.deleteAll(invalidOwnItems);
+        }
+
+        return items.stream()
+                .filter(item -> !isOwnedBy(item, user))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -65,6 +74,10 @@ public class CartItemServiceImpl implements CartItemService {
             Asset asset = assetRepository.findById(request.getItemId())
                     .orElseThrow(() -> new AppException(ErrorCode.MARKETPLACE_ITEM_NOT_FOUND));
 
+            if (asset.getSeller().getId().equals(user.getId())) {
+                throw new AppException(ErrorCode.OWN_PRODUCT_PURCHASE_NOT_ALLOWED);
+            }
+
             Optional<CartItem> existing = cartItemRepository.findByUserIdAndAssetId(user.getId(), asset.getId());
             if (existing.isPresent()) {
                 throw new AppException(ErrorCode.DATA_CONFLICT);
@@ -74,6 +87,10 @@ public class CartItemServiceImpl implements CartItemService {
         } else if ("game".equals(type) || "source_code".equals(type)) {
             Game game = gameRepository.findById(request.getItemId())
                     .orElseThrow(() -> new AppException(ErrorCode.GAME_NOT_FOUND));
+
+            if (game.getCreator().getId().equals(user.getId())) {
+                throw new AppException(ErrorCode.OWN_PRODUCT_PURCHASE_NOT_ALLOWED);
+            }
 
             Optional<CartItem> existing = cartItemRepository.findByUserIdAndGameId(user.getId(), game.getId());
             if (existing.isPresent()) {
@@ -129,6 +146,11 @@ public class CartItemServiceImpl implements CartItemService {
                 .build();
     }
 
+    private boolean isOwnedBy(CartItem item, User user) {
+        return (item.getAsset() != null && item.getAsset().getSeller().getId().equals(user.getId()))
+                || (item.getGame() != null && item.getGame().getCreator().getId().equals(user.getId()));
+    }
+
     private AssetResponse mapAssetToResponse(Asset item) {
         if (item == null) return null;
         var mediaList = mediaRepository.findByAsset_IdOrderByCreatedAtDesc(item.getId());
@@ -143,6 +165,7 @@ public class CartItemServiceImpl implements CartItemService {
 
         return AssetResponse.builder()
                 .id(item.getId())
+                .sellerId(item.getSeller().getId())
                 .sellerEmail(item.getSeller().getEmail())
                 .sellerFullName(item.getSeller().getFullName())
                 .categoryId(item.getCategory() != null ? item.getCategory().getId() : null)
@@ -203,6 +226,8 @@ public class CartItemServiceImpl implements CartItemService {
                 .downloadPrice(null)
                 .communityAvailable(game.isSourceListed())
                 .status(game.getStatus().name())
+                .creatorId(game.getCreator().getId())
+                .creatorEmail(game.getCreator().getEmail())
                 .creatorName(game.getCreator().getEmail())
                 .creatorFullName(game.getCreator().getFullName())
                 .categoryName(game.getCategory() != null ? game.getCategory().getName() : null)

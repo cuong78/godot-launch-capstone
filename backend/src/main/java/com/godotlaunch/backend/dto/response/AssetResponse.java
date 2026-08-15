@@ -20,6 +20,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AssetResponse {
     private UUID id;
+    private UUID sellerId;
     private String sellerEmail;
     private String sellerFullName;
     private UUID categoryId;

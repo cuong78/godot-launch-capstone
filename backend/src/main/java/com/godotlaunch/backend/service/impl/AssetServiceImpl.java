@@ -557,6 +557,7 @@ public class AssetServiceImpl implements AssetService {
 
         return AssetResponse.builder()
                 .id(item.getId())
+                .sellerId(item.getSeller().getId())
                 .sellerEmail(item.getSeller().getEmail())
                 .sellerFullName(item.getSeller().getFullName())
                 .categoryId(item.getCategory() != null ? item.getCategory().getId() : null)
