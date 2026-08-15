@@ -405,6 +405,13 @@ export default function App() {
   const [selectedPost, setSelectedPost] = useState<CommunityChatResponse | null>(null);
   const [selectedAuthor, setSelectedAuthor] = useState<UserSummary | null>(null);
   const [searchText, setSearchText] = useState<string>('');
+  const [dashboardTab, setDashboardTab] = useState<any>(undefined);
+
+  const handleNavigateToDashboardTab = useCallback((tab: any = 'sales') => {
+    setDashboardTab(tab);
+    setCurrentScreen('dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
   
   const [assets, setAssets] = useState<Asset[]>([]);
   
@@ -1258,6 +1265,7 @@ export default function App() {
           setSelectedAssetId={setSelectedAssetId}
           setSelectedPost={setSelectedPost}
           setSelectedAuthor={setSelectedAuthor}
+          onNavigateToDashboardTab={handleNavigateToDashboardTab}
         />
       ) : (
         <Header
@@ -1277,6 +1285,7 @@ export default function App() {
           setSelectedAuthor={setSelectedAuthor}
           searchText={searchText}
           setSearchText={setSearchText}
+          onNavigateToDashboardTab={handleNavigateToDashboardTab}
         />
       )}
 
@@ -1444,6 +1453,7 @@ export default function App() {
               onRefreshPayments={refreshTrackedPayments}
               onCancelPayment={handleCancelPayment}
               setCurrentScreen={setCurrentScreen}
+              initialTab={dashboardTab}
             />
           </ProtectedRoute>
         )}

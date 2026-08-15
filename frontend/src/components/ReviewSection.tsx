@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Star, Trash2, Send, MessageSquare, AlertCircle, CheckCircle } from 'lucide-react';
 import { reviewApi, ReviewResponse, ReviewSummaryDto } from '../api/reviewApi';
+import { gameApi } from '../api/gameApi';
+import { marketplaceApi } from '../api/marketplaceApi';
 
 interface ReviewSectionProps {
   productId: string;
@@ -33,9 +35,40 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({
   const [replyText, setReplyText] = useState<string>('');
   const [replySubmitting, setReplySubmitting] = useState(false);
 
+  // Fallback seller email fetcher if sellerEmail was not passed
+  const [fetchedSellerEmail, setFetchedSellerEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const resolveSellerEmail = async () => {
+      if (sellerEmail || sellerId || !productId) return;
+      try {
+        if (productType === 'game') {
+          const res = await gameApi.getGameById(productId);
+          if (res.data?.creatorName && isMounted) {
+            setFetchedSellerEmail(res.data.creatorName);
+          }
+        } else {
+          const res = await marketplaceApi.getMarketplaceItemById(productId);
+          if (res.data?.sellerEmail && isMounted) {
+            setFetchedSellerEmail(res.data.sellerEmail);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to resolve seller email for review section:', err);
+      }
+    };
+    resolveSellerEmail();
+    return () => {
+      isMounted = false;
+    };
+  }, [productId, productType, sellerEmail, sellerId]);
+
+  const effectiveSellerEmail = sellerEmail || fetchedSellerEmail;
+
   const isSeller = Boolean(
     (currentUserId && sellerId && currentUserId === sellerId) ||
-    (currentUserEmail && sellerEmail && currentUserEmail.toLowerCase() === sellerEmail.toLowerCase())
+    (currentUserEmail && effectiveSellerEmail && currentUserEmail.trim().toLowerCase() === effectiveSellerEmail.trim().toLowerCase())
   );
   const isSellerOrAdmin = Boolean(isAdmin || isSeller);
 

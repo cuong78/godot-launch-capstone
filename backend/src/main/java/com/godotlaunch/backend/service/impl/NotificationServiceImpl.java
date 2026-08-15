@@ -105,12 +105,6 @@ public class NotificationServiceImpl implements NotificationService {
                         response
                 );
                 log.info("Successfully pushed notification over WebSocket user queue to {}", targetEmail);
-
-                // If recipient is admin, also broadcast to admin topic for instant delivery
-                if (recipient.getRole() != null && "admin".equalsIgnoreCase(recipient.getRole().getName())) {
-                    simpMessagingTemplate.convertAndSend("/topic/admin/notifications", response);
-                    log.info("Successfully broadcasted notification to /topic/admin/notifications");
-                }
             } catch (Exception e) {
                 log.error("Failed to push notification over WebSocket: {}", e.getMessage());
             }

@@ -26,6 +26,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
   const stompClientRef = useRef<Client | null>(null);
+  const processedNotifIdsRef = useRef<Set<string>>(new Set());
 
   // Load initial notifications when logged in
   useEffect(() => {
@@ -34,6 +35,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } else {
       setNotifications([]);
       setUnreadNotificationsCount(0);
+      processedNotifIdsRef.current.clear();
     }
   }, [currentUser]);
 
@@ -69,15 +71,21 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         const handleIncomingNotification = (notif: NotificationResponse) => {
           if (notif && notif.id) {
+            if (processedNotifIdsRef.current.has(notif.id)) {
+              return;
+            }
+            processedNotifIdsRef.current.add(notif.id);
+
             setNotifications((prev) => {
               const exists = prev.some((n) => n.id === notif.id);
               if (exists) return prev;
-              setUnreadNotificationsCount((count) => count + 1);
-              if (notif.message) {
-                showToast(notif.message, 'info');
-              }
               return [notif, ...prev];
             });
+
+            setUnreadNotificationsCount((count) => count + 1);
+            if (notif.message) {
+              showToast(notif.message, 'info');
+            }
           } else {
             fetchNotifications();
           }
@@ -140,7 +148,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const res = await api.get('/api/v1/notifications');
       if (res.data.success) {
-        setNotifications(res.data.data);
+        const list: NotificationResponse[] = res.data.data;
+        setNotifications(list);
+        list.forEach((n) => {
+          if (n.id) processedNotifIdsRef.current.add(n.id);
+        });
       }
       const countRes = await api.get('/api/v1/notifications/unread-count');
       if (countRes.data.success) {

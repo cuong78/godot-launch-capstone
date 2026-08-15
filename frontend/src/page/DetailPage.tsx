@@ -400,7 +400,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             currentUserEmail={currentUser?.email}
             isAdmin={currentUser?.role === 'admin'}
             sellerId={(focusedAsset as any).sellerId || (focusedAsset as any).seller?.id || (focusedAsset as any).creator?.id}
-            sellerEmail={focusedAsset.sellerEmail}
+            sellerEmail={focusedAsset.sellerEmail || (focusedAsset as any).creatorName || (focusedAsset as any).creatorEmail}
           />
         </div>
 

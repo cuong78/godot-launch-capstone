@@ -35,6 +35,7 @@ interface HeaderProps {
   setSelectedAuthor: (author: any) => void;
   searchText?: string;
   setSearchText?: (text: string) => void;
+  onNavigateToDashboardTab?: (tab: any) => void;
 }
 
 const resolveCurrencyLocale = (language: string) => {
@@ -256,6 +257,7 @@ export function Header({
   setSelectedAuthor,
   searchText,
   setSearchText,
+  onNavigateToDashboardTab,
 }: HeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [isCreatorJourneyDialogOpen, setIsCreatorJourneyDialogOpen] =
@@ -563,6 +565,7 @@ export function Header({
               setSelectedAssetId={setSelectedAssetId}
               setSelectedPost={setSelectedPost}
               setSelectedAuthor={setSelectedAuthor}
+              onNavigateToDashboardTab={onNavigateToDashboardTab}
             />
           )}
 

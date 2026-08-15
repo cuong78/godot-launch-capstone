@@ -13,6 +13,7 @@ interface NotificationBellProps {
   setSelectedAssetId: (id: string) => void;
   setSelectedPost: (post: any) => void;
   setSelectedAuthor: (author: any) => void;
+  onNavigateToDashboardTab?: (tab: 'my-games' | 'marketplace-items' | 'sales' | 'payment-center') => void;
 }
 
 const resolveLocale = (language?: string | null) => {
@@ -26,7 +27,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   setCurrentScreen,
   setSelectedAssetId,
   setSelectedPost,
-  setSelectedAuthor
+  setSelectedAuthor,
+  onNavigateToDashboardTab
 }) => {
   const { t, i18n } = useTranslation(['common']);
   const {
@@ -74,13 +76,23 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     // 2. Perform intelligent redirect navigation
     if (notif.targetId) {
       switch (notif.type) {
+        case 'NEW_SALE':
+          if (onNavigateToDashboardTab) {
+            onNavigateToDashboardTab('sales');
+          } else {
+            setCurrentScreen('dashboard');
+          }
+          break;
         case 'CONTRACT_OFFERED':
         case 'SELLER_RESPONSE':
         case 'GAME_REVIEW_RESULT':
-        case 'NEW_SALE':
         case 'SECURITY_ALERT':
         case 'STORE_PUBLISH_RESULT':
-          setCurrentScreen('dashboard');
+          if (onNavigateToDashboardTab) {
+            onNavigateToDashboardTab('my-games');
+          } else {
+            setCurrentScreen('dashboard');
+          }
           break;
         case 'WITHDRAWAL_RESULT':
           setCurrentScreen('wallet');
