@@ -1,6 +1,6 @@
 # 05. AI Review — Luồng hiện tại và kế hoạch hoàn thiện
 
-> Cập nhật theo implementation hiện tại của Spring Boot, `python-face-service` và Admin UI.
+> Cập nhật theo implementation hiện tại của Spring Boot, `ai-service` và Admin UI.
 >
 > Nguyên tắc bất biến: **AI chỉ tạo báo cáo đề xuất. Admin là người duyệt hoặc từ chối cuối cùng.**
 > Kết quả `overallRecommendation = reject` không tự đổi trạng thái Game/Asset thành rejected.
@@ -53,7 +53,7 @@ Spring Boot
   | snapshotId + bundleUrl + bundleHash + commitSha
   | POST /ai/review
   v
-python-face-service :8001
+ai-service :8001
   |-- tải ZIP bất biến từ SeaweedFS và xác minh hash
   |-- FrameExtractor: cắt frame video bằng FFmpeg
   |-- CodeAnalyzer: rule-based + DeepSeek
@@ -316,7 +316,7 @@ CHECK (
 ### 9.1 Spring Boot gọi Python
 
 ```http
-POST {app.face-service.url}/ai/review
+POST {app.ai-service.url}/ai/review
 Content-Type: application/json
 ```
 
@@ -424,11 +424,11 @@ PLAGIARISM_REJECT_THRESHOLD=0.90
 PLAGIARISM_TOP_N=10
 ```
 
-Các Java client đọc property `app.face-service.url`; nếu chưa khai báo trong YAML, giá trị mặc định là `http://localhost:8001`:
+Các Java client đọc property `app.ai-service.url`; nếu chưa khai báo trong YAML, giá trị mặc định là `http://localhost:8001`:
 
 ```yaml
 app:
-  face-service:
+  ai-service:
     url: http://localhost:8001
 ```
 

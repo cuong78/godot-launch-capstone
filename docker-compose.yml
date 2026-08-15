@@ -83,7 +83,7 @@ services:
     restart: unless-stopped
 
 #  ai-service:
-#    build: ./python-face-service
+#    build: ./ai-service
 #    container_name: godotlaunch-ai-service
 #    ports:
 #      - "8001:8001"
@@ -93,7 +93,9 @@ services:
 #      - DB_NAME=godot_launch
 #      - DB_USER=user_godot_launch
 #      - DB_PASSWORD=password_godot_launch
-#      - FACE_SIMILARITY_THRESHOLD=0.45
+#      - ARCFACE_MAX_COSINE_DISTANCE=0.55
+#      - ARCFACE_SAME_PERSON_SIMILARITY=0.35
+#      - INSIGHTFACE_HOME=/models/insightface
 #      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-vision.json
 #      # AI review — DeepSeek text (đổ key thật vào .env hoặc shell env). Trống → module DeepSeek bị skip.
 #      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
@@ -106,7 +108,7 @@ services:
 #      - CODE_EMBEDDING_MODEL_REVISION=${CODE_EMBEDDING_MODEL_REVISION:-3b0952feddeffad0063f274080e3c23d75e7eb39}
 #      - HF_HOME=/models
 #    volumes:
-#      - ./python-face-service/gcp-vision.json:/run/secrets/gcp-vision.json:ro
+#      - ./ai-service/gcp-vision.json:/run/secrets/gcp-vision.json:ro
 #      - hf-model-cache:/models
 #    depends_on:
 #      postgres:

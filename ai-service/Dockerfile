@@ -1,13 +1,9 @@
 FROM python:3.11-slim
 
-# dlib build dependencies + ffmpeg (cắt frame video cho AI review)
+# OpenCV runtime + ffmpeg (cắt frame video cho AI review)
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    libopenblas-dev \
-    liblapack-dev \
-    libx11-dev \
-    libgtk-3-dev \
+    libgl1 \
+    libglib2.0-0 \
     ffmpeg \
     curl \
     git \
@@ -17,6 +13,7 @@ WORKDIR /app
 
 # Cache model Hugging Face (CLIP, NSFW) vào /models — mount volume để khỏi tải lại mỗi lần restart
 ENV HF_HOME=/models
+ENV INSIGHTFACE_HOME=/models/insightface
 ENV TRANSFORMERS_OFFLINE=0
 
 # torch CPU-only TRƯỚC (index riêng của PyTorch) — tránh kéo ~3GB NVIDIA/CUDA không dùng.
@@ -28,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Cache-bust CHỈ từ đây trở xuống — khi build cache bị lệch (COPY . . báo
 # CACHED sai dù code đã đổi), truyền --build-arg CACHE_BUST=$(date +%s) để
-# ép build lại code + CMD mà KHÔNG phải xây lại dlib/torch (~500s) như
+# ép build lại code + CMD mà KHÔNG phải xây lại dependencies như
 # --no-cache. Không truyền gì thì behave y hệt trước đây (build cache bình
 # thường theo checksum nội dung).
 ARG CACHE_BUST=0

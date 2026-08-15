@@ -288,5 +288,19 @@
   "signaturePad.undo": "Undo",
   "signaturePad.undoTitle": "Undo the last stroke",
   "signaturePad.clear": "Clear signature",
-  "signaturePad.clearTitle": "Clear everything and sign again"
+  "signaturePad.clearTitle": "Clear everything and sign again",
+  "faceVerify.checklist.liveness": "Follow randomized directions to prove your live presence",
+  "faceVerify.loadingChallenge": "Creating a secure challenge...",
+  "faceVerify.modelError": "The realtime face detector could not be loaded. Check your connection and retry.",
+  "faceVerify.retry": "Retry",
+  "faceVerify.actions.CENTER": "Look straight ahead and center your face",
+  "faceVerify.actions.TURN_LEFT": "Slowly turn your face to the left",
+  "faceVerify.actions.TURN_RIGHT": "Slowly turn your face to the right",
+  "faceVerify.actions.LOOK_UP": "Slowly look up",
+  "faceVerify.actions.LOOK_DOWN": "Slowly look down",
+  "faceVerify.guidance.loading": "Preparing the camera and model...",
+  "faceVerify.guidance.noFace": "No face detected",
+  "faceVerify.guidance.position": "Move your face into the center of the oval",
+  "faceVerify.guidance.move": "Follow the movement shown above",
+  "faceVerify.guidance.hold": "Hold still while the frame is captured automatically"
 }

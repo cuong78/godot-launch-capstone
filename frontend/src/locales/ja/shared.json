@@ -288,5 +288,19 @@
   "signaturePad.undo": "元に戻す",
   "signaturePad.undoTitle": "最後のストロークを元に戻す",
   "signaturePad.clear": "署名をクリア",
-  "signaturePad.clearTitle": "すべて消去してもう一度署名する"
+  "signaturePad.clearTitle": "すべて消去してもう一度署名する",
+  "faceVerify.checklist.liveness": "ランダムな指示に従って本人の存在を確認します",
+  "faceVerify.loadingChallenge": "セキュアチャレンジを作成中...",
+  "faceVerify.modelError": "リアルタイム顔検出を読み込めませんでした。接続を確認して再試行してください。",
+  "faceVerify.retry": "再試行",
+  "faceVerify.actions.CENTER": "正面を向き、顔を中央に合わせてください",
+  "faceVerify.actions.TURN_LEFT": "ゆっくり左を向いてください",
+  "faceVerify.actions.TURN_RIGHT": "ゆっくり右を向いてください",
+  "faceVerify.actions.LOOK_UP": "ゆっくり上を向いてください",
+  "faceVerify.actions.LOOK_DOWN": "ゆっくり下を向いてください",
+  "faceVerify.guidance.loading": "カメラとモデルを準備中...",
+  "faceVerify.guidance.noFace": "顔が検出されません",
+  "faceVerify.guidance.position": "顔を楕円の中央に移動してください",
+  "faceVerify.guidance.move": "表示された動きを行ってください",
+  "faceVerify.guidance.hold": "自動撮影されるまで少し静止してください"
 }

@@ -288,5 +288,19 @@
   "signaturePad.undo": "Hoàn tác",
   "signaturePad.undoTitle": "Hoàn tác nét vẽ cuối",
   "signaturePad.clear": "Xóa chữ ký",
-  "signaturePad.clearTitle": "Xóa toàn bộ để ký lại"
+  "signaturePad.clearTitle": "Xóa toàn bộ để ký lại",
+  "faceVerify.checklist.liveness": "Làm theo các hướng ngẫu nhiên để chứng minh bạn đang hiện diện",
+  "faceVerify.loadingChallenge": "Đang tạo challenge bảo mật...",
+  "faceVerify.modelError": "Không tải được bộ nhận diện khuôn mặt realtime. Vui lòng kiểm tra mạng và thử lại.",
+  "faceVerify.retry": "Thử lại",
+  "faceVerify.actions.CENTER": "Nhìn thẳng và đưa mặt vào giữa khung",
+  "faceVerify.actions.TURN_LEFT": "Từ từ quay mặt sang trái",
+  "faceVerify.actions.TURN_RIGHT": "Từ từ quay mặt sang phải",
+  "faceVerify.actions.LOOK_UP": "Từ từ ngẩng đầu lên",
+  "faceVerify.actions.LOOK_DOWN": "Từ từ cúi đầu xuống",
+  "faceVerify.guidance.loading": "Đang chuẩn bị camera và mô hình...",
+  "faceVerify.guidance.noFace": "Chưa thấy khuôn mặt",
+  "faceVerify.guidance.position": "Di chuyển khuôn mặt vào chính giữa vùng oval",
+  "faceVerify.guidance.move": "Thực hiện chuyển động được hướng dẫn",
+  "faceVerify.guidance.hold": "Giữ yên một chút để hệ thống tự chụp"
 }
