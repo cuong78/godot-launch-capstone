@@ -2,11 +2,26 @@
 ALTER TABLE public.agreement_versions 
 DROP CONSTRAINT IF EXISTS agreement_versions_version_key;
 
--- 2. Create a new composite unique constraint for type and version
+-- 2. Drop the composite unique constraint if it already exists from a failed run
+ALTER TABLE public.agreement_versions
+DROP CONSTRAINT IF EXISTS uq_agreement_versions_type_version;
+
+-- 3. Drop index if it exists as a standalone index (now safe to run if it was a constraint)
+DROP INDEX IF EXISTS public.uq_agreement_versions_type_version;
+
+-- 4. Create a new composite unique constraint for type and version
 ALTER TABLE public.agreement_versions
 ADD CONSTRAINT uq_agreement_versions_type_version UNIQUE (agreement_type, version);
 
--- 3. Seed default active BUYER_EULA version
+-- 5. Delete any pre-existing BUYER_EULA references and versions to ensure idempotency
+DELETE FROM public.user_agreement_acceptances 
+WHERE agreement_version_id IN (
+    SELECT id FROM public.agreement_versions WHERE agreement_type = 'BUYER_EULA'
+);
+
+DELETE FROM public.agreement_versions WHERE agreement_type = 'BUYER_EULA';
+
+-- 6. Seed default active BUYER_EULA version
 INSERT INTO public.agreement_versions (id, version, content, is_active, agreement_type, created_at)
 VALUES (
     gen_random_uuid(),
