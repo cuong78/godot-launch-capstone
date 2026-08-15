@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 from face_service import extract_embedding
+from liveness_service import LivenessError, verify_frames
 from db import (
     find_duplicate_face, save_face_embedding, delete_face_embedding,
     find_duplicate_kyc_image, save_kyc_image_embedding,
@@ -24,9 +25,10 @@ import code_embedding_service
 import base64 as _b64
 import requests as _requests
 
-app = FastAPI(title="GodotLaunch Face Service", version="1.0.0")
+app = FastAPI(title="GodotLaunch AI Service", version="2.0.0")
 
-THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.45"))
+# ArcFace uses normalized 512-d vectors and cosine distance (1 - similarity).
+FACE_DISTANCE_THRESHOLD = float(os.getenv("ARCFACE_MAX_COSINE_DISTANCE", "0.55"))
 # CLIP cosine distance cho ảnh CCCD — ngưỡng chặt hơn face (ảnh giấy tờ ít
 # biến thiên hơn khuôn mặt thật, re-upload cùng ảnh cho ra distance rất nhỏ).
 KYC_IMAGE_THRESHOLD = float(os.getenv("KYC_IMAGE_SIMILARITY_THRESHOLD", "0.1"))
@@ -54,6 +56,26 @@ class FaceRegisterResponse(BaseModel):
 
 class FaceBanRequest(BaseModel):
     reason: str
+
+
+class FaceLivenessFrame(BaseModel):
+    action: str
+    imageBase64: str = Field(min_length=100, max_length=12_000_000)
+    capturedAt: int
+
+
+class FaceLivenessRequest(BaseModel):
+    userId: str
+    challengeId: str
+    frames: list[FaceLivenessFrame] = Field(min_length=5, max_length=5)
+
+
+class FaceLivenessResponse(BaseModel):
+    success: bool
+    isDuplicate: bool = False
+    isBanned: bool = False
+    captures: list[dict] = Field(default_factory=list)
+    message: str
 
 
 class OcrRequest(BaseModel):
@@ -168,7 +190,7 @@ def check_face(req: FaceCheckRequest):
             detail="Không tìm thấy khuôn mặt rõ ràng trong ảnh. Vui lòng chụp lại với ánh sáng tốt hơn và nhìn thẳng vào camera."
         )
 
-    is_banned = find_banned_face(embedding, THRESHOLD)
+    is_banned = find_banned_face(embedding, FACE_DISTANCE_THRESHOLD)
     if is_banned:
         return FaceCheckResponse(
             isDuplicate=True,
@@ -176,7 +198,7 @@ def check_face(req: FaceCheckRequest):
             message="Danh tính này đã bị cấm khỏi nền tảng."
         )
 
-    is_dup = find_duplicate_face(embedding, THRESHOLD)
+    is_dup = find_duplicate_face(embedding, FACE_DISTANCE_THRESHOLD)
     return FaceCheckResponse(
         isDuplicate=is_dup,
         isBanned=False,
@@ -199,6 +221,32 @@ def register_face(req: FaceRegisterRequest):
 
     save_face_embedding(req.userId, embedding)
     return FaceRegisterResponse(success=True, message="Face registered successfully.")
+
+
+@app.post("/face/liveness/verify", response_model=FaceLivenessResponse)
+def verify_face_liveness(req: FaceLivenessRequest):
+    """Validate challenge captures, reject banned/duplicate faces, then upsert ArcFace."""
+    try:
+        embedding, captures = verify_frames([frame.model_dump() for frame in req.frames])
+    except LivenessError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if find_banned_face(embedding, FACE_DISTANCE_THRESHOLD):
+        return FaceLivenessResponse(
+            success=False, isDuplicate=True, isBanned=True, captures=captures,
+            message="Danh tính này đã bị cấm khỏi nền tảng.",
+        )
+    if find_duplicate_face(embedding, FACE_DISTANCE_THRESHOLD, req.userId):
+        return FaceLivenessResponse(
+            success=False, isDuplicate=True, captures=captures,
+            message="Khuôn mặt đã được đăng ký với tài khoản khác.",
+        )
+
+    save_face_embedding(req.userId, embedding)
+    return FaceLivenessResponse(
+        success=True, captures=captures,
+        message="Liveness và ArcFace đã được xác minh.",
+    )
 
 
 @app.delete("/face/{user_id}", response_model=FaceRegisterResponse)

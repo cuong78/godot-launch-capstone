@@ -22,7 +22,7 @@ REM Python AI Service
 REM ===========================
 echo Starting Python AI Service...
 
-start "GodotLaunch AI Service" cmd /k "cd /d "%PROJECT%\python-face-service" && run-ai.bat"
+start "GodotLaunch AI Service" cmd /k "cd /d "%PROJECT%\ai-service" && run-ai.bat"
 
 timeout /t 5 > nul
 

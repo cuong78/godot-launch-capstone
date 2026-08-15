@@ -16,12 +16,11 @@ import java.util.UUID;
  * 2 tài khoản dùng chung 1 mặt) và ảnh CCCD/Passport (chống re-upload ảnh cũ
  * kèm sửa tay idNumber để bypass check trùng text).
  *
- * KHÔNG gộp chung 1 cột vector: face dùng model dlib/face_recognition
- * (128-dim), KYC dùng CLIP (512-dim) — 2 model khác nhau, pad chung 1 cột sẽ
- * làm loãng vector và giảm độ chính xác cosine similarity. Mỗi row chỉ dùng
- * ĐÚNG MỘT trong hai cột theo `type` (còn lại NULL).
+ * Face mới dùng ArcFace (512-dim), KYC dùng CLIP (512-dim). Tuy cùng số chiều,
+ * hai loại được tách bằng `type` và tuyệt đối không được so chéo model. Cột
+ * 128-dim chỉ giữ dữ liệu dlib cũ để audit trong giai đoạn chuyển đổi.
  *
- * type=face:      dùng embedding128, unique theo user (1 user 1 khuôn mặt).
+ * type=face:      dùng embedding512 (embedding128 chỉ là legacy), unique theo user.
  * type=kyc_front/kyc_back: dùng embedding512, KHÔNG unique (giữ lịch sử nếu
  * re-KYC, và 1 lần KYC có 2 ảnh — mặt trước bắt buộc, mặt sau chỉ CCCD).
  */
@@ -45,11 +44,12 @@ public class Embedding {
     @Column(name = "type", nullable = false, length = 20)
     private EmbeddingType type;
 
-    // Chỉ có giá trị khi type = face.
+    // Chỉ có giá trị với dữ liệu face legacy.
+    // Legacy dlib vector. New ArcFace enrollments use embedding_512.
     @Column(name = "embedding_128", columnDefinition = "vector(128)")
     private PGvector embedding128;
 
-    // Chỉ có giá trị khi type = kyc_front / kyc_back.
+    // ArcFace khi type=face; CLIP khi type=kyc_front/kyc_back.
     @Column(name = "embedding_512", columnDefinition = "vector(512)")
     private PGvector embedding512;
 

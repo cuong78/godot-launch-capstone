@@ -58,7 +58,7 @@ Vô hiệu hóa container `ai-service` trong file `docker-compose.yml` để tr�
 ```yaml
 # docker-compose.yml (Comment out or remove the ai-service definition)
 #  ai-service:
-#    build: ./python-face-service
+#    build: ./ai-service
 #    container_name: godotlaunch-ai-service
 #    ports:
 #      - "8001:8001"
@@ -66,12 +66,12 @@ Vô hiệu hóa container `ai-service` trong file `docker-compose.yml` để tr�
 ```
 
 ### 3.2 Tạo file môi trường local `.env` cho Python
-Tạo file [python-face-service/.env](file:///c:/Users/Admin/Desktop/SEP/godot-launch-capstone/python-face-service/.env) chứa các tham số để ứng dụng kết nối tới cơ sở dữ liệu Postgres trong Docker:
+Tạo file [ai-service/.env](file:///c:/Users/Admin/Desktop/SEP/godot-launch-capstone/ai-service/.env) chứa các tham số để ứng dụng kết nối tới cơ sở dữ liệu Postgres trong Docker:
 ```env
 
 
 ### 3.3 Thiết lập Script tự động khởi tạo Môi trường ảo (`setup-venv.bat`)
-Tạo script [python-face-service/setup-venv.bat](file:///c:/Users/Admin/Desktop/SEP/godot-launch-capstone/python-face-service/setup-venv.bat) để tự động hóa toàn bộ việc cài đặt thư viện cần thiết:
+Tạo script [ai-service/setup-venv.bat](file:///c:/Users/Admin/Desktop/SEP/godot-launch-capstone/ai-service/setup-venv.bat) để tự động hóa toàn bộ việc cài đặt thư viện cần thiết:
 1. Tạo môi trường ảo `venv` nếu chưa tồn tại.
 2. Kích hoạt `venv` và cập nhật `pip`.
 3. Cài đặt thư viện `cmake` (cần thiết cho quá trình cài đặt thư viện biên dịch dlib).
@@ -79,7 +79,7 @@ Tạo script [python-face-service/setup-venv.bat](file:///c:/Users/Admin/Desktop
 5. Cài đặt các thư viện trong `requirements.txt`.
 
 ### 3.4 Thiết lập Script chạy nhanh AI Service (`run-ai.bat`)
-Tạo script [python-face-service/run-ai.bat](file:///c:/Users/Admin/Desktop/SEP/godot-launch-capstone/python-face-service/run-ai.bat) để khởi động nhanh API:
+Tạo script [ai-service/run-ai.bat](file:///c:/Users/Admin/Desktop/SEP/godot-launch-capstone/ai-service/run-ai.bat) để khởi động nhanh API:
 ```batch
 @echo off
 cd /d "%~dp0"
@@ -105,7 +105,7 @@ Sau khi hoàn tất cài đặt, developer thực hiện kiểm thử theo các 
 | Bước | Hành động | Kết quả mong đợi | Trạng thái |
 | :--- | :--- | :--- | :---: |
 | 1 | Chạy `docker compose up -d` | Các container DB, Redis, SeaweedFS, ClamAV chạy bình thường. Cổng 5432 được mở ra host. | `[ ]` |
-| 2 | Chạy `setup-venv.bat` | Khởi tạo venv thành công, cài đặt được `face_recognition`, `torch CPU` và các package. | `[ ]` |
+| 2 | Chạy `setup-venv.bat` | Khởi tạo venv thành công, cài được `insightface`, `onnxruntime`, `torch CPU` và các package. | `[ ]` |
 | 3 | Chạy `run-ai.bat` | Terminal hiển thị thông tin FastAPI lắng nghe tại cổng `8001`. | `[ ]` |
 | 4 | Truy cập `http://127.0.0.1:8001/docs` | Hiển thị giao diện Swagger UI chứa danh sách API AI Review và KYC. | `[ ]` |
 | 5 | Chạy `start-dev.bat` | Bốn màn hình CMD khởi động đồng loạt: Backend, Frontend, Ngrok và Python AI Service. | `[ ]` |

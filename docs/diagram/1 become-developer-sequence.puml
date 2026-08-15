@@ -9,9 +9,9 @@ participant "GitHub API" as GHAPI
 participant "UserRepository" as UserRepo
 participant "RoleRepository" as RoleRepo
 participant "FaceVerifyController" as FaceCtrl
-participant "FaceServiceClient\n(python-face-service)" as FaceSvc
+participant "FaceServiceClient\n(ai-service)" as FaceSvc
 participant "KycController" as KycCtrl
-participant "OCR Service\n(python-face-service)" as OcrSvc
+participant "OCR Service\n(ai-service)" as OcrSvc
 participant "GameController" as GameCtrl
 
 note over U, RoleRepo #FFF3CD

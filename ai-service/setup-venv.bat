@@ -48,21 +48,27 @@ call "%VENV_PATH%\Scripts\activate"
 echo Upgrading pip...
 python -m pip install --upgrade pip
 
-:: Install cmake (required to compile dlib for face_recognition)
-echo Installing cmake...
-python -m pip install cmake
-
 :: Install PyTorch (CPU-only version)
 echo Installing PyTorch (CPU-only version)...
 python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-:: Install precompiled dlib for Python 3.14 on Windows
-echo Installing precompiled dlib for Python 3.14...
-python -m pip install "https://github.com/z-mahmud22/Dlib_Windows_Python3.x/raw/main/dlib-20.0.99-cp314-cp314-win_amd64.whl"
-
-:: Install other requirements
+:: Install application requirements (InsightFace + ONNX Runtime included)
 echo Installing requirements from requirements.txt...
 python -m pip install -r requirements.txt
+if errorlevel 1 (
+    echo [ERROR] Failed to install requirements.
+    pause
+    exit /b 1
+)
+
+:: Download ArcFace buffalo_l now so the first API request does not wait.
+echo Downloading and validating ArcFace model...
+python -c "from face_service import preload_models; preload_models()"
+if errorlevel 1 (
+    echo [ERROR] Failed to download or load the ArcFace model.
+    pause
+    exit /b 1
+)
 
 echo ==============================================
 echo Setup completed successfully!

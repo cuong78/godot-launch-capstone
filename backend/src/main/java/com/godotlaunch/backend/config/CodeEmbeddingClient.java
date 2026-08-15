@@ -18,7 +18,7 @@ import java.util.UUID;
 @Slf4j
 public class CodeEmbeddingClient {
 
-    @Value("${app.face-service.url:http://localhost:8001}")
+    @Value("${app.ai-service.url:http://localhost:8001}")
     private String serviceUrl;
 
     private final RestTemplate restTemplate;
