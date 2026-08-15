@@ -754,6 +754,8 @@ public class GameServiceImpl implements GameService {
                 .pendingThumbnailUrl(pendingThumbnailUrl)
                 .pendingVideoUrl(pendingVideoUrl)
                 .pendingScreenshots(pendingScreenshots)
+                .averageRating(game.getAverageRating())
+                .reviewCount(game.getReviewCount())
                 .createdAt(game.getCreatedAt())
                 .updatedAt(game.getUpdatedAt())
                 .build();

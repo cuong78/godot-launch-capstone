@@ -39,6 +39,8 @@ public class AssetResponse {
     private List<String> mediaUrls;
     private String videoUrl;
     private List<String> screenshots;
+    private BigDecimal averageRating;
+    private Integer reviewCount;
     private Instant createdAt;
     private Instant updatedAt;
 }

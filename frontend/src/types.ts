@@ -499,6 +499,8 @@ export interface GameResponse {
   tags?: string[];
   githubRepoUrl?: string;
   githubBranch?: string;
+  averageRating?: number;
+  reviewCount?: number;
   pendingUpdateSnapshotId?: string;
   pendingUpdateFileUrl?: string;
   pendingTitle?: string;
@@ -593,6 +595,8 @@ export interface MarketplaceItemResponse {
   uploadStatus?: string;
   uploadError?: string;
   mediaUrls?: string[];
+  averageRating?: number;
+  reviewCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }

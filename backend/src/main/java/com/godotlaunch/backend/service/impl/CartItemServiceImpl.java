@@ -160,6 +160,8 @@ public class CartItemServiceImpl implements CartItemService {
                 .thumbnailUrl(thumbUrl)
                 .videoUrl(vidUrl)
                 .screenshots(shots)
+                .averageRating(item.getAverageRating())
+                .reviewCount(item.getReviewCount())
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
@@ -215,6 +217,8 @@ public class CartItemServiceImpl implements CartItemService {
                 .tags(game.getTags() == null ? java.util.List.of() : game.getTags().stream().map(com.godotlaunch.backend.utils.TranslationUtils::resolveTagName).toList())
                 .githubRepoUrl(game.getGithubRepoUrl())
                 .githubBranch(game.getGithubBranch())
+                .averageRating(game.getAverageRating())
+                .reviewCount(game.getReviewCount())
                 .createdAt(game.getCreatedAt())
                 .updatedAt(game.getUpdatedAt())
                 .build();

@@ -81,15 +81,15 @@ const CategoryTreeItem: React.FC<{
   const categoryLabel = getCategoryLabel(node);
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <div
         onClick={() => handleCategorySelect(node.name)}
-        className={`group flex items-center justify-between py-1.5 px-2 rounded-lg cursor-pointer transition-colors text-xs ${
+        className={`group flex items-center justify-between py-2.5 px-3 rounded-lg cursor-pointer transition-all border border-transparent text-xs ${
           isSelected 
-            ? 'bg-slate-100 dark:bg-slate-800 text-sky-500 dark:text-sky-400 font-bold' 
-            : 'text-slate-600 hover:bg-slate-50 dark:text-slate-350 dark:hover:bg-slate-900/40 text-slate-700'
+            ? 'bg-sky-500/10 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 font-bold border-sky-500/30' 
+            : 'text-slate-700 dark:text-slate-200 hover:text-slate-955 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-night-800/80 hover:border-slate-200/50 dark:hover:border-slate-700/50'
         }`}
-        style={{ paddingLeft: `${depth * 14 + 6}px` }}
+        style={{ paddingLeft: `${depth * 14 + 8}px` }}
       >
         <div className="flex items-center gap-2 min-w-0">
           {/* Expand/Collapse Chevron */}
@@ -97,26 +97,26 @@ const CategoryTreeItem: React.FC<{
             <button
               type="button"
               onClick={(e) => toggleExpand(node.id, e)}
-              className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors text-slate-400 hover:text-slate-655 dark:hover:text-slate-200"
+              className="p-1 hover:bg-slate-200/85 dark:hover:bg-night-700/85 rounded transition-colors text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center"
               aria-label={getToggleCategoryLabel(categoryLabel, isExpanded)}
               title={getToggleCategoryLabel(categoryLabel, isExpanded)}
             >
-              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             </button>
           ) : (
-            <span className="w-4" /> /* spacer */
+            <span className="w-5" /> /* spacer */
           )}
 
           {/* Category Icon */}
           {getCategoryIcon(node)}
 
           {/* Category Name */}
-          <span className="truncate">{categoryLabel}</span>
+          <span className="truncate font-medium">{categoryLabel}</span>
         </div>
 
         {/* Count Badge */}
         {count > 0 && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-150 dark:bg-night-900 border border-slate-200/60 dark:border-night-700/80 text-slate-700 dark:text-slate-200 group-hover:bg-slate-250/90 dark:group-hover:bg-night-800/90 transition-colors shadow-sm">
             {count >= 1000 ? `${(count / 1000).toFixed(1)}K` : count}
           </span>
         )}
@@ -331,13 +331,13 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
     const name = category.name.toLowerCase();
     const slug = category.slug.toLowerCase();
     
-    if (slug.includes('3d') || name.includes('3d')) return <Boxes size={13} className="text-amber-500" />;
-    if (slug.includes('2d') || name.includes('2d')) return <FolderCode size={13} className="text-sky-400" />;
-    if (slug.includes('audio') || name.includes('audio') || name.includes('sound') || name.includes('sfx')) return <Sparkles size={13} className="text-emerald-400" />;
-    if (slug.includes('code') || name.includes('script') || name.includes('plugin')) return <Code2 size={13} className="text-indigo-400" />;
-    if (slug.includes('shader') || name.includes('vfx')) return <Sparkles size={13} className="text-purple-400" />;
+    if (slug.includes('3d') || name.includes('3d')) return <Boxes size={15} className="text-amber-500 shrink-0" />;
+    if (slug.includes('2d') || name.includes('2d')) return <FolderCode size={15} className="text-sky-400 shrink-0" />;
+    if (slug.includes('audio') || name.includes('audio') || name.includes('sound') || name.includes('sfx')) return <Sparkles size={15} className="text-emerald-400 shrink-0" />;
+    if (slug.includes('code') || name.includes('script') || name.includes('plugin')) return <Code2 size={15} className="text-indigo-400 shrink-0" />;
+    if (slug.includes('shader') || name.includes('vfx')) return <Sparkles size={15} className="text-purple-400 shrink-0" />;
     
-    return <FolderCode size={13} className="text-slate-400 dark:text-slate-500" />;
+    return <FolderCode size={15} className="text-slate-400 dark:text-slate-500 shrink-0" />;
   };
 
   // Redesigned local filter and sort logic
@@ -536,7 +536,8 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
 
         {/* Right Marketplace Grid results layout */}
         <div className="lg:col-span-3 space-y-6">
-          {/* Horizontal Filters Bar (Styled like fab.com search page) */}          <div className="space-y-3">
+          {/* Horizontal Filters Bar (Styled like fab.com search page) */}
+          <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-night-700/60 dark:bg-night-850/80">
               
               {/* 1. Tags Filter Dropdown */}
@@ -938,8 +939,8 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                         
                         {/* Parent Category Badge Overlay */}
                         {asset.category && (
-                          <div className="absolute top-2 left-2 z-10">
-                            <span className="rounded bg-slate-900/80 px-2 py-0.5 text-[9px] font-bold text-zinc-100 border border-white/5 backdrop-blur-sm shadow-sm tracking-wider uppercase">
+                          <div className="absolute top-2.5 left-2.5 z-10">
+                            <span className="rounded-full bg-slate-950/45 dark:bg-black/50 px-2.5 py-0.5 text-[10px] font-semibold text-white/90 border border-white/10 backdrop-blur-md shadow-sm select-none">
                               {getParentCategoryName(asset.category)}
                             </span>
                           </div>
@@ -981,25 +982,25 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                             >
                               {asset.title}
                             </h5>
-                            {asset.version && (
-                              <span className="shrink-0 text-[9px] font-mono font-medium text-slate-400 dark:text-zinc-500 border border-slate-200 dark:border-night-700/60 px-1 py-0.2 rounded bg-slate-50 dark:bg-night-950/80">
-                                {asset.version}
-                              </span>
-                            )}
                           </div>
                           
                           <div className="text-[11px] text-slate-400 dark:text-zinc-500">
                             by {asset.author}
                           </div>
                           
-                          {asset.description && (
-                            <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-2 mt-1 leading-relaxed">
-                              {asset.description}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {/* Star rating and reviewed count from real API */}
+                            <span className="flex items-center gap-0.5 text-amber-500 dark:text-amber-400 font-bold text-[11px]">
+                              <Star size={11} className="fill-current text-amber-500" />
+                              <span>{(asset.rating || 0).toFixed(1)}</span>
+                            </span>
+                            <span className="text-slate-400 dark:text-slate-500 text-[10px]">
+                              ({asset.reviewedCount || 0} {i18n.language === 'vi' ? 'đánh giá' : 'reviews'})
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Bottom separator with price and add to cart outline button */}
+                        {/* Bottom separator with price */}
                         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-night-700/30 flex items-center justify-between">
                           <div className="text-xs font-bold text-slate-800 dark:text-zinc-200">
                             {asset.price === 0 ? (
@@ -1007,35 +1008,20 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                                 {t("common.free", "FREE")}
                               </span>
                             ) : (
-                              formatCurrencyAmount(asset.price, numberLocale)
+                                formatCurrencyAmount(asset.price, numberLocale)
                             )}
                           </div>
                           
                           <div>
                             {creatorOwnedProductIds.has(asset.id) ? (
-                              <button
-                                type="button"
-                                disabled
-                                className="cursor-not-allowed rounded border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wider text-sky-500 opacity-80"
-                              >
+                              <span className="text-[9px] font-bold text-sky-500 tracking-wider">
                                 {t("card.owner", "OWNER")}
-                              </button>
+                              </span>
                             ) : ownedProductIds.has(asset.id) ? (
                               <span className="text-[9px] font-bold text-emerald-500 tracking-wider">
                                 {t("card.owned", "OWNED")}
                               </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddToCart(asset);
-                                }}
-                                className="text-[10px] font-bold px-2.5 py-1 rounded bg-sky-500/10 hover:bg-sky-500 text-sky-500 hover:text-white border border-sky-500/20 dark:border-sky-500/30 transition-all cursor-pointer"
-                              >
-                                {t("card.addToCart", "Add to Cart")}
-                              </button>
-                            )}
+                            ) : null}
                           </div>
                         </div>
 

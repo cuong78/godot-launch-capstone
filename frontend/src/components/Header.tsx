@@ -350,33 +350,35 @@ export function Header({
         </div>
 
         {/* Global Search Bar */}
-        <div className="relative hidden md:flex items-center flex-1 max-w-xs lg:max-w-sm mx-2">
-          <Search size={15} className="absolute left-3 text-slate-400 dark:text-slate-400 pointer-events-none z-10" />
-          <input
-            type="text"
-            placeholder={t("marketplace:filters.searchPlaceholder", "Search games, assets, source code...")}
-            value={searchText || ""}
-            onChange={(e) => {
-              if (setSearchText) setSearchText(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                setCurrentScreen('marketplace');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }
-            }}
-            className="w-full rounded-full border border-slate-300 bg-slate-100/90 py-1.5 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none placeholder-slate-500 shadow-inner transition-all hover:bg-slate-100 focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-night-900 dark:text-white dark:placeholder-slate-400 dark:hover:bg-night-850 dark:focus:border-sky-400 dark:focus:bg-night-950 dark:focus:ring-sky-400/20"
-          />
-          {searchText && (
-            <button
-              type="button"
-              onClick={() => setSearchText && setSearchText("")}
-              className="absolute right-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-semibold cursor-pointer z-10"
-            >
-              &times;
-            </button>
-          )}
-        </div>
+        {currentScreen !== "marketplace" && (
+          <div className="relative hidden md:flex items-center flex-1 max-w-xs lg:max-w-sm mx-2">
+            <Search size={15} className="absolute left-3 text-slate-400 dark:text-slate-400 pointer-events-none z-10" />
+            <input
+              type="text"
+              placeholder={t("marketplace:filters.searchPlaceholder", "Search games, assets, source code...")}
+              value={searchText || ""}
+              onChange={(e) => {
+                if (setSearchText) setSearchText(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setCurrentScreen('marketplace');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+              className="w-full rounded-full border border-slate-300 bg-slate-100/90 py-1.5 pl-9 pr-8 text-xs font-medium text-slate-900 outline-none placeholder-slate-500 shadow-inner transition-all hover:bg-slate-100 focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-night-900 dark:text-white dark:placeholder-slate-400 dark:hover:bg-night-850 dark:focus:border-sky-400 dark:focus:bg-night-950 dark:focus:ring-sky-400/20"
+            />
+            {searchText && (
+              <button
+                type="button"
+                onClick={() => setSearchText && setSearchText("")}
+                className="absolute right-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-semibold cursor-pointer z-10"
+              >
+                &times;
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Navigation Items (Responsive on Desktop) */}
         <nav className="hidden shrink-0 items-center gap-1.5 lg:flex xl:gap-3 mx-2">

@@ -577,6 +577,8 @@ public class AssetServiceImpl implements AssetService {
                 .thumbnailUrl(thumbUrl)
                 .videoUrl(vidUrl)
                 .screenshots(shots)
+                .averageRating(item.getAverageRating())
+                .reviewCount(item.getReviewCount())
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();

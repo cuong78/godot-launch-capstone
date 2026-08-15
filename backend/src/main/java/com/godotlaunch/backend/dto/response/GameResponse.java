@@ -47,5 +47,7 @@ public class GameResponse {
     private String pendingThumbnailUrl;
     private String pendingVideoUrl;
     private List<String> pendingScreenshots;
+    private BigDecimal averageRating;
+    private Integer reviewCount;
 }
 
