@@ -11,9 +11,9 @@ import java.util.UUID;
 @Repository
 public interface AgreementVersionRepository extends JpaRepository<AgreementVersion, UUID> {
 
-    Optional<AgreementVersion> findByIsActiveTrue();
+    Optional<AgreementVersion> findByAgreementTypeAndIsActiveTrue(com.godotlaunch.backend.entity.enums.AgreementType agreementType);
 
-    List<AgreementVersion> findAllByOrderByVersionDesc();
+    List<AgreementVersion> findAllByAgreementTypeOrderByVersionDesc(com.godotlaunch.backend.entity.enums.AgreementType agreementType);
 
-    Optional<AgreementVersion> findTopByOrderByVersionDesc();
+    Optional<AgreementVersion> findTopByAgreementTypeOrderByVersionDesc(com.godotlaunch.backend.entity.enums.AgreementType agreementType);
 }

@@ -33,9 +33,10 @@ public class AdminAgreementController {
 
     @GetMapping
     @Operation(summary = "List all agreement versions, newest first")
-    public ResponseEntity<ApiResponse<List<AgreementVersionResponse>>> listVersions() {
+    public ResponseEntity<ApiResponse<List<AgreementVersionResponse>>> listVersions(
+            @org.springframework.web.bind.annotation.RequestParam(value = "type", defaultValue = "DEVELOPER_ONBOARDING") com.godotlaunch.backend.entity.enums.AgreementType type) {
         return ResponseEntity.ok(ApiResponse.success(
-                agreementService.listVersions(),
+                agreementService.listVersions(type),
                 "Agreement versions retrieved successfully"
         ));
     }
@@ -47,7 +48,7 @@ public class AdminAgreementController {
             Authentication authentication) {
         User admin = userRepository.findByEmail(authentication.getName()).orElseThrow();
         return ResponseEntity.ok(ApiResponse.success(
-                agreementService.createNewVersion(request.getContent(), admin.getId()),
+                agreementService.createNewVersion(request.getType(), request.getContent(), admin.getId()),
                 "Agreement version created successfully"
         ));
     }

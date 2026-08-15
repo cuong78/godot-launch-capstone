@@ -31,29 +31,29 @@ public class AgreementServiceImpl implements AgreementService {
 
     @Override
     @Transactional(readOnly = true)
-    public AgreementVersionResponse getActiveAgreement() {
-        AgreementVersion active = agreementVersionRepository.findByIsActiveTrue()
+    public AgreementVersionResponse getActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType type) {
+        AgreementVersion active = agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(type)
                 .orElseThrow(() -> new AppException(ErrorCode.AGREEMENT_VERSION_NOT_FOUND));
         return mapToResponse(active, true);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AgreementVersionResponse> listVersions() {
-        return agreementVersionRepository.findAllByOrderByVersionDesc().stream()
+    public List<AgreementVersionResponse> listVersions(com.godotlaunch.backend.entity.enums.AgreementType type) {
+        return agreementVersionRepository.findAllByAgreementTypeOrderByVersionDesc(type).stream()
                 .map(v -> mapToResponse(v, false))
                 .toList();
     }
 
     @Override
     @Transactional
-    public AgreementVersionResponse createNewVersion(String content, UUID adminUserId) {
-        agreementVersionRepository.findByIsActiveTrue().ifPresent(previous -> {
+    public AgreementVersionResponse createNewVersion(com.godotlaunch.backend.entity.enums.AgreementType type, String content, UUID adminUserId) {
+        agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(type).ifPresent(previous -> {
             previous.setActive(false);
             agreementVersionRepository.save(previous);
         });
 
-        int nextVersion = agreementVersionRepository.findTopByOrderByVersionDesc()
+        int nextVersion = agreementVersionRepository.findTopByAgreementTypeOrderByVersionDesc(type)
                 .map(v -> v.getVersion() + 1)
                 .orElse(1);
 
@@ -61,6 +61,7 @@ public class AgreementServiceImpl implements AgreementService {
 
         AgreementVersion newVersion = new AgreementVersion();
         newVersion.setVersion(nextVersion);
+        newVersion.setAgreementType(type);
         newVersion.setContent(content);
         newVersion.setActive(true);
         newVersion.setCreatedBy(admin);
@@ -70,8 +71,8 @@ public class AgreementServiceImpl implements AgreementService {
 
     @Override
     @Transactional(readOnly = true)
-    public AgreementAcceptanceStatusResponse getAcceptanceStatus(UUID userId) {
-        AgreementVersion active = agreementVersionRepository.findByIsActiveTrue()
+    public AgreementAcceptanceStatusResponse getAcceptanceStatus(com.godotlaunch.backend.entity.enums.AgreementType type, UUID userId) {
+        AgreementVersion active = agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(type)
                 .orElseThrow(() -> new AppException(ErrorCode.AGREEMENT_VERSION_NOT_FOUND));
 
         boolean accepted = userAgreementAcceptanceRepository
@@ -86,8 +87,8 @@ public class AgreementServiceImpl implements AgreementService {
 
     @Override
     @Transactional
-    public AgreementAcceptanceStatusResponse acceptActiveAgreement(UUID userId) {
-        AgreementVersion active = agreementVersionRepository.findByIsActiveTrue()
+    public AgreementAcceptanceStatusResponse acceptActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType type, UUID userId) {
+        AgreementVersion active = agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(type)
                 .orElseThrow(() -> new AppException(ErrorCode.AGREEMENT_VERSION_NOT_FOUND));
 
         boolean alreadyAccepted = userAgreementAcceptanceRepository
@@ -113,6 +114,7 @@ public class AgreementServiceImpl implements AgreementService {
                 version.getId(),
                 version.getVersion(),
                 content,
+                version.getAgreementType(),
                 version.isActive(),
                 version.getCreatedAt()
         );

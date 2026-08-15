@@ -1,9 +1,65 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Landmark, ReceiptText, ShieldCheck, ShoppingBag, Wallet2, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, Landmark, ReceiptText, ShieldCheck, ShoppingBag, Wallet2, AlertCircle, X, FileText } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { Button } from '../components/Button';
 import { Asset } from '../types';
 import { walletApi } from '../api/walletApi';
+import { agreementApi } from '../api/agreementApi';
+
+const formatEulaContent = (text: string) => {
+  if (!text) return <p className="text-slate-400">Đang tải thỏa thuận...</p>;
+
+  return text.split('\n').map((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={idx} className="h-3" />;
+
+    // Title mapping (e.g. THỎA THUẬN CẤP PHÉP...)
+    if (trimmed.toUpperCase() === trimmed && trimmed.length > 15 && !trimmed.match(/^[0-9]/)) {
+      return (
+        <h2 key={idx} className="text-base font-extrabold text-white tracking-wide border-b border-white/5 pb-2 mb-4 font-display">
+          {trimmed}
+        </h2>
+      );
+    }
+
+    // Section headers (e.g. 1. CẤP PHÉP SỬ DỤNG NỘI DUNG)
+    if (trimmed.match(/^[0-9]+\.\s/)) {
+      return (
+        <h3 key={idx} className="text-[13px] font-bold uppercase tracking-wider text-emerald-400 mt-5 mb-2 font-display flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          {trimmed}
+        </h3>
+      );
+    }
+
+    // Bullet points (e.g. - Bán lại...)
+    if (trimmed.startsWith('-')) {
+      return (
+        <li key={idx} className="ml-4 pl-1 text-[12.5px] leading-relaxed text-slate-300 dark:text-slate-200 list-disc font-sans">
+          {trimmed.substring(1).trim()}
+        </li>
+      );
+    }
+
+    // Sub-sections (e.g. a. Quyền sở hữu:)
+    if (trimmed.match(/^[a-z]\.\s/)) {
+      return (
+        <p key={idx} className="pl-3 text-[12.5px] leading-relaxed text-slate-300 dark:text-slate-200 font-sans">
+          <span className="font-semibold text-emerald-300/90">{trimmed.substring(0, 3)}</span>
+          {trimmed.substring(3)}
+        </p>
+      );
+    }
+
+    // Standard text line
+    return (
+      <p key={idx} className="text-[12.5px] leading-relaxed text-slate-300 dark:text-slate-200 font-sans">
+        {trimmed}
+      </p>
+    );
+  });
+};
 
 interface CheckoutPageProps {
   cart: Asset[];
@@ -56,6 +112,35 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   const [spendableBalance, setSpendableBalance] = React.useState<number | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = React.useState<boolean>(false);
+  const [eulaAccepted, setEulaAccepted] = React.useState<boolean>(false);
+  const [eulaText, setEulaText] = React.useState<string>("");
+  
+
+  React.useEffect(() => {
+    const fetchEula = async () => {
+      try {
+        const response = await agreementApi.getActive('BUYER_EULA');
+        if (response.success && response.data) {
+          setEulaText(response.data.content);
+        }
+      } catch (err) {
+        console.error('Failed to load EULA:', err);
+        setEulaText("THỎA THUẬN CẤP PHÉP NGƯỜI DÙNG CUỐI (EULA) CỦA GODOT LAUNCH\n\nThỏa thuận Cấp phép Người dùng Cuối này áp dụng cho việc bạn sử dụng các tài nguyên kỹ thuật số được quan tâm thông qua Chợ ứng dụng của Godot Launch. Bằng cách nhấn chọn xác nhận đồng ý hoặc tải xuống nội dung, bạn đồng ý tuân thủ các điều khoản trong thỏa thuận này.");
+      }
+    };
+    const checkAcceptanceStatus = async () => {
+      try {
+        const response = await agreementApi.getAcceptanceStatus('BUYER_EULA');
+        if (response.success && response.data && response.data.accepted) {
+          setEulaAccepted(true);
+        }
+      } catch (err) {
+        console.error('Failed to load EULA acceptance status:', err);
+      }
+    };
+    fetchEula();
+    checkAcceptanceStatus();
+  }, []);
 
   React.useEffect(() => {
     const fetchSpendableBalance = async () => {
@@ -286,6 +371,34 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
             )}
 
+            {/* EULA Inline Block (Match Developer Onboarding Page style) */}
+            {spendableBalance !== null && spendableBalance >= totalAmount && cart.length > 0 && unsupportedItems.length === 0 && !hasMultipleItems && (
+              <div className="mt-5 space-y-4">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-350 uppercase tracking-wider">
+                  <FileText size={14} className="text-emerald-500" />
+                  <span>Thỏa thuận Cấp phép EULA</span>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800/80 dark:bg-slate-900/40">
+                  <div className="max-h-48 overflow-y-auto pr-2 text-[11px] leading-relaxed text-slate-650 dark:text-slate-305 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent space-y-3 font-medium">
+                    {formatEulaContent(eulaText)}
+                  </div>
+                </div>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-emerald-500/20 dark:border-slate-800 dark:bg-slate-900/30 dark:hover:border-emerald-500/10">
+                  <input
+                    type="checkbox"
+                    checked={eulaAccepted}
+                    onChange={(e) => setEulaAccepted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 bg-white text-emerald-600 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-850"
+                  />
+                  <div className="text-xs text-slate-655 dark:text-slate-300">
+                    Tôi xác nhận đã đọc kĩ và đồng ý với Thỏa thuận Cấp phép Người dùng Cuối (EULA) của Godot Launch đối với các sản phẩm trong đơn hàng.
+                  </div>
+                </label>
+              </div>
+            )}
+
             {/* Action buttons */}
             {spendableBalance !== null && spendableBalance < totalAmount ? (
               <Button
@@ -306,7 +419,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 className="mt-5 w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-500/10 transition-all duration-300"
                 icon={<ReceiptText size={16} />}
                 onClick={onPlaceOrder}
-                disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder || isLoadingWallet || spendableBalance === null}
+                disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder || isLoadingWallet || spendableBalance === null || !eulaAccepted}
               >
                 {isPlacingOrder ? t('payment:checkout.wallet.processingOrder') : t('payment:checkout.wallet.placeOrder')}
               </Button>
@@ -329,6 +442,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         </div>
     </div>
       </div>
+
     </div>
   );
 };

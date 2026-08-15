@@ -53,10 +53,10 @@ class AdminAgreementControllerTest {
     @Test
     @DisplayName("shouldListVersions_WhenCalled")
     void shouldListVersions_WhenCalled() {
-        AgreementVersionResponse expected = new AgreementVersionResponse(UUID.randomUUID(), 1, "Content", true, null);
-        when(agreementService.listVersions()).thenReturn(List.of(expected));
+        AgreementVersionResponse expected = new AgreementVersionResponse(UUID.randomUUID(), 1, "Content", com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, true, null);
+        when(agreementService.listVersions(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(List.of(expected));
 
-        ResponseEntity<ApiResponse<List<AgreementVersionResponse>>> response = adminAgreementController.listVersions();
+        ResponseEntity<ApiResponse<List<AgreementVersionResponse>>> response = adminAgreementController.listVersions(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().getData()).hasSize(1);
@@ -67,11 +67,12 @@ class AdminAgreementControllerTest {
     void shouldCreateVersion_WhenAdminAuthorized() {
         CreateAgreementVersionRequest request = new CreateAgreementVersionRequest();
         request.setContent("New Content");
+        request.setType(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING);
 
-        AgreementVersionResponse expected = new AgreementVersionResponse(UUID.randomUUID(), 2, "New Content", true, null);
+        AgreementVersionResponse expected = new AgreementVersionResponse(UUID.randomUUID(), 2, "New Content", com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, true, null);
         when(authentication.getName()).thenReturn(email);
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(admin));
-        when(agreementService.createNewVersion("New Content", admin.getId())).thenReturn(expected);
+        when(agreementService.createNewVersion(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, "New Content", admin.getId())).thenReturn(expected);
 
         ResponseEntity<ApiResponse<AgreementVersionResponse>> response = adminAgreementController.createVersion(request, authentication);
 

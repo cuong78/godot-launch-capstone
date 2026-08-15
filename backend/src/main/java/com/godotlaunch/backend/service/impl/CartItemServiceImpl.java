@@ -95,19 +95,29 @@ public class CartItemServiceImpl implements CartItemService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        // 1. Try deleting by CartItem record ID
+        Optional<CartItem> byCartItemId = cartItemRepository.findById(itemId);
+        if (byCartItemId.isPresent() && byCartItemId.get().getUser().getId().equals(user.getId())) {
+            cartItemRepository.delete(byCartItemId.get());
+            return;
+        }
+
+        // 2. Try deleting by Asset ID
         Optional<CartItem> assetCartItem = cartItemRepository.findByUserIdAndAssetId(user.getId(), itemId);
         if (assetCartItem.isPresent()) {
             cartItemRepository.delete(assetCartItem.get());
             return;
         }
 
+        // 3. Try deleting by Game ID
         Optional<CartItem> gameCartItem = cartItemRepository.findByUserIdAndGameId(user.getId(), itemId);
         if (gameCartItem.isPresent()) {
             cartItemRepository.delete(gameCartItem.get());
             return;
         }
 
-        throw new AppException(ErrorCode.BAD_REQUEST);
+        // Silent success if the item is already not in the cart
+        return;
     }
 
     @Override

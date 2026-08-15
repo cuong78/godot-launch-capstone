@@ -52,10 +52,10 @@ class AgreementControllerTest {
     @Test
     @DisplayName("shouldGetActive_WhenCalled")
     void shouldGetActive_WhenCalled() {
-        AgreementVersionResponse expected = new AgreementVersionResponse(UUID.randomUUID(), 1, "Content", true, null);
-        when(agreementService.getActiveAgreement()).thenReturn(expected);
+        AgreementVersionResponse expected = new AgreementVersionResponse(UUID.randomUUID(), 1, "Content", com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, true, null);
+        when(agreementService.getActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(expected);
 
-        ResponseEntity<ApiResponse<AgreementVersionResponse>> response = agreementController.getActive();
+        ResponseEntity<ApiResponse<AgreementVersionResponse>> response = agreementController.getActive(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().getData().getVersion()).isEqualTo(1);
@@ -67,9 +67,9 @@ class AgreementControllerTest {
         AgreementAcceptanceStatusResponse status = new AgreementAcceptanceStatusResponse(true, 1, null);
         when(authentication.getName()).thenReturn(email);
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(agreementService.getAcceptanceStatus(user.getId())).thenReturn(status);
+        when(agreementService.getAcceptanceStatus(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, user.getId())).thenReturn(status);
 
-        ResponseEntity<ApiResponse<AgreementAcceptanceStatusResponse>> response = agreementController.getAcceptanceStatus(authentication);
+        ResponseEntity<ApiResponse<AgreementAcceptanceStatusResponse>> response = agreementController.getAcceptanceStatus(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().getData().isAccepted()).isTrue();
@@ -81,9 +81,9 @@ class AgreementControllerTest {
         AgreementAcceptanceStatusResponse status = new AgreementAcceptanceStatusResponse(true, 1, null);
         when(authentication.getName()).thenReturn(email);
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(agreementService.acceptActiveAgreement(user.getId())).thenReturn(status);
+        when(agreementService.acceptActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, user.getId())).thenReturn(status);
 
-        ResponseEntity<ApiResponse<AgreementAcceptanceStatusResponse>> response = agreementController.accept(authentication);
+        ResponseEntity<ApiResponse<AgreementAcceptanceStatusResponse>> response = agreementController.accept(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, authentication);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().getData().isAccepted()).isTrue();

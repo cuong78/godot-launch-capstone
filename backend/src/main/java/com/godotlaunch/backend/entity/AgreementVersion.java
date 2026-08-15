@@ -32,6 +32,10 @@ public class AgreementVersion {
     @Column(name = "version", nullable = false, unique = true)
     private Integer version;
 
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "agreement_type", nullable = false)
+    private com.godotlaunch.backend.entity.enums.AgreementType agreementType = com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING;
+
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 

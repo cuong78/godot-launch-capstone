@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -27,9 +28,10 @@ public class AgreementController {
 
     @GetMapping("/active")
     @Operation(summary = "Get the current active distribution agreement content")
-    public ResponseEntity<ApiResponse<AgreementVersionResponse>> getActive() {
+    public ResponseEntity<ApiResponse<AgreementVersionResponse>> getActive(
+            @RequestParam(value = "type", defaultValue = "DEVELOPER_ONBOARDING") com.godotlaunch.backend.entity.enums.AgreementType type) {
         return ResponseEntity.ok(ApiResponse.success(
-                agreementService.getActiveAgreement(),
+                agreementService.getActiveAgreement(type),
                 "Active agreement retrieved successfully"
         ));
     }
@@ -37,20 +39,23 @@ public class AgreementController {
     @GetMapping("/acceptance-status")
     @Operation(summary = "Get whether the logged in user has accepted the active agreement version")
     public ResponseEntity<ApiResponse<AgreementAcceptanceStatusResponse>> getAcceptanceStatus(
+            @RequestParam(value = "type", defaultValue = "DEVELOPER_ONBOARDING") com.godotlaunch.backend.entity.enums.AgreementType type,
             Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
         return ResponseEntity.ok(ApiResponse.success(
-                agreementService.getAcceptanceStatus(user.getId()),
+                agreementService.getAcceptanceStatus(type, user.getId()),
                 "Agreement acceptance status retrieved successfully"
         ));
     }
 
     @PostMapping("/accept")
     @Operation(summary = "Record that the logged in user accepts the active agreement version")
-    public ResponseEntity<ApiResponse<AgreementAcceptanceStatusResponse>> accept(Authentication authentication) {
+    public ResponseEntity<ApiResponse<AgreementAcceptanceStatusResponse>> accept(
+            @RequestParam(value = "type", defaultValue = "DEVELOPER_ONBOARDING") com.godotlaunch.backend.entity.enums.AgreementType type,
+            Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
         return ResponseEntity.ok(ApiResponse.success(
-                agreementService.acceptActiveAgreement(user.getId()),
+                agreementService.acceptActiveAgreement(type, user.getId()),
                 "Agreement accepted successfully"
         ));
     }

@@ -1,12 +1,68 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Check, Star, Film, X, ChevronRight, Download, AlertTriangle, Flag } from "lucide-react";
+import { Check, Star, Film, X, ChevronRight, Download, AlertTriangle, Flag, FileText } from "lucide-react";
 import { Asset, User, CategoryResponse, PaymentResponse } from "../types";
 import { resolveApiUrl } from "../utils/apiUrl";
 import { IMAGE_SEED_MAP } from "../../assets/images";
 import { gameApi } from "../api/gameApi";
 import { ReviewSection } from "../components/ReviewSection";
+import { agreementApi } from "../api/agreementApi";
 import ReportDisputeModal from "../components/ReportDisputeModal";
+
+const formatEulaContent = (text: string) => {
+  if (!text) return <p className="text-slate-400">Đang tải thỏa thuận...</p>;
+
+  return text.split('\n').map((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={idx} className="h-3" />;
+
+    // Title mapping (e.g. THỎA THUẬN CẤP PHÉP...)
+    if (trimmed.toUpperCase() === trimmed && trimmed.length > 15 && !trimmed.match(/^[0-9]/)) {
+      return (
+        <h2 key={idx} className="text-base font-extrabold text-white tracking-wide border-b border-white/5 pb-2 mb-4 font-display">
+          {trimmed}
+        </h2>
+      );
+    }
+
+    // Section headers (e.g. 1. CẤP PHÉP SỬ DỤNG NỘI DUNG)
+    if (trimmed.match(/^[0-9]+\.\s/)) {
+      return (
+        <h3 key={idx} className="text-[13px] font-bold uppercase tracking-wider text-emerald-400 mt-5 mb-2 font-display flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          {trimmed}
+        </h3>
+      );
+    }
+
+    // Bullet points (e.g. - Bán lại...)
+    if (trimmed.startsWith('-')) {
+      return (
+        <li key={idx} className="ml-4 pl-1 text-[12.5px] leading-relaxed text-slate-300 dark:text-slate-200 list-disc font-sans">
+          {trimmed.substring(1).trim()}
+        </li>
+      );
+    }
+
+    // Sub-sections (e.g. a. Quyền sở hữu:)
+    if (trimmed.match(/^[a-z]\.\s/)) {
+      return (
+        <p key={idx} className="pl-3 text-[12.5px] leading-relaxed text-slate-300 dark:text-slate-200 font-sans">
+          <span className="font-semibold text-emerald-300/90">{trimmed.substring(0, 3)}</span>
+          {trimmed.substring(3)}
+        </p>
+      );
+    }
+
+    // Standard text line
+    return (
+      <p key={idx} className="text-[12.5px] leading-relaxed text-slate-300 dark:text-slate-200 font-sans">
+        {trimmed}
+      </p>
+    );
+  });
+};
 
 interface DetailPageProps {
   focusedAsset: Asset;
@@ -96,6 +152,99 @@ export const DetailPage: React.FC<DetailPageProps> = ({
 
   const [isPlayDemoOpen, setIsPlayDemoOpen] = React.useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = React.useState(false);
+  const [showDownloadEula, setShowDownloadEula] = React.useState(false);
+  const [downloadEulaText, setDownloadEulaText] = React.useState("");
+  const [showBuyNowEula, setShowBuyNowEula] = React.useState(false);
+  const [downloadCheckboxChecked, setDownloadCheckboxChecked] = React.useState(false);
+  const [buyNowCheckboxChecked, setBuyNowCheckboxChecked] = React.useState(false);
+
+  const handleBuyNowClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!currentUser) {
+      showToast(t('app.toast.loginRequiredBuy'), "warning");
+      setCurrentScreen('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!focusedAsset.itemType) {
+      showToast(t('app.toast.onlyMarketplacePaymentSupported'), "warning");
+      return;
+    }
+
+    if (isCreatorOwner) {
+      showToast(t('app.toast.cannotBuyOwnProduct'), "warning");
+      return;
+    }
+
+    if (isOwned) {
+      showToast(t('app.toast.ownedAlready'), "warning");
+      return;
+    }
+
+    try {
+      const response = await agreementApi.getActive('BUYER_EULA');
+      if (response.success && response.data) {
+        setDownloadEulaText(response.data.content);
+      }
+    } catch (err) {
+      console.error(err);
+      setDownloadEulaText("THỎA THUẬN CẤP PHÉP NGƯỜI DÙNG CUỐI (EULA) CỦA GODOT LAUNCH\n\nThỏa thuận Cấp phép Người dùng Cuối này áp dụng cho việc bạn sử dụng các tài nguyên kỹ thuật số được cung cấp thông qua Chợ ứng dụng của Godot Launch. Bằng cách nhấn chọn xác nhận đồng ý hoặc tải xuống nội dung, bạn đồng ý tuân thủ các điều khoản trong thỏa thuận này.");
+    }
+    setBuyNowCheckboxChecked(false);
+    setShowBuyNowEula(true);
+  };
+
+  const confirmBuyNowEula = async () => {
+    setShowBuyNowEula(false);
+    try {
+      await agreementApi.accept('BUYER_EULA');
+    } catch (err) {
+      console.error("Failed to record EULA acceptance:", err);
+    }
+    handleBuyNow(focusedAsset);
+  };
+
+  const handleDownloadClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try {
+      const statusRes = await agreementApi.getAcceptanceStatus('BUYER_EULA');
+      if (statusRes.success && statusRes.data && statusRes.data.accepted) {
+        if (downloadUrl) {
+          window.location.href = downloadUrl;
+        }
+        return;
+      }
+    } catch (err) {
+      console.error("Failed to fetch EULA acceptance status:", err);
+    }
+
+    try {
+      const response = await agreementApi.getActive('BUYER_EULA');
+      if (response.success && response.data) {
+        setDownloadEulaText(response.data.content);
+      } else {
+        setDownloadEulaText("Thỏa thuận cấp phép người dùng cuối (EULA)");
+      }
+    } catch (err) {
+      console.error(err);
+      setDownloadEulaText("THỎA THUẬN CẤP PHÉP NGƯỜI DÙNG CUỐI (EULA) CỦA GODOT LAUNCH\n\nThỏa thuận Cấp phép Người dùng Cuối này áp dụng cho việc bạn sử dụng các tài nguyên kỹ thuật số được cung cấp thông qua Chợ ứng dụng của Godot Launch. Bằng cách nhấn chọn xác nhận đồng ý hoặc tải xuống nội dung, bạn đồng ý tuân thủ các điều khoản trong thỏa thuận này.");
+    }
+    setDownloadCheckboxChecked(false);
+    setShowDownloadEula(true);
+  };
+
+  const confirmDownload = async () => {
+    setShowDownloadEula(false);
+    try {
+      await agreementApi.accept('BUYER_EULA');
+    } catch (err) {
+      console.error("Failed to record EULA acceptance:", err);
+    }
+    if (downloadUrl) {
+      window.location.href = downloadUrl;
+    }
+  };
   const [categories, setCategories] = React.useState<CategoryResponse[]>([]);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -487,17 +636,18 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   </div>
                   {downloadUrl && (
                     <a
-                      href={downloadUrl}
+                      href="#"
+                      onClick={handleDownloadClick}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 px-4 text-xs font-bold font-display text-center transition-all cursor-pointer"
                     >
-                      <Download size={14} /> Download Asset Package
+                      <Download size={14} /> {focusedAsset.itemType === "source_code" ? "Download Game Package" : "Download Asset Package"}
                     </a>
                   )}
                 </div>
               ) : (
                 <>
                   <button
-                    onClick={() => handleBuyNow(focusedAsset)}
+                    onClick={handleBuyNowClick}
                     disabled={isPreparingBuyNow}
                     className="w-full cursor-pointer rounded-lg bg-amber-400 px-4 py-2.5 text-center font-display text-xs font-bold text-slate-950 shadow-sm transition-all hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-50 disabled:hover:bg-amber-400 dark:bg-[#fbbf24] dark:hover:bg-[#d97706] dark:disabled:hover:bg-[#fbbf24]"
                   >
@@ -736,6 +886,128 @@ export const DetailPage: React.FC<DetailPageProps> = ({
             showToast(t("reportDispute.doneTitle", { ns: "shared" }), "success");
           }}
         />
+      )}
+
+      {showDownloadEula && createPortal(
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md animate-fade-in" onClick={() => setShowDownloadEula(false)}>
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-[24px] border border-white/10 bg-[#0c101a]/95 dark:bg-[#070a13]/98 shadow-[0_32px_96px_rgba(0,0,0,0.85)] flex flex-col max-h-[82vh] animate-scale-up" onClick={(e) => e.stopPropagation()}>
+            <div className="h-[3px] w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+            <div className="flex items-center justify-between border-b border-white/5 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-inner">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h3 className="font-display font-extrabold text-white text-base tracking-wide leading-none">Thỏa thuận Cấp phép EULA</h3>
+                  <p className="text-[10px] text-slate-400 mt-1 font-mono tracking-wider">PRE-DOWNLOAD EULA • THỎA THUẬN TRƯỚC KHI TẢI XUỐNG</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDownloadEula(false)}
+                className="rounded-full p-2 text-slate-400 hover:bg-white/5 hover:text-white transition-all active:scale-90"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-7 py-6 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+              {formatEulaContent(downloadEulaText)}
+            </div>
+            <div className="px-7 py-3 border-t border-white/5 bg-[#090d16]/40">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/5 bg-transparent p-3 transition hover:border-amber-500/30">
+                <input
+                  type="checkbox"
+                  checked={downloadCheckboxChecked}
+                  onChange={(e) => setDownloadCheckboxChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-755 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                />
+                <div className="text-xs text-slate-300">
+                  Tôi đã đọc kĩ và đồng ý với Thỏa thuận Cấp phép Người dùng Cuối (EULA) của Godot Launch.
+                </div>
+              </label>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-white/5 px-6 py-4 bg-[#090d16]/80">
+              <button
+                type="button"
+                onClick={() => setShowDownloadEula(false)}
+                className="rounded-xl border border-white/10 bg-transparent px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all active:scale-95 cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={!downloadCheckboxChecked}
+                onClick={confirmDownload}
+                className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-40 disabled:pointer-events-none px-5 py-2 text-xs font-extrabold text-slate-950 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Check size={14} strokeWidth={2.5} />
+                Tôi đồng ý
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showBuyNowEula && createPortal(
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md animate-fade-in" onClick={() => setShowBuyNowEula(false)}>
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-[24px] border border-white/10 bg-[#0c101a]/95 dark:bg-[#070a13]/98 shadow-[0_32px_96px_rgba(0,0,0,0.85)] flex flex-col max-h-[82vh] animate-scale-up" onClick={(e) => e.stopPropagation()}>
+            <div className="h-[3px] w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+            <div className="flex items-center justify-between border-b border-white/5 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-inner">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h3 className="font-display font-extrabold text-white text-base tracking-wide leading-none">Thỏa thuận Cấp phép EULA</h3>
+                  <p className="text-[10px] text-slate-400 mt-1 font-mono tracking-wider">BUYER EULA • THỎA THUẬN NGƯỜI DÙNG CUỐI</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBuyNowEula(false)}
+                className="rounded-full p-2 text-slate-400 hover:bg-white/5 hover:text-white transition-all active:scale-90"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-7 py-6 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+              {formatEulaContent(downloadEulaText)}
+            </div>
+            <div className="px-7 py-3 border-t border-white/5 bg-[#090d16]/40">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/5 bg-transparent p-3 transition hover:border-amber-500/30">
+                <input
+                  type="checkbox"
+                  checked={buyNowCheckboxChecked}
+                  onChange={(e) => setBuyNowCheckboxChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-755 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                />
+                <div className="text-xs text-slate-300">
+                  Tôi đã đọc kĩ và đồng ý với Thỏa thuận Cấp phép Người dùng Cuối (EULA) của Godot Launch.
+                </div>
+              </label>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-white/5 px-6 py-4 bg-[#090d16]/80">
+              <button
+                type="button"
+                onClick={() => setShowBuyNowEula(false)}
+                className="rounded-xl border border-white/10 bg-transparent px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all active:scale-95 cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={!buyNowCheckboxChecked}
+                onClick={confirmBuyNowEula}
+                className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-40 disabled:pointer-events-none px-5 py-2 text-xs font-extrabold text-slate-950 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Check size={14} strokeWidth={2.5} />
+                Tôi đồng ý
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

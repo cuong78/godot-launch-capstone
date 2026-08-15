@@ -58,6 +58,7 @@ class AgreementServiceImplTest {
         activeVersion.setVersion(1);
         activeVersion.setContent("Commission {{commissionRate}} and Share {{revenueSharePercent}}");
         activeVersion.setActive(true);
+        activeVersion.setAgreementType(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING);
 
         user = new User();
         user.setId(UUID.randomUUID());
@@ -66,10 +67,10 @@ class AgreementServiceImplTest {
     @Test
     @DisplayName("shouldGetActiveAgreement_WhenExists")
     void shouldGetActiveAgreement_WhenExists() {
-        when(agreementVersionRepository.findByIsActiveTrue()).thenReturn(Optional.of(activeVersion));
+        when(agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(Optional.of(activeVersion));
         when(platformSettingsService.getPlatformCommissionRate()).thenReturn(new BigDecimal("10"));
 
-        AgreementVersionResponse response = agreementService.getActiveAgreement();
+        AgreementVersionResponse response = agreementService.getActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING);
 
         assertThat(response.getId()).isEqualTo(agreementId);
         assertThat(response.getContent()).contains("Commission 10 and Share 90");
@@ -78,18 +79,18 @@ class AgreementServiceImplTest {
     @Test
     @DisplayName("shouldThrowException_WhenActiveAgreementNotFound")
     void shouldThrowException_WhenActiveAgreementNotFound() {
-        when(agreementVersionRepository.findByIsActiveTrue()).thenReturn(Optional.empty());
+        when(agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> agreementService.getActiveAgreement())
+        assertThatThrownBy(() -> agreementService.getActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING))
                 .isInstanceOf(AppException.class);
     }
 
     @Test
     @DisplayName("shouldListVersions_WhenRequested")
     void shouldListVersions_WhenRequested() {
-        when(agreementVersionRepository.findAllByOrderByVersionDesc()).thenReturn(List.of(activeVersion));
+        when(agreementVersionRepository.findAllByAgreementTypeOrderByVersionDesc(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(List.of(activeVersion));
 
-        List<AgreementVersionResponse> list = agreementService.listVersions();
+        List<AgreementVersionResponse> list = agreementService.listVersions(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING);
 
         assertThat(list).hasSize(1);
     }
@@ -97,12 +98,12 @@ class AgreementServiceImplTest {
     @Test
     @DisplayName("shouldCreateNewVersion_WhenAdminRequest")
     void shouldCreateNewVersion_WhenAdminRequest() {
-        when(agreementVersionRepository.findByIsActiveTrue()).thenReturn(Optional.of(activeVersion));
-        when(agreementVersionRepository.findTopByOrderByVersionDesc()).thenReturn(Optional.of(activeVersion));
+        when(agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(Optional.of(activeVersion));
+        when(agreementVersionRepository.findTopByAgreementTypeOrderByVersionDesc(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(Optional.of(activeVersion));
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(agreementVersionRepository.save(any(AgreementVersion.class))).thenAnswer(i -> i.getArgument(0));
 
-        AgreementVersionResponse response = agreementService.createNewVersion("New Content", user.getId());
+        AgreementVersionResponse response = agreementService.createNewVersion(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, "New Content", user.getId());
 
         assertThat(response.getVersion()).isEqualTo(2);
         verify(agreementVersionRepository, times(1)).save(activeVersion);
@@ -111,11 +112,11 @@ class AgreementServiceImplTest {
     @Test
     @DisplayName("shouldGetAcceptanceStatus_WhenAccepted")
     void shouldGetAcceptanceStatus_WhenAccepted() {
-        when(agreementVersionRepository.findByIsActiveTrue()).thenReturn(Optional.of(activeVersion));
+        when(agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(Optional.of(activeVersion));
         when(userAgreementAcceptanceRepository.existsByUserIdAndAgreementVersionId(user.getId(), activeVersion.getId()))
                 .thenReturn(true);
 
-        AgreementAcceptanceStatusResponse response = agreementService.getAcceptanceStatus(user.getId());
+        AgreementAcceptanceStatusResponse response = agreementService.getAcceptanceStatus(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, user.getId());
 
         assertThat(response.isAccepted()).isTrue();
     }
@@ -123,12 +124,12 @@ class AgreementServiceImplTest {
     @Test
     @DisplayName("shouldAcceptActiveAgreement_WhenNotAcceptedYet")
     void shouldAcceptActiveAgreement_WhenNotAcceptedYet() {
-        when(agreementVersionRepository.findByIsActiveTrue()).thenReturn(Optional.of(activeVersion));
+        when(agreementVersionRepository.findByAgreementTypeAndIsActiveTrue(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING)).thenReturn(Optional.of(activeVersion));
         when(userAgreementAcceptanceRepository.existsByUserIdAndAgreementVersionId(user.getId(), activeVersion.getId()))
                 .thenReturn(false);
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
-        AgreementAcceptanceStatusResponse response = agreementService.acceptActiveAgreement(user.getId());
+        AgreementAcceptanceStatusResponse response = agreementService.acceptActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING, user.getId());
 
         assertThat(response.isAccepted()).isTrue();
         verify(userAgreementAcceptanceRepository, times(1)).save(any(UserAgreementAcceptance.class));

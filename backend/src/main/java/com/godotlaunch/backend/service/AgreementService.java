@@ -8,13 +8,13 @@ import java.util.UUID;
 
 public interface AgreementService {
 
-    AgreementVersionResponse getActiveAgreement();
+    AgreementVersionResponse getActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType type);
 
-    List<AgreementVersionResponse> listVersions();
+    List<AgreementVersionResponse> listVersions(com.godotlaunch.backend.entity.enums.AgreementType type);
 
-    AgreementVersionResponse createNewVersion(String content, UUID adminUserId);
+    AgreementVersionResponse createNewVersion(com.godotlaunch.backend.entity.enums.AgreementType type, String content, UUID adminUserId);
 
-    AgreementAcceptanceStatusResponse getAcceptanceStatus(UUID userId);
+    AgreementAcceptanceStatusResponse getAcceptanceStatus(com.godotlaunch.backend.entity.enums.AgreementType type, UUID userId);
 
-    AgreementAcceptanceStatusResponse acceptActiveAgreement(UUID userId);
+    AgreementAcceptanceStatusResponse acceptActiveAgreement(com.godotlaunch.backend.entity.enums.AgreementType type, UUID userId);
 }

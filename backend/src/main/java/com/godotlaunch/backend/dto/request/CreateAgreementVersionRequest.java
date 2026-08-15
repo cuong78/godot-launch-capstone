@@ -14,4 +14,7 @@ public class CreateAgreementVersionRequest {
 
     @NotBlank
     private String content;
+
+    @jakarta.validation.constraints.NotNull
+    private com.godotlaunch.backend.entity.enums.AgreementType type = com.godotlaunch.backend.entity.enums.AgreementType.DEVELOPER_ONBOARDING;
 }
