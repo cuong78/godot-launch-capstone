@@ -23,4 +23,7 @@ public interface DisputeService {
     List<DisputeResponse> getAllDisputes();
     List<DisputeResponse> getMyReportedDisputes(String email);
     DisputeResponse getDispute(UUID disputeId);
+
+    /** AI phân tích chi tiết đơn khiếu nại bản quyền và đưa ra gợi ý phán quyết cho Admin. */
+    String getAiAnalysis(UUID disputeId);
 }

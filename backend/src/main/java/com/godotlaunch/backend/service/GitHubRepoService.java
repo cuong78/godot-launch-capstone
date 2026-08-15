@@ -43,4 +43,7 @@ public interface GitHubRepoService {
 
     /** Username bot để hiển thị hướng dẫn mời. */
     String getBotUsername();
+
+    /** Lấy dữ liệu metadata thô của repository từ GitHub API (created_at, pushed_at, owner...) */
+    java.util.Map<String, Object> getRepoMetadata(String repoUrl);
 }

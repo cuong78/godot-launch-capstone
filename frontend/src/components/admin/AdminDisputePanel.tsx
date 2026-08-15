@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, Loader2, ShieldCheck, Scale, Ban, BadgeDollarSign, HelpCircle } from 'lucide-react';
+import { AlertTriangle, Loader2, ShieldCheck, Scale, Ban, BadgeDollarSign, HelpCircle, Sparkles, Bot } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { disputeApi, DisputeResponse, ResolveDisputePayload } from '../../api/disputeApi';
 
@@ -211,10 +211,80 @@ function ResolveModal({ dispute, onClose, onResolved }: {
   const { t } = useTranslation(['admin']);
   const [resolution, setResolution] = useState<ResolveDisputePayload['resolution']>('resolved_inconclusive');
   const [note, setNote] = useState('');
-  const [refundAmount, setRefundAmount] = useState('');
   const [banUser, setBanUser] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
+  const parseBoldText = (lineText: string) => {
+    const parts = lineText.split('**');
+    return parts.map((part, index) => {
+      const cleanPart = part.replace(/\*/g, '');
+      if (index % 2 === 1) {
+        return <strong key={index} className="font-extrabold text-slate-900 dark:text-white">{cleanPart}</strong>;
+      }
+      return cleanPart;
+    });
+  };
+
+  const stripBulletsAndSeparators = (lineText: string) => {
+    return lineText.replace(/^[•\s\-\*]+/, '');
+  };
+
+  const renderMarkdown = (text: string) => {
+    return text.split('\n').map((line, idx) => {
+      const trimmed = line.trim();
+      const withoutBullets = trimmed.replace(/^[•\s\-\*]+/, '');
+
+      // Check for section dividers (-- or --- or bullet leading --)
+      if (trimmed === '--' || trimmed === '---' || trimmed.startsWith('---') || withoutBullets === '--' || withoutBullets === '---') {
+        return <hr key={idx} className="my-3.5 border-slate-200 dark:border-slate-800/60" />;
+      }
+
+      if (trimmed.startsWith('###')) {
+        return <h5 key={idx} className="text-xs font-bold text-slate-900 dark:text-white mt-3 mb-1">{parseBoldText(stripBulletsAndSeparators(trimmed.replace(/^###\s*/, '')))}</h5>;
+      }
+      if (trimmed.startsWith('##')) {
+        return <h4 key={idx} className="text-sm font-bold text-slate-900 dark:text-white mt-4 mb-1.5 border-b border-slate-100 dark:border-slate-800 pb-1">{parseBoldText(stripBulletsAndSeparators(trimmed.replace(/^##\s*/, '')))}</h4>;
+      }
+      if (trimmed.startsWith('#')) {
+        return <h3 key={idx} className="text-base font-bold text-slate-900 dark:text-white mt-4 mb-2">{parseBoldText(stripBulletsAndSeparators(trimmed.replace(/^#\s*/, '')))}</h3>;
+      }
+
+      // Check for list items (starts with -, *, or •)
+      if (trimmed.startsWith('-') || trimmed.startsWith('*') || trimmed.startsWith('•')) {
+        const content = stripBulletsAndSeparators(trimmed);
+        if (!content) return null;
+        return (
+          <div key={idx} className="flex items-start gap-1.5 ml-2 my-1 text-xs text-slate-600 dark:text-slate-300">
+            <span className="text-amber-500 mt-1.5 text-[8px]">•</span>
+            <span>{parseBoldText(content)}</span>
+          </div>
+        );
+      }
+
+      // Default paragraph (clean up remaining raw asterisks)
+      return <p key={idx} className="text-xs text-slate-600 dark:text-slate-300 my-1 leading-relaxed whitespace-pre-wrap">{parseBoldText(line)}</p>;
+    });
+  };
+
+  const runAiAnalysis = async () => {
+    setLoadingAi(true);
+    setError(null);
+    try {
+      const res = await disputeApi.getAiAnalysis(dispute.id);
+      if (res.success && res.data) {
+        setAiReport(res.data);
+      } else {
+        setError(res.message || 'Lỗi khi chạy trợ lý AI.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Lỗi kết nối AI.');
+    } finally {
+      setLoadingAi(false);
+    }
+  };
   
   const resolutionOptions = useMemo(
     () =>
@@ -242,7 +312,6 @@ function ResolveModal({ dispute, onClose, onResolved }: {
       const res = await disputeApi.resolve(dispute.id, {
         resolution,
         resolutionNote: note.trim() || undefined,
-        refundAmount: resolution === 'resolved_seller_fault' && refundAmount ? Number(refundAmount) : undefined,
         banUser,
       });
       if (res.success) onResolved();
@@ -256,160 +325,178 @@ function ResolveModal({ dispute, onClose, onResolved }: {
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-      <div className="dark-depth-card w-full max-w-lg space-y-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl transition-all dark:border-slate-800 dark:bg-[#0c121e]">
+      <div className={`dark-depth-card w-full transition-all duration-300 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-[#0c121e] ${aiReport ? 'max-w-4xl' : 'max-w-lg'}`}>
         
-        {/* Header */}
-        <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-          <span className="rounded-lg bg-amber-500/10 p-2 text-amber-500 dark:bg-amber-500/15">
-            <Scale className="w-5 h-5" />
-          </span>
-          <div>
-            <h3 className="font-display font-bold text-slate-900 dark:text-[#f4f7fb]">
-              {t('disputePanel.modal.title')}
-            </h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-              ID: {dispute.id}
-            </p>
-          </div>
-        </div>
+        <div className={aiReport ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'space-y-5'}>
+          {/* AI Report Section (Left Panel) */}
+          {aiReport && (
+            <div className="space-y-4 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800/80 pb-4 md:pb-0 md:pr-6 max-h-[70vh] overflow-y-auto">
+              <div className="flex items-center gap-2 text-indigo-500 border-b border-slate-100 dark:border-slate-800 pb-2">
+                <Bot className="w-5 h-5" />
+                <span className="font-bold text-sm">🤖 Trợ lý AI Phán xử </span>
+              </div>
+              <div className="bg-slate-50/50 dark:bg-[#080d16] border border-slate-100 dark:border-slate-800/60 rounded-xl p-4 space-y-2">
+                {renderMarkdown(aiReport)}
+              </div>
+            </div>
+          )}
 
-        {/* Evidence Link */}
-        {dispute.evidenceRepoUrl && (
-          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-xs text-slate-600 dark:border-slate-800/60 dark:bg-slate-900/40 dark:text-slate-300">
-            <span className="font-semibold block text-[10px] uppercase font-mono tracking-wider text-slate-500 mb-1">
-              {t('disputePanel.modal.evidenceRepoLabel')}
-            </span>
-            <a 
-              href={dispute.evidenceRepoUrl} 
-              target="_blank" 
-              rel="noreferrer" 
-              className="text-sky-500 hover:text-sky-400 font-medium break-all hover:underline"
-            >
-              {dispute.evidenceRepoUrl}
-            </a>
-          </div>
-        )}
-
-        {/* Resolution Radio Cards */}
-        <div className="space-y-2">
-          <label className="block text-[10px] font-bold uppercase font-mono tracking-wider text-slate-500">
-            {t('disputePanel.modal.resolutionLabel')}
-          </label>
-          <div className="grid grid-cols-1 gap-2.5">
-            {resolutionOptions.map((option) => {
-              const isActive = resolution === option.value;
-              let icon = <HelpCircle className="w-4 h-4" />;
-              let activeClass = 'border-slate-500 bg-slate-50 dark:bg-slate-900/40 text-slate-900 dark:text-white';
-              let hoverClass = 'hover:border-slate-350 dark:hover:border-slate-700';
-              
-              if (option.value === 'resolved_seller_fault') {
-                icon = <BadgeDollarSign className="w-4 h-4" />;
-                activeClass = 'border-rose-500/80 bg-rose-500/[0.03] dark:bg-rose-950/10 text-rose-600 dark:text-rose-400';
-                hoverClass = 'hover:border-rose-300 dark:hover:border-rose-900/60';
-              } else if (option.value === 'resolved_reporter_fault') {
-                icon = <Ban className="w-4 h-4" />;
-                activeClass = 'border-purple-500/80 bg-purple-500/[0.03] dark:bg-purple-950/10 text-purple-600 dark:text-purple-400';
-                hoverClass = 'hover:border-purple-300 dark:hover:border-purple-900/60';
-              }
-              
-              return (
+          {/* Form Section (Right Panel or Main Panel) */}
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="rounded-lg bg-amber-500/10 p-2 text-amber-500 dark:bg-amber-500/15">
+                  <Scale className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-display font-bold text-slate-900 dark:text-[#f4f7fb]">
+                    {t('disputePanel.modal.title')}
+                  </h3>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                    ID: {dispute.id}
+                  </p>
+                </div>
+              </div>
+              {!aiReport && (
                 <button
-                  key={option.value}
                   type="button"
-                  onClick={() => setResolution(option.value)}
-                  className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
-                    isActive
-                      ? `border-2 ${activeClass} shadow-sm font-semibold`
-                      : 'border-slate-200 dark:border-slate-800 bg-transparent text-slate-700 dark:text-[#a0aec0] ' + hoverClass
-                  }`}
+                  onClick={runAiAnalysis}
+                  disabled={loadingAi}
+                  className="flex items-center gap-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-[11px] font-bold px-3 py-1.5 cursor-pointer disabled:opacity-50 transition-all shadow-md shadow-indigo-500/10 hover:shadow-indigo-400/20"
                 >
-                  <span className={`rounded-lg p-1.5 ${isActive ? 'bg-current/10' : 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500'}`}>
-                    {icon}
-                  </span>
-                  <span className="text-xs font-semibold">{option.label}</span>
+                  {loadingAi ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('disputePanel.modal.aiLoading', { defaultValue: 'AI đang phân tích...' })}</>
+                  ) : (
+                    <><Sparkles className="w-3.5 h-3.5" /> {t('disputePanel.modal.aiBtn', { defaultValue: 'Trợ lý AI' })}</>
+                  )}
                 </button>
-              );
-            })}
-          </div>
-        </div>
+              )}
+            </div>
 
-        {/* Refund Field */}
-        {resolution === 'resolved_seller_fault' && (
-          <div className="space-y-1.5 animate-fadeIn">
-            <label className="block text-[10px] font-bold uppercase font-mono tracking-wider text-slate-500">
-              {t('disputePanel.modal.refundAmountLabel')}
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={refundAmount}
-                onChange={(e) => setRefundAmount(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 dark:border-slate-800 dark:bg-[#0e1525] dark:text-[#f4f7fb]"
-                placeholder="0.00"
+            {/* Evidence Link */}
+            {dispute.evidenceRepoUrl && (
+              <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-xs text-slate-600 dark:border-slate-800/60 dark:bg-slate-900/40 dark:text-slate-300">
+                <span className="font-semibold block text-[10px] uppercase font-mono tracking-wider text-slate-500 mb-1">
+                  {t('disputePanel.modal.evidenceRepoLabel')}
+                </span>
+                <a 
+                  href={dispute.evidenceRepoUrl} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="text-sky-500 hover:text-sky-400 font-medium break-all hover:underline"
+                >
+                  {dispute.evidenceRepoUrl}
+                </a>
+              </div>
+            )}
+
+            {/* Resolution Radio Cards */}
+            <div className="space-y-2">
+              <label className="block text-[10px] font-bold uppercase font-mono tracking-wider text-slate-500">
+                {t('disputePanel.modal.resolutionLabel')}
+              </label>
+              <div className="grid grid-cols-1 gap-2.5">
+                {resolutionOptions.map((option) => {
+                  const isActive = resolution === option.value;
+                  let icon = <HelpCircle className="w-4 h-4" />;
+                  let activeClass = 'border-slate-500 bg-slate-50 dark:bg-slate-900/40 text-slate-900 dark:text-white';
+                  let hoverClass = 'hover:border-slate-350 dark:hover:border-slate-700';
+                  
+                  if (option.value === 'resolved_seller_fault') {
+                    icon = <BadgeDollarSign className="w-4 h-4" />;
+                    activeClass = 'border-rose-500/80 bg-rose-500/[0.03] dark:bg-rose-950/10 text-rose-600 dark:text-rose-400';
+                    hoverClass = 'hover:border-rose-300 dark:hover:border-rose-900/60';
+                  } else if (option.value === 'resolved_reporter_fault') {
+                    icon = <Ban className="w-4 h-4" />;
+                    activeClass = 'border-purple-500/80 bg-purple-500/[0.03] dark:bg-purple-950/10 text-purple-600 dark:text-purple-400';
+                    hoverClass = 'hover:border-purple-300 dark:hover:border-purple-900/60';
+                  }
+                  
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setResolution(option.value)}
+                      className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                        isActive
+                          ? `border-2 ${activeClass} shadow-sm font-semibold`
+                          : 'border-slate-200 dark:border-slate-800 bg-transparent text-slate-700 dark:text-[#a0aec0] ' + hoverClass
+                      }`}
+                    >
+                      <span className={`rounded-lg p-1.5 ${isActive ? 'bg-current/10' : 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500'}`}>
+                        {icon}
+                      </span>
+                      <span className="text-xs font-semibold">{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+
+
+            {/* Note Field */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold uppercase font-mono tracking-wider text-slate-500">
+                {t('disputePanel.modal.resolutionNoteLabel')}
+              </label>
+              <textarea 
+                value={note} 
+                onChange={(e) => setNote(e.target.value)} 
+                rows={3}
+                placeholder="..."
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 resize-none dark:border-slate-800 dark:bg-[#0e1525] dark:text-[#f4f7fb]" 
               />
             </div>
-          </div>
-        )}
 
-        {/* Note Field */}
-        <div className="space-y-1.5">
-          <label className="block text-[10px] font-bold uppercase font-mono tracking-wider text-slate-500">
-            {t('disputePanel.modal.resolutionNoteLabel')}
-          </label>
-          <textarea 
-            value={note} 
-            onChange={(e) => setNote(e.target.value)} 
-            rows={3}
-            placeholder="..."
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10 resize-none dark:border-slate-800 dark:bg-[#0e1525] dark:text-[#f4f7fb]" 
-          />
-        </div>
-
-        {/* Ban Action checkbox */}
-        {(resolution === 'resolved_seller_fault' || resolution === 'resolved_reporter_fault') && (
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200/60 p-3 text-xs text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800/80 dark:text-[#a0aec0] dark:hover:bg-slate-900/30">
-            <input 
-              type="checkbox" 
-              checked={banUser} 
-              onChange={(e) => setBanUser(e.target.checked)}
-              className="rounded text-amber-500 focus:ring-amber-500/20"
-            />
-            <Ban className="w-4 h-4 text-rose-500" />
-            <span className="font-semibold text-rose-500 dark:text-rose-400">
-              {t('disputePanel.modal.banUser')}
-            </span>
-          </label>
-        )}
-
-        {/* Error alert */}
-        {error && (
-          <div className="text-rose-500 text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2.5 flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
-          <button 
-            type="button"
-            onClick={onClose} 
-            className="flex-1 rounded-xl border border-slate-200 bg-slate-100/50 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 dark:border-slate-800 dark:bg-[#0e1525] dark:text-slate-400 dark:hover:text-white cursor-pointer transition-all"
-          >
-            {t('common.cancel')}
-          </button>
-          <button 
-            type="button"
-            onClick={submit} 
-            disabled={submitting}
-            className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs py-2.5 rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/10 hover:shadow-amber-400/20 transition-all"
-          >
-            {submitting ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> {t('disputePanel.modal.submitting')}</>
-            ) : (
-              t('disputePanel.modal.submit')
+            {/* Ban Action checkbox */}
+            {(resolution === 'resolved_seller_fault' || resolution === 'resolved_reporter_fault') && (
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200/60 p-3 text-xs text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800/80 dark:text-[#a0aec0] dark:hover:bg-slate-900/30">
+                <input 
+                  type="checkbox" 
+                  checked={banUser} 
+                  onChange={(e) => setBanUser(e.target.checked)}
+                  className="rounded text-amber-500 focus:ring-amber-500/20"
+                />
+                <Ban className="w-4 h-4 text-rose-500" />
+                <span className="font-semibold text-rose-500 dark:text-rose-400">
+                  {t('disputePanel.modal.banUser')}
+                </span>
+              </label>
             )}
-          </button>
+
+            {/* Error alert */}
+            {error && (
+              <div className="text-rose-500 text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2.5 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button 
+                type="button"
+                onClick={onClose} 
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-100/50 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 dark:border-slate-800 dark:bg-[#0e1525] dark:text-slate-400 dark:hover:text-white cursor-pointer transition-all"
+              >
+                {t('common.cancel')}
+              </button>
+              <button 
+                type="button"
+                onClick={submit} 
+                disabled={submitting}
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs py-2.5 rounded-xl disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/10 hover:shadow-amber-400/20 transition-all"
+              >
+                {submitting ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> {t('disputePanel.modal.submitting')}</>
+                ) : (
+                  t('disputePanel.modal.submit')
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>,

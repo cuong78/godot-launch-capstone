@@ -76,4 +76,12 @@ public class DisputeController {
         DisputeResponse res = disputeService.confirmRefund(id, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(res, "Đã xác nhận hoàn tiền."));
     }
+
+    @GetMapping("/{id}/ai-analysis")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "AI phân tích và gợi ý hướng phán xử cho Admin")
+    public ResponseEntity<ApiResponse<String>> getAiAnalysis(@PathVariable UUID id) {
+        String analysis = disputeService.getAiAnalysis(id);
+        return ResponseEntity.ok(ApiResponse.success(analysis, "OK"));
+    }
 }

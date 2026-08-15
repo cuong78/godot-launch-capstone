@@ -203,6 +203,22 @@ public class GitHubRepoServiceImpl implements GitHubRepoService {
         }
     }
 
+    @Override
+    public java.util.Map<String, Object> getRepoMetadata(String repoUrl) {
+        if (repoUrl == null || repoUrl.isBlank()) return null;
+        try {
+            String[] ownerRepo = parseOwnerRepo(repoUrl);
+            java.util.Map<String, Object> data = fetchRepoMetadata(ownerRepo[0], ownerRepo[1]);
+            if (data == null) {
+                data = fetchRepoMetadataNoAuth(ownerRepo[0], ownerRepo[1]);
+            }
+            return data;
+        } catch (Exception e) {
+            log.warn("Không thể fetch metadata cho repo {}: {}", repoUrl, e.getMessage());
+            return null;
+        }
+    }
+
     private String[] parseOwnerRepo(String repoUrl) {
         try {
             URI uri = URI.create(repoUrl.trim().replaceAll("/$", ""));

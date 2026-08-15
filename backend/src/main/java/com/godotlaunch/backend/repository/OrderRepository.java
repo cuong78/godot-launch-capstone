@@ -15,4 +15,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     boolean existsByBuyerIdAndGameId(UUID buyerId, UUID gameId);
     Optional<Order> findByBuyerIdAndGameId(UUID buyerId, UUID gameId);
+
+    java.util.List<Order> findByGameIdAndPurchasedAtAfter(UUID gameId, java.time.Instant purchasedAt);
 }

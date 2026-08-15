@@ -66,4 +66,8 @@ export const disputeApi = {
     const res = await api.post(`/api/v1/disputes/${id}/confirm-refund`);
     return res.data;
   },
+  getAiAnalysis: async (id: string): Promise<ApiResponse<string>> => {
+    const res = await api.get(`/api/v1/disputes/${id}/ai-analysis`);
+    return res.data;
+  },
 };
