@@ -48,8 +48,8 @@ spring:
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/godot_launch}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:12345}
+    username: ${DB_USERNAME:user_godot_launch}
+    password: ${DB_PASSWORD:password_godot_launch}
     driver-class-name: org.postgresql.Driver
 
   jpa:

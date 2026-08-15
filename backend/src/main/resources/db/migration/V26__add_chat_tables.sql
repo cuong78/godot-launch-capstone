@@ -1,4 +1,4 @@
--- Migration V25: Add Chatbot tables (sessions, messages, summaries)
+-- Migration V26: Add Chatbot tables (sessions, messages, summaries)
 
 CREATE TABLE IF NOT EXISTS chat_sessions (
     id VARCHAR(36) PRIMARY KEY,
