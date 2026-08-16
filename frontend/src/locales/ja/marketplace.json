@@ -110,5 +110,18 @@
   "detail.tech.noDetails": "このアセット形式には技術情報がまだ設定されていません。",
   "detail.tech.objectProperties": "オブジェクト属性",
   "detail.tech.spritesPrefabs": "スプライト / プレハブ",
-  "detail.tech.tilesetsCount": "タイルセット数"
+  "detail.tech.tilesetsCount": "タイルセット数",
+  "detail.update.available": "バージョン {{version}} のアップデートがあります",
+  "detail.update.firstDownload": "このゲームを所有しています - バージョン {{version}} をダウンロードできます",
+  "detail.update.upToDate": "最新バージョン ({{version}}) を使用しています",
+  "detail.update.lastDownloaded": "最後にダウンロードしたバージョン: {{version}}",
+  "detail.update.downloadUpdate": "アップデートをダウンロード",
+  "detail.update.downloadGame": "ゲーム v{{version}} をダウンロード",
+  "detail.update.downloadAsset": "アセットパッケージをダウンロード",
+  "detail.update.preparing": "バージョン {{version}} を準備中...",
+  "detail.update.checking": "所有権を確認中...",
+  "detail.update.downloadStarted": "最新バージョンのダウンロードを開始しました。",
+  "detail.update.downloadFailed": "ゲームをダウンロードできませんでした。もう一度お試しください。",
+  "detail.update.forbidden": "このゲームをダウンロードする権限がありません。",
+  "detail.update.packageUnavailable": "現在のバージョンのパッケージは一時的に利用できません。"
 }

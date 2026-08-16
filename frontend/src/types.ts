@@ -678,16 +678,48 @@ export type NotificationType =
   | "SECURITY_ALERT"
   | "PLAGIARISM_ALERT"
   | "STORE_PUBLISH_RESULT"
+  | "GAME_VERSION_RELEASED"
   | (string & {});
+
+export interface NotificationMetadata {
+  gameVersionId?: string;
+  versionNumber?: string;
+  actionUrl?: string;
+  [key: string]: unknown;
+}
 
 export interface NotificationResponse {
   id: string;
-  sender: UserSummary;
+  sender?: UserSummary | null;
   type: NotificationType;
   message: string;
   targetId: string;
+  metadata?: NotificationMetadata;
   isRead: boolean;
   createdAt: string;
+}
+
+export type DownloadState =
+  | "NOT_OWNED"
+  | "FIRST_DOWNLOAD_AVAILABLE"
+  | "UPDATE_AVAILABLE"
+  | "UP_TO_DATE"
+  | "PACKAGE_UNAVAILABLE";
+
+export interface GameVersionSummary {
+  id: string;
+  versionNumber: string;
+  changelog?: string | null;
+  releasedAt?: string | null;
+}
+
+export interface GameEntitlementResponse {
+  owned: boolean;
+  purchaseId: string | null;
+  currentVersion: GameVersionSummary | null;
+  lastDownloadedVersion: GameVersionSummary | null;
+  downloadState: DownloadState;
+  downloadEndpoint: string | null;
 }
 
 // --- Audit Log Types ---

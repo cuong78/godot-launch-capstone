@@ -110,5 +110,18 @@
   "detail.tech.noDetails": "Technical details are not mapped for this asset pack format.",
   "detail.tech.objectProperties": "OBJECT PROPERTIES",
   "detail.tech.spritesPrefabs": "SPRITES PREFABS",
-  "detail.tech.tilesetsCount": "TILESETS COUNT"
+  "detail.tech.tilesetsCount": "TILESETS COUNT",
+  "detail.update.available": "Update {{version}} is available",
+  "detail.update.firstDownload": "You own this game - version {{version}} is ready to download",
+  "detail.update.upToDate": "You are using the latest version ({{version}})",
+  "detail.update.lastDownloaded": "Last downloaded version: {{version}}",
+  "detail.update.downloadUpdate": "Download update",
+  "detail.update.downloadGame": "Download game v{{version}}",
+  "detail.update.downloadAsset": "Download asset package",
+  "detail.update.preparing": "Preparing version {{version}}...",
+  "detail.update.checking": "Checking ownership...",
+  "detail.update.downloadStarted": "The latest version has started downloading.",
+  "detail.update.downloadFailed": "The game could not be downloaded. Please try again.",
+  "detail.update.forbidden": "You do not have permission to download this game.",
+  "detail.update.packageUnavailable": "The current version package is temporarily unavailable."
 }

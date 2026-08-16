@@ -47,4 +47,11 @@ public class Order {
 
     @Column(name = "purchased_at", nullable = false, insertable = false, updatable = false)
     private Instant purchasedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "last_downloaded_game_version_id")
+    private GameVersion lastDownloadedGameVersion;
+
+    @Column(name = "last_downloaded_at")
+    private Instant lastDownloadedAt;
 }

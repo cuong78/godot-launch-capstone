@@ -44,6 +44,9 @@ public enum ErrorCode {
     // 404 Not Found
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested user does not exist."),
     GAME_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested game does not exist."),
+    GAME_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Game chưa có phiên bản hiện hành."),
+    GAME_PACKAGE_UNAVAILABLE(HttpStatus.NOT_FOUND, "Gói tải của phiên bản hiện hành tạm thời không khả dụng."),
+    GAME_VERSION_CONFLICT(HttpStatus.CONFLICT, "Phiên bản game bị trùng hoặc đã được phát hành bởi một yêu cầu khác."),
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested category does not exist."),
     MARKETPLACE_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested marketplace item does not exist."),
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Requested order does not exist."),

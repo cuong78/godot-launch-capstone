@@ -1,8 +1,8 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Check, Star, Film, X, ChevronRight, Download, AlertTriangle, Flag, FileText } from "lucide-react";
-import { Asset, User, CategoryResponse, PaymentResponse } from "../types";
+import { Check, Star, Film, X, ChevronRight, Download, AlertTriangle, Flag, FileText, Loader2 } from "lucide-react";
+import { Asset, User, CategoryResponse, PaymentResponse, GameEntitlementResponse } from "../types";
 import { resolveApiUrl } from "../utils/apiUrl";
 import { IMAGE_SEED_MAP } from "../../assets/images";
 import { gameApi } from "../api/gameApi";
@@ -126,7 +126,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   handleAuthorClick,
 }) => {
   const { t, i18n } = useTranslation(["marketplace", "shared"]);
-  const isOwned = ownedProductIds.has(focusedAsset.id);
+  const clientOwned = ownedProductIds.has(focusedAsset.id);
   const isCreatorOwnedAsset = (asset: Asset) =>
     creatorOwnedProductIds.has(asset.id);
   const isCreatorOwner = React.useMemo(() => {
@@ -147,6 +147,46 @@ export const DetailPage: React.FC<DetailPageProps> = ({
     );
     return payment ? resolveApiUrl(payment.downloadUrl) : null;
   }, [purchaseOrderPayments, focusedAsset.id]);
+
+  const [entitlement, setEntitlement] = React.useState<GameEntitlementResponse | null>(null);
+  const [isEntitlementLoading, setIsEntitlementLoading] = React.useState(false);
+  const [isDownloading, setIsDownloading] = React.useState(false);
+  const isGamePackage = focusedAsset.itemType === "source_code";
+  const isOwned = isGamePackage && entitlement ? entitlement.owned : clientOwned;
+
+  const loadEntitlement = React.useCallback(async () => {
+    if (!currentUser || !isGamePackage) {
+      setEntitlement(null);
+      return;
+    }
+    setIsEntitlementLoading(true);
+    try {
+      const response = await gameApi.getEntitlement(focusedAsset.id);
+      if (response.success) {
+        setEntitlement(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load game entitlement:", error);
+      setEntitlement(null);
+    } finally {
+      setIsEntitlementLoading(false);
+    }
+  }, [currentUser, focusedAsset.id, isGamePackage]);
+
+  React.useEffect(() => {
+    void loadEntitlement();
+  }, [loadEntitlement]);
+
+  React.useEffect(() => {
+    const handleReleasedVersion = (event: Event) => {
+      const detail = (event as CustomEvent<{ gameId?: string }>).detail;
+      if (detail?.gameId === focusedAsset.id) {
+        void loadEntitlement();
+      }
+    };
+    window.addEventListener('godotlaunch:game-version-released', handleReleasedVersion);
+    return () => window.removeEventListener('godotlaunch:game-version-released', handleReleasedVersion);
+  }, [focusedAsset.id, loadEntitlement]);
 
   const numberLocale = resolveNumberLocale(
     i18n.resolvedLanguage || i18n.language,
@@ -207,14 +247,50 @@ export const DetailPage: React.FC<DetailPageProps> = ({
     handleBuyNow(focusedAsset);
   };
 
-  const handleDownloadClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const performDownload = async () => {
+    if (isGamePackage) {
+      if (!entitlement?.purchaseId || !entitlement.downloadEndpoint) {
+        showToast(t("detail.update.packageUnavailable"), "error");
+        return;
+      }
+      setIsDownloading(true);
+      try {
+        const { blob, fileName } = await gameApi.downloadPurchase(entitlement.purchaseId);
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+        await loadEntitlement();
+        showToast(t("detail.update.downloadStarted"), "success");
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status === 403) {
+          showToast(t("detail.update.forbidden"), "error");
+        } else if (status === 404) {
+          showToast(t("detail.update.packageUnavailable"), "error");
+        } else {
+          showToast(t("detail.update.downloadFailed"), "error");
+        }
+      } finally {
+        setIsDownloading(false);
+      }
+      return;
+    }
+    if (downloadUrl) {
+      window.location.href = downloadUrl;
+    }
+  };
+
+  const handleDownloadClick = async (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
     try {
       const statusRes = await agreementApi.getAcceptanceStatus('BUYER_EULA');
       if (statusRes.success && statusRes.data && statusRes.data.accepted) {
-        if (downloadUrl) {
-          window.location.href = downloadUrl;
-        }
+        await performDownload();
         return;
       }
     } catch (err) {
@@ -243,9 +319,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
     } catch (err) {
       console.error("Failed to record EULA acceptance:", err);
     }
-    if (downloadUrl) {
-      window.location.href = downloadUrl;
-    }
+    await performDownload();
   };
   const [categories, setCategories] = React.useState<CategoryResponse[]>([]);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -614,6 +688,45 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               </div>
             )}
 
+            {isGamePackage && entitlement?.owned && entitlement.currentVersion && (
+              <div className={`rounded-xl border p-4 ${
+                entitlement.downloadState === 'UPDATE_AVAILABLE'
+                  ? 'border-amber-400/40 bg-amber-400/10'
+                  : entitlement.downloadState === 'PACKAGE_UNAVAILABLE'
+                    ? 'border-rose-400/35 bg-rose-500/10'
+                    : 'border-emerald-400/30 bg-emerald-500/10'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-lg bg-white/60 p-2 text-slate-700 dark:bg-slate-950/30 dark:text-slate-200">
+                    {entitlement.downloadState === 'PACKAGE_UNAVAILABLE'
+                      ? <AlertTriangle size={16} />
+                      : <Download size={16} />}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="font-display text-sm font-bold text-slate-900 dark:text-white">
+                      {entitlement.downloadState === 'UPDATE_AVAILABLE'
+                        ? t('detail.update.available', { version: entitlement.currentVersion.versionNumber })
+                        : entitlement.downloadState === 'FIRST_DOWNLOAD_AVAILABLE'
+                          ? t('detail.update.firstDownload', { version: entitlement.currentVersion.versionNumber })
+                          : entitlement.downloadState === 'UP_TO_DATE'
+                            ? t('detail.update.upToDate', { version: entitlement.currentVersion.versionNumber })
+                            : t('detail.update.packageUnavailable')}
+                    </p>
+                    {entitlement.downloadState === 'UPDATE_AVAILABLE' && entitlement.lastDownloadedVersion && (
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        {t('detail.update.lastDownloaded', { version: entitlement.lastDownloadedVersion.versionNumber })}
+                      </p>
+                    )}
+                    {entitlement.currentVersion.changelog && (
+                      <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                        {entitlement.currentVersion.changelog}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Price tag */}
             <p className="pt-1 font-display text-xl font-bold text-amber-600 dark:text-[#fbbf24]">
               {focusedAsset.price === 0
@@ -631,19 +744,31 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                     {t("detail.pricing.ownerMessage")}
                   </div>
                 </div>
+              ) : isGamePackage && currentUser && isEntitlementLoading ? (
+                <div className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 px-4 py-3 text-xs font-bold text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                  <Loader2 size={14} className="animate-spin" /> {t('detail.update.checking')}
+                </div>
               ) : isOwned ? (
                 <div className="space-y-2 w-full">
                   <div className="w-full py-2.5 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-xs font-bold text-emerald-500 font-display text-center">
                     {t("detail.pricing.ownedMessage")}
                   </div>
-                  {downloadUrl && (
-                    <a
-                      href="#"
+                  {(isGamePackage ? Boolean(entitlement?.downloadEndpoint) : Boolean(downloadUrl)) && (
+                    <button
+                      type="button"
                       onClick={handleDownloadClick}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 px-4 text-xs font-bold font-display text-center transition-all cursor-pointer"
+                      disabled={isDownloading || entitlement?.downloadState === 'PACKAGE_UNAVAILABLE'}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 text-white py-2.5 px-4 text-xs font-bold font-display text-center transition-all cursor-pointer"
                     >
-                      <Download size={14} /> {focusedAsset.itemType === "source_code" ? "Download Game Package" : "Download Asset Package"}
-                    </a>
+                      {isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      {isDownloading
+                        ? t('detail.update.preparing', { version: entitlement?.currentVersion?.versionNumber || focusedAsset.version })
+                        : entitlement?.downloadState === 'UPDATE_AVAILABLE'
+                          ? t('detail.update.downloadUpdate')
+                          : isGamePackage
+                            ? t('detail.update.downloadGame', { version: entitlement?.currentVersion?.versionNumber || focusedAsset.version })
+                            : t('detail.update.downloadAsset')}
+                    </button>
                   )}
                 </div>
               ) : (

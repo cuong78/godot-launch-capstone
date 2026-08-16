@@ -94,6 +94,17 @@ public class GameController {
         return ResponseEntity.ok(ApiResponse.success(game, "Game retrieved successfully"));
     }
 
+    @GetMapping("/{id}/entitlement")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get game entitlement and update state",
+            description = "Checks ownership and compares the current version with the buyer's last downloaded version.")
+    public ResponseEntity<ApiResponse<com.godotlaunch.backend.dto.response.GameEntitlementResponse>> getEntitlement(
+            @PathVariable UUID id,
+            Principal principal) {
+        var entitlement = gameService.getEntitlement(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(entitlement, "Game entitlement retrieved successfully"));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('DEVELOPER')")
     @Operation(summary = "Update game information", description = "Updates metadata parameters for a game submission draft.")

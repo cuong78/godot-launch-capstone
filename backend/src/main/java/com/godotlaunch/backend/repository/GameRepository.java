@@ -9,12 +9,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface GameRepository extends JpaRepository<Game, UUID> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT g FROM Game g WHERE g.id = :gameId")
+    Optional<Game> findByIdForUpdate(@Param("gameId") UUID gameId);
+
     @EntityGraph(attributePaths = {"creator", "category", "tags"})
     @Query("SELECT DISTINCT g FROM Game g WHERE g.id = :gameId")
     Optional<Game> findForAiReviewById(@Param("gameId") UUID gameId);

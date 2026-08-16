@@ -6,8 +6,12 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -35,6 +39,13 @@ public class Notification {
 
     @Column(name = "target_id", length = 255)
     private String targetId;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> metadata = new HashMap<>();
+
+    @Column(name = "event_key", length = 255)
+    private String eventKey;
 
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;

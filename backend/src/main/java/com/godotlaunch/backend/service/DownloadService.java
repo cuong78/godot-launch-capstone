@@ -6,6 +6,14 @@ import java.util.UUID;
 public interface DownloadService {
     DownloadResource downloadPurchase(UUID purchaseId, String requesterEmail, String ipAddress, String userAgent);
 
-    record DownloadResource(InputStream inputStream, String fileName) {
+    record DownloadResource(
+            InputStream inputStream,
+            String fileName,
+            UUID gameVersionId,
+            String gameVersionNumber
+    ) {
+        public DownloadResource(InputStream inputStream, String fileName) {
+            this(inputStream, fileName, null, null);
+        }
     }
 }

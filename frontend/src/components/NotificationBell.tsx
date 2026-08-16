@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Bell, Check, ShieldAlert, ShoppingBag, DollarSign, Wallet, CreditCard, 
-  Star, FileWarning, CheckCircle2, Gamepad2 
+  Star, FileWarning, CheckCircle2, Gamepad2, Download
 } from 'lucide-react';
 import { useWebSocket } from '../context/WebSocketContext';
 import { NotificationResponse } from '../types';
@@ -65,15 +65,23 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const handleNotificationClick = async (notif: NotificationResponse) => {
+  const handleNotificationClick = (notif: NotificationResponse) => {
     setIsOpen(false);
-    
-    // 1. Mark as read on backend
-    if (!notif.isRead) {
-      await markNotificationAsRead(notif.id);
+
+    // Navigation must not wait for the read-state request.
+    if (notif.type === 'GAME_VERSION_RELEASED' && notif.targetId) {
+      const versionId = notif.metadata?.gameVersionId;
+      const query = versionId ? `?update=${encodeURIComponent(versionId)}` : '';
+      window.history.pushState(null, '', `/games/${notif.targetId}${query}`);
+      setSelectedAssetId(notif.targetId);
+      setCurrentScreen('detail');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (!notif.isRead) {
+        void markNotificationAsRead(notif.id);
+      }
+      return;
     }
-    
-    // 2. Perform intelligent redirect navigation
+
     if (notif.targetId) {
       switch (notif.type) {
         case 'NEW_SALE':
@@ -119,6 +127,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    if (!notif.isRead) {
+      void markNotificationAsRead(notif.id);
+    }
   };
 
   const getIcon = (type: string) => {
@@ -143,6 +154,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         return <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />;
       case 'NEW_SUBMISSION':
         return <Gamepad2 className="w-3.5 h-3.5 text-sky-400" />;
+      case 'GAME_VERSION_RELEASED':
+        return <Download className="w-3.5 h-3.5 text-sky-400" />;
       default:
         return <Bell className="w-3.5 h-3.5 text-slate-400" />;
     }

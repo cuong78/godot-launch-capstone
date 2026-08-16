@@ -3,6 +3,7 @@ package com.godotlaunch.backend.service;
 import com.godotlaunch.backend.dto.request.CreateGameRequest;
 import com.godotlaunch.backend.dto.request.UpdateGameRequest;
 import com.godotlaunch.backend.dto.response.GameResponse;
+import com.godotlaunch.backend.dto.response.GameEntitlementResponse;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,6 +31,7 @@ public interface GameService {
     /** Username bot để frontend hiển thị hướng dẫn mời. */
     String getBotUsername();
     GameResponse getGameById(UUID gameId);
+    GameEntitlementResponse getEntitlement(UUID gameId, String requesterEmail);
     List<GameResponse> getAllGames();
     List<GameResponse> getAllGames(GameStatus status, String search);
     List<GameResponse> getGamesByStatus(GameStatus status);

@@ -94,6 +94,16 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 })
               );
             }
+            if (notif.type === 'GAME_VERSION_RELEASED') {
+              window.dispatchEvent(
+                new CustomEvent('godotlaunch:game-version-released', {
+                  detail: {
+                    gameId: notif.targetId,
+                    gameVersionId: notif.metadata?.gameVersionId,
+                  },
+                })
+              );
+            }
           } else {
             fetchNotifications();
           }

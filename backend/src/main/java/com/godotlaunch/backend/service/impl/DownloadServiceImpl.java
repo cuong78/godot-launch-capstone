@@ -9,20 +9,20 @@ import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.GameVersion;
 import com.godotlaunch.backend.repository.GameVersionRepository;
 import com.godotlaunch.backend.repository.OrderRepository;
-import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.DownloadService;
 import com.godotlaunch.backend.service.SeaweedFsService;
 import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.io.InputStream;
 import java.text.Normalizer;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -30,9 +30,9 @@ public class DownloadServiceImpl implements DownloadService {
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
-    private final SourceSnapshotRepository sourceSnapshotRepository;
     private final GameVersionRepository gameVersionRepository;
     private final SeaweedFsService seaweedFsService;
+    private final MeterRegistry meterRegistry;
 
     @Override
     @Transactional
@@ -49,6 +49,7 @@ public class DownloadServiceImpl implements DownloadService {
 
         String downloadUrl = null;
         String title = null;
+        GameVersion servedGameVersion = null;
 
         if (order.getAsset() != null) {
             Asset item = order.getAsset();
@@ -56,16 +57,18 @@ public class DownloadServiceImpl implements DownloadService {
             title = item.getTitle();
         } else if (order.getGame() != null) {
             Game game = order.getGame();
-            GameVersion currentVer = gameVersionRepository.findByGame_IdAndIsCurrentTrue(game.getId())
-                    .orElseThrow(() -> new AppException(ErrorCode.FILE_NOT_FOUND));
-            downloadUrl = currentVer.getFileUrl();
+            servedGameVersion = gameVersionRepository.findByGame_IdAndIsCurrentTrue(game.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.GAME_VERSION_NOT_FOUND));
+            downloadUrl = servedGameVersion.getFileUrl();
             title = game.getTitle();
         } else {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
         if (!StringUtils.hasText(downloadUrl) || "pending".equalsIgnoreCase(downloadUrl)) {
-            throw new AppException(ErrorCode.FILE_NOT_FOUND);
+            throw new AppException(servedGameVersion != null
+                    ? ErrorCode.GAME_PACKAGE_UNAVAILABLE
+                    : ErrorCode.FILE_NOT_FOUND);
         }
 
         String objectKey = seaweedFsService.extractObjectKey(downloadUrl);
@@ -73,12 +76,39 @@ public class DownloadServiceImpl implements DownloadService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        InputStream inputStream = seaweedFsService.getObjectStream(objectKey);
+        InputStream inputStream;
+        try {
+            inputStream = seaweedFsService.getObjectStream(objectKey);
+        } catch (RuntimeException exception) {
+            if (servedGameVersion != null) {
+                meterRegistry.counter(
+                        "game_update_download_failures_total",
+                        "reason", "storage_open_failed"
+                ).increment();
+            }
+            throw exception;
+        }
 
-        return new DownloadResource(inputStream, buildDownloadFileName(title));
+        if (servedGameVersion != null) {
+            order.setLastDownloadedGameVersion(servedGameVersion);
+            order.setLastDownloadedAt(Instant.now());
+            orderRepository.save(order);
+            meterRegistry.counter(
+                    "game_update_downloads_total",
+                    "gameId", order.getGame().getId().toString(),
+                    "version", servedGameVersion.getVersionNumber()
+            ).increment();
+        }
+
+        return new DownloadResource(
+                inputStream,
+                buildDownloadFileName(title, servedGameVersion != null ? servedGameVersion.getVersionNumber() : null),
+                servedGameVersion != null ? servedGameVersion.getId() : null,
+                servedGameVersion != null ? servedGameVersion.getVersionNumber() : null
+        );
     }
 
-    private String buildDownloadFileName(String title) {
+    private String buildDownloadFileName(String title, String versionNumber) {
         String normalizedTitle = StringUtils.hasText(title) ? title.trim() : "source-code";
         String asciiTitle = Normalizer.normalize(normalizedTitle, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
@@ -90,6 +120,9 @@ public class DownloadServiceImpl implements DownloadService {
             asciiTitle = "source-code";
         }
 
-        return asciiTitle + ".zip";
+        String versionSuffix = StringUtils.hasText(versionNumber)
+                ? "-v" + versionNumber.replaceAll("[^a-zA-Z0-9._-]", "-")
+                : "";
+        return asciiTitle + versionSuffix + ".zip";
     }
 }
