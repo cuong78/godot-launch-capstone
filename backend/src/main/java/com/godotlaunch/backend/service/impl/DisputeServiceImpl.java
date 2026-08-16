@@ -232,7 +232,7 @@ public class DisputeServiceImpl implements DisputeService {
 
                 BigDecimal platformAdvanceForD = reporterCompensation.subtract(sellerDebitForD);
                 if (platformAdvanceForD.compareTo(BigDecimal.ZERO) > 0) {
-                    WalletBalancePolicy.debitSellerRefund(lockedPlatform, platformAdvanceForD);
+                    WalletBalancePolicy.debitPlatformAdvance(lockedPlatform, platformAdvanceForD);
                 }
 
                 WalletBalancePolicy.creditRestricted(lockedReporter, reporterCompensation);
@@ -449,7 +449,7 @@ public class DisputeServiceImpl implements DisputeService {
 
                 BigDecimal platformDebit = price.subtract(sellerDebit);
                 if (platformDebit.compareTo(BigDecimal.ZERO) > 0) {
-                    WalletBalancePolicy.debitSellerRefund(lockedPlatform, platformDebit);
+                    WalletBalancePolicy.debitPlatformAdvance(lockedPlatform, platformDebit);
                 }
 
                 WalletBalancePolicy.creditRestricted(lockedBuyer, price);

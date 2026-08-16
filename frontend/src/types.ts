@@ -84,6 +84,8 @@ export interface WalletResponse {
   id: string;
   userId: string;
   balance: number;
+  /** > 0 khi ví đang có công nợ ứng trước (ví platform khi seller chưa trả nợ dispute) */
+  outstandingDebt?: number;
   currency: string;
   updatedAt?: string | null;
 }
@@ -556,6 +558,9 @@ export interface ContractResponse {
   buyerSignatureBase64?: string;
   rejectionReason?: string;
   createdAt?: string;
+  updatedAt?: string;
+  /** JSON snapshot bản chào trước (contractType, revenueSplit, lumpSumAmount, capturedAt) — undefined nếu chưa từng bị sửa lại */
+  previousOfferSnapshot?: string;
 }
 
 export interface CreateMarketplaceItemRequest {

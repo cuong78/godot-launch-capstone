@@ -11,14 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 
@@ -46,14 +43,5 @@ public class WalletController {
     public ResponseEntity<ApiResponse<Page<TransactionResponse>>> getMyTransactionHistory(Principal principal, Pageable pageable) {
         Page<TransactionResponse> response = walletService.getTransactionHistory(principal.getName(), pageable);
         return ResponseEntity.ok(ApiResponse.success(response, "Transaction history retrieved successfully."));
-    }
-
-    @PostMapping("/platform-topup-demo")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "[DEMO] Nạp tiền demo vào ví platform", description = "Chỉ hoạt động khi DEMO_MODE=true trong .env — dùng để chuẩn bị vốn trước khi demo trước hội đồng, tránh phải sửa DB tay. Không phải tiền thật.")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<ApiResponse<WalletResponse>> demoTopupPlatformWallet(@RequestParam BigDecimal amount) {
-        WalletResponse response = walletService.demoTopupPlatformWallet(amount);
-        return ResponseEntity.ok(ApiResponse.success(response, "Đã nạp tiền demo vào ví platform."));
     }
 }

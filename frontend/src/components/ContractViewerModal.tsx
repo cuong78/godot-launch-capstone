@@ -112,6 +112,30 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
       : t('contract.type.fullAcquisitionLong');
   };
 
+  const previousOffer = React.useMemo(() => {
+    if (!contract.previousOfferSnapshot) return null;
+    try {
+      return JSON.parse(contract.previousOfferSnapshot) as {
+        contractType?: 'full_acquisition' | 'co_publishing';
+        revenueSplit?: number | null;
+        lumpSumAmount?: string | null;
+      };
+    } catch {
+      return null;
+    }
+  }, [contract.previousOfferSnapshot]);
+
+  const offerChanged =
+    previousOffer !== null &&
+    (previousOffer.contractType !== contract.contractType ||
+      previousOffer.revenueSplit !== (contract.revenueSplit ?? null) ||
+      previousOffer.lumpSumAmount !== (contract.lumpSumAmount ?? null));
+
+  const previousOfferTypeLabel = (type?: string) =>
+    type === 'co_publishing'
+      ? t('contract.type.coPublishingShort')
+      : t('contract.type.fullAcquisitionShort');
+
   const buyerRepresentative =
     contract.buyerRepresentative || t('contract.platform.defaultRepresentative');
   const buyerPosition =
@@ -594,7 +618,47 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
 
           {/* Right Panel: Actions & Signing Flow */}
           <div className="contract-right-panel lg:col-span-5 space-y-5">
-            
+
+            {offerChanged && previousOffer && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl space-y-2.5 text-xs animate-fade-in">
+                <span className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide font-mono">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  {t('contract.offerUpdated.badge')}
+                </span>
+                <p className="text-slate-600 dark:text-slate-300 leading-normal">
+                  {t('contract.offerUpdated.description')}
+                </p>
+                <div className="bg-white/70 dark:bg-slate-950/40 rounded-xl border border-amber-500/15 p-3 space-y-1.5 font-mono">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 dark:text-slate-400">{t('contract.audit.typeLabel')}</span>
+                    <span className="text-right">
+                      <span className="line-through text-slate-400 dark:text-slate-500 mr-1.5">
+                        {previousOfferTypeLabel(previousOffer.contractType)}
+                      </span>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">
+                        {getContractTypeLabel('short')}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500 dark:text-slate-400">{t('contract.audit.financialLabel')}</span>
+                    <span className="text-right">
+                      <span className="line-through text-slate-400 dark:text-slate-500 mr-1.5">
+                        {previousOffer.contractType === 'co_publishing'
+                          ? t('contract.audit.financialRevenue', { percent: previousOffer.revenueSplit ?? 0 })
+                          : formatCurrencyValue(previousOffer.lumpSumAmount)}
+                      </span>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">
+                        {contract.contractType === 'co_publishing'
+                          ? t('contract.audit.financialRevenue', { percent: contract.revenueSplit ?? 0 })
+                          : formatCurrencyValue(contract.lumpSumAmount)}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="p-5 bg-slate-50/50 dark:bg-slate-900/30 backdrop-blur-sm border border-slate-200/60 dark:border-slate-800/80 rounded-2xl space-y-5 shadow-sm relative overflow-hidden">
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-amber-500/[0.02] dark:bg-amber-500/[0.01] rounded-full blur-3xl pointer-events-none" />
               

@@ -89,14 +89,5 @@ export const walletApi = {
   demoBackdateWithdrawal: async (id: string): Promise<ApiResponse<WithdrawalDetailResponse>> => {
     const response = await api.post<ApiResponse<WithdrawalDetailResponse>>(`/api/v1/admin/withdrawals/${id}/demo-backdate`);
     return response.data;
-  },
-
-  // CHỈ DÙNG CHO DEMO (backend chặn nếu DEMO_MODE != true): nạp thêm tiền
-  // vào ví platform để demo trước hội đồng, thay cho việc sửa DB thủ công.
-  demoTopupPlatformWallet: async (amount: number): Promise<ApiResponse<WalletResponse>> => {
-    const response = await api.post<ApiResponse<WalletResponse>>(
-      `/api/v1/wallets/platform-topup-demo?amount=${amount}`
-    );
-    return response.data;
   }
 };

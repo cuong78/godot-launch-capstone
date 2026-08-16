@@ -203,7 +203,8 @@
     "cards": {
       "platformLedger": {
         "title": "Platform Ledger",
-        "description": "Internal wallet used for marketplace commission visibility and admin finance operations."
+        "description": "Internal wallet used for marketplace commission visibility and admin finance operations.",
+        "outstandingDebt": "Currently advancing {{amount}} for copyright disputes — will auto-settle once the seller repays via PayOS."
       },
       "payoutBalance": {
         "title": "PayOS Payout Balance",
@@ -213,11 +214,6 @@
         "title": "Payout Account",
         "description": "Banking identity used when admin processes payout operations for developers."
       }
-    },
-    "demoTopup": {
-      "button": "Demo top-up +500,000 VND",
-      "confirm": "[DEMO] Top up {{amount}} into the platform wallet to prepare for a demo? This is not real money and only works when DEMO_MODE=true.",
-      "error": "Could not demo top-up. DEMO_MODE may not be enabled on the backend."
     },
     "ledger": {
       "title": "Platform Transaction Ledger",
@@ -521,6 +517,16 @@
     "financialTermsTitle": "Financial terms",
     "proposedPriceLabel": "Developer proposed price:",
     "freePrice": "Free",
+    "contractTypeLabel": "Contract type",
+    "contractTypeFullAcquisition": "Full Acquisition (lump sum)",
+    "contractTypeCoPublishing": "Co-Publishing (revenue share)",
+    "contractTypeHelper": "Admin can choose a different contract type than the developer's original selection if it fits better.",
+    "aiSuggestion": {
+      "button": "AI Suggestion",
+      "resultTitle": "AI Assistant suggestion",
+      "apply": "Apply this suggestion",
+      "error": "Could not get an AI suggestion right now."
+    },
     "revenueSplitLabel": "Developer revenue share (%)",
     "revenueSplitHelper": "Example: 70 means the developer receives 70% and the platform receives 30% of publishing revenue",
     "lumpSumLabel": "Full buyout amount (VND)",

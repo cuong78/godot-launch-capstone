@@ -18,8 +18,6 @@ import com.godotlaunch.backend.service.WalletService;
 import com.godotlaunch.backend.util.WalletBalancePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -27,7 +25,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,15 +35,11 @@ import java.util.stream.Collectors;
 public class WalletServiceImpl implements WalletService {
 
     private static final String DEFAULT_CURRENCY = "VND";
-    private static final String PLATFORM_ADMIN_EMAIL = "admin@godotlaunch.com";
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
-
-    @Value("${DEMO_MODE:false}")
-    private boolean demoMode;
 
     @Override
     @Transactional
@@ -159,43 +152,6 @@ public class WalletServiceImpl implements WalletService {
                 sellerId, amount, platformCommission, netAmount);
     }
 
-    @Override
-    @Transactional
-    public WalletResponse demoTopupPlatformWallet(BigDecimal amount) {
-        if (!demoMode) {
-            throw new AppException(ErrorCode.DEMO_MODE_DISABLED);
-        }
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be positive");
-        }
-
-        User platformAdmin = userRepository.findByEmail(PLATFORM_ADMIN_EMAIL)
-                .orElseGet(() -> userRepository.findAdminsOrderByCreatedAtAsc(PageRequest.of(0, 1)).stream()
-                        .findFirst()
-                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
-
-        Wallet wallet = walletRepository.findByUserIdWithLock(platformAdmin.getId())
-                .orElseGet(() -> {
-                    getOrCreateWallet(platformAdmin);
-                    return walletRepository.findByUserIdWithLock(platformAdmin.getId())
-                            .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
-                });
-
-        WalletBalancePolicy.creditSalesRevenue(wallet, amount);
-        walletRepository.save(wallet);
-
-        Transaction txn = new Transaction();
-        txn.setWallet(wallet);
-        txn.setAmount(amount);
-        txn.setType(TxnType.wallet_topup);
-        txn.setReferenceId("DEMO_TOPUP:" + Instant.now().toEpochMilli());
-        txn.setDescription("Demo top-up ví platform (DEMO_MODE) — không phải tiền thật.");
-        transactionRepository.save(txn);
-
-        log.info("Demo top-up platform wallet: amount={}", amount);
-        return mapToWalletResponse(wallet);
-    }
-
     private void validateRevenueAmounts(BigDecimal amount, BigDecimal platformCommission) {
         if (amount == null || platformCommission == null) {
             throw new IllegalArgumentException("Sale amount and commission are required");
@@ -209,10 +165,13 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private WalletResponse mapToWalletResponse(Wallet wallet) {
+        BigDecimal rawBalance = wallet.getBalance() != null ? wallet.getBalance() : BigDecimal.ZERO;
+        boolean inDebt = rawBalance.compareTo(BigDecimal.ZERO) < 0;
         return WalletResponse.builder()
                 .id(wallet.getId())
                 .userId(wallet.getUser().getId())
-                .balance(wallet.getBalance())
+                .balance(inDebt ? BigDecimal.ZERO : rawBalance)
+                .outstandingDebt(inDebt ? rawBalance.negate() : BigDecimal.ZERO)
                 .currency(wallet.getCurrency())
                 .updatedAt(wallet.getUpdatedAt())
                 .build();

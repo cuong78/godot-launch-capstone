@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.controller;
 
 import com.godotlaunch.backend.dto.request.ContractRequest;
+import com.godotlaunch.backend.dto.response.ContractAiSuggestionResponse;
 import com.godotlaunch.backend.dto.response.ContractResponse;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.entity.User;
@@ -40,6 +41,15 @@ public class ContractController {
         User admin = userRepository.findByEmail(authentication.getName()).orElseThrow();
         ContractResponse response = contractService.createOffer(request, admin.getId());
         return ResponseEntity.ok(ApiResponse.success(response, "Contract offer created successfully"));
+    }
+
+    @GetMapping("/ai-suggestion")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "AI gợi ý loại hợp đồng + giá/% phù hợp cho game (Admin only)")
+    public ResponseEntity<ApiResponse<ContractAiSuggestionResponse>> suggestContractTerms(
+            @RequestParam UUID gameId) {
+        ContractAiSuggestionResponse response = contractService.suggestContractTerms(gameId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Contract AI suggestion generated"));
     }
 
     @GetMapping("/my-contracts")

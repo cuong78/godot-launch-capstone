@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.service;
 
 import com.godotlaunch.backend.dto.request.ContractRequest;
+import com.godotlaunch.backend.dto.response.ContractAiSuggestionResponse;
 import com.godotlaunch.backend.dto.response.ContractResponse;
 
 import java.util.List;
@@ -14,5 +15,8 @@ public interface ContractService {
     ContractResponse signByDeveloper(UUID contractId, UUID developerId, String signatureBase64,
                                      String sellerRepresentative, String sellerAddress, String sellerTaxCode);
     ContractResponse rejectByDeveloper(UUID contractId, UUID developerId, String rejectionReason);
+
+    /** Trợ lý AI gợi ý loại hợp đồng + giá/% phù hợp cho game — chỉ tham khảo, admin luôn sửa được. */
+    ContractAiSuggestionResponse suggestContractTerms(UUID gameId);
 }
 

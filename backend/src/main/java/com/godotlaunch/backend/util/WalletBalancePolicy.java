@@ -101,6 +101,30 @@ public final class WalletBalancePolicy {
         validateInvariant(wallet);
     }
 
+    /**
+     * Ví PLATFORM ứng trước cho B/C/D trong dispute khi ví seller không đủ.
+     * KHÁC debitSellerRefund(): không giới hạn bởi balance hiện có — số dư ví
+     * platform được PHÉP âm, vì đây chỉ là bút toán ghi nợ nội bộ (không phải
+     * tiền mặt thật rời khỏi PayOS payout account). Số âm phản ánh đúng "tổng
+     * nợ các seller đang nợ platform", tự dương trở lại khi seller trả nợ qua
+     * PayOS (DisputeServiceImpl.processDisputeRepayment()). KHÔNG dùng hàm
+     * này cho ví người dùng thường (seller/buyer) — chỉ dành riêng cho ví
+     * platform admin.
+     */
+    public static void debitPlatformAdvance(Wallet wallet, BigDecimal amount) {
+        requirePositiveOrZero(amount);
+        BigDecimal currentWithdrawable = withdrawableBalance(wallet);
+        BigDecimal newBalance = balance(wallet).subtract(amount);
+        BigDecimal fromWithdrawable = amount.min(currentWithdrawable).max(ZERO);
+        BigDecimal newWithdrawable = newBalance.compareTo(ZERO) < 0
+                ? ZERO // balance âm = đang có công nợ, không có gì "rút được"
+                : currentWithdrawable.subtract(fromWithdrawable);
+
+        wallet.setBalance(newBalance);
+        wallet.setWithdrawableBalance(newWithdrawable);
+        validateInvariant(wallet);
+    }
+
     public static void validateInvariant(Wallet wallet) {
         requireWallet(wallet);
         BigDecimal currentBalance = balance(wallet);
@@ -108,9 +132,21 @@ public final class WalletBalancePolicy {
         wallet.setBalance(currentBalance);
         wallet.setWithdrawableBalance(currentWithdrawable);
 
-        if (currentBalance.compareTo(ZERO) < 0
-                || currentWithdrawable.compareTo(ZERO) < 0
-                || currentWithdrawable.compareTo(currentBalance) > 0) {
+        // balance < 0 chỉ hợp lệ cho ví PLATFORM đang có công nợ ứng trước
+        // (debitPlatformAdvance()) — khi đó withdrawable phải luôn = 0 (không
+        // có gì "rút được" từ một khoản nợ). Ví người dùng thường không bao
+        // giờ đi vào nhánh balance < 0 vì debitSellerRefund()/debitCompletedWithdrawal()
+        // đều tự chặn trước khi chạm tới đây.
+        if (currentWithdrawable.compareTo(ZERO) < 0) {
+            throw new IllegalStateException("Wallet balance source invariant violated");
+        }
+        if (currentBalance.compareTo(ZERO) < 0) {
+            if (currentWithdrawable.compareTo(ZERO) != 0) {
+                throw new IllegalStateException("Wallet balance source invariant violated");
+            }
+            return;
+        }
+        if (currentWithdrawable.compareTo(currentBalance) > 0) {
             throw new IllegalStateException("Wallet balance source invariant violated");
         }
     }
