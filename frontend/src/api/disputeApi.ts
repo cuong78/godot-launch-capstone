@@ -17,6 +17,8 @@ export interface DisputeResponse {
   status: string;
   resolutionNote: string | null;
   refundAmount: number | null;
+  sellerOutstandingDebt?: number | null;
+  suggestedRefundAmount?: number | null;
   refundDeadline: string | null;
   refundConfirmedAt: string | null;
   createdAt: string;
@@ -48,6 +50,14 @@ export const disputeApi = {
   },
   myReports: async (): Promise<ApiResponse<DisputeResponse[]>> => {
     const res = await api.get('/api/v1/disputes/my-reports');
+    return res.data;
+  },
+  getMyUnpaidDebt: async (): Promise<ApiResponse<DisputeResponse | null>> => {
+    const res = await api.get('/api/v1/disputes/my-unpaid-debt');
+    return res.data;
+  },
+  createDisputeRepayment: async (disputeId: string): Promise<ApiResponse<any>> => {
+    const res = await api.post(`/api/v1/payments/dispute-repayment/${disputeId}`);
     return res.data;
   },
   getAll: async (): Promise<ApiResponse<DisputeResponse[]>> => {

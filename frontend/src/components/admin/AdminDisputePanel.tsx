@@ -329,6 +329,12 @@ function ResolveModal({ dispute, onClose, onResolved }: {
     [t],
   );
 
+  const [refundAmountStr, setRefundAmountStr] = useState<string>(
+    dispute.suggestedRefundAmount !== undefined && dispute.suggestedRefundAmount !== null
+      ? String(dispute.suggestedRefundAmount)
+      : '0'
+  );
+
   const submit = async () => {
     setSubmitting(true);
     setError(null);
@@ -336,6 +342,7 @@ function ResolveModal({ dispute, onClose, onResolved }: {
       const res = await disputeApi.resolve(dispute.id, {
         resolution,
         resolutionNote: note.trim() || undefined,
+        refundAmount: resolution === 'resolved_seller_fault' ? Number(refundAmountStr) : undefined,
         banUser,
       });
       if (res.success) onResolved();
@@ -457,6 +464,31 @@ function ResolveModal({ dispute, onClose, onResolved }: {
                 })}
               </div>
             </div>
+
+            {/* Compensation Amount for D */}
+            {resolution === 'resolved_seller_fault' && (
+              <div className="space-y-2 p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-amber-500 dark:text-amber-400">Bồi thường cho Người tố cáo D (creditRestricted):</span>
+                  {dispute.suggestedRefundAmount !== undefined && (
+                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                      Gợi ý: <strong className="text-amber-500 dark:text-amber-400">{dispute.suggestedRefundAmount.toLocaleString('vi-VN')} VND</strong>
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    value={refundAmountStr}
+                    onChange={(e) => setRefundAmountStr(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-900 outline-none focus:border-amber-400 dark:border-slate-800 dark:bg-[#0e1525] dark:text-[#f4f7fb]"
+                    placeholder="Nhập số tiền bồi thường..."
+                  />
+                  <span className="text-xs font-bold text-slate-400">VND</span>
+                </div>
+              </div>
+            )}
 
 
 

@@ -37,17 +37,15 @@
    - Admin xem con số gợi ý, có thể sửa tay trước khi xác nhận resolve.
 4. **A phải "trả" cho cả B, C, D** — không chỉ B,C như thiết kế cũ. Khoản nợ
    A phải trả platform = tổng(hoàn B) + tổng(hoàn C) + bồi thường D.
-5. **Cơ chế xử lý khi ví A không đủ tiền lúc resolve:**
-   - Platform tự ứng trước phần thiếu cho B, C, D ngay lúc đó (bút toán nội
-     bộ, không phải tiền mặt thật — xem mục 1).
-   - Ghi nhận khoản A còn nợ platform + đặt hạn hoàn trả
-     (`refundDeadline = resolvedAt + platformSettingsService.getRefundDeadlineDays()`).
-   - A tự nạp tiền vào ví trong hạn → admin xác nhận (`confirmRefund`) →
-     **trừ ví A số tiền A còn nợ platform** (không phải cộng lại cho B,C,D vì
-     họ đã được cộng ngay từ bước resolve).
-   - Quá hạn mà A chưa trả đủ → scheduler tự động **ban A vĩnh viễn** (giữ
-     nguyên cơ chế `DisputeRefundEnforcementScheduler` đã có, chỉ đổi ý
-     nghĩa khoản nợ — xem mục 2).
+5. **Cơ chế xử lý khi ví A không đủ tiền lúc resolve & Luồng trả nợ PayOS tự động:**
+   - Platform tự ứng trước phần thiếu cho B, C, D ngay lúc đó (bút toán nội bộ, không phải tiền mặt thật — xem mục 1).
+   - Ghi nhận khoản A còn nợ platform (`sellerOutstandingDebt`) + đặt hạn hoàn trả (`refundDeadline = resolvedAt + platformSettingsService.getRefundDeadlineDays()`).
+   - **Luồng nạp nợ tự động PayOS của A (Chặn UI & Tự động cấn trừ):**
+     - Khi A đăng nhập/truy cập website, hệ thống chặn toàn bộ thao tác, hiển thị popup cố định thông báo khoản nợ từ Dispute + nút "Thanh toán ngay qua PayOS".
+     - Khi A kích thanh toán, chuyển hướng tới PayOS checkout đúng số tiền nợ.
+     - Khi A thanh toán thành công, hệ thống tự động nhận webhook/callback, tự động trừ nợ, chuyển tiền hoàn ứng vào ví PLATFORM, cập nhật `refundConfirmedAt`, mở khóa tài khoản A, đồng thời gửi thông báo cho Admin và A.
+     - Admin nhận thông báo và xác nhận/xem trạng thái đã thanh toán thành công trong Admin Panel.
+   - Quá hạn mà A chưa trả đủ → scheduler tự động **ban A vĩnh viễn** (`DisputeRefundEnforcementScheduler`).
 6. **Khoảng trống #2 — chọn hướng C**: khi B/C submit game mới có source
    trùng khớp cao với game từng bị kết luận `resolved_seller_fault`, hệ
    thống **chỉ gắn cờ ưu tiên cao cho admin review, KHÔNG tự động reject**
@@ -168,22 +166,19 @@ COMMENT ON COLUMN public.disputes.seller_outstanding_debt IS
 comment gốc trong `ResolveDisputeRequest.java:19`, chỉ khác là giờ P
 platform ứng trước NGAY thay vì đợi A nạp trước như comment cũ mô tả).
 
-### 1.4 Sửa `confirmRefund()` — đổi ý nghĩa: A trả NỢ platform, không phải trả D trực tiếp
+### 1.4 Luồng PayOS trả nợ tự động & `confirmRefund()` tự động / admin xác nhận
 
-Vì D đã nhận tiền ngay từ bước resolve (mục 1.2), `confirmRefund()`
-([DisputeServiceImpl.java:394-468](../backend/src/main/java/com/godotlaunch/backend/service/impl/DisputeServiceImpl.java#L394-L468))
-cần đổi từ "trừ ví A, cộng ví D" thành **"trừ ví A, cộng ví PLATFORM"**
-(hoàn trả khoản platform đã ứng trước):
-
-```java
-BigDecimal debt = dispute.getSellerOutstandingDebt();
-validateRefundAmount(debt);
-// ...debit ví A, credit ví PLATFORM (không phải ví reporter D nữa)...
-dispute.setSellerOutstandingDebt(BigDecimal.ZERO);
-dispute.setRefundConfirmedAt(Instant.now());
-```
-
-`unlockSellerRole()` giữ nguyên logic không đổi.
+Khi A thanh toán thành công qua PayOS (nhận webhook `DISPUTE_REPAYMENT` hoặc A confirm payment):
+1. **Hệ thống tự động thực hiện**:
+   - Trừ nợ `sellerOutstandingDebt` trên `Dispute` về 0.
+   - Chuyển tiền hoàn ứng từ khoản thanh toán vào ví PLATFORM.
+   - Cập nhật `dispute.setRefundConfirmedAt(Instant.now())`.
+   - Gọi `unlockSellerRole(seller)` giải phóng tài khoản A.
+   - Tạo thông báo gửi Admin: "Seller A đã thanh toán khoản nợ {amount} VND cho Dispute #{disputeCode} qua PayOS. Nợ đã được cấn trừ tự động."
+   - Tạo thông báo gửi Seller A: "Thanh toán khoản nợ Dispute #{disputeCode} thành công. Tài khoản của bạn đã được khôi phục."
+2. **Trạng thái trên Admin Panel**:
+   - Admin nhận thông báo và xem chi tiết dispute trên Admin Panel với trạng thái `Đã cấn trừ nợ tự động qua PayOS` (kèm thông tin mã giao dịch PayOS).
+   - Hàm `confirmRefund()` thủ công vẫn được giữ lại làm dự phòng cho Admin nếu cần can thiệp thủ công, nhưng luồng chính là tự động 100% sau khi PayOS báo thành công.
 
 ### 1.5 `DisputeRefundEnforcementScheduler` — giữ nguyên cơ chế, đổi ý nghĩa dữ liệu nguồn
 

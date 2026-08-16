@@ -48,6 +48,8 @@ import { useWebSocket } from './context/WebSocketContext';
 import { gameApi } from './api/gameApi';
 import { marketplaceApi } from './api/marketplaceApi';
 import { paymentApi } from './api/paymentApi';
+import { disputeApi, DisputeResponse } from './api/disputeApi';
+import { DisputeRepaymentModal } from './components/DisputeRepaymentModal';
 import { orderApi } from './api/orderApi';
 import { cartApi } from './api/cartApi';
 import { dispatchAdminNavigation } from './utils/adminNavigation';
@@ -248,6 +250,24 @@ export default function App() {
   );
   const { currentUser, logout } = useAuth();
   const { showToast } = useToast();
+  const [unpaidDisputeDebt, setUnpaidDisputeDebt] = useState<DisputeResponse | null>(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      disputeApi.getMyUnpaidDebt()
+        .then((res) => {
+          if (res.success && res.data) {
+            setUnpaidDisputeDebt(res.data);
+          } else {
+            setUnpaidDisputeDebt(null);
+          }
+        })
+        .catch(() => setUnpaidDisputeDebt(null));
+    } else {
+      setUnpaidDisputeDebt(null);
+    }
+  }, [currentUser]);
+
   const setCurrentUser = (user: User | null) => {
     if (user === null) {
       logout();
@@ -1611,6 +1631,11 @@ export default function App() {
 
       {/* FLOATING AI CHATBOT WIDGET */}
       <AiChatWidget />
+
+      {/* DISPUTE REPAYMENT OVERLAY MODAL */}
+      {unpaidDisputeDebt && (
+        <DisputeRepaymentModal dispute={unpaidDisputeDebt} />
+      )}
 
     </div>
   );

@@ -23,6 +23,8 @@ public class DisputeResponse {
     private String status;
     private String resolutionNote;
     private BigDecimal refundAmount;
+    private BigDecimal sellerOutstandingDebt;
+    private BigDecimal suggestedRefundAmount;
     private Instant refundDeadline;
     private Instant refundConfirmedAt;
     private Instant createdAt;

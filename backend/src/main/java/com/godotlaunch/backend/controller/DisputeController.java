@@ -42,6 +42,14 @@ public class DisputeController {
                 disputeService.getMyReportedDisputes(principal.getName()), "OK"));
     }
 
+    @GetMapping("/my-unpaid-debt")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Khoản nợ dispute chưa trả của tôi")
+    public ResponseEntity<ApiResponse<DisputeResponse>> myUnpaidDebt(Principal principal) {
+        return ResponseEntity.ok(ApiResponse.success(
+                disputeService.getMyUnpaidDisputeDebt(principal.getName()), "OK"));
+    }
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Toàn bộ disputes (admin)")

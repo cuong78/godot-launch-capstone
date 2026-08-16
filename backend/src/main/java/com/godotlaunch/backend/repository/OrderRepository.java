@@ -21,6 +21,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Optional<Order> findByBuyerIdAndGameId(UUID buyerId, UUID gameId);
 
     java.util.List<Order> findByGameIdAndPurchasedAtAfter(UUID gameId, java.time.Instant purchasedAt);
+    long countByGameId(UUID gameId);
 
     @Query(value = "SELECT DISTINCT o.buyer.id AS userId, o.buyer.email AS email, " +
             "o.buyer.preferredLanguage AS preferredLanguage " +

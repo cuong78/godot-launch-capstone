@@ -31,6 +31,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.List;
 import java.util.UUID;
 
+import com.godotlaunch.backend.entity.enums.DisputeStatus;
+import com.godotlaunch.backend.repository.DisputeRepository;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -47,6 +50,7 @@ public class PlagiarismServiceImpl implements PlagiarismService {
     private final NotificationService notificationService;
     private final SourceReviewStatusService sourceReviewStatusService;
     private final PlatformTransactionManager transactionManager;
+    private final DisputeRepository disputeRepository;
 
     @Value("${app.ai-review.plagiarism.review-threshold:0.70}")
     private float reviewThreshold;
@@ -154,7 +158,12 @@ public class PlagiarismServiceImpl implements PlagiarismService {
         flag.setModelVersion(current.getModelVersion());
         flag.setReviewThreshold(reviewThreshold);
         flag.setRejectThreshold(rejectThreshold);
-        flag.setSeverity(score >= rejectThreshold ? PlagiarismSeverity.reject : PlagiarismSeverity.review);
+        boolean matchedGameHasConfirmedDispute = disputeRepository
+                .existsByGameIdAndStatus(matched.getGame().getId(), DisputeStatus.resolved_seller_fault);
+
+        flag.setSeverity((score >= rejectThreshold || matchedGameHasConfirmedDispute)
+                ? PlagiarismSeverity.reject
+                : PlagiarismSeverity.review);
         plagiarismFlagRepository.save(flag);
 
         try {

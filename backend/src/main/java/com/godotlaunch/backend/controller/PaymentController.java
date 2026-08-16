@@ -51,6 +51,16 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success(payment, "Wallet top-up payment session created successfully"));
     }
 
+    @PostMapping("/dispute-repayment/{disputeId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Create a PayOS payment session to settle outstanding dispute debt")
+    public ResponseEntity<ApiResponse<PaymentResponse>> createDisputeRepayment(
+            @PathVariable UUID disputeId,
+            Principal principal) {
+        PaymentResponse payment = paymentService.createDisputeRepaymentPayment(disputeId, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(payment, "PayOS dispute repayment session created successfully"));
+    }
+
     @PostMapping("/{paymentId}/confirm")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'DEVELOPER', 'ADMIN')")
     @Operation(summary = "Refresh the current payment state from PayOS")

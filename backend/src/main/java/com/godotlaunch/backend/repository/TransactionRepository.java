@@ -77,4 +77,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     boolean existsByOrderId(UUID orderId);
     Optional<Transaction> findByPaymentId(UUID paymentId);
     boolean existsByWalletIdAndTypeAndReferenceId(UUID walletId, TxnType type, String referenceId);
+
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
+            "WHERE t.game.id = :gameId AND t.type = :type AND t.amount > 0")
+    BigDecimal sumGameRevenueByGameIdAndType(@Param("gameId") UUID gameId, @Param("type") TxnType type);
 }

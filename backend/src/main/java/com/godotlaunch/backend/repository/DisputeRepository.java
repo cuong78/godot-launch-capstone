@@ -26,6 +26,9 @@ public interface DisputeRepository extends JpaRepository<Dispute, UUID> {
     long countByReporterIdAndStatus(UUID reporterId, String status);
     List<Dispute> findAllByOrderByCreatedAtDesc();
     boolean existsByReportedSellerIdAndStatus(UUID reportedSellerId, DisputeStatus status);
+    boolean existsByGameIdAndStatus(UUID gameId, DisputeStatus status);
+    List<Dispute> findByReportedSellerIdAndStatusAndSellerOutstandingDebtGreaterThan(
+            UUID reportedSellerId, DisputeStatus status, java.math.BigDecimal minDebt);
     List<Dispute> findByStatusAndRefundConfirmedAtIsNullAndRefundDeadlineBefore(
             DisputeStatus status, Instant cutoff);
 }

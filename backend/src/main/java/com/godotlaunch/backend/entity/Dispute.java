@@ -56,6 +56,9 @@ public class Dispute {
     @Column(name = "refund_amount", precision = 15, scale = 2)
     private BigDecimal refundAmount;
 
+    @Column(name = "seller_outstanding_debt", precision = 15, scale = 2)
+    private BigDecimal sellerOutstandingDebt;
+
     @Column(name = "refund_deadline")
     private Instant refundDeadline;
 

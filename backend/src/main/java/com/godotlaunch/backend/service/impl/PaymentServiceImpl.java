@@ -57,6 +57,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.godotlaunch.backend.entity.Dispute;
+import com.godotlaunch.backend.repository.DisputeRepository;
+import com.godotlaunch.backend.service.DisputeService;
+import org.springframework.beans.factory.ObjectProvider;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -79,6 +84,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final EmailService emailService;
     private final NotificationService notificationService;
     private final GameRepository gameRepository;
+    private final DisputeRepository disputeRepository;
+    private final ObjectProvider<DisputeService> disputeServiceProvider;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
@@ -192,6 +199,72 @@ public class PaymentServiceImpl implements PaymentService {
                         .description(buildPaymentReference(payment.getId()))
                         .returnUrl(buildFrontendUrl("/payment/success?paymentId=" + payment.getId()))
                         .cancelUrl(buildFrontendUrl("/payment/cancelled?paymentId=" + payment.getId()))
+                        .expiredAt(Instant.now().plusSeconds(PAYMENT_LINK_EXPIRY_MINUTES * 60L).getEpochSecond())
+                        .build()
+        );
+
+        payment.setPaymentStatus(resolveCreatedPaymentStatus(gatewayResponse.getStatus()));
+        payment.setPayosOrderCode(gatewayResponse.getOrderCode());
+        payment.setPayosPaymentLinkId(gatewayResponse.getPaymentLinkId());
+        payment.setCheckoutUrl(gatewayResponse.getCheckoutUrl());
+
+        return mapToResponse(paymentRepository.save(payment), gatewayResponse);
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponse createDisputeRepaymentPayment(UUID disputeId, String sellerEmail) {
+        User seller = getUserByEmail(sellerEmail);
+        Dispute dispute = disputeRepository.findById(disputeId)
+                .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
+
+        if (!dispute.getReportedSeller().getId().equals(seller.getId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        BigDecimal debt = dispute.getSellerOutstandingDebt();
+        if (debt == null || debt.compareTo(BigDecimal.ZERO) <= 0 || dispute.getRefundConfirmedAt() != null) {
+            throw new AppException(ErrorCode.BAD_REQUEST);
+        }
+
+        Wallet sellerWallet = getOrCreateWallet(seller);
+        String repaymentRef = "DISPUTE_REPAYMENT:" + dispute.getId();
+
+        Payment payment = paymentRepository.findByWalletIdAndPaymentReferenceAndPaymentStatus(
+                sellerWallet.getId(), repaymentRef, PaymentStatus.PENDING).orElse(null);
+
+        if (payment == null) {
+            payment = new Payment();
+            payment.setWallet(sellerWallet);
+            payment.setPaymentStatus(PaymentStatus.PENDING);
+            payment.setAmount(debt);
+            payment.setCurrency(DEFAULT_CURRENCY);
+            payment.setPaymentReference(repaymentRef);
+            payment = paymentRepository.save(payment);
+        } else {
+            payment.setAmount(debt);
+        }
+
+        if (isActiveCheckout(payment) && payment.getPayosOrderCode() != null) {
+            Payment synced = syncPaymentFromGateway(payment);
+            if (synced.getPaymentStatus() == PaymentStatus.PAID) {
+                return mapToResponse(synced);
+            }
+            if (isActiveCheckout(synced)) {
+                return mapToResponse(synced);
+            }
+        }
+
+        PaymentGatewayCreateResponse gatewayResponse = paymentGateway.createPayment(
+                PaymentGatewayCreateRequest.builder()
+                        .orderCode(generatePayOSOrderCode())
+                        .amount(toPayOSAmount(payment.getAmount()))
+                        .buyerName(resolveBuyerName(seller))
+                        .buyerEmail(seller.getEmail())
+                        .itemName("Nợ dispute #" + dispute.getId())
+                        .description("Repay dispute debt #" + dispute.getId())
+                        .returnUrl(buildFrontendUrl("/dashboard?disputeRepayment=" + dispute.getId()))
+                        .cancelUrl(buildFrontendUrl("/dashboard?disputeRepayment=" + dispute.getId()))
                         .expiredAt(Instant.now().plusSeconds(PAYMENT_LINK_EXPIRY_MINUTES * 60L).getEpochSecond())
                         .build()
         );
@@ -593,6 +666,16 @@ public class PaymentServiceImpl implements PaymentService {
     private Payment completePaidPayment(Payment payment, Instant paidAt, String transactionReference) {
         String paymentReference = payment.getPaymentReference();
         User buyer = payment.getWallet().getUser();
+
+        if (paymentReference != null && paymentReference.startsWith("DISPUTE_REPAYMENT:")) {
+            UUID disputeId = UUID.fromString(paymentReference.substring("DISPUTE_REPAYMENT:".length()));
+            disputeServiceProvider.getObject().processDisputeRepayment(disputeId, payment.getAmount());
+            payment.setPaymentStatus(PaymentStatus.PAID);
+            payment.setPaidAt(paidAt);
+            payment.setPayosTransactionId(firstNonBlank(transactionReference, payment.getPayosTransactionId()));
+            return paymentRepository.save(payment);
+        }
+
         if (paymentReference != null && paymentReference.startsWith("BUY_ASSET:")) {
             UUID assetId = UUID.fromString(paymentReference.substring("BUY_ASSET:".length()));
             Asset item = assetRepository.findById(assetId)

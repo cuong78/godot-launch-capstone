@@ -11,6 +11,7 @@ import java.util.UUID;
 public interface PaymentService {
     PaymentResponse createPayOSPayment(CreatePaymentRequest request, String buyerEmail);
     PaymentResponse createTopUpPayment(CreateTopUpRequest request, String buyerEmail);
+    PaymentResponse createDisputeRepaymentPayment(UUID disputeId, String sellerEmail);
     PaymentResponse confirmPayment(UUID paymentId, String requesterEmail);
     PaymentResponse cancelPayment(UUID paymentId, String requesterEmail);
     PaymentResponse handleWebhook(Object payload);

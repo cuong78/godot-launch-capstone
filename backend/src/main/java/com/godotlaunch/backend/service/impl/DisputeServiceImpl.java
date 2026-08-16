@@ -26,6 +26,7 @@ import com.godotlaunch.backend.service.GitHubRepoService;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.DisputeRepository;
 import com.godotlaunch.backend.repository.GameRepository;
@@ -188,33 +189,130 @@ public class DisputeServiceImpl implements DisputeService {
                     lockSellerForRefund(dispute.getReportedSeller(), dispute);
                 }
 
-                // Tự động hoàn trả tiền tạm giữ (escrow/holding) trong vòng 5 ngày cho tất cả người mua game
-                BigDecimal totalRefunded = autoRefundRecentBuyers(dispute, admin);
-                dispute.setRefundAmount(totalRefunded);
-                dispute.setRefundConfirmedAt(Instant.now());
-                dispute.setRefundDeadline(null);
-                
+                // 1. Hoàn B,C (auto-refund buyer trong N ngày gần nhất — creditRestricted)
+                BigDecimal totalRefundedToBuyers = autoRefundRecentBuyers(dispute, admin);
+
+                // 2. Bồi thường D — lấy số admin đã xác nhận từ request (nếu null/âm thì 0)
+                BigDecimal reporterCompensation = request.getRefundAmount();
+                if (reporterCompensation == null || reporterCompensation.compareTo(BigDecimal.ZERO) < 0) {
+                    reporterCompensation = BigDecimal.ZERO;
+                }
+
+                // 3. Cộng NGAY cho D (creditRestricted) & ghi nhận nợ A với platform
+                User platformAdmin = getPlatformAdmin();
+                User seller = dispute.getReportedSeller();
+                User reporter = dispute.getReporter();
+
+                Map<UUID, Wallet> locked = lockWallets(reporter, seller, platformAdmin);
+                Wallet lockedReporter = locked.get(reporter.getId());
+                Wallet lockedSeller = locked.get(seller.getId());
+                Wallet lockedPlatform = locked.get(platformAdmin.getId());
+
+                BigDecimal sellerBalance = WalletBalancePolicy.balance(lockedSeller);
+                BigDecimal sellerDebitForD = reporterCompensation.min(sellerBalance);
+
+                if (sellerDebitForD.compareTo(BigDecimal.ZERO) > 0) {
+                    WalletBalancePolicy.debitSellerRefund(lockedSeller, sellerDebitForD);
+                }
+
+                BigDecimal platformAdvanceForD = reporterCompensation.subtract(sellerDebitForD);
+                if (platformAdvanceForD.compareTo(BigDecimal.ZERO) > 0) {
+                    WalletBalancePolicy.debitSellerRefund(lockedPlatform, platformAdvanceForD);
+                }
+
+                WalletBalancePolicy.creditRestricted(lockedReporter, reporterCompensation);
+
+                walletRepository.save(lockedReporter);
+                walletRepository.save(lockedSeller);
+                walletRepository.save(lockedPlatform);
+
+                String refId = "DISPUTE_COMPENSATION_D:" + dispute.getId();
+                if (sellerDebitForD.compareTo(BigDecimal.ZERO) > 0) {
+                    Transaction txnSeller = new Transaction();
+                    txnSeller.setWallet(lockedSeller);
+                    txnSeller.setRelatedUser(reporter);
+                    txnSeller.setGame(dispute.getGame());
+                    txnSeller.setAmount(sellerDebitForD.negate());
+                    txnSeller.setType(TxnType.refund);
+                    txnSeller.setReferenceId(refId);
+                    txnSeller.setDescription("Debit seller for copyright dispute compensation to reporter");
+                    transactionRepository.save(txnSeller);
+                }
+
+                if (platformAdvanceForD.compareTo(BigDecimal.ZERO) > 0) {
+                    Transaction txnPlatform = new Transaction();
+                    txnPlatform.setWallet(lockedPlatform);
+                    txnPlatform.setRelatedUser(reporter);
+                    txnPlatform.setGame(dispute.getGame());
+                    txnPlatform.setAmount(platformAdvanceForD.negate());
+                    txnPlatform.setType(TxnType.refund);
+                    txnPlatform.setReferenceId(refId);
+                    txnPlatform.setDescription("Platform advance for copyright dispute compensation to reporter");
+                    transactionRepository.save(txnPlatform);
+                }
+
+                Transaction txnReporter = new Transaction();
+                txnReporter.setWallet(lockedReporter);
+                txnReporter.setRelatedUser(seller);
+                txnReporter.setGame(dispute.getGame());
+                txnReporter.setAmount(reporterCompensation);
+                txnReporter.setType(TxnType.refund);
+                txnReporter.setReferenceId(refId);
+                txnReporter.setDescription("Receive copyright dispute compensation");
+                transactionRepository.save(txnReporter);
+
+                dispute.setRefundAmount(reporterCompensation);
+
+                // Calculate total debt owed by A to platform
+                BigDecimal totalRequired = totalRefundedToBuyers.add(reporterCompensation);
+                // Balance remaining in seller wallet vs total required
+                // Total seller debited = total required minus platform advance
+                // Platform advance for buyers = (totalRefundedToBuyers - sellerDebitForBuyers)
+                // Platform advance for D = platformAdvanceForD
+                // Therefore sellerOutstandingDebt = totalRequired - (seller balance debited during resolution)
+                // Let's compute debt: if seller balance was insufficient, seller outstanding debt > 0
+                BigDecimal totalSellerDebited = WalletBalancePolicy.balance(getOrCreateWallet(seller));
+                // Compute debt directly:
+                BigDecimal sellerOutstandingDebt = totalRequired.subtract(sellerBalance.subtract(WalletBalancePolicy.balance(lockedSeller)));
+                if (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) < 0) {
+                    sellerOutstandingDebt = BigDecimal.ZERO;
+                }
+
+                dispute.setSellerOutstandingDebt(sellerOutstandingDebt);
+
+                if (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) > 0) {
+                    dispute.setRefundDeadline(Instant.now().plus(
+                            platformSettingsService.getRefundDeadlineDays(), java.time.temporal.ChronoUnit.DAYS));
+                    dispute.setRefundConfirmedAt(null);
+                } else {
+                    dispute.setRefundDeadline(null);
+                    dispute.setRefundConfirmedAt(Instant.now());
+                }
+
                 // Notify seller (A)
                 notificationService.createAndSendNotification(
                         dispute.getReportedSeller(),
                         admin,
                         NotificationType.PLAGIARISM_ALERT,
-                        "Bạn bị kết luận vi phạm bản quyền cho game '" + dispute.getGame().getTitle() + "'. Hệ thống đã tự động hoàn trả toàn bộ số tiền mua game trong thời hạn 5 ngày qua về ví của người mua.",
+                        "Bạn bị kết luận vi phạm bản quyền cho game '" + dispute.getGame().getTitle() + "'. " +
+                        (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) > 0
+                                ? "Khoản nợ platform chưa trả là " + sellerOutstandingDebt + " VND. Vui lòng thanh toán qua PayOS trước hạn."
+                                : "Toàn bộ số tiền hoàn trả đã được khấu trừ thành công."),
                         dispute.getId().toString()
                 );
-                // Notify reporter (B)
+                // Notify reporter (D)
                 notificationService.createAndSendNotification(
                         dispute.getReporter(),
                         admin,
                         NotificationType.PLAGIARISM_ALERT,
-                        "Khiếu nại bản quyền của bạn cho game '" + dispute.getGame().getTitle() + "' đã được chấp nhận và giải quyết thành công.",
+                        "Khiếu nại bản quyền cho game '" + dispute.getGame().getTitle() + "' đã được chấp nhận. Khoản bồi thường " + reporterCompensation + " VND đã được cộng vào ví của bạn (creditRestricted).",
                         dispute.getId().toString()
                 );
 
                 safeNotify(dispute.getReportedSeller().getId(),
-                        "Bạn bị kết luận vi phạm bản quyền. Hệ thống đã tự động hoàn tiền tạm giữ của người mua.");
+                        "Bạn bị kết luận vi phạm bản quyền. Nợ platform: " + sellerOutstandingDebt + " VND.");
                 safeNotify(dispute.getReporter().getId(),
-                        "Khiếu nại của bạn được chấp nhận.");
+                        "Khiếu nại của bạn được chấp nhận. Bạn đã nhận " + reporterCompensation + " VND bồi thường.");
             }
             case "resolved_reporter_fault" -> {
                 // TH2: B vu cáo → khôi phục sản phẩm + đếm spam, ban nếu quá ngưỡng
@@ -379,7 +477,10 @@ public class DisputeServiceImpl implements DisputeService {
                         order.getBuyer(),
                         admin,
                         NotificationType.PLAGIARISM_ALERT,
-                        "Sản phẩm '" + dispute.getGame().getTitle() + "' đã bị gỡ bỏ do vi phạm bản quyền. Số tiền " + price + " VND đã được hoàn lại vào ví của bạn.",
+                        "Sản phẩm '" + dispute.getGame().getTitle() + "' đã bị gỡ bỏ do vi phạm bản quyền. " +
+                        "Số tiền " + price + " VND đã được hoàn lại vào ví của bạn. " +
+                        "Lưu ý: bạn không được phép tiếp tục sử dụng sản phẩm này cho mục đích thương mại " +
+                        "(đăng bán lại, tích hợp vào sản phẩm khác để kinh doanh) kể từ thời điểm này.",
                         dispute.getId().toString()
                 );
 
@@ -404,67 +505,133 @@ public class DisputeServiceImpl implements DisputeService {
         }
 
         User seller = dispute.getReportedSeller();
-        User reporter = dispute.getReporter();
-        BigDecimal refundAmount = dispute.getRefundAmount();
-        validateRefundAmount(refundAmount);
+        BigDecimal debt = dispute.getSellerOutstandingDebt() != null ? dispute.getSellerOutstandingDebt() : dispute.getRefundAmount();
+        if (debt == null) debt = BigDecimal.ZERO;
 
-        Map<UUID, Wallet> lockedWallets = lockWallets(seller, reporter);
-        Wallet sellerWallet = lockedWallets.get(seller.getId());
-        if (WalletBalancePolicy.balance(sellerWallet).compareTo(refundAmount) < 0) {
-            throw new AppException(ErrorCode.REFUND_AMOUNT_NOT_MET);
+        if (debt.compareTo(BigDecimal.ZERO) > 0) {
+            User platformAdmin = getPlatformAdmin();
+            Map<UUID, Wallet> lockedWallets = lockWallets(seller, platformAdmin);
+            Wallet sellerWallet = lockedWallets.get(seller.getId());
+            if (WalletBalancePolicy.balance(sellerWallet).compareTo(debt) < 0) {
+                throw new AppException(ErrorCode.REFUND_AMOUNT_NOT_MET);
+            }
+
+            Wallet platformWallet = lockedWallets.get(platformAdmin.getId());
+
+            WalletBalancePolicy.debitSellerRefund(sellerWallet, debt);
+            walletRepository.save(sellerWallet);
+
+            WalletBalancePolicy.creditRestricted(platformWallet, debt);
+            walletRepository.save(platformWallet);
+
+            Transaction outgoing = new Transaction();
+            outgoing.setWallet(sellerWallet);
+            outgoing.setRelatedUser(platformAdmin);
+            outgoing.setGame(dispute.getGame());
+            outgoing.setAmount(debt.negate());
+            outgoing.setType(TxnType.refund);
+            outgoing.setReferenceId("DISPUTE_REFUND_SETTLEMENT:" + dispute.getId());
+            outgoing.setDescription("Trừ nợ hoàn trả platform cho tranh chấp bản quyền #" + dispute.getId());
+            transactionRepository.save(outgoing);
+
+            Transaction incoming = new Transaction();
+            incoming.setWallet(platformWallet);
+            incoming.setRelatedUser(seller);
+            incoming.setGame(dispute.getGame());
+            incoming.setAmount(debt);
+            incoming.setType(TxnType.refund);
+            incoming.setReferenceId("DISPUTE_REFUND_SETTLEMENT:" + dispute.getId());
+            incoming.setDescription("Thu nợ hoàn trả platform từ seller cho tranh chấp bản quyền #" + dispute.getId());
+            transactionRepository.save(incoming);
         }
 
-        Wallet reporterWallet = lockedWallets.get(reporter.getId());
-
-        WalletBalancePolicy.debitSellerRefund(sellerWallet, refundAmount);
-        walletRepository.save(sellerWallet);
-        // Incoming dispute money is restitution, not a new sale.
-        WalletBalancePolicy.creditRestricted(reporterWallet, refundAmount);
-        walletRepository.save(reporterWallet);
-
-        Transaction outgoing = new Transaction();
-        outgoing.setWallet(sellerWallet);
-        outgoing.setRelatedUser(reporter);
-        outgoing.setGame(dispute.getGame());
-        outgoing.setAmount(refundAmount.negate());
-        outgoing.setType(TxnType.refund);
-        outgoing.setReferenceId("DISPUTE_REFUND:" + dispute.getId());
-        outgoing.setDescription("Hoàn tiền tranh chấp bản quyền #" + dispute.getId());
-        transactionRepository.save(outgoing);
-
-        Transaction incoming = new Transaction();
-        incoming.setWallet(reporterWallet);
-        incoming.setRelatedUser(seller);
-        incoming.setGame(dispute.getGame());
-        incoming.setAmount(refundAmount);
-        incoming.setType(TxnType.refund);
-        incoming.setReferenceId("DISPUTE_REFUND:" + dispute.getId());
-        incoming.setDescription("Nhận hoàn tiền tranh chấp bản quyền #" + dispute.getId());
-        transactionRepository.save(incoming);
-
+        dispute.setSellerOutstandingDebt(BigDecimal.ZERO);
         dispute.setRefundConfirmedAt(Instant.now());
         Dispute saved = disputeRepository.save(dispute);
 
-        // Chỉ mở lại role nếu chính dispute này là lý do khóa (tránh mở nhầm khi
-        // seller còn đang bị khóa bởi 1 dispute khác — giới hạn: chỉ track được
-        // dispute gây khóa gần nhất do lockedForDispute là single FK).
         if (seller.getLockedForDispute() != null && dispute.getId().equals(seller.getLockedForDispute().getId())) {
             unlockSellerRole(seller);
         }
 
-        auditLogService.publishAuto(
-                AuditAction.dispute_refund_confirmed,
-                AuditTarget.user,
-                seller.getId(),
-                Map.of("refundConfirmedAt", "null"),
-                Map.of("refundConfirmedAt", saved.getRefundConfirmedAt().toString(), "refundAmount", refundAmount.toString()),
-                "Admin confirmed the seller refunded the disputed amount."
-        );
-
-        safeNotify(seller.getId(), "Admin đã xác nhận bạn hoàn tiền đầy đủ. Quyền developer đã được mở lại.");
-        safeNotify(reporter.getId(), "Bạn đã nhận được khoản hoàn tiền " + refundAmount + " từ tranh chấp bản quyền.");
+        safeNotify(seller.getId(), "Admin đã xác nhận bạn hoàn tiền nợ đầy đủ. Quyền developer đã được mở lại.");
 
         return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void processDisputeRepayment(UUID disputeId, BigDecimal paidAmount) {
+        Dispute dispute = disputeRepository.findByIdWithLock(disputeId)
+                .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
+
+        if (dispute.getRefundConfirmedAt() != null || dispute.getSellerOutstandingDebt() == null || dispute.getSellerOutstandingDebt().compareTo(BigDecimal.ZERO) <= 0) {
+            log.info("Dispute {} already confirmed or has no outstanding debt", disputeId);
+            return;
+        }
+
+        User seller = dispute.getReportedSeller();
+        User platformAdmin = getPlatformAdmin();
+
+        Map<UUID, Wallet> locked = lockWallets(seller, platformAdmin);
+        Wallet lockedPlatform = locked.get(platformAdmin.getId());
+
+        WalletBalancePolicy.creditRestricted(lockedPlatform, paidAmount);
+        walletRepository.save(lockedPlatform);
+
+        Transaction txnPlatform = new Transaction();
+        txnPlatform.setWallet(lockedPlatform);
+        txnPlatform.setRelatedUser(seller);
+        txnPlatform.setGame(dispute.getGame());
+        txnPlatform.setAmount(paidAmount);
+        txnPlatform.setType(TxnType.refund);
+        txnPlatform.setReferenceId("DISPUTE_REPAYMENT:" + dispute.getId());
+        txnPlatform.setDescription("Platform recovered advance payment from seller dispute repayment via PayOS");
+        transactionRepository.save(txnPlatform);
+
+        dispute.setSellerOutstandingDebt(BigDecimal.ZERO);
+        dispute.setRefundConfirmedAt(Instant.now());
+        disputeRepository.save(dispute);
+
+        if (seller.getLockedForDispute() != null && dispute.getId().equals(seller.getLockedForDispute().getId())) {
+            unlockSellerRole(seller);
+        }
+
+        // Notify Admin
+        notificationService.createAndSendNotification(
+                platformAdmin,
+                seller,
+                NotificationType.SECURITY_ALERT,
+                "Seller '" + seller.getFullName() + "' (" + seller.getEmail() + ") đã thanh toán thành công khoản nợ " + paidAmount + " VND cho Dispute #" + dispute.getId() + " qua PayOS. Hệ thống đã tự động cấn trừ nợ.",
+                dispute.getId().toString()
+        );
+
+        // Notify Seller
+        notificationService.createAndSendNotification(
+                seller,
+                platformAdmin,
+                NotificationType.SECURITY_ALERT,
+                "Bạn đã thanh toán thành công khoản nợ " + paidAmount + " VND cho Dispute #" + dispute.getId() + ". Tài khoản Developer của bạn đã được khôi phục.",
+                dispute.getId().toString()
+        );
+
+        safeNotify(seller.getId(), "Thanh toán nợ thành công qua PayOS. Tài khoản đã được khôi phục.");
+        safeNotify(platformAdmin.getId(), "Seller đã thanh toán nợ dispute qua PayOS.");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DisputeResponse getMyUnpaidDisputeDebt(String email) {
+        User seller = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        List<Dispute> unpaid = disputeRepository.findByReportedSellerIdAndStatusAndSellerOutstandingDebtGreaterThan(
+                seller.getId(), DisputeStatus.resolved_seller_fault, BigDecimal.ZERO);
+
+        return unpaid.stream()
+                .filter(d -> d.getRefundConfirmedAt() == null)
+                .findFirst()
+                .map(this::toResponse)
+                .orElse(null);
     }
 
     /**
@@ -818,6 +985,55 @@ public class DisputeServiceImpl implements DisputeService {
         log.info("[Dispute notify] user={} msg={}", userId, message);
     }
 
+    private static final String PLATFORM_ADMIN_EMAIL = "admin@godotlaunch.com";
+
+    private User getPlatformAdmin() {
+        return userRepository.findByEmail(PLATFORM_ADMIN_EMAIL)
+                .orElseGet(() -> userRepository.findAdminsOrderByCreatedAtAsc(PageRequest.of(0, 1)).stream()
+                        .findFirst()
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
+    }
+
+    private Wallet getOrCreateWallet(User user) {
+        return walletRepository.findByUserId(user.getId())
+                .orElseGet(() -> {
+                    User lockedUser = userRepository.findByIdWithLock(user.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                    return walletRepository.findByUserId(lockedUser.getId())
+                            .orElseGet(() -> {
+                                Wallet wallet = new Wallet();
+                                wallet.setUser(lockedUser);
+                                wallet.setBalance(BigDecimal.ZERO);
+                                wallet.setWithdrawableBalance(BigDecimal.ZERO);
+                                wallet.setCurrency("VND");
+                                return walletRepository.save(wallet);
+                            });
+                });
+    }
+
+    private BigDecimal resolveMultiplier(long unitsSold) {
+        if (unitsSold <= 2) return new BigDecimal("2");
+        if (unitsSold <= 10) return new BigDecimal("3");
+        return new BigDecimal("5");
+    }
+
+    private BigDecimal calculateSuggestedRefundAmount(Dispute dispute) {
+        if (dispute.getGame() == null) return BigDecimal.ZERO;
+        BigDecimal listedPrice = dispute.getGame().getPriceProposed() != null ? dispute.getGame().getPriceProposed() : BigDecimal.ZERO;
+        long unitsSold = orderRepository.countByGameId(dispute.getGame().getId());
+        BigDecimal totalSellerRevenue = transactionRepository.sumGameRevenueByGameIdAndType(
+                dispute.getGame().getId(), TxnType.revenue_share);
+        if (totalSellerRevenue == null) totalSellerRevenue = BigDecimal.ZERO;
+
+        BigDecimal multiplier = resolveMultiplier(unitsSold);
+        BigDecimal calculated = listedPrice.multiply(multiplier);
+
+        if (totalSellerRevenue.compareTo(BigDecimal.ZERO) > 0) {
+            return calculated.min(totalSellerRevenue);
+        }
+        return calculated;
+    }
+
     private DisputeResponse toResponse(Dispute d) {
         return DisputeResponse.builder()
                 .id(d.getId())
@@ -833,6 +1049,8 @@ public class DisputeServiceImpl implements DisputeService {
                 .status(d.getStatus() != null ? d.getStatus().name() : null)
                 .resolutionNote(d.getResolutionNote())
                 .refundAmount(d.getRefundAmount())
+                .sellerOutstandingDebt(d.getSellerOutstandingDebt())
+                .suggestedRefundAmount(calculateSuggestedRefundAmount(d))
                 .refundDeadline(d.getRefundDeadline())
                 .refundConfirmedAt(d.getRefundConfirmedAt())
                 .createdAt(d.getCreatedAt())

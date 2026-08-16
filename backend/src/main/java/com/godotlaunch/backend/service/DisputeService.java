@@ -26,4 +26,10 @@ public interface DisputeService {
 
     /** AI phân tích chi tiết đơn khiếu nại bản quyền và đưa ra gợi ý phán quyết cho Admin. */
     String getAiAnalysis(UUID disputeId);
+
+    /** Tự động xử lý cấn trừ nợ khi seller A hoàn tất thanh toán PayOS. */
+    void processDisputeRepayment(UUID disputeId, java.math.BigDecimal paidAmount);
+
+    /** Lấy thông tin khoản nợ dispute chưa thanh toán của seller đang đăng nhập (nếu có). */
+    DisputeResponse getMyUnpaidDisputeDebt(String email);
 }
