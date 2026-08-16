@@ -31,6 +31,14 @@ interface Props {
   itemId?: string;
 }
 
+function formatReviewText(text?: string): string {
+  if (!text) return "";
+  return text
+    .replace(/(?<!\n)\s+(\(?\d+[\.\)]\s+)/g, "\n$1")
+    .replace(/(?<!\n)\s+(\-\s+)/g, "\n$1")
+    .trim();
+}
+
 /**
  * Card hiển thị AI review report (ĐỀ XUẤT). Admin xem điểm + flags + bằng chứng,
  * rồi tự quyết định duyệt/từ chối — AI KHÔNG phán quyết.
@@ -319,7 +327,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
                         })}
                       </span>
                     )}
-                    <p className="opacity-90 break-words">{f.detail}</p>
+                    <p className="opacity-90 break-words whitespace-pre-line">{formatReviewText(f.detail)}</p>
                   </div>
                 </div>
               ))}
@@ -335,11 +343,11 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
             const summary = (report.rawOutput as any)?.code?.deepseek?.summary;
             if (summary) {
               return (
-                <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-slate-200/60 dark:border-slate-800/60">
+                <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-950/30 p-2 rounded border border-slate-200/60 dark:border-slate-800/60 whitespace-pre-line">
                   <span className="font-bold">
                     {t("aiReviewCard.summaryLabel")}{" "}
                   </span>
-                  {summary}
+                  {formatReviewText(summary)}
                 </div>
               );
             }

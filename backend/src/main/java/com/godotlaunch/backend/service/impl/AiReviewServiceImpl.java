@@ -116,18 +116,57 @@ public class AiReviewServiceImpl implements AiReviewService {
             List<String> tags = game.getTags() == null ? List.of() :
                     game.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList();
 
+            String currentTitle = (snapshot.getPendingTitle() != null && !snapshot.getPendingTitle().isBlank())
+                    ? snapshot.getPendingTitle() : game.getTitle();
+            String currentDescription = (snapshot.getPendingDescription() != null && !snapshot.getPendingDescription().isBlank())
+                    ? snapshot.getPendingDescription() : game.getDescription();
+            List<String> currentTags = parsePendingTags(snapshot.getPendingTags(), tags);
+
             SourceSnapshot previousSnapshot = sourceSnapshotRepository
                     .findFirstByGameIdAndIdNotOrderByCreatedAtDesc(gameId, snapshotId)
                     .orElse(null);
-            boolean isUpdate = previousSnapshot != null;
+            boolean hasPendingChanges = (snapshot.getPendingTitle() != null && !snapshot.getPendingTitle().isBlank() && !snapshot.getPendingTitle().equals(game.getTitle()))
+                    || (snapshot.getPendingDescription() != null && !snapshot.getPendingDescription().isBlank() && !snapshot.getPendingDescription().equals(game.getDescription()))
+                    || (snapshot.getPendingTags() != null && !snapshot.getPendingTags().isBlank());
+            boolean isUpdate = previousSnapshot != null || hasPendingChanges;
             String oldBundleUrl = previousSnapshot != null ? previousSnapshot.getBundleUrl() : null;
+
+            String oldTitle = null;
+            String oldDescription = null;
+            List<String> oldTags = null;
+
+            if (isUpdate) {
+                if (snapshot.getPendingTitle() != null && !snapshot.getPendingTitle().isBlank() && !snapshot.getPendingTitle().equals(game.getTitle())) {
+                    oldTitle = game.getTitle();
+                } else if (previousSnapshot != null && previousSnapshot.getPendingTitle() != null && !previousSnapshot.getPendingTitle().isBlank()) {
+                    oldTitle = previousSnapshot.getPendingTitle();
+                } else {
+                    oldTitle = game.getTitle();
+                }
+
+                if (snapshot.getPendingDescription() != null && !snapshot.getPendingDescription().isBlank() && !snapshot.getPendingDescription().equals(game.getDescription())) {
+                    oldDescription = game.getDescription();
+                } else if (previousSnapshot != null && previousSnapshot.getPendingDescription() != null && !previousSnapshot.getPendingDescription().isBlank()) {
+                    oldDescription = previousSnapshot.getPendingDescription();
+                } else {
+                    oldDescription = game.getDescription();
+                }
+
+                if (snapshot.getPendingTags() != null && !snapshot.getPendingTags().isBlank()) {
+                    oldTags = tags;
+                } else if (previousSnapshot != null) {
+                    oldTags = parsePendingTags(previousSnapshot.getPendingTags(), tags);
+                } else {
+                    oldTags = tags;
+                }
+            }
 
             AiReviewResult result = aiReviewClient.review(
                     "code", snapshot.getId(), snapshot.getBundleUrl(), snapshot.getBundleHash(),
                     snapshot.getCommitSha(),
-                    game.getTitle(), game.getDescription(), category,
-                    videoUrl, screenshots, tags,
-                    isUpdate, oldBundleUrl, game.getTitle(), game.getDescription(), tags);
+                    currentTitle, currentDescription, category,
+                    videoUrl, screenshots, currentTags,
+                    isUpdate, oldBundleUrl, oldTitle, oldDescription, oldTags);
 
             if (result == null) {
                 throw new IllegalStateException("AI review service returned no result");
@@ -278,6 +317,17 @@ public class AiReviewServiceImpl implements AiReviewService {
             return obj == null ? null : objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    private List<String> parsePendingTags(String pendingTagsJson, List<String> fallback) {
+        if (pendingTagsJson == null || pendingTagsJson.isBlank()) {
+            return fallback;
+        }
+        try {
+            return objectMapper.readValue(pendingTagsJson, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return fallback;
         }
     }
 

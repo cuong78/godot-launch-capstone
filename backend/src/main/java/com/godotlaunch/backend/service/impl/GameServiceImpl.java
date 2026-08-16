@@ -576,13 +576,31 @@ public class GameServiceImpl implements GameService {
                 "Game '" + game.getTitle() + "' update draft/info updated by creator."
         );
 
+        // Tự động chạy lại AI review cho bản cập nhật
+        try {
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                        new org.springframework.transaction.support.TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                aiReviewService.reviewGameAsync(gameId);
+                            }
+                        }
+                );
+            } else {
+                aiReviewService.reviewGameAsync(gameId);
+            }
+        } catch (Exception ex) {
+            log.warn("Lỗi trigger AI review khi cập nhật game {}: {}", gameId, ex.getMessage());
+        }
+
         return mapToResponse(game);
     }
 
     private SourceSnapshot getOrCreatePendingSnapshot(Game game) {
         SourceSnapshot snap = game.getPendingUpdateSnapshot();
+        SourceSnapshot latest = sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(game.getId()).orElse(null);
         if (snap == null) {
-            SourceSnapshot latest = sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(game.getId()).orElse(null);
             snap = new SourceSnapshot();
             snap.setGame(game);
             if (latest != null) {
@@ -593,6 +611,11 @@ public class GameServiceImpl implements GameService {
             snap = sourceSnapshotRepository.save(snap);
             game.setPendingUpdateSnapshot(snap);
             gameRepository.save(game);
+        } else if ((snap.getBundleUrl() == null || snap.getBundleUrl().isBlank()) && latest != null && latest != snap && latest.getBundleUrl() != null) {
+            snap.setBundleUrl(latest.getBundleUrl());
+            snap.setBundleHash(latest.getBundleHash());
+            snap.setCommitSha(latest.getCommitSha());
+            snap = sourceSnapshotRepository.save(snap);
         }
         return snap;
     }

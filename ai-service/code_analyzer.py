@@ -239,7 +239,12 @@ def _pick_sample_files(root: Path) -> list[tuple[str, str]]:
 def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
                    is_update: bool = False, old_title: str = "",
                    old_description: str = "", diff_stats: dict | None = None) -> dict:
-    if not DEEPSEEK_API_KEY:
+    api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
+    base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
+    model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    timeout = int(os.getenv("DEEPSEEK_TIMEOUT_SEC", "60"))
+
+    if not api_key:
         return {"skipped": True, "reason": "DEEPSEEK_API_KEY chưa cấu hình",
                 "codeQualityScore": None, "descriptionMatchScore": None,
                 "completeness": None, "issues": [], "summary": ""}
@@ -271,8 +276,10 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
         "được đánh giá trên tiêu chí nào (cấu trúc thư mục, đặt tên, tổ chức mã nguồn, code smell, comment, độ hoàn thiện) và bị trừ điểm bởi những lỗi/vấn đề cụ thể gì.\n"
         "   - Phải có một mục issue loại 'description_match_analysis' giải thích rõ tại sao lại đạt điểm số `descriptionMatchScore` đó, "
         "mô tả của developer có phóng đại hay không đúng thực tế code không, có chứa ngôn từ nhạy cảm/bậy bạ hay không.\n"
-        "3. Nếu đây là bản cập nhật (isUpdate = True), hãy phân tích đặc biệt sự so sánh giữa bản cũ và mới: mã nguồn có cải thiện gì, "
-        "độ tương đồng có giữ đúng dự án không (tránh upload game khác hoàn toàn) và mô tả mới có hợp lý không.\n\n"
+        "   - Nếu đây là bản cập nhật (isUpdate = True), BẮT BUỘC phải có một mục issue loại 'version_update_analysis' so sánh chi tiết giữa bản cũ và mới: "
+        "mã nguồn có thay đổi/cải thiện/sửa lỗi gì so với bản cũ, tỷ lệ tương đồng code, độ trung thực khi cập nhật (có phải cùng dự án không hay upload game hoàn toàn khác) và so sánh tiêu đề/mô tả mới vs cũ.\n"
+        "3. QUAN TRỌNG VỀ ĐỊNH DẠNG TEXT: Trong tất cả các chuỗi `detail` và `summary`, khi liệt kê danh sách các mục/vấn đề (ví dụ 1), 2), 3)... hoặc (1), (2), (3)... hoặc các gạch đầu dòng), "
+        "BẮT BUỘC phải sử dụng ký tự xuống dòng '\\n' giữa từng mục rõ ràng, tuyệt đối KHÔNG viết liền thành một đoạn văn dính nhau từ trên xuống dưới.\n\n"
         "Trả về DUY NHẤT một JSON object, không markdown, không giải thích thêm.\n"
         "Schema:\n"
         "{\n"
@@ -281,18 +288,19 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
         "  \"completeness\": \"low|medium|high\",\n"
         "  \"issues\": [\n"
         "    {\n"
-        "      \"type\": \"code_quality_analysis\"|\"description_match_analysis\"|string,\n"
+        "      \"type\": \"code_quality_analysis\"|\"description_match_analysis\"|\"version_update_analysis\"|string,\n"
         "      \"severity\": \"low\"|\"medium\"|\"high\",\n"
-        "      \"detail\": string (giải thích rất chi tiết bằng tiếng Việt về tiêu chí đánh giá, lý do điểm số, các lỗi/vấn đề phát hiện)\n"
+        "      \"detail\": string (giải thích rất chi tiết bằng tiếng Việt về tiêu chí đánh giá, trình bày xuống dòng '\\n' từng mục 1), 2), 3)... rõ ràng)\n"
         "    }\n"
         "  ],\n"
-        "  \"summary\": string (tiếng Việt, tóm tắt nhận xét tổng quan chi tiết)\n"
+        "  \"summary\": string (tiếng Việt, tóm tắt nhận xét tổng quan chi tiết, xuống dòng giữa các ý)\n"
         "}"
     )
 
     user_prompt = (
-        f"TIÊU ĐỀ: {title}\n\n"
-        f"MÔ TẢ CỦA DEVELOPER:\n{description}\n\n"
+        f"ĐÂY CÓ PHẢI BẢN CẬP NHẬT (IS_UPDATE): {is_update}\n"
+        f"TIÊU ĐỀ HIỆN TẠI/MỚI: {title}\n\n"
+        f"MÔ TẢ HIỆN TẠI/MỚI CỦA DEVELOPER:\n{description}\n\n"
         f"THỐNG KÊ (rule-based):\n"
         f"- Là Godot project hợp lệ: {rule['isGodotProject']}\n"
         f"- Số file code: {rule['codeFileCount']}, tổng LOC: {rule['totalLoc']}\n"
@@ -301,16 +309,21 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
         f"FILE MẪU:\n{sample_block}"
     )
 
-    if is_update and diff_stats:
+    if is_update:
         user_prompt += (
             f"\n\nTHÔNG TIN SO SÁNH PHIÊN BẢN CỦA BẢN CẬP NHẬT (OLD VS NEW VERSION):\n"
-            f"- Tiêu đề cũ: {old_title}\n"
-            f"- Mô tả cũ: {old_description}\n"
-            f"- Thống kê Diff Source Bundle: Thêm {diff_stats.get('addedCount')} file, Sửa {diff_stats.get('modifiedCount')} file, Xóa {diff_stats.get('removedCount')} file.\n"
-            f"- Tỷ lệ tương đồng cấu trúc file: {int(diff_stats.get('fileStructureSimilarity', 1.0) * 100)}%\n"
-            f"- Mẫu file sửa đổi: {', '.join(diff_stats.get('sampleModified', []))}\n"
-            f"- Mẫu file thêm mới: {', '.join(diff_stats.get('sampleAdded', []))}\n"
+            f"- Tiêu đề cũ: {old_title if old_title else '(Không thay đổi / giống tiêu đề mới)'}\n"
+            f"- Mô tả cũ: {old_description if old_description else '(Không thay đổi / giống mô tả mới)'}\n"
         )
+        if diff_stats:
+            user_prompt += (
+                f"- Thống kê Diff Source Bundle: Thêm {diff_stats.get('addedCount')} file, Sửa {diff_stats.get('modifiedCount')} file, Xóa {diff_stats.get('removedCount')} file.\n"
+                f"- Tỷ lệ tương đồng cấu trúc file: {int(diff_stats.get('fileStructureSimilarity', 1.0) * 100)}%\n"
+                f"- Tự động phát hiện khác dự án completely: {diff_stats.get('isCompletelyDifferentProject')}\n"
+                f"- Mẫu file sửa đổi: {', '.join(diff_stats.get('sampleModified', []))}\n"
+                f"- Mẫu file thêm mới: {', '.join(diff_stats.get('sampleAdded', []))}\n"
+                f"- Mẫu file xóa: {', '.join(diff_stats.get('sampleRemoved', []))}\n"
+            )
 
     if git_info.get("commitMessage") or git_info.get("gitShow"):
         user_prompt += (
@@ -323,22 +336,22 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
 
     try:
         resp = requests.post(
-            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            f"{base_url}/chat/completions",
             headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": DEEPSEEK_MODEL,
+                "model": model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
                 "temperature": 0.2,
                 "response_format": {"type": "json_object"},
-                "max_tokens": 1200,
+                "max_tokens": 3500,
             },
-            timeout=DEEPSEEK_TIMEOUT,
+            timeout=timeout,
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"]
