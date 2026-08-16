@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PackageSearch } from 'lucide-react';
 
 import { Header } from './components/Header';
 import { AdminHeader } from './components/admin/AdminHeader';
@@ -407,9 +408,11 @@ export default function App() {
   const [selectedAuthor, setSelectedAuthor] = useState<UserSummary | null>(null);
   const [searchText, setSearchText] = useState<string>('');
   const [dashboardTab, setDashboardTab] = useState<any>(undefined);
+  const [dashboardGameId, setDashboardGameId] = useState<string | null>(null);
 
-  const handleNavigateToDashboardTab = useCallback((tab: any = 'sales') => {
+  const handleNavigateToDashboardTab = useCallback((tab: any = 'sales', gameId?: string) => {
     setDashboardTab(tab);
+    if (gameId) setDashboardGameId(gameId);
     setCurrentScreen('dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -1424,28 +1427,56 @@ export default function App() {
           </ProtectedRoute>
         )}
 
-        {displayScreen === 'detail' && focusedAsset && (
-          <DetailPage
-            focusedAsset={focusedAsset}
-            setCurrentScreen={setCurrentScreen}
-            selectedThumbIndex={selectedThumbIndex}
-            setSelectedThumbIndex={setSelectedThumbIndex}
-            activeDetailTab={activeDetailTab}
-            setActiveDetailTab={setActiveDetailTab}
-            handleAddToCart={handleAddToCart}
-            handleCheckout={handleCheckout}
-            handleBuyNow={handleBuyNow}
-            assets={assets}
-            handleViewAssetDetails={handleViewAssetDetails}
-            currentUser={currentUser}
-            showToast={showToast}
-            ownedProductIds={ownedProductIds}
-            creatorOwnedProductIds={creatorOwnedProductIds}
-            purchaseOrderPayments={purchaseOrderPayments}
-            handleCategoryClick={handleCategoryClick}
-            handleTagClick={handleTagClick}
-            handleAuthorClick={handleAuthorClick}
-          />
+        {displayScreen === 'detail' && (
+          focusedAsset ? (
+            <DetailPage
+              focusedAsset={focusedAsset}
+              setCurrentScreen={setCurrentScreen}
+              selectedThumbIndex={selectedThumbIndex}
+              setSelectedThumbIndex={setSelectedThumbIndex}
+              activeDetailTab={activeDetailTab}
+              setActiveDetailTab={setActiveDetailTab}
+              handleAddToCart={handleAddToCart}
+              handleCheckout={handleCheckout}
+              handleBuyNow={handleBuyNow}
+              assets={assets}
+              handleViewAssetDetails={handleViewAssetDetails}
+              currentUser={currentUser}
+              showToast={showToast}
+              ownedProductIds={ownedProductIds}
+              creatorOwnedProductIds={creatorOwnedProductIds}
+              purchaseOrderPayments={purchaseOrderPayments}
+              handleCategoryClick={handleCategoryClick}
+              handleTagClick={handleTagClick}
+              handleAuthorClick={handleAuthorClick}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center min-h-[450px] gap-4 text-center py-16">
+              <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800/60 text-amber-500">
+                <PackageSearch className="w-10 h-10" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                Sản phẩm chưa có sẵn trên Marketplace
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
+                Dự án game hoặc tài nguyên này chưa được phát hành công khai hoặc đang trong quá trình duyệt hợp đồng.
+              </p>
+              <div className="flex items-center gap-3 mt-2">
+                <button
+                  onClick={() => handleNavigateToDashboardTab('my-games')}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-md cursor-pointer"
+                >
+                  Đến trang quản lý game
+                </button>
+                <button
+                  onClick={() => setCurrentScreen('explore')}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-sm transition-all cursor-pointer"
+                >
+                  Về trang chủ
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {displayScreen === 'upload' && (
@@ -1473,6 +1504,8 @@ export default function App() {
               onCancelPayment={handleCancelPayment}
               setCurrentScreen={setCurrentScreen}
               initialTab={dashboardTab}
+              initialGameId={dashboardGameId}
+              onGameHighlightConsumed={() => setDashboardGameId(null)}
             />
           </ProtectedRoute>
         )}

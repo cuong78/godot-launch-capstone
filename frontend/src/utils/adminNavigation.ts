@@ -22,6 +22,10 @@ export type AdminNavigationTab =
 export interface AdminNavigationDetail {
   section: AdminNavigationSection;
   tab?: AdminNavigationTab;
+  /** Optional: ID of a specific entity to highlight/expand in the target section */
+  targetId?: string;
+  /** Optional: Entity type to clarify how targetId should be handled */
+  targetType?: 'game' | 'contract' | 'withdrawal' | 'dispute';
 }
 
 export const ADMIN_NAVIGATION_EVENT = "godotlaunch:admin-navigate";

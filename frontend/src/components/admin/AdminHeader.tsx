@@ -20,7 +20,7 @@ interface AdminHeaderProps {
   setSelectedAssetId?: (id: string) => void;
   setSelectedPost?: (post: any) => void;
   setSelectedAuthor?: (author: any) => void;
-  onNavigateToDashboardTab?: (tab: any) => void;
+  onNavigateToDashboardTab?: (tab: any, targetId?: string) => void;
 }
 
 export function AdminHeader({

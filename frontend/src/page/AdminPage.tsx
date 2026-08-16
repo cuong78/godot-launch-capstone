@@ -505,6 +505,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   );
   const [isOpenLightbox, setIsOpenLightbox] = useState<boolean>(false);
   const [playDemoGame, setPlayDemoGame] = useState<GameResponse | null>(null);
+  // ID to auto-highlight when navigating from a notification
+  const [notificationWithdrawalId, setNotificationWithdrawalId] = useState<string | null>(null);
+  const [notificationDisputeId, setNotificationDisputeId] = useState<string | null>(null);
 
   // Real Marketplace Moderation state
   const [allMarketplaceItems, setAllMarketplaceItems] = useState<
@@ -724,6 +727,38 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
 
     setActiveTab(detail.tab ?? ADMIN_DEFAULT_TAB_BY_SECTION[detail.section]);
+
+    if (!detail.targetId) return;
+
+    // Handle specific entity types
+    switch (detail.targetType) {
+      case 'game':
+        // NEW_SUBMISSION: navigate to moderation, expand the game row
+        setModerationSubTab("games");
+        setModerationStatusFilter("all");
+        setExpandedGameId(detail.targetId);
+        break;
+      case 'contract':
+        // SELLER_RESPONSE: navigate to moderation, find game by contractId
+        setModerationSubTab("games");
+        setModerationStatusFilter("all");
+        // Find game whose contractId matches
+        setExpandedGameId((prev) => {
+          const game = contracts?.find(c => c.id === detail.targetId);
+          return game ? (game as any).gameId ?? prev : prev;
+        });
+        break;
+      case 'withdrawal':
+        // WITHDRAWAL_REQUEST: navigate to finance/withdrawal and highlight request
+        setNotificationWithdrawalId(detail.targetId);
+        break;
+      case 'dispute':
+        // PLAGIARISM_ALERT: navigate to finance/disputes and highlight dispute
+        setNotificationDisputeId(detail.targetId);
+        break;
+      default:
+        break;
+    }
   };
 
   useEffect(() => {
@@ -756,6 +791,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       );
     };
   }, []);
+
+  // Scroll to highlighted game row once it's visible in the DOM
+  useEffect(() => {
+    if (!expandedGameId) return;
+    const el = document.getElementById(`admin-game-row-${expandedGameId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [expandedGameId, pendingGames]);
 
   // Contract Offer states
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -1997,6 +2041,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                   pendingGames.map((game) => (
                                     <React.Fragment key={game.id}>
                                       <tr
+                                        id={`admin-game-row-${game.id}`}
                                         className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? "bg-slate-50/50 dark:bg-slate-950/20" : ""}`}
                                       >
                                         <td className="p-3 w-10 text-center">
@@ -3140,6 +3185,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 {activeTab === "withdrawal" && (
                   <AdminWithdrawalPanel
                     onRefreshStateChange={setFinanceRefreshState}
+                    initialHighlightId={notificationWithdrawalId}
+                    onHighlightConsumed={() => setNotificationWithdrawalId(null)}
                   />
                 )}
 
@@ -3612,7 +3659,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                 {activeTab === "banners" && <AdminBannerPanel />}
                 {activeTab === "content" && <AdminContentManagementPanel />}
                 {activeTab === "storage" && <AdminFileManagementPanel />}
-                {activeTab === "disputes" && <AdminDisputePanel />}
+                {activeTab === "disputes" && (
+                  <AdminDisputePanel
+                    initialHighlightId={notificationDisputeId}
+                    onHighlightConsumed={() => setNotificationDisputeId(null)}
+                  />
+                )}
                 {activeTab === "agreement" && <AdminAgreementPanel />}
 
                 {/* Tab 4: Platform Settings */}

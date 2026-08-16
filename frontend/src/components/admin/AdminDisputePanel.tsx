@@ -21,7 +21,14 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
 };
 
-export default function AdminDisputePanel() {
+interface AdminDisputePanelProps {
+  /** If set, auto-scroll to and expand this dispute ID when the panel loads */
+  initialHighlightId?: string | null;
+  /** Called after the initial highlight has been consumed */
+  onHighlightConsumed?: () => void;
+}
+
+export default function AdminDisputePanel({ initialHighlightId, onHighlightConsumed }: AdminDisputePanelProps) {
   const { t, i18n } = useTranslation(['admin']);
   const locale = resolveLocale(i18n.resolvedLanguage || i18n.language);
   const [disputes, setDisputes] = useState<DisputeResponse[]>([]);
@@ -63,6 +70,23 @@ export default function AdminDisputePanel() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Auto-select and scroll to dispute from notification click
+  useEffect(() => {
+    if (!initialHighlightId || loading || disputes.length === 0) return;
+    const found = disputes.find((d) => d.id === initialHighlightId);
+    if (found) {
+      setSelected(found);
+      setStatusFilter('all');
+      onHighlightConsumed?.();
+      // Scroll to the dispute row after render
+      setTimeout(() => {
+        const el = document.getElementById(`admin-dispute-row-${initialHighlightId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 200);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialHighlightId, loading, disputes]);
 
   const handleConfirmRefund = async (disputeId: string) => {
     setConfirmingRefundId(disputeId);
@@ -137,7 +161,7 @@ export default function AdminDisputePanel() {
             const statusColor = STATUS_COLOR[d.status] || STATUS_COLOR.open;
             const awaitingRefund = d.status === 'resolved_seller_fault' && !d.refundConfirmedAt;
             return (
-              <div key={d.id} className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+              <div key={d.id} id={`admin-dispute-row-${d.id}`} className={`flex items-start justify-between gap-4 rounded-xl border p-4 shadow-sm dark:shadow-none transition-colors ${initialHighlightId === d.id ? 'border-amber-400 bg-amber-400/5 dark:border-amber-500/50 dark:bg-amber-500/5' : 'border-slate-200 bg-white/90 dark:border-white/10 dark:bg-white/5'}`}>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${statusColor}`}>{getStatusText(d.status)}</span>

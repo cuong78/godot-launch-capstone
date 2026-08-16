@@ -60,6 +60,10 @@ interface DashboardPageProps {
   onCancelPayment: (paymentId: string) => Promise<void>;
   setCurrentScreen: (screen: any) => void;
   initialTab?: DashboardWorkspaceId;
+  /** If set, auto-expand this game in the my-games tab */
+  initialGameId?: string | null;
+  /** Called after the initialGameId has been consumed */
+  onGameHighlightConsumed?: () => void;
 }
 
 const getContractStatusLabel = (status: string, t: (key: string) => string) => {
@@ -151,6 +155,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onCancelPayment,
   setCurrentScreen,
   initialTab,
+  initialGameId,
+  onGameHighlightConsumed,
 }) => {
   const { t, i18n } = useTranslation(["dashboard", "payment"]);
   const { showToast } = useToast();
@@ -185,6 +191,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [gamesError, setGamesError] = useState<string | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [expandedMarketplaceId, setExpandedMarketplaceId] = useState<string | null>(null);
+
+  // Auto-expand specific game from notification click
+  useEffect(() => {
+    if (!initialGameId || isLoadingGames || myGames.length === 0) return;
+    const exists = myGames.some((g) => g.id === initialGameId);
+    if (exists) {
+      setActiveTab('my-games');
+      setGameStatusFilter('all');
+      setExpandedGameId(initialGameId);
+      onGameHighlightConsumed?.();
+      setTimeout(() => {
+        const el = document.getElementById(`dashboard-game-row-${initialGameId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 200);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialGameId, isLoadingGames, myGames]);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<{
     id: string;
@@ -904,6 +927,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           filteredGames.map((game) => (
                             <React.Fragment key={game.id}>
                               <tr
+                                id={`dashboard-game-row-${game.id}`}
                                 className={`hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition-colors ${expandedGameId === game.id ? "bg-slate-50/50 dark:bg-slate-950/20" : ""}`}
                               >
                                 <td className="p-3 w-10 text-center">

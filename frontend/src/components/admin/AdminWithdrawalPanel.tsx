@@ -126,10 +126,16 @@ interface AdminWithdrawalPanelProps {
     isLoadingPrimary: boolean;
     isLoadingSecondary?: boolean;
   }) => void;
+  /** If set, auto-open the detail modal for this withdrawal ID when the panel mounts */
+  initialHighlightId?: string | null;
+  /** Called after the initial highlight has been consumed (to clear parent state) */
+  onHighlightConsumed?: () => void;
 }
 
 export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
   onRefreshStateChange,
+  initialHighlightId,
+  onHighlightConsumed,
 }) => {
   const { t } = useTranslation(["admin"]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
@@ -304,6 +310,17 @@ export const AdminWithdrawalPanel: React.FC<AdminWithdrawalPanelProps> = ({
       setIsBusy(false);
     }
   };
+
+  // Auto-open detail modal for a specific withdrawal coming from a notification click
+  useEffect(() => {
+    if (!initialHighlightId || isLoading || withdrawals.length === 0) return;
+    const exists = withdrawals.some((w) => w.id === initialHighlightId);
+    if (exists) {
+      void openDetail(initialHighlightId);
+      onHighlightConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialHighlightId, isLoading, withdrawals]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);

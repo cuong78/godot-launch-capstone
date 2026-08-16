@@ -35,7 +35,7 @@ interface HeaderProps {
   setSelectedAuthor: (author: any) => void;
   searchText?: string;
   setSearchText?: (text: string) => void;
-  onNavigateToDashboardTab?: (tab: any) => void;
+  onNavigateToDashboardTab?: (tab: any, targetId?: string) => void;
 }
 
 const resolveCurrencyLocale = (language: string) => {

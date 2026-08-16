@@ -7,13 +7,15 @@ import {
 import { useWebSocket } from '../context/WebSocketContext';
 import { NotificationResponse } from '../types';
 import { PROFILE_AVATAR_YOU } from '../../assets/images';
+import { dispatchAdminNavigation } from '../utils/adminNavigation';
+import { useAuth } from '../hooks/useAuth';
 
 interface NotificationBellProps {
   setCurrentScreen: (screen: any) => void;
   setSelectedAssetId: (id: string) => void;
   setSelectedPost: (post: any) => void;
   setSelectedAuthor: (author: any) => void;
-  onNavigateToDashboardTab?: (tab: 'my-games' | 'marketplace-items' | 'sales' | 'payment-center') => void;
+  onNavigateToDashboardTab?: (tab: 'my-games' | 'marketplace-items' | 'sales' | 'payment-center', targetId?: string) => void;
 }
 
 const resolveLocale = (language?: string | null) => {
@@ -31,6 +33,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   onNavigateToDashboardTab
 }) => {
   const { t, i18n } = useTranslation(['common']);
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role?.toLowerCase() === 'admin' || currentUser?.roleName?.toLowerCase() === 'admin';
   const {
     notifications,
     unreadNotificationsCount,
@@ -67,58 +71,131 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
 
   const handleNotificationClick = async (notif: NotificationResponse) => {
     setIsOpen(false);
-    
+
     // 1. Mark as read on backend
     if (!notif.isRead) {
       await markNotificationAsRead(notif.id);
     }
-    
+
     // 2. Perform intelligent redirect navigation
-    if (notif.targetId) {
-      switch (notif.type) {
-        case 'NEW_SALE':
-          if (onNavigateToDashboardTab) {
-            onNavigateToDashboardTab('sales');
-          } else {
-            setCurrentScreen('dashboard');
-          }
-          break;
-        case 'CONTRACT_OFFERED':
-        case 'SELLER_RESPONSE':
-        case 'GAME_REVIEW_RESULT':
-        case 'SECURITY_ALERT':
-        case 'STORE_PUBLISH_RESULT':
-          if (onNavigateToDashboardTab) {
-            onNavigateToDashboardTab('my-games');
-          } else {
-            setCurrentScreen('dashboard');
-          }
-          break;
-        case 'WITHDRAWAL_RESULT':
-          setCurrentScreen('wallet');
-          break;
-        case 'WITHDRAWAL_REQUEST':
-        case 'PLAGIARISM_ALERT':
-        case 'NEW_SUBMISSION':
+    if (!notif.targetId) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const notifType = (notif.type || '').toString().toUpperCase();
+
+    switch (notifType) {
+
+      // ── ADMIN-ONLY / MODERATION NOTIFICATIONS ──────────────────────────────
+
+      case 'NEW_SUBMISSION':
+        // Developer đăng ký game mới → Admin đến Moderation, highlight game
+        setCurrentScreen('admin');
+        dispatchAdminNavigation({
+          section: 'moderation',
+          tab: 'moderation',
+          targetId: notif.targetId,
+          targetType: 'game',
+        });
+        break;
+
+      case 'SELLER_RESPONSE':
+        // Developer ký/từ chối hợp đồng → Admin đến Moderation, highlight game liên quan
+        if (isAdmin) {
           setCurrentScreen('admin');
-          break;
-        case 'PAYMENT_SUCCESS':
-          setCurrentScreen('payment');
-          break;
-        case 'NEW_REVIEW':
-        case 'REVIEW_REMOVED':
-        default:
+          dispatchAdminNavigation({
+            section: 'moderation',
+            tab: 'moderation',
+            targetId: notif.targetId,
+            targetType: 'contract',
+          });
+        } else if (onNavigateToDashboardTab) {
+          onNavigateToDashboardTab('my-games', notif.targetId);
+        } else {
+          setCurrentScreen('dashboard');
+        }
+        break;
+
+      case 'WITHDRAWAL_REQUEST':
+        // Developer yêu cầu rút tiền → Admin đến Finance > Withdrawal
+        setCurrentScreen('admin');
+        dispatchAdminNavigation({
+          section: 'finance',
+          tab: 'withdrawal',
+          targetId: notif.targetId,
+          targetType: 'withdrawal',
+        });
+        break;
+
+      case 'PLAGIARISM_ALERT':
+        // Khiếu nại bản quyền → Admin đến Finance > Disputes; User đến detail
+        if (isAdmin) {
+          setCurrentScreen('admin');
+          dispatchAdminNavigation({
+            section: 'finance',
+            tab: 'disputes',
+            targetId: notif.targetId,
+            targetType: 'dispute',
+          });
+        } else {
           setSelectedAssetId(notif.targetId);
           setCurrentScreen('detail');
-          window.dispatchEvent(
-            new CustomEvent('godotlaunch:review-updated', {
-              detail: { productId: notif.targetId },
-            })
-          );
-          break;
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        break;
+
+      // ── DEVELOPER / USER NOTIFICATIONS ───────────────────────────────────
+
+      case 'NEW_SALE':
+        if (onNavigateToDashboardTab) {
+          onNavigateToDashboardTab('sales');
+        } else {
+          setCurrentScreen('dashboard');
+        }
+        break;
+
+      case 'CONTRACT_OFFERED':
+      case 'GAME_REVIEW_RESULT':
+      case 'GAME_APPROVED':
+      case 'SECURITY_ALERT':
+      case 'STORE_PUBLISH_RESULT':
+        if (isAdmin) {
+          setCurrentScreen('admin');
+          dispatchAdminNavigation({
+            section: 'moderation',
+            tab: 'moderation',
+            targetId: notif.targetId,
+            targetType: 'game',
+          });
+        } else if (onNavigateToDashboardTab) {
+          onNavigateToDashboardTab('my-games', notif.targetId);
+        } else {
+          setCurrentScreen('dashboard');
+        }
+        break;
+
+      case 'WITHDRAWAL_RESULT':
+        setCurrentScreen('wallet');
+        break;
+
+      case 'PAYMENT_SUCCESS':
+        setCurrentScreen('payment');
+        break;
+
+      case 'NEW_REVIEW':
+      case 'REVIEW_REMOVED':
+      default:
+        setSelectedAssetId(notif.targetId);
+        setCurrentScreen('detail');
+        window.dispatchEvent(
+          new CustomEvent('godotlaunch:review-updated', {
+            detail: { productId: notif.targetId },
+          })
+        );
+        break;
     }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getIcon = (type: string) => {
