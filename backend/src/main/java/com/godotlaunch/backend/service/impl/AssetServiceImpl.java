@@ -31,6 +31,8 @@ import com.godotlaunch.backend.entity.enums.AuditAction;
 import com.godotlaunch.backend.entity.enums.AuditTarget;
 import com.godotlaunch.backend.service.AuditLogService;
 
+import com.godotlaunch.backend.util.VersionUtils;
+
 import java.io.InputStream;
 import java.io.IOException;
 import java.time.Duration;
@@ -199,26 +201,86 @@ public class AssetServiceImpl implements AssetService {
             throw new AppException(ErrorCode.BAD_REQUEST, "Không thể thay đổi danh mục khi cập nhật sản phẩm.");
         }
 
-        if (request.getTitle() != null) {
-            item.setTitle(request.getTitle());
+        boolean isLive = item.getStatus() == ItemStatus.active;
+
+        if (isLive) {
+            if (request.getTitle() != null) {
+                item.setPendingTitle(request.getTitle());
+            }
+            if (request.getDescription() != null) {
+                item.setPendingDescription(request.getDescription());
+            }
+
+            List<String> tagNames = null;
+            if (request.getTagIds() != null) {
+                tagNames = tagRepository.findByIdIn(request.getTagIds()).stream()
+                        .map(com.godotlaunch.backend.entity.Tag::getName).toList();
+            } else if (request.getTags() != null) {
+                tagNames = request.getTags();
+            }
+
+            if (tagNames != null) {
+                try {
+                    item.setPendingTags(objectMapper.writeValueAsString(tagNames));
+                } catch (Exception e) {
+                    log.warn("Lỗi khi serialize pending_tags cho asset {}: {}", item.getId(), e.getMessage());
+                }
+            }
+        } else {
+            if (request.getTitle() != null) {
+                item.setTitle(request.getTitle());
+            }
+            if (request.getDescription() != null) {
+                item.setDescription(request.getDescription());
+            }
+            if (request.getTagIds() != null) {
+                if (request.getTagIds().isEmpty()) {
+                    item.getTags().clear();
+                } else {
+                    item.setTags(new java.util.HashSet<>(tagRepository.findByIdIn(request.getTagIds())));
+                }
+            } else if (request.getTags() != null) {
+                if (request.getTags().isEmpty()) {
+                    item.getTags().clear();
+                } else {
+                    item.setTags(new java.util.HashSet<>(tagRepository.findByNameIn(request.getTags())));
+                }
+            }
         }
-        if (request.getDescription() != null) {
-            item.setDescription(request.getDescription());
-        }
+
         if (request.getFileUrl() != null) {
             item.setFileUrl(request.getFileUrl());
         }
-        if (request.getVersion() != null) {
+        if (request.getVersion() != null && !request.getVersion().isBlank()) {
             item.setVersion(request.getVersion());
+        } else {
+            item.setVersion(VersionUtils.incrementVersion(item.getVersion()));
         }
-
-
 
         // Set status back to pending upon update so it goes back to admin moderation queue
         item.setStatus(ItemStatus.pending);
 
+        // Thông báo cho Admins khi developer cập nhật asset
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+            List<User> admins = userRepository.findAdminsOrderByCreatedAtAsc(pageable);
+            String devName = updater.getFullName() != null && !updater.getFullName().isBlank() ? updater.getFullName() : updater.getEmail();
+            String notifMsg = "Nhà phát triển " + devName + " vừa cập nhật sản phẩm Asset: \"" + item.getTitle() + "\".";
+            for (User admin : admins) {
+                notificationService.createAndSendNotification(
+                        admin,
+                        updater,
+                        com.godotlaunch.backend.entity.enums.NotificationType.NEW_SUBMISSION,
+                        notifMsg,
+                        item.getId().toString()
+                );
+            }
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo NEW_SUBMISSION tới admin khi cập nhật asset: {}", ex.getMessage());
+        }
+
         Asset updatedItem = assetRepository.save(item);
-        return mapToResponse(updatedItem, true);
+        return mapToResponse(updatedItem != null ? updatedItem : item, true);
     }
 
     @Override
@@ -411,6 +473,30 @@ public class AssetServiceImpl implements AssetService {
             throw new IllegalStateException("Marketplace item must be in pending status to be approved");
         }
 
+        if (item.getPendingTitle() != null) {
+            item.setTitle(item.getPendingTitle());
+            item.setPendingTitle(null);
+        }
+        if (item.getPendingDescription() != null) {
+            item.setDescription(item.getPendingDescription());
+            item.setPendingDescription(null);
+        }
+        if (item.getPendingThumbnailUrl() != null) {
+            item.setThumbnailUrl(item.getPendingThumbnailUrl());
+            item.setPendingThumbnailUrl(null);
+        }
+        if (item.getPendingTags() != null) {
+            try {
+                List<String> tagNames = objectMapper.readValue(item.getPendingTags(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                if (tagNames != null) {
+                    item.setTags(new java.util.HashSet<>(tagRepository.findByNameIn(tagNames)));
+                }
+            } catch (Exception e) {
+                log.warn("Lỗi khi đọc pending_tags cho asset {}: {}", item.getId(), e.getMessage());
+            }
+            item.setPendingTags(null);
+        }
+
         item.setStatus(ItemStatus.active);
         assetRepository.save(item);
 
@@ -449,6 +535,11 @@ public class AssetServiceImpl implements AssetService {
         if (item.getStatus() != ItemStatus.pending) {
             throw new IllegalStateException("Marketplace item must be in pending status to be rejected");
         }
+
+        item.setPendingTitle(null);
+        item.setPendingDescription(null);
+        item.setPendingThumbnailUrl(null);
+        item.setPendingTags(null);
 
         item.setStatus(ItemStatus.rejected);
         assetRepository.save(item);
@@ -555,6 +646,15 @@ public class AssetServiceImpl implements AssetService {
         java.util.List<String> assetImgs = mediaList.stream().filter(m -> "asset_image".equals(m.getMediaType()))
                 .map(m -> getPresignedGetUrl(m.getMediaUrl())).toList();
 
+        List<String> pendingTags = null;
+        if (item.getPendingTags() != null) {
+            try {
+                pendingTags = objectMapper.readValue(item.getPendingTags(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+            } catch (Exception e) {
+                log.warn("Lỗi khi đọc pending_tags từ asset {}: {}", item.getId(), e.getMessage());
+            }
+        }
+
         return AssetResponse.builder()
                 .id(item.getId())
                 .sellerId(item.getSeller().getId())
@@ -574,6 +674,10 @@ public class AssetServiceImpl implements AssetService {
                         item.getTags().stream()
                                 .map(com.godotlaunch.backend.utils.TranslationUtils::resolveTagName)
                                 .toList())
+                .pendingTitle(item.getPendingTitle())
+                .pendingDescription(item.getPendingDescription())
+                .pendingThumbnailUrl(item.getPendingThumbnailUrl() != null ? getPresignedGetUrl(item.getPendingThumbnailUrl()) : null)
+                .pendingTags(pendingTags)
                 .mediaUrls(assetImgs)
                 .thumbnailUrl(thumbUrl)
                 .videoUrl(vidUrl)

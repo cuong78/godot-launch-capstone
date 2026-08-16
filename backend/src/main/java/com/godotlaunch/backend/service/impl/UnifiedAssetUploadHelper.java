@@ -30,6 +30,8 @@ public class UnifiedAssetUploadHelper {
     private final SeaweedFsService seaweedFsService;
     private final AsyncVirusScanService asyncVirusScanService;
     private final AiReviewService aiReviewService;
+    private final com.godotlaunch.backend.service.NotificationService notificationService;
+    private final com.godotlaunch.backend.repository.UserRepository userRepository;
 
     private static final long MAX_UNCOMPRESSED_SIZE_BYTES = 500L * 1024 * 1024; // 500 MB
     private static final int MAX_ENTRY_COUNT = 1000;
@@ -158,6 +160,7 @@ public class UnifiedAssetUploadHelper {
             item.setUploadStatus("SUCCESS");
             item.setUploadError(null);
             item.setZipHash(newHash);
+            item.setVersion(com.godotlaunch.backend.util.VersionUtils.incrementVersion(item.getVersion()));
             item.setStatus(ItemStatus.pending);
             assetRepository.save(item);
             log.info("Unified asset upload processing completed successfully for item {}", itemId);
@@ -165,6 +168,26 @@ public class UnifiedAssetUploadHelper {
             // 9. Kích hoạt Virus Scan & AI Review bất đồng bộ
             asyncVirusScanService.scanAndProcessAsset(itemId, productKey);
             aiReviewService.reviewAssetAsync(itemId);
+
+            // 10. Thông báo cho Admins khi developer upload/cập nhật tệp asset
+            try {
+                org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+                java.util.List<com.godotlaunch.backend.entity.User> admins = userRepository.findAdminsOrderByCreatedAtAsc(pageable);
+                com.godotlaunch.backend.entity.User seller = item.getSeller();
+                String devName = seller != null && seller.getFullName() != null && !seller.getFullName().isBlank() ? seller.getFullName() : (seller != null ? seller.getEmail() : "Developer");
+                String notifMsg = "Nhà phát triển " + devName + " vừa tải lên tệp sản phẩm Asset chờ phê duyệt: \"" + item.getTitle() + "\".";
+                for (com.godotlaunch.backend.entity.User admin : admins) {
+                    notificationService.createAndSendNotification(
+                            admin,
+                            seller,
+                            com.godotlaunch.backend.entity.enums.NotificationType.NEW_SUBMISSION,
+                            notifMsg,
+                            itemId.toString()
+                    );
+                }
+            } catch (Exception ex) {
+                log.warn("Lỗi gửi thông báo NEW_SUBMISSION tới admin khi upload asset ZIP: {}", ex.getMessage());
+            }
 
         } catch (Exception e) {
             log.error("Error processing unified asset upload for item {}", itemId, e);

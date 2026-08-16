@@ -1,0 +1,4 @@
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS pending_title VARCHAR(200);
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS pending_description TEXT;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS pending_thumbnail_url TEXT;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS pending_tags JSONB;

@@ -154,10 +154,14 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
     }
   };
 
-  // Search Tags
+  // Search / List Tags
   useEffect(() => {
     if (!tagQuery.trim()) {
-      setTagOptions([]);
+      tagApi.getAllTags().then((res) => {
+        if (res.success && res.data) {
+          setTagOptions(res.data);
+        }
+      }).catch(() => setTagOptions([]));
       return;
     }
     const timer = setTimeout(async () => {
@@ -207,9 +211,12 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
     setScreenshots(displayScreenshots);
     setVideoUrl(displayVideo);
 
-    // Load tags
-    if (raw.tags && raw.tags.length > 0) {
-      fetchTagsAndMap(raw.tags);
+    // Load tags (ưu tiên pendingTags nếu có)
+    const rawTagList = (raw.pendingTags && raw.pendingTags.length > 0)
+      ? raw.pendingTags
+      : (raw.tags || []);
+    if (rawTagList.length > 0) {
+      fetchTagsAndMap(rawTagList);
     } else {
       setSelectedTags([]);
     }
@@ -367,6 +374,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
     const cleanPrice = price.replace(/\s/g, "");
     const priceNum = parseFloat(cleanPrice || "0");
     const tagIds = selectedTags.map((tag) => tag.id);
+    const tagNames = selectedTags.map((tag) => tag.name);
 
     try {
       if (item.type === "game") {
@@ -376,6 +384,8 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
           priceProposed: priceNum,
           categoryId: categoryId || undefined,
           publishingType: item.originalItem.publishingType,
+          tagIds: tagIds,
+          tags: tagNames,
         });
         if (!res.success) throw new Error(res.message || "Cập nhật thất bại.");
       } else {
@@ -384,7 +394,8 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
           description,
           price: priceNum,
           categoryId: categoryId || undefined,
-          tagIds: tagIds.length > 0 ? tagIds : undefined,
+          tagIds: tagIds,
+          tags: tagNames,
         });
         if (!res.success) throw new Error(res.message || "Cập nhật thất bại.");
       }

@@ -480,6 +480,8 @@ export interface UpdateGameRequest {
   categoryId?: string;
   publishingType?: "full_acquisition" | "co_publishing" | "marketplace_listing";
   status?: string;
+  tagIds?: string[];
+  tags?: string[];
 }
 
 export interface GameResponse {
@@ -514,6 +516,7 @@ export interface GameResponse {
   pendingThumbnailUrl?: string;
   pendingVideoUrl?: string;
   pendingScreenshots?: string[];
+  pendingTags?: string[];
   createdAt?: string;
   updatedAt?: string;
   uploadStatus?: string;
@@ -596,6 +599,10 @@ export interface MarketplaceItemResponse {
   version?: string;
   supportedPlatforms?: string;
   tags?: string[];
+  pendingTitle?: string;
+  pendingDescription?: string;
+  pendingThumbnailUrl?: string;
+  pendingTags?: string[];
   screenshots?: string[];
   videoUrl?: string;
   status: "active" | "removed" | "pending" | "rejected";

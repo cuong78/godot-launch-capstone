@@ -488,12 +488,26 @@ public class GameServiceImpl implements GameService {
                 throw new AppException(ErrorCode.BAD_REQUEST, "Không thể thay đổi danh mục khi game đã được duyệt.");
             }
 
-            SourceSnapshot snap = game.getPendingUpdateSnapshot();
+            SourceSnapshot snap = getOrCreatePendingSnapshot(game);
             if (request.getTitle() != null) {
                 snap.setPendingTitle(request.getTitle());
             }
             if (request.getDescription() != null) {
                 snap.setPendingDescription(request.getDescription());
+            }
+            List<String> tagNames = null;
+            if (request.getTagIds() != null) {
+                tagNames = tagRepository.findByIdIn(request.getTagIds()).stream()
+                        .map(com.godotlaunch.backend.entity.Tag::getName).toList();
+            } else if (request.getTags() != null) {
+                tagNames = request.getTags();
+            }
+            if (tagNames != null) {
+                try {
+                    snap.setPendingTags(objectMapper.writeValueAsString(tagNames));
+                } catch (Exception e) {
+                    log.warn("Lỗi khi serialize pending_tags cho snapshot {}: {}", snap.getId(), e.getMessage());
+                }
             }
             sourceSnapshotRepository.save(snap);
         } else {
@@ -515,7 +529,42 @@ public class GameServiceImpl implements GameService {
                 game.setPublishingType(request.getPublishingType());
                 game.setSourceListed(request.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing);
             }
-            game = gameRepository.save(game);
+            if (request.getTagIds() != null) {
+                if (request.getTagIds().isEmpty()) {
+                    game.getTags().clear();
+                } else {
+                    game.setTags(new java.util.HashSet<>(tagRepository.findByIdIn(request.getTagIds())));
+                }
+            } else if (request.getTags() != null) {
+                if (request.getTags().isEmpty()) {
+                    game.getTags().clear();
+                } else {
+                    game.setTags(new java.util.HashSet<>(tagRepository.findByNameIn(request.getTags())));
+                }
+            }
+            Game savedGame = gameRepository.save(game);
+            if (savedGame != null) {
+                game = savedGame;
+            }
+        }
+
+        // Thông báo cho Admins khi developer cập nhật game
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+            List<User> admins = userRepository.findAdminsOrderByCreatedAtAsc(pageable);
+            String devName = updater.getFullName() != null && !updater.getFullName().isBlank() ? updater.getFullName() : updater.getEmail();
+            String notifMsg = "Nhà phát triển " + devName + " vừa cập nhật thông tin/thẻ (tags) cho Game: \"" + game.getTitle() + "\".";
+            for (User admin : admins) {
+                notificationService.createAndSendNotification(
+                        admin,
+                        updater,
+                        com.godotlaunch.backend.entity.enums.NotificationType.NEW_SUBMISSION,
+                        notifMsg,
+                        gameId.toString()
+                );
+            }
+        } catch (Exception ex) {
+            log.warn("Lỗi gửi thông báo NEW_SUBMISSION tới admin khi cập nhật game: {}", ex.getMessage());
         }
 
         auditLogService.publishAuto(
@@ -528,6 +577,24 @@ public class GameServiceImpl implements GameService {
         );
 
         return mapToResponse(game);
+    }
+
+    private SourceSnapshot getOrCreatePendingSnapshot(Game game) {
+        SourceSnapshot snap = game.getPendingUpdateSnapshot();
+        if (snap == null) {
+            SourceSnapshot latest = sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(game.getId()).orElse(null);
+            snap = new SourceSnapshot();
+            snap.setGame(game);
+            if (latest != null) {
+                snap.setBundleUrl(latest.getBundleUrl());
+                snap.setBundleHash(latest.getBundleHash());
+                snap.setCommitSha(latest.getCommitSha());
+            }
+            snap = sourceSnapshotRepository.save(snap);
+            game.setPendingUpdateSnapshot(snap);
+            gameRepository.save(game);
+        }
+        return snap;
     }
 
     @Override
@@ -568,7 +635,7 @@ public class GameServiceImpl implements GameService {
                 || game.getStatus() == GameStatus.awaiting_store_build;
 
         if (isLive) {
-            SourceSnapshot snap = game.getPendingUpdateSnapshot();
+            SourceSnapshot snap = getOrCreatePendingSnapshot(game);
             // Check if deleting a live video
             boolean isLiveVideo = gameMedia(gameId).stream()
                     .anyMatch(m -> "video".equalsIgnoreCase(m.getMediaType()) && targetKey.equals(extractObjectKeyFromUrl(m.getMediaUrl())));
@@ -709,8 +776,10 @@ public class GameServiceImpl implements GameService {
         String pendingThumbnailUrl = null;
         String pendingVideoUrl = null;
         List<String> pendingScreenshots = null;
+        List<String> pendingTags = null;
 
         if (game.getPendingUpdateSnapshot() != null) {
+            versionNumber = VersionUtils.incrementVersion(versionNumber);
             SourceSnapshot snap = game.getPendingUpdateSnapshot();
             pendingUpdateSnapshotId = snap.getId();
             pendingUpdateFileUrl = getPresignedGetUrl(snap.getBundleUrl());
@@ -729,6 +798,13 @@ public class GameServiceImpl implements GameService {
                     }
                 } catch (Exception e) {
                     log.warn("Lỗi khi đọc pending_screenshots từ snapshot {}: {}", snap.getId(), e.getMessage());
+                }
+            }
+            if (snap.getPendingTags() != null) {
+                try {
+                    pendingTags = objectMapper.readValue(snap.getPendingTags(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                } catch (Exception e) {
+                    log.warn("Lỗi khi đọc pending_tags từ snapshot {}: {}", snap.getId(), e.getMessage());
                 }
             }
         }
@@ -765,6 +841,7 @@ public class GameServiceImpl implements GameService {
                 .pendingThumbnailUrl(pendingThumbnailUrl)
                 .pendingVideoUrl(pendingVideoUrl)
                 .pendingScreenshots(pendingScreenshots)
+                .pendingTags(pendingTags)
                 .averageRating(game.getAverageRating())
                 .reviewCount(game.getReviewCount())
                 .createdAt(game.getCreatedAt())
@@ -1114,12 +1191,26 @@ public class GameServiceImpl implements GameService {
                 }
             }
 
+            // 5. Merge pending tags
+            if (pendingSnapshot.getPendingTags() != null) {
+                try {
+                    List<String> tagNames = objectMapper.readValue(pendingSnapshot.getPendingTags(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                    if (tagNames != null) {
+                        List<com.godotlaunch.backend.entity.Tag> tags = tagRepository.findByNameIn(tagNames);
+                        game.setTags(new java.util.HashSet<>(tags));
+                    }
+                } catch (Exception e) {
+                    log.warn("Lỗi khi đồng bộ pending_tags lúc duyệt game cập nhật: {}", e.getMessage());
+                }
+            }
+
             GameVersion releasedVersion = gameVersionService.activateApprovedUpdate(
                     game,
                     pendingSnapshot,
                     null,
                     "Update source code"
             );
+            game.setPendingUpdateSnapshot(null);
 
             if (game.getPublishingType() != null && game.getPublishingType() != com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing) {
                 game.setStatus(GameStatus.awaiting_store_build);

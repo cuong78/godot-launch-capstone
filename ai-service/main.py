@@ -138,6 +138,11 @@ class AiReviewRequest(BaseModel):
     screenshotUrls: list[str] = Field(default_factory=list)  # ảnh đã upload (URL) → tải về quét
     frameCount: int = 8
     tags: list[str] = Field(default_factory=list)  # danh sách tags được chọn bởi developer
+    isUpdate: bool = False
+    oldBundleUrl: Optional[str] = None
+    oldTitle: Optional[str] = None
+    oldDescription: Optional[str] = None
+    oldTags: list[str] = Field(default_factory=list)
 
 
 class AiReviewResponse(BaseModel):
@@ -439,6 +444,7 @@ def ai_review(req: AiReviewRequest):
     # ── 2. Code analyzer (chỉ CODE từ repo) ──
     if req.contentType == "code" and req.bundleUrl:
         tmp_dir = None
+        old_tmp_dir = None
         try:
             extracted = source_service.download_and_extract_bundle(req.bundleUrl, req.bundleHash)
             tmp_dir = extracted["tmpDir"]
@@ -449,7 +455,19 @@ def ai_review(req: AiReviewRequest):
                 "fileCount": extracted["fileCount"],
                 "verified": True,
             }
-            code_res = code_analyzer.analyze(tmp_dir, req.title, req.description)
+
+            if req.isUpdate and req.oldBundleUrl:
+                try:
+                    old_extracted = source_service.download_and_extract_bundle(req.oldBundleUrl)
+                    old_tmp_dir = old_extracted["tmpDir"]
+                except Exception as old_err:
+                    raw["oldBundleError"] = str(old_err)[:200]
+
+            code_res = code_analyzer.analyze(
+                tmp_dir, req.title, req.description,
+                old_tmp_dir=old_tmp_dir, old_title=req.oldTitle or "",
+                old_description=req.oldDescription or "", is_update=req.isUpdate
+            )
             raw["code"] = code_res
             code_quality = code_res.get("codeQualityScore")
             description_match = code_res.get("descriptionMatchScore")
@@ -457,6 +475,12 @@ def ai_review(req: AiReviewRequest):
             revenue_split = code_res.get("suggestedRevenueSplit")
             pricing_rationale = code_res.get("pricingRationale")
             rule_res = code_res.get("rule", {})
+            if rule_res.get("isCompletelyDifferentProject"):
+                flags.append({
+                    "type": "update_completely_different_project",
+                    "severity": "high",
+                    "detail": "Nghi ngờ người dùng đã thay thế bằng một tựa game/dự án hoàn toàn khác thay vì cập nhật phiên bản cũ."
+                })
             for s in rule_res.get("secrets", []):
                 flags.append({"type": "secret_hardcoded", "severity": "high",
                               "detail": f"Secret nghi ngờ trong {s['file']} ({s['type']})"})
@@ -482,6 +506,7 @@ def ai_review(req: AiReviewRequest):
                           "detail": f"Không thể xác minh/phân tích source snapshot: {str(e)[:160]}"})
         finally:
             source_service.cleanup(tmp_dir)
+            source_service.cleanup(old_tmp_dir)
     elif req.contentType == "code":
         raw["codeError"] = "Source snapshot bundle URL is required"
         flags.append({"type": "source_bundle_missing", "severity": "high",
@@ -556,6 +581,7 @@ def ai_review(req: AiReviewRequest):
         # Code issues
         "code_code_quality_analysis": "Phân tích chất lượng code",
         "code_description_match_analysis": "Đối chiếu mô tả với thực tế code",
+        "update_completely_different_project": "Mã nguồn mới nghi ngờ là một dự án hoàn toàn khác với phiên bản cũ",
         "secret_hardcoded": "Lộ mật khẩu / API Key bảo mật",
         "missing_license": "Thiếu tệp bản quyền (LICENSE)",
         "missing_readme": "Thiếu tệp tài liệu hướng dẫn (README.md)",

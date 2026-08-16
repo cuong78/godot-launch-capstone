@@ -92,6 +92,8 @@ class GameServiceImplTest {
     private NotificationService notificationService;
     @Mock
     private UnifiedGameUploadHelper unifiedGameUploadHelper;
+    @Mock
+    private com.godotlaunch.backend.service.GameVersionService gameVersionService;
 
     @InjectMocks
     private GameServiceImpl gameService;
@@ -128,6 +130,12 @@ class GameServiceImplTest {
         game.setCreator(devUser);
         game.setStatus(GameStatus.pending);
         game.setPublishingType(PublishingType.marketplace_listing);
+
+        try {
+            lenient().when(objectMapper.writeValueAsString(any())).thenAnswer(inv -> new ObjectMapper().writeValueAsString(inv.getArgument(0)));
+            lenient().when(objectMapper.readValue(anyString(), any(com.fasterxml.jackson.core.type.TypeReference.class)))
+                    .thenAnswer(inv -> new ObjectMapper().readValue((String) inv.getArgument(0), (com.fasterxml.jackson.core.type.TypeReference<?>) inv.getArgument(1)));
+        } catch (Exception ignored) {}
     }
 
     @Test
@@ -386,6 +394,40 @@ class GameServiceImplTest {
                 isNull(),
                 anyString()
         );
+    }
+
+    @Test
+    @DisplayName("updateGameDetails_ShouldUpdateTagsAndReflectPendingVersion")
+    void updateGameDetails_ShouldUpdateTagsAndReflectPendingVersion() {
+        UpdateGameRequest request = new UpdateGameRequest();
+        request.setTitle("Updated Title");
+        UUID tagId = UUID.randomUUID();
+        request.setTagIds(List.of(tagId));
+
+        com.godotlaunch.backend.entity.Tag tag = new com.godotlaunch.backend.entity.Tag();
+        tag.setId(tagId);
+        tag.setName("2D");
+
+        SourceSnapshot pendingSnap = new SourceSnapshot();
+        pendingSnap.setId(UUID.randomUUID());
+        game.setPendingUpdateSnapshot(pendingSnap);
+        game.setStatus(GameStatus.published);
+
+        when(userRepository.findWithRoleByEmail(devUser.getEmail())).thenReturn(Optional.of(devUser));
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+        when(tagRepository.findByIdIn(List.of(tagId))).thenReturn(List.of(tag));
+        lenient().when(gameRepository.save(any(Game.class))).thenAnswer(i -> i.getArgument(0));
+
+        GameVersion currentVersion = new GameVersion();
+        currentVersion.setVersionNumber("1.0.0");
+        currentVersion.setCurrent(true);
+        when(gameVersionRepository.findByGame_IdAndIsCurrentTrue(gameId)).thenReturn(Optional.of(currentVersion));
+
+        GameResponse response = gameService.updateGame(gameId, request, devUser.getEmail());
+
+        assertThat(response).isNotNull();
+        assertThat(response.getVersion()).isEqualTo("1.0.1");
+        assertThat(response.getPendingTags()).hasSize(1);
     }
 
     @Test
@@ -918,6 +960,11 @@ class GameServiceImplTest {
         when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
         when(objectMapper.readValue(anyString(), any(com.fasterxml.jackson.core.type.TypeReference.class)))
                 .thenReturn(List.of("http://seaweed/new-screenshot.png"));
+
+        com.godotlaunch.backend.entity.GameVersion dummyVer = new com.godotlaunch.backend.entity.GameVersion();
+        dummyVer.setId(UUID.randomUUID());
+        dummyVer.setVersionNumber("1.0.1");
+        when(gameVersionService.activateApprovedUpdate(any(), any(), any(), any())).thenReturn(dummyVer);
 
         gameService.approveGame(gameId);
 

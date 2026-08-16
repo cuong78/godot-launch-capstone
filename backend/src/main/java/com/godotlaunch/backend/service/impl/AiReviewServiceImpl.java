@@ -116,11 +116,18 @@ public class AiReviewServiceImpl implements AiReviewService {
             List<String> tags = game.getTags() == null ? List.of() :
                     game.getTags().stream().map(com.godotlaunch.backend.entity.Tag::getName).toList();
 
+            SourceSnapshot previousSnapshot = sourceSnapshotRepository
+                    .findFirstByGameIdAndIdNotOrderByCreatedAtDesc(gameId, snapshotId)
+                    .orElse(null);
+            boolean isUpdate = previousSnapshot != null;
+            String oldBundleUrl = previousSnapshot != null ? previousSnapshot.getBundleUrl() : null;
+
             AiReviewResult result = aiReviewClient.review(
                     "code", snapshot.getId(), snapshot.getBundleUrl(), snapshot.getBundleHash(),
                     snapshot.getCommitSha(),
                     game.getTitle(), game.getDescription(), category,
-                    videoUrl, screenshots, tags);
+                    videoUrl, screenshots, tags,
+                    isUpdate, oldBundleUrl, game.getTitle(), game.getDescription(), tags);
 
             if (result == null) {
                 throw new IllegalStateException("AI review service returned no result");

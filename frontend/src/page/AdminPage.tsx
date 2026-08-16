@@ -2458,9 +2458,55 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                                                     <div className="space-y-1.5">
                                                       <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                        {t("moderationQueue.detail.tags")}
+                                                        {game.pendingTags && game.pendingTags.length > 0 ? "So sánh Thẻ phân loại (Cũ vs Mới)" : t("moderationQueue.detail.tags")}
                                                       </h4>
-                                                      {game.tags &&
+                                                      {game.pendingTags && game.pendingTags.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                          {(() => {
+                                                            const oldTags = game.tags || [];
+                                                            const newTags = game.pendingTags || [];
+                                                            const oldSet = new Set(oldTags);
+                                                            const newSet = new Set(newTags);
+                                                            const allTags = Array.from(new Set([...oldTags, ...newTags]));
+
+                                                            return allTags.map((tag: string, idx: number) => {
+                                                              const inOld = oldSet.has(tag);
+                                                              const inNew = newSet.has(tag);
+
+                                                              if (inOld && inNew) {
+                                                                return (
+                                                                  <span
+                                                                    key={idx}
+                                                                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300"
+                                                                  >
+                                                                    {tag}
+                                                                  </span>
+                                                                );
+                                                              }
+                                                              if (inOld && !inNew) {
+                                                                return (
+                                                                  <span
+                                                                    key={idx}
+                                                                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-rose-500/10 border-rose-500/30 text-rose-500 line-through"
+                                                                    title="Thẻ bị xóa"
+                                                                  >
+                                                                    {tag} (Đã xóa)
+                                                                  </span>
+                                                                );
+                                                              }
+                                                              return (
+                                                                <span
+                                                                  key={idx}
+                                                                  className="px-2.5 py-1 rounded-full text-[10px] font-bold border bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+                                                                  title="Thẻ mới bổ sung"
+                                                                >
+                                                                  + {tag} (Mới)
+                                                                </span>
+                                                              );
+                                                            });
+                                                          })()}
+                                                        </div>
+                                                      ) : game.tags &&
                                                       game.tags.length > 0 ? (
                                                         <div className="flex flex-wrap gap-1.5">
                                                           {game.tags.map(
@@ -2943,45 +2989,127 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                       {t("moderationQueue.detail.refreshingMedia")}
                                                     </div>
                                                   )}
-                                                  <div>
-                                                    <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
-                                                      <Image size={12} />{" "}
-                                                      {t("moderationQueue.detail.thumbnail")}
-                                                    </h4>
-                                                    <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
-                                                      {displayItem.thumbnailUrl ? (
-                                                        <img
-                                                          src={
-                                                            displayItem.thumbnailUrl
-                                                          }
-                                                          alt={
-                                                            displayItem.title
-                                                          }
-                                                          className="object-cover w-full h-full"
-                                                        />
-                                                      ) : (
-                                                        <div className="flex flex-col items-center justify-center text-slate-500">
-                                                          <Image
-                                                            size={32}
-                                                            className="mb-2 text-slate-650"
-                                                          />
-                                                          <span className="text-[10px] font-mono">
-                                                            {t("moderationQueue.detail.noThumbnail")}
-                                                          </span>
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                  </div>
+                                                   {displayItem.pendingTitle && displayItem.pendingTitle !== displayItem.title && (
+                                                     <div className="space-y-1 bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-lg text-xs">
+                                                       <span className="font-bold text-[10px] uppercase text-amber-500 block">Thay đổi Tiêu đề Asset</span>
+                                                       <div className="text-slate-400 line-through">Cũ: {displayItem.title}</div>
+                                                       <div className="text-emerald-500 font-bold">Mới: {displayItem.pendingTitle}</div>
+                                                     </div>
+                                                   )}
 
-                                                  <div className="space-y-1.5">
-                                                    <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
-                                                      {t("moderationQueue.detail.itemDescription")}
-                                                    </h4>
-                                                    <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                                                      {displayItem.description ||
-                                                        t("moderationQueue.detail.noItemDescription")}
-                                                    </p>
-                                                  </div>
+                                                   <div>
+                                                     <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold mb-1.5 flex items-center gap-1">
+                                                       <Image size={12} />{" "}
+                                                       {displayItem.pendingThumbnailUrl && displayItem.pendingThumbnailUrl !== displayItem.thumbnailUrl ? "So sánh Ảnh bìa (Cũ vs Mới)" : t("moderationQueue.detail.thumbnail")}
+                                                     </h4>
+                                                     {displayItem.pendingThumbnailUrl && displayItem.pendingThumbnailUrl !== displayItem.thumbnailUrl ? (
+                                                       <div className="grid grid-cols-2 gap-2">
+                                                         <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 aspect-video bg-slate-900 flex items-center justify-center">
+                                                           <img src={displayItem.thumbnailUrl} alt="Old" className="object-cover w-full h-full opacity-60" />
+                                                           <div className="absolute top-1 left-1 px-1 py-0.5 bg-slate-955/80 text-[8px] text-white rounded font-mono uppercase font-semibold">Hiện tại</div>
+                                                         </div>
+                                                         <div className="relative rounded-xl overflow-hidden border border-emerald-500/40 aspect-video bg-slate-900 flex items-center justify-center">
+                                                           <img src={displayItem.pendingThumbnailUrl} alt="New" className="object-cover w-full h-full" />
+                                                           <div className="absolute top-1 left-1 px-1 py-0.5 bg-emerald-500 text-[8px] text-white rounded font-mono uppercase font-bold">Cập nhật</div>
+                                                         </div>
+                                                       </div>
+                                                     ) : (
+                                                       <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800/80 aspect-video bg-slate-900 flex items-center justify-center">
+                                                         {displayItem.thumbnailUrl ? (
+                                                           <img
+                                                             src={
+                                                               displayItem.thumbnailUrl
+                                                             }
+                                                             alt={
+                                                               displayItem.title
+                                                             }
+                                                             className="object-cover w-full h-full"
+                                                           />
+                                                         ) : (
+                                                           <div className="flex flex-col items-center justify-center text-slate-500">
+                                                             <Image
+                                                               size={32}
+                                                               className="mb-2 text-slate-650"
+                                                             />
+                                                             <span className="text-[10px] font-mono">
+                                                               {t("moderationQueue.detail.noThumbnail")}
+                                                             </span>
+                                                           </div>
+                                                         )}
+                                                       </div>
+                                                     )}
+                                                   </div>
+
+                                                   <div className="space-y-1.5">
+                                                     <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                                                       {displayItem.pendingDescription && displayItem.pendingDescription !== displayItem.description ? "So sánh Mô tả (Cũ vs Mới)" : t("moderationQueue.detail.itemDescription")}
+                                                     </h4>
+                                                     {displayItem.pendingDescription && displayItem.pendingDescription !== displayItem.description ? (
+                                                       <div className="grid grid-cols-2 gap-2 text-[10px] leading-relaxed max-h-32 overflow-y-auto">
+                                                         <div className="bg-slate-100 dark:bg-slate-955/40 p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-450 line-through">
+                                                           {displayItem.description || t("moderationQueue.detail.noItemDescription")}
+                                                         </div>
+                                                         <div className="bg-emerald-500/5 p-2 rounded-lg border border-emerald-500/25 text-slate-800 dark:text-slate-200">
+                                                           {displayItem.pendingDescription}
+                                                         </div>
+                                                       </div>
+                                                     ) : (
+                                                       <p className="text-xs leading-relaxed max-h-32 overflow-y-auto bg-white/40 dark:bg-slate-950/20 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                                         {displayItem.description ||
+                                                           t("moderationQueue.detail.noItemDescription")}
+                                                       </p>
+                                                     )}
+                                                   </div>
+
+                                                   <div className="space-y-1.5">
+                                                     <h4 className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold">
+                                                       {displayItem.pendingTags && displayItem.pendingTags.length > 0 ? "So sánh Thẻ phân loại (Cũ vs Mới)" : t("moderationQueue.detail.tags")}
+                                                     </h4>
+                                                     {displayItem.pendingTags && displayItem.pendingTags.length > 0 ? (
+                                                       <div className="flex flex-wrap gap-1.5">
+                                                         {(() => {
+                                                           const oldTags = displayItem.tags || [];
+                                                           const newTags = displayItem.pendingTags || [];
+                                                           const oldSet = new Set(oldTags);
+                                                           const newSet = new Set(newTags);
+                                                           const allTags = Array.from(new Set([...oldTags, ...newTags]));
+
+                                                           return allTags.map((tag: string, idx: number) => {
+                                                             const inOld = oldSet.has(tag);
+                                                             const inNew = newSet.has(tag);
+
+                                                             if (inOld && inNew) {
+                                                               return (
+                                                                 <span key={idx} className="px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                                                                   {tag}
+                                                                 </span>
+                                                               );
+                                                             }
+                                                             if (inOld && !inNew) {
+                                                               return (
+                                                                 <span key={idx} className="px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-rose-500/10 border-rose-500/30 text-rose-500 line-through" title="Thẻ bị xóa">
+                                                                   {tag} (Đã xóa)
+                                                                 </span>
+                                                               );
+                                                             }
+                                                             return (
+                                                               <span key={idx} className="px-2.5 py-1 rounded-full text-[10px] font-bold border bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400" title="Thẻ mới bổ sung">
+                                                                 + {tag} (Mới)
+                                                               </span>
+                                                             );
+                                                           });
+                                                         })()}
+                                                       </div>
+                                                     ) : displayItem.tags && displayItem.tags.length > 0 ? (
+                                                       <div className="flex flex-wrap gap-1.5">
+                                                         {displayItem.tags.map((tag: string, idx: number) => (
+                                                           <span key={idx} className="px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                                                             {tag}
+                                                           </span>
+                                                         ))}
+                                                       </div>
+                                                     ) : null}
+                                                   </div>
 
                                                   {displayItem.fileUrl ? (
                                                     <button

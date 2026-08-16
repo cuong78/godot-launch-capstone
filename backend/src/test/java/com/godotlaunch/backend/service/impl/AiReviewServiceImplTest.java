@@ -19,6 +19,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -76,7 +80,7 @@ class AiReviewServiceImplTest {
         when(aiReviewClient.review(
                 eq("code"), eq(snapshotId), eq(snapshot.getBundleUrl()),
                 eq(snapshot.getBundleHash()), eq(snapshot.getCommitSha()),
-                eq(game.getTitle()), any(), any(), any(), any(), any()))
+                eq(game.getTitle()), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any()))
                 .thenReturn(result);
 
         service.reviewGameSnapshotAsync(gameId, snapshotId);
@@ -198,7 +202,7 @@ class AiReviewServiceImplTest {
         when(gameRepository.findForAiReviewById(gameId)).thenReturn(Optional.of(game));
         when(sourceSnapshotRepository.findForReviewById(snapshotId)).thenReturn(Optional.of(snapshot));
         when(mediaRepository.findByGame_IdAndMediaType(eq(gameId), any())).thenReturn(List.of());
-        when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("AI client error"));
 
         // Should not throw exception
@@ -250,7 +254,7 @@ class AiReviewServiceImplTest {
         when(gameRepository.findForAiReviewById(gameId)).thenReturn(Optional.of(game));
         when(sourceSnapshotRepository.findForReviewById(snapshotId)).thenReturn(Optional.of(snapshot));
         when(mediaRepository.findByGame_IdAndMediaType(eq(gameId), any())).thenReturn(List.of());
-        when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(aiReviewClient.review(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any()))
                 .thenReturn(new AiReviewResult());
 
         service.reviewGameAsync(gameId);

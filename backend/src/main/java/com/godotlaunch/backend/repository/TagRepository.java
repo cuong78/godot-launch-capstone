@@ -16,6 +16,7 @@ import com.godotlaunch.backend.entity.Tag;
 public interface TagRepository extends JpaRepository<Tag, UUID> {
     List<Tag> findAllByOrderByNameAsc();
     List<Tag> findByIdIn(List<UUID> ids);
+    List<Tag> findByNameIn(List<String> names);
     boolean existsByName(String name);
     boolean existsBySlug(String slug);
     Optional<Tag> findByName(String name);

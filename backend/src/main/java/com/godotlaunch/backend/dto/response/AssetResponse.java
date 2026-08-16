@@ -34,6 +34,10 @@ public class AssetResponse {
     private String version;
     private String supportedPlatforms;
     private List<String> tags;
+    private String pendingTitle;
+    private String pendingDescription;
+    private String pendingThumbnailUrl;
+    private List<String> pendingTags;
     private ItemStatus status;
     private String uploadStatus;
     private String uploadError;

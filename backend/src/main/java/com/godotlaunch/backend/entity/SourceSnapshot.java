@@ -91,6 +91,10 @@ public class SourceSnapshot {
     @Column(name = "pending_screenshots", columnDefinition = "jsonb")
     private String pendingScreenshots;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "pending_tags", columnDefinition = "jsonb")
+    private String pendingTags;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 }

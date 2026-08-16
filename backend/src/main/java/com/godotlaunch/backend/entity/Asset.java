@@ -72,6 +72,19 @@ public class Asset {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
+    @Column(name = "pending_title", length = 200)
+    private String pendingTitle;
+
+    @Column(name = "pending_description", columnDefinition = "TEXT")
+    private String pendingDescription;
+
+    @Column(name = "pending_thumbnail_url", columnDefinition = "TEXT")
+    private String pendingThumbnailUrl;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "pending_tags", columnDefinition = "jsonb")
+    private String pendingTags;
+
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

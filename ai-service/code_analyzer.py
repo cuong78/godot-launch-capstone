@@ -29,24 +29,32 @@ DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 DEEPSEEK_TIMEOUT = int(os.getenv("DEEPSEEK_TIMEOUT_SEC", "60"))
 
 
-def analyze(tmp_dir: str, title: str = "", description: str = "") -> dict:
-    """
-    Phân tích thư mục source đã clone.
+import source_service
 
-    Trả về:
-      {
-        "rule": { hasProjectGodot, hasGodotSource, isGodotProject, fileCount,
-                  codeFileCount, totalLoc, secrets:[...] },
-        "deepseek": { skipped, reason, codeQualityScore, descriptionMatchScore,
-                      completeness, issues:[...], summary } | None,
-        "codeQualityScore": int|None,       # gộp (ưu tiên deepseek, fallback rule)
-        "descriptionMatchScore": int|None
-      }
+
+def analyze(tmp_dir: str, title: str = "", description: str = "",
+            old_tmp_dir: str | None = None, old_title: str = "",
+            old_description: str = "", is_update: bool = False) -> dict:
+    """
+    Phân tích thư mục source đã clone (và so sánh với bản cũ nếu là update).
     """
     root = Path(tmp_dir)
     rule = _rule_based(root)
 
-    deepseek = _deepseek_eval(root, title, description, rule)
+    diff_stats = None
+    if is_update and old_tmp_dir and os.path.isdir(old_tmp_dir):
+        try:
+            diff_stats = source_service.compare_bundles(old_tmp_dir, tmp_dir)
+            if diff_stats.get("isCompletelyDifferentProject"):
+                if "secrets" not in rule:
+                    rule["secrets"] = []
+                rule["isCompletelyDifferentProject"] = True
+        except Exception as e:
+            pass
+
+    deepseek = _deepseek_eval(root, title, description, rule,
+                              is_update=is_update, old_title=old_title,
+                              old_description=old_description, diff_stats=diff_stats)
 
     # Điểm gộp: ưu tiên DeepSeek; nếu skip → suy ra điểm thô từ rule-based
     if deepseek and not deepseek.get("skipped"):
@@ -65,6 +73,7 @@ def analyze(tmp_dir: str, title: str = "", description: str = "") -> dict:
     return {
         "rule": rule,
         "deepseek": deepseek,
+        "diffStats": diff_stats,
         "codeQualityScore": code_score,
         "descriptionMatchScore": desc_score,
         "suggestedPrice": suggested_price,
@@ -227,7 +236,9 @@ def _pick_sample_files(root: Path) -> list[tuple[str, str]]:
     return trimmed
 
 
-def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict:
+def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
+                   is_update: bool = False, old_title: str = "",
+                   old_description: str = "", diff_stats: dict | None = None) -> dict:
     if not DEEPSEEK_API_KEY:
         return {"skipped": True, "reason": "DEEPSEEK_API_KEY chưa cấu hình",
                 "codeQualityScore": None, "descriptionMatchScore": None,
@@ -260,7 +271,8 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
         "được đánh giá trên tiêu chí nào (cấu trúc thư mục, đặt tên, tổ chức mã nguồn, code smell, comment, độ hoàn thiện) và bị trừ điểm bởi những lỗi/vấn đề cụ thể gì.\n"
         "   - Phải có một mục issue loại 'description_match_analysis' giải thích rõ tại sao lại đạt điểm số `descriptionMatchScore` đó, "
         "mô tả của developer có phóng đại hay không đúng thực tế code không, có chứa ngôn từ nhạy cảm/bậy bạ hay không.\n"
-        "3. Nếu đây là bản cập nhật (có Git Diff), hãy phân tích chi tiết xem các thay đổi có thực sự nâng cấp tính năng/sửa lỗi hay chỉ là update rác nhằm bypass hệ thống.\n\n"
+        "3. Nếu đây là bản cập nhật (isUpdate = True), hãy phân tích đặc biệt sự so sánh giữa bản cũ và mới: mã nguồn có cải thiện gì, "
+        "độ tương đồng có giữ đúng dự án không (tránh upload game khác hoàn toàn) và mô tả mới có hợp lý không.\n\n"
         "Trả về DUY NHẤT một JSON object, không markdown, không giải thích thêm.\n"
         "Schema:\n"
         "{\n"
@@ -288,6 +300,17 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict) -> dict
         f"CÂY THƯ MỤC:\n{tree}\n\n"
         f"FILE MẪU:\n{sample_block}"
     )
+
+    if is_update and diff_stats:
+        user_prompt += (
+            f"\n\nTHÔNG TIN SO SÁNH PHIÊN BẢN CỦA BẢN CẬP NHẬT (OLD VS NEW VERSION):\n"
+            f"- Tiêu đề cũ: {old_title}\n"
+            f"- Mô tả cũ: {old_description}\n"
+            f"- Thống kê Diff Source Bundle: Thêm {diff_stats.get('addedCount')} file, Sửa {diff_stats.get('modifiedCount')} file, Xóa {diff_stats.get('removedCount')} file.\n"
+            f"- Tỷ lệ tương đồng cấu trúc file: {int(diff_stats.get('fileStructureSimilarity', 1.0) * 100)}%\n"
+            f"- Mẫu file sửa đổi: {', '.join(diff_stats.get('sampleModified', []))}\n"
+            f"- Mẫu file thêm mới: {', '.join(diff_stats.get('sampleAdded', []))}\n"
+        )
 
     if git_info.get("commitMessage") or git_info.get("gitShow"):
         user_prompt += (

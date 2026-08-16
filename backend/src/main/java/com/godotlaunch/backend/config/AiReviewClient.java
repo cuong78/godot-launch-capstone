@@ -54,6 +54,15 @@ public class AiReviewClient {
                                  String bundleHash, String commitSha,
                                  String title, String description, String category,
                                  String videoUrl, List<String> screenshotUrls, List<String> tags) {
+        return review(contentType, snapshotId, bundleUrl, bundleHash, commitSha, title, description, category, videoUrl, screenshotUrls, tags, false, null, null, null, null);
+    }
+
+    public AiReviewResult review(String contentType, UUID snapshotId, String bundleUrl,
+                                 String bundleHash, String commitSha,
+                                 String title, String description, String category,
+                                 String videoUrl, List<String> screenshotUrls, List<String> tags,
+                                 boolean isUpdate, String oldBundleUrl, String oldTitle,
+                                 String oldDescription, List<String> oldTags) {
         String url = serviceUrl + "/ai/review";
 
         Map<String, Object> body = new HashMap<>();
@@ -68,6 +77,11 @@ public class AiReviewClient {
         if (videoUrl != null) body.put("videoUrl", videoUrl);
         body.put("screenshotUrls", screenshotUrls == null ? List.of() : screenshotUrls);
         body.put("tags", tags == null ? List.of() : tags);
+        body.put("isUpdate", isUpdate);
+        if (oldBundleUrl != null) body.put("oldBundleUrl", oldBundleUrl);
+        if (oldTitle != null) body.put("oldTitle", oldTitle);
+        if (oldDescription != null) body.put("oldDescription", oldDescription);
+        if (oldTags != null) body.put("oldTags", oldTags);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

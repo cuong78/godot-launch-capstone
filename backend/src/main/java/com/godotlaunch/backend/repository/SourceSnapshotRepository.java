@@ -20,6 +20,7 @@ public interface SourceSnapshotRepository extends JpaRepository<SourceSnapshot, 
 
     List<SourceSnapshot> findByGameIdOrderByCreatedAtDesc(UUID gameId);
     Optional<SourceSnapshot> findFirstByGameIdOrderByCreatedAtDesc(UUID gameId);
+    Optional<SourceSnapshot> findFirstByGameIdAndIdNotOrderByCreatedAtDesc(UUID gameId, UUID id);
 
     // Tra cứu khi tranh chấp: ai từng submit cùng bundle hash
     List<SourceSnapshot> findByBundleHash(String bundleHash);

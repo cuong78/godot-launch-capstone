@@ -425,3 +425,58 @@ def _dir_size_mb(tmp_dir: str) -> float:
             except OSError:
                 pass
     return total / (1024 * 1024)
+
+
+def compare_bundles(old_dir: str, new_dir: str) -> dict:
+    """
+    So sánh hai thư mục giải nén từ hai phiên bản source snapshot (cũ vs mới).
+    Tính số file thêm/sửa/xóa và độ tương đồng cấu trúc cây thư mục.
+    """
+    old_files = {}
+    for p in Path(old_dir).rglob("*"):
+        if p.is_file() and not any(part in IGNORE_DIRS for part in p.parts):
+            rel = str(p.relative_to(old_dir)).replace("\\", "/")
+            old_files[rel] = p
+
+    new_files = {}
+    for p in Path(new_dir).rglob("*"):
+        if p.is_file() and not any(part in IGNORE_DIRS for part in p.parts):
+            rel = str(p.relative_to(new_dir)).replace("\\", "/")
+            new_files[rel] = p
+
+    old_keys = set(old_files.keys())
+    new_keys = set(new_files.keys())
+
+    added = list(new_keys - old_keys)
+    removed = list(old_keys - new_keys)
+    common = list(old_keys & new_keys)
+
+    modified = []
+    same = []
+    for k in common:
+        try:
+            if _hash_file(old_files[k]) != _hash_file(new_files[k]):
+                modified.append(k)
+            else:
+                same.append(k)
+        except Exception:
+            same.append(k)
+
+    total_union = len(old_keys | new_keys)
+    similarity = (len(same) + len(modified)) / total_union if total_union > 0 else 1.0
+
+    is_completely_different = (len(common) / len(old_keys) < 0.20) if len(old_keys) > 3 else False
+
+    return {
+        "addedCount": len(added),
+        "removedCount": len(removed),
+        "modifiedCount": len(modified),
+        "sameCount": len(same),
+        "totalFilesOld": len(old_keys),
+        "totalFilesNew": len(new_keys),
+        "fileStructureSimilarity": round(similarity, 2),
+        "isCompletelyDifferentProject": is_completely_different,
+        "sampleAdded": added[:5],
+        "sampleRemoved": removed[:5],
+        "sampleModified": modified[:5],
+    }
