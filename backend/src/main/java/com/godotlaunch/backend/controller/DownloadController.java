@@ -43,7 +43,7 @@ public class DownloadController {
                 request.getHeader(HttpHeaders.USER_AGENT)
         );
 
-        return ResponseEntity.ok()
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
@@ -51,8 +51,14 @@ public class DownloadController {
                                 .filename(download.fileName(), StandardCharsets.UTF_8)
                                 .build()
                                 .toString()
-                )
-                .body(new InputStreamResource(download.inputStream()));
+                );
+        if (download.gameVersionId() != null) {
+            response.header("X-Game-Version-Id", download.gameVersionId().toString());
+        }
+        if (StringUtils.hasText(download.gameVersionNumber())) {
+            response.header("X-Game-Version", download.gameVersionNumber());
+        }
+        return response.body(new InputStreamResource(download.inputStream()));
     }
 
     private String resolveClientIp(HttpServletRequest request) {

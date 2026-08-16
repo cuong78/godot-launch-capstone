@@ -93,6 +93,9 @@ app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   backend-url: ${BACKEND_URL:http://localhost:8080}
 
+  game-version-notifications:
+    fixed-delay-ms: ${GAME_VERSION_NOTIFICATION_DELAY_MS:5000}
+
   ai-review:
     plagiarism:
       review-threshold: ${PLAGIARISM_REVIEW_THRESHOLD:0.70}
@@ -149,4 +152,13 @@ storage:
     public-host: ${SEAWEEDFS_PUBLIC_HOST:localhost}
     public-port: ${SEAWEEDFS_PUBLIC_PORT:8888}
     base-path: ${SEAWEEDFS_BASE_PATH:/godotlaunch}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
 

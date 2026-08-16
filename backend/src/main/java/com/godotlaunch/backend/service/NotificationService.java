@@ -6,6 +6,7 @@ import com.godotlaunch.backend.entity.User;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface NotificationService {
     List<NotificationResponse> getMyNotifications(String email);
@@ -13,5 +14,6 @@ public interface NotificationService {
     void markAsRead(UUID notificationId, String email);
     void markAllAsRead(String email);
     void createAndSendNotification(User recipient, User sender, NotificationType type, String message, String targetId);
+    void dispatchPersistedNotifications(Collection<String> eventKeys);
     void markChatNotificationsAsRead(UUID recipientId, UUID senderId);
 }

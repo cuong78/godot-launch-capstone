@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -17,6 +18,7 @@ public class NotificationResponse {
     private NotificationType type;
     private String message;
     private String targetId;
+    private Map<String, Object> metadata;
     private boolean isRead;
     private Instant createdAt;
 }

@@ -13,5 +13,6 @@ public enum NotificationType {
     SECURITY_ALERT,         // phát hiện mã độc -> báo dev
     PLAGIARISM_ALERT,       // nghi vấn trùng lặp code -> báo admin
     STORE_PUBLISH_RESULT,   // ứng dụng lên Google Play / từ chối -> báo dev
-    NEW_SUBMISSION          // dev tải lên/gửi game hoặc asset mới -> báo admin
+    NEW_SUBMISSION,         // dev tải lên/gửi game hoặc asset mới -> báo admin
+    GAME_VERSION_RELEASED   // bản cập nhật game đã mua được phát hành -> báo buyer
 }

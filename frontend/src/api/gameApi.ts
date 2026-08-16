@@ -4,7 +4,8 @@ import {
   GameResponse, 
   CategoryResponse, 
   CreateGameRequest, 
-  UpdateGameRequest 
+  UpdateGameRequest,
+  GameEntitlementResponse
 } from '../types';
 
 export const gameApi = {
@@ -52,6 +53,30 @@ export const gameApi = {
   getGameById: async (id: string): Promise<ApiResponse<GameResponse>> => {
     const response = await api.get<ApiResponse<GameResponse>>(`/api/v1/games/${id}`);
     return response.data;
+  },
+
+  getEntitlement: async (id: string): Promise<ApiResponse<GameEntitlementResponse>> => {
+    const response = await api.get<ApiResponse<GameEntitlementResponse>>(`/api/v1/games/${id}/entitlement`);
+    return response.data;
+  },
+
+  downloadPurchase: async (purchaseId: string): Promise<{ blob: Blob; fileName: string }> => {
+    const response = await api.get<Blob>(`/api/v1/downloads/${purchaseId}`, {
+      responseType: 'blob',
+    });
+    const disposition = response.headers['content-disposition'] as string | undefined;
+    const utf8Match = disposition?.match(/filename\*=UTF-8''([^;]+)/i);
+    const plainMatch = disposition?.match(/filename="?([^";]+)"?/i);
+    const encodedName = utf8Match?.[1] || plainMatch?.[1];
+    let fileName = 'game-package.zip';
+    if (encodedName) {
+      try {
+        fileName = decodeURIComponent(encodedName);
+      } catch {
+        fileName = encodedName;
+      }
+    }
+    return { blob: response.data, fileName };
   },
 
   updateGame: async (id: string, data: UpdateGameRequest): Promise<ApiResponse<GameResponse>> => {

@@ -90,12 +90,11 @@ public class StorePublishServiceImpl implements StorePublishService {
 
         String fileUrl = seaweedFsService.uploadFile(file, "games/" + gameId + "/builds");
 
-        gameVersionRepository.findByGame_IdAndIsCurrentTrue(gameId)
-                .filter(prev -> existingVersion.isEmpty() || !prev.getId().equals(existingVersion.get().getId()))
-                .ifPresent(prev -> {
-                    prev.setCurrent(false);
-                    gameVersionRepository.save(prev);
-                });
+        if (existingVersion.isPresent()) {
+            gameVersionRepository.deactivateOtherCurrentVersions(gameId, existingVersion.get().getId());
+        } else {
+            gameVersionRepository.deactivateCurrentVersion(gameId);
+        }
 
         // Nếu version này đã tồn tại nhưng lần nộp trước bị từ chối/chưa xong -> cập nhật lại đúng row đó
         // (không insert row mới, tránh vi phạm UNIQUE(game_id, version_number)).

@@ -25,6 +25,8 @@ import com.godotlaunch.backend.service.SeaweedFsService;
 import com.godotlaunch.backend.service.ClamAVService;
 import com.godotlaunch.backend.service.EmailService;
 import com.godotlaunch.backend.service.GameService;
+import com.godotlaunch.backend.service.GameEntitlementService;
+import com.godotlaunch.backend.service.GameVersionService;
 import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.repository.GameRepository;
@@ -94,6 +96,13 @@ public class GameServiceImpl implements GameService {
     private final com.godotlaunch.backend.repository.PlagiarismFlagRepository plagiarismFlagRepository;
     private final ObjectMapper objectMapper;
     private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
+    private final GameEntitlementService gameEntitlementService;
+    private final GameVersionService gameVersionService;
+
+    @Override
+    public com.godotlaunch.backend.dto.response.GameEntitlementResponse getEntitlement(UUID gameId, String requesterEmail) {
+        return gameEntitlementService.getEntitlement(gameId, requesterEmail);
+    }
 
     /** Build objectKey cố định/random theo loại media với đuôi mở rộng gốc. */
     private String buildMediaObjectKey(UUID gameId, String fileType, MultipartFile file) {
@@ -1105,14 +1114,20 @@ public class GameServiceImpl implements GameService {
                 }
             }
 
-            VersionUtils.updateGameVersionFile(game, pendingSnapshot.getBundleUrl(), gameVersionRepository);
-
-            game.setPendingUpdateSnapshot(null);
+            GameVersion releasedVersion = gameVersionService.activateApprovedUpdate(
+                    game,
+                    pendingSnapshot,
+                    null,
+                    "Update source code"
+            );
 
             if (game.getPublishingType() != null && game.getPublishingType() != com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing) {
                 game.setStatus(GameStatus.awaiting_store_build);
             }
             gameRepository.save(game);
+
+            log.info("Activated game update: gameId={}, gameVersionId={}, version={}",
+                    game.getId(), releasedVersion.getId(), releasedVersion.getVersionNumber());
 
             emailService.sendGameStatusNotification(
                     game.getCreator().getEmail(),

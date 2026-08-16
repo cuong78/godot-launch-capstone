@@ -110,5 +110,18 @@
   "detail.tech.noDetails": "Chưa có thông số kỹ thuật được ánh xạ cho gói tài nguyên này.",
   "detail.tech.objectProperties": "THUỘC TÍNH ĐỐI TƯỢNG",
   "detail.tech.spritesPrefabs": "SPRITE / PREFAB",
-  "detail.tech.tilesetsCount": "SỐ TILESET"
+  "detail.tech.tilesetsCount": "SỐ TILESET",
+  "detail.update.available": "Có bản cập nhật {{version}}",
+  "detail.update.firstDownload": "Bạn đã sở hữu game này - có thể tải phiên bản {{version}}",
+  "detail.update.upToDate": "Bạn đang sử dụng phiên bản mới nhất ({{version}})",
+  "detail.update.lastDownloaded": "Phiên bản bạn tải gần nhất: {{version}}",
+  "detail.update.downloadUpdate": "Tải bản cập nhật",
+  "detail.update.downloadGame": "Tải game v{{version}}",
+  "detail.update.downloadAsset": "Tải gói tài nguyên",
+  "detail.update.preparing": "Đang chuẩn bị phiên bản {{version}}...",
+  "detail.update.checking": "Đang kiểm tra quyền sở hữu...",
+  "detail.update.downloadStarted": "Đã bắt đầu tải phiên bản mới nhất.",
+  "detail.update.downloadFailed": "Không thể tải game. Vui lòng thử lại.",
+  "detail.update.forbidden": "Bạn không có quyền tải game này.",
+  "detail.update.packageUnavailable": "Gói tải của phiên bản hiện hành tạm thời không khả dụng."
 }

@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.Collection;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -133,6 +134,39 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public void dispatchPersistedNotifications(Collection<String> eventKeys) {
+        if (eventKeys == null || eventKeys.isEmpty()) {
+            return;
+        }
+        for (String eventKey : eventKeys) {
+            notificationRepository.findByEventKey(eventKey).ifPresent(notification -> {
+                NotificationResponse response = mapToResponse(notification);
+                String targetEmail = notification.getRecipient().getEmail().toLowerCase().trim();
+                try {
+                    simpMessagingTemplate.convertAndSendToUser(
+                            targetEmail,
+                            "/queue/notifications",
+                            response
+                    );
+                } catch (Exception exception) {
+                    log.error("Failed to push persisted notification {}: {}", notification.getId(), exception.getMessage());
+                }
+                try {
+                    emailService.sendNotificationEmail(
+                            notification.getRecipient().getEmail(),
+                            "Godot Launch - Game update available",
+                            notification.getMessage()
+                    );
+                } catch (Exception exception) {
+                    log.error("Failed to trigger release email for notification {}: {}",
+                            notification.getId(), exception.getMessage());
+                }
+            });
+        }
+    }
+
     private NotificationResponse mapToResponse(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())
@@ -140,6 +174,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .type(notification.getType())
                 .message(notification.getMessage())
                 .targetId(notification.getTargetId())
+                .metadata(notification.getMetadata())
                 .isRead(notification.isRead())
                 .createdAt(notification.getCreatedAt())
                 .build();

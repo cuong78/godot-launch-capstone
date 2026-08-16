@@ -219,12 +219,15 @@ const pathToScreen = (path: string): { screen: ScreenType; assetId?: string } =>
   if (primary === 'detail') {
     return { screen: 'detail', assetId: segments[1] };
   }
+  if (primary === 'games' && segments[1]) {
+    return { screen: 'detail', assetId: segments[1] };
+  }
   return { screen: 'explore' };
 };
 
 const screenToPath = (screen: ScreenType, assetId?: string): string => {
   if (screen === 'explore') return '/';
-  if (screen === 'detail' && assetId) return `/detail/${assetId}`;
+  if (screen === 'detail' && assetId) return `/games/${assetId}`;
   if (screen === 'community-detail' && assetId) return `/community/detail/${assetId}`;
   if (screen === 'author-profile' && assetId) return `/profile/${assetId}`;
   if (screen === 'auth-callback') return '/auth/callback';
