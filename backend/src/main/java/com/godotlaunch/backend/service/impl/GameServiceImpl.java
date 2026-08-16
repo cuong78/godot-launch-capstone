@@ -93,6 +93,7 @@ public class GameServiceImpl implements GameService {
     private final GitHubRepoService gitHubRepoService;
     private final SourceProcessingClient sourceProcessingClient;
     private final SourceSnapshotRepository sourceSnapshotRepository;
+    private final com.godotlaunch.backend.repository.ContractRepository contractRepository;
     private final com.godotlaunch.backend.repository.PlagiarismFlagRepository plagiarismFlagRepository;
     private final ObjectMapper objectMapper;
     private final com.godotlaunch.backend.service.AiReviewService aiReviewService;
@@ -217,6 +218,15 @@ public class GameServiceImpl implements GameService {
         assertGameOwner(game, creator);
         if (repoUrl == null || repoUrl.isBlank()) {
             throw new AppException(ErrorCode.REPO_URL_REQUIRED);
+        }
+
+        // Chặn đồng bộ khi hợp đồng phát hành đang chờ ký (Contract.status = pending) —
+        // tránh source code bị thay thế ngầm trong lúc admin đang review dựa trên snapshot cũ
+        // để soạn/gửi hợp đồng (bug: game.status vẫn "pending" sau khi developer thương lượng
+        // lại hợp đồng, khiến submitGameRepo coi lần sync này là "lần đầu" và áp dụng ngay,
+        // không qua hàng chờ duyệt riêng như case update game đã published/approved).
+        if (contractRepository.existsByGameIdAndStatus(gameId, com.godotlaunch.backend.entity.enums.ContractStatus.pending)) {
+            throw new AppException(ErrorCode.CONTRACT_PENDING_BLOCKS_SYNC);
         }
 
         // 1. Verify owner TRƯỚC — repo phải thuộc về chính creator (chống đánh cắp repo người khác).

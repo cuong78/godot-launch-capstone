@@ -105,6 +105,7 @@ public enum ErrorCode {
     REPO_NEEDS_BOT(HttpStatus.FORBIDDEN, "Repo này đang ở chế độ private hoặc sai link. Vui lòng mời tài khoản hệ thống vào repo để cấp quyền."),
     SOURCE_NO_CHANGES(HttpStatus.BAD_REQUEST, "Mã nguồn hiện tại trên GitHub không có thay đổi nào mới so với phiên bản hiện tại trên hệ thống."),
     UPDATE_REQUIRES_CODE_UPDATE(HttpStatus.BAD_REQUEST, "Bạn phải gửi bản cập nhật mã nguồn (Source Code) trước khi chỉnh sửa thông tin hoặc tải lên media mới cho game đã phát hành."),
+    CONTRACT_PENDING_BLOCKS_SYNC(HttpStatus.CONFLICT, "Không thể đồng bộ mã nguồn khi hợp đồng phát hành đang chờ bạn ký. Vui lòng ký hoặc từ chối hợp đồng trước."),
 
     // Payment
     OWN_PRODUCT_PURCHASE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "You cannot purchase your own marketplace item."),
@@ -152,8 +153,7 @@ public enum ErrorCode {
     // Security and File verification
     SECURITY_CHECK_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Phát hiện mã độc trong tệp tin tải lên."),
     INVALID_FILE_STRUCTURE(HttpStatus.BAD_REQUEST, "Cấu trúc tệp tin tải lên không hợp lệ hoặc thiếu tệp index.html."),
-    MEDIA_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Ảnh/video vượt quá dung lượng cho phép."),
-    DEMO_MODE_DISABLED(HttpStatus.FORBIDDEN, "Chức năng chỉ khả dụng khi DEMO_MODE=true.");
+    MEDIA_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Ảnh/video vượt quá dung lượng cho phép.");
 
     private final HttpStatus httpStatus;
     private final String code;

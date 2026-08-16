@@ -203,7 +203,8 @@
     "cards": {
       "platformLedger": {
         "title": "Sổ cái nền tảng",
-        "description": "Ví nội bộ dùng để theo dõi hoa hồng marketplace và vận hành tài chính của admin."
+        "description": "Ví nội bộ dùng để theo dõi hoa hồng marketplace và vận hành tài chính của admin.",
+        "outstandingDebt": "Đang ứng trước {{amount}} cho tranh chấp bản quyền — sẽ tự cấn trừ khi seller trả nợ qua PayOS."
       },
       "payoutBalance": {
         "title": "Số dư chi trả PayOS",
@@ -213,11 +214,6 @@
         "title": "Tài khoản chi trả",
         "description": "Thông tin ngân hàng được dùng khi admin xử lý payout cho developer."
       }
-    },
-    "demoTopup": {
-      "button": "Nạp demo +500.000 VND",
-      "confirm": "[DEMO] Nạp {{amount}} vào ví platform để chuẩn bị demo? Số tiền này không phải tiền thật, chỉ hoạt động khi DEMO_MODE=true.",
-      "error": "Không thể nạp demo. Có thể DEMO_MODE chưa được bật ở backend."
     },
     "ledger": {
       "title": "Sổ giao dịch nền tảng",
@@ -521,6 +517,16 @@
     "financialTermsTitle": "Điều khoản tài chính",
     "proposedPriceLabel": "Giá đề xuất từ Developer:",
     "freePrice": "Miễn phí / Free",
+    "contractTypeLabel": "Loại hợp đồng",
+    "contractTypeFullAcquisition": "Mua đứt trọn gói (Full Acquisition)",
+    "contractTypeCoPublishing": "Đồng phát hành — chia doanh thu (Co-Publishing)",
+    "contractTypeHelper": "Admin có thể chọn loại hợp đồng khác với lựa chọn ban đầu của Developer nếu phù hợp hơn.",
+    "aiSuggestion": {
+      "button": "Gợi ý AI",
+      "resultTitle": "Gợi ý từ Trợ lý AI",
+      "apply": "Áp dụng gợi ý này",
+      "error": "Không thể lấy gợi ý từ AI lúc này."
+    },
     "revenueSplitLabel": "Tỷ lệ chia sẻ doanh thu cho Developer (%)",
     "revenueSplitHelper": "Ví dụ: 70 có nghĩa là Developer nhận 70% và Platform nhận 30% doanh thu phát hành",
     "lumpSumLabel": "Số tiền mua đứt trọn gói (VNĐ)",

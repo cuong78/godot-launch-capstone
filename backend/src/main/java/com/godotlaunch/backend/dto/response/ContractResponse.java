@@ -35,4 +35,7 @@ public class ContractResponse {
     private String buyerSignatureBase64;
     private String rejectionReason;
     private Instant createdAt;
+    private Instant updatedAt;
+    /** JSON snapshot bản chào trước (xem Contract.previousOfferSnapshot) — null nếu chưa từng bị sửa lại. */
+    private String previousOfferSnapshot;
 }

@@ -1,6 +1,7 @@
 package com.godotlaunch.backend.repository;
 
 import com.godotlaunch.backend.entity.Contract;
+import com.godotlaunch.backend.entity.enums.ContractStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
@@ -16,6 +17,7 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
     List<Contract> findBySellerId(UUID sellerId);
     List<Contract> findByGameId(UUID gameId);
     Optional<Contract> findFirstByGameId(UUID gameId);
+    boolean existsByGameIdAndStatus(UUID gameId, ContractStatus status);
 
     @Query("SELECT c FROM Contract c WHERE c.pdfUrl IS NOT NULL AND c.pdfUrl <> '' " +
            "AND (:search IS NULL OR :search = '' OR " +

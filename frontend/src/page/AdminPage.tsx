@@ -27,6 +27,8 @@ import {
   Database,
   Play,
   LayoutGrid,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import { Input, TextArea } from "../components/Input";
@@ -46,7 +48,10 @@ import {
 import api from "../api/axios";
 import { userApi } from "../api/userApi";
 import { gameApi } from "../api/gameApi";
-import { contractApi } from "../api/contractApi";
+import {
+  contractApi,
+  ContractAiSuggestionResponse,
+} from "../api/contractApi";
 import { marketplaceApi } from "../api/marketplaceApi";
 import { platformSettingsApi } from "../api/platformSettingsApi";
 import { walletApi } from "../api/walletApi";
@@ -822,6 +827,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [viewerMode, setViewerMode] = useState<"view">("view");
 
   // Form states for creating contract
+  const [contractType, setContractType] = useState<
+    "full_acquisition" | "co_publishing"
+  >("full_acquisition");
   const [buyerRepresentative, setBuyerRepresentative] = useState("");
   const [buyerPosition, setBuyerPosition] = useState(
     t("contract.defaultBuyerPosition"),
@@ -838,6 +846,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [adminSignatureBase64, setAdminSignatureBase64] = useState<
     string | null
   >(null);
+  const [aiSuggestion, setAiSuggestion] =
+    useState<ContractAiSuggestionResponse | null>(null);
+  const [isLoadingAiSuggestion, setIsLoadingAiSuggestion] = useState(false);
+  const [aiSuggestionError, setAiSuggestionError] = useState<string | null>(
+    null,
+  );
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   const handleDownloadFile = async (fileUrl: string, fileName: string) => {
@@ -1294,7 +1308,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   const handleOpenContractModal = (game: GameResponse) => {
     setSelectedGame(game);
-    // Prefill details
+    // Prefill details — loại hợp đồng mặc định theo lựa chọn của developer lúc
+    // đăng game, nhưng admin có thể đổi tự do qua dropdown trước khi gửi.
+    setContractType(
+      game.publishingType === "co_publishing"
+        ? "co_publishing"
+        : "full_acquisition",
+    );
     setBuyerRepresentative(currentUser?.fullName || "Ban quản trị GodotLaunch");
     setBuyerPosition("Authorized Representative");
     setSellerRepresentative(game.creatorFullName || game.creatorName || "");
@@ -1315,7 +1335,51 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setRevenueSplit(70);
     setAdditionalTerms("");
     setAdminSignatureBase64(null);
+    setAiSuggestion(null);
+    setAiSuggestionError(null);
     setIsContractModalOpen(true);
+  };
+
+  const handleRequestAiSuggestion = async () => {
+    if (!selectedGame) return;
+    setIsLoadingAiSuggestion(true);
+    setAiSuggestionError(null);
+    try {
+      const res = await contractApi.suggestContractTerms(selectedGame.id);
+      if (res.success && res.data) {
+        if (res.data.unavailable) {
+          setAiSuggestionError(
+            res.data.reasoning || t("contractComposer.aiSuggestion.error"),
+          );
+        } else {
+          setAiSuggestion(res.data);
+        }
+      } else {
+        setAiSuggestionError(
+          res.message || t("contractComposer.aiSuggestion.error"),
+        );
+      }
+    } catch (err: any) {
+      setAiSuggestionError(
+        err.response?.data?.message ||
+          err.message ||
+          t("contractComposer.aiSuggestion.error"),
+      );
+    } finally {
+      setIsLoadingAiSuggestion(false);
+    }
+  };
+
+  const handleApplyAiSuggestion = () => {
+    if (!aiSuggestion) return;
+    setContractType(aiSuggestion.suggestedContractType);
+    if (aiSuggestion.suggestedContractType === "co_publishing") {
+      setRevenueSplit(aiSuggestion.suggestedRevenueSplit ?? 70);
+    } else if (aiSuggestion.suggestedLumpSumAmount !== undefined) {
+      setLumpSumAmount(
+        aiSuggestion.suggestedLumpSumAmount.toLocaleString("vi-VN") + " VND",
+      );
+    }
   };
 
   const handleCreateContractOffer = async (e: React.FormEvent) => {
@@ -1329,18 +1393,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     try {
       const res = await contractApi.createOffer({
         gameId: selectedGame.id,
-        contractType:
-          selectedGame.publishingType === "co_publishing"
-            ? "co_publishing"
-            : "full_acquisition",
+        contractType,
         revenueSplit:
-          selectedGame.publishingType === "co_publishing"
-            ? revenueSplit
-            : undefined,
+          contractType === "co_publishing" ? revenueSplit : undefined,
         lumpSumAmount:
-          selectedGame.publishingType === "full_acquisition"
-            ? lumpSumAmount
-            : undefined,
+          contractType === "full_acquisition" ? lumpSumAmount : undefined,
         disputeResolutionClause,
         additionalTerms: additionalTerms || undefined,
         buyerRepresentative,
@@ -3849,43 +3906,71 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               })()}
 
               <form onSubmit={handleCreateContractOffer} className="space-y-5">
-                {/* Bên A: Platform */}
-                <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
-                    <span className="w-1.5 h-3 rounded bg-sky-500" />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                      {t("contractComposer.partyATitle")}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <span className="text-slate-500 block mb-0.5">
-                        {t("contractComposer.representativeLabel")}
-                      </span>
-                      <strong className="text-slate-800 dark:text-slate-200">
-                        {buyerRepresentative ||
-                          t("contract.defaultBuyerRepresentative")}
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block mb-0.5">
-                        {t("contractComposer.positionLabel")}
-                      </span>
-                      <strong className="text-slate-800 dark:text-slate-200">
-                        {buyerPosition || t("contract.defaultBuyerPosition")}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Điều khoản tài chính */}
                 <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
-                    <span className="w-1.5 h-3 rounded bg-amber-400" />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                      {t("contractComposer.financialTermsTitle")}
-                    </span>
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-3 rounded bg-amber-400" />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+                        {t("contractComposer.financialTermsTitle")}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRequestAiSuggestion}
+                      disabled={isLoadingAiSuggestion}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-lg text-[11px] transition-studio disabled:opacity-50 cursor-pointer"
+                    >
+                      {isLoadingAiSuggestion ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Sparkles size={12} />
+                      )}
+                      {t("contractComposer.aiSuggestion.button")}
+                    </button>
                   </div>
+
+                  {aiSuggestionError && (
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-600 dark:text-rose-400">
+                      {aiSuggestionError}
+                    </div>
+                  )}
+
+                  {aiSuggestion && (
+                    <div className="p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl space-y-2.5 text-xs">
+                      <span className="flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide font-mono">
+                        <Sparkles size={13} />
+                        {t("contractComposer.aiSuggestion.resultTitle")}
+                      </span>
+                      <p className="text-slate-600 dark:text-slate-300 leading-normal">
+                        {aiSuggestion.reasoning}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+                        <span className="px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-bold">
+                          {aiSuggestion.suggestedContractType === "co_publishing"
+                            ? t("contractComposer.contractTypeCoPublishing")
+                            : t("contractComposer.contractTypeFullAcquisition")}
+                        </span>
+                        <span className="px-2 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold">
+                          {aiSuggestion.suggestedContractType === "co_publishing"
+                            ? `${aiSuggestion.suggestedRevenueSplit ?? 0}%`
+                            : formatCurrency(
+                                aiSuggestion.suggestedLumpSumAmount ?? 0,
+                                "VND",
+                                locale,
+                                t("withdrawal.na"),
+                              )}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleApplyAiSuggestion}
+                        className="w-full py-2 px-3 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-lg text-[11px] transition-studio cursor-pointer"
+                      >
+                        {t("contractComposer.aiSuggestion.apply")}
+                      </button>
+                    </div>
+                  )}
 
                   {selectedGame.priceProposed !== undefined &&
                     selectedGame.priceProposed !== null && (
@@ -3906,79 +3991,54 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       </div>
                     )}
 
-                  {(() => {
-                    const activeRejectedContract = [...contracts]
-                      .reverse()
-                      .find(
-                        (c) =>
-                          c.gameId === selectedGame.id &&
-                          c.status === "cancelled" &&
-                          c.rejectionReason,
-                      );
-                    const isNegotiating =
-                      activeRejectedContract?.rejectionReason?.startsWith(
-                        "[THƯƠNG LƯỢNG]",
-                      ) ?? false;
-
-                    if (selectedGame.publishingType === "co_publishing") {
-                      return (
-                        <Input
-                          label={t("contractComposer.revenueSplitLabel")}
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={revenueSplit}
-                          onChange={(e) =>
-                            setRevenueSplit(parseInt(e.target.value) || 0)
-                          }
-                          helperText={t("contractComposer.revenueSplitHelper")}
-                          required
-                        />
-                      );
-                    } else {
-                      const hasProposedPrice =
-                        selectedGame.priceProposed !== undefined &&
-                        selectedGame.priceProposed !== null;
-                      if (!hasProposedPrice || isNegotiating) {
-                        return (
-                          <Input
-                            label={t("contractComposer.lumpSumLabel")}
-                            placeholder={t("contractComposer.lumpSumPlaceholder")}
-                            value={lumpSumAmount}
-                            onChange={(e) => setLumpSumAmount(e.target.value)}
-                            helperText={
-                              isNegotiating
-                                ? t("contractComposer.negotiationHelper")
-                                : t("contractComposer.lumpSumHelper")
-                            }
-                            required
-                          />
-                        );
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      {t("contractComposer.contractTypeLabel")}
+                    </label>
+                    <select
+                      value={contractType}
+                      onChange={(e) =>
+                        setContractType(
+                          e.target.value as "full_acquisition" | "co_publishing",
+                        )
                       }
-                      return null;
-                    }
-                  })()}
-                </div>
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-amber-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      <option value="full_acquisition">
+                        {t("contractComposer.contractTypeFullAcquisition")}
+                      </option>
+                      <option value="co_publishing">
+                        {t("contractComposer.contractTypeCoPublishing")}
+                      </option>
+                    </select>
+                    <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                      {t("contractComposer.contractTypeHelper")}
+                    </p>
+                  </div>
 
-                {/* Điều khoản pháp lý bổ sung */}
-                <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
-                    <span className="w-1.5 h-3 rounded bg-sky-500" />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                      {t("contractComposer.legalTermsTitle")}
-                    </span>
-                  </div>
-                  <div className="text-xs space-y-3">
-                    <div>
-                      <span className="text-slate-500 block mb-1">
-                        {t("contractComposer.disputeResolutionLabel")}
-                      </span>
-                      <p className="bg-slate-100 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-250 dark:border-slate-800/80 whitespace-pre-line text-slate-700 dark:text-slate-350 leading-relaxed">
-                        {disputeResolutionClause ||
-                          t("contract.defaultDisputeClause")}
-                      </p>
-                    </div>
-                  </div>
+                  {contractType === "co_publishing" ? (
+                    <Input
+                      label={t("contractComposer.revenueSplitLabel")}
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={revenueSplit}
+                      onChange={(e) =>
+                        setRevenueSplit(parseInt(e.target.value) || 0)
+                      }
+                      helperText={t("contractComposer.revenueSplitHelper")}
+                      required
+                    />
+                  ) : (
+                    <Input
+                      label={t("contractComposer.lumpSumLabel")}
+                      placeholder={t("contractComposer.lumpSumPlaceholder")}
+                      value={lumpSumAmount}
+                      onChange={(e) => setLumpSumAmount(e.target.value)}
+                      helperText={t("contractComposer.lumpSumHelper")}
+                      required
+                    />
+                  )}
                 </div>
 
                 {/* Chữ ký Bên A — bắt buộc ngay lúc soạn hợp đồng */}

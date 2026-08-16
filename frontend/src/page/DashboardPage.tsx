@@ -1195,29 +1195,44 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               )}
                                             </div>
 
-                                            {game.pendingUpdateSnapshotId ? (
-                                              <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
-                                                Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
-                                              </div>
-                                            ) : (
-                                              <button
-                                                onClick={() => handleSyncRepo(game.id, game.githubRepoUrl!, game.githubBranch)}
-                                                disabled={syncingGameId !== null}
-                                                className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 cursor-pointer"
-                                              >
-                                                {syncingGameId === game.id ? (
-                                                  <>
-                                                    <RefreshCw className="animate-spin" size={12} />
-                                                    Đang kéo code mới...
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <RefreshCw size={12} />
-                                                    Đồng bộ bản mới từ GitHub
-                                                  </>
-                                                )}
-                                              </button>
-                                            )}
+                                            {(() => {
+                                              const pendingContract = contracts.find(
+                                                (c) => c.gameId === game.id && c.status === "pending",
+                                              );
+                                              if (pendingContract) {
+                                                return (
+                                                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-lg text-[10px] leading-relaxed">
+                                                    Không thể đồng bộ mã nguồn khi hợp đồng phát hành đang chờ bạn ký. Vui lòng ký hoặc từ chối hợp đồng trước.
+                                                  </div>
+                                                );
+                                              }
+                                              if (game.pendingUpdateSnapshotId) {
+                                                return (
+                                                  <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
+                                                    Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
+                                                  </div>
+                                                );
+                                              }
+                                              return (
+                                                <button
+                                                  onClick={() => handleSyncRepo(game.id, game.githubRepoUrl!, game.githubBranch)}
+                                                  disabled={syncingGameId !== null}
+                                                  className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 cursor-pointer"
+                                                >
+                                                  {syncingGameId === game.id ? (
+                                                    <>
+                                                      <RefreshCw className="animate-spin" size={12} />
+                                                      Đang kéo code mới...
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <RefreshCw size={12} />
+                                                      Đồng bộ bản mới từ GitHub
+                                                    </>
+                                                  )}
+                                                </button>
+                                              );
+                                            })()}
 
                                             {syncError && syncingGameId === null && (
                                               <p className="text-[10px] text-rose-500 font-semibold mt-1">
@@ -1816,29 +1831,44 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                               )}
                                             </div>
 
-                                            {item.originalItem.pendingUpdateSnapshotId ? (
-                                              <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
-                                                Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
-                                              </div>
-                                            ) : (
-                                              <button
-                                                onClick={() => handleSyncRepo(item.id, item.originalItem.githubRepoUrl!, item.originalItem.githubBranch)}
-                                                disabled={syncingGameId !== null}
-                                                className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 cursor-pointer"
-                                              >
-                                                {syncingGameId === item.id ? (
-                                                  <>
-                                                    <RefreshCw className="animate-spin" size={12} />
-                                                    Đang kéo code mới...
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <RefreshCw size={12} />
-                                                    Đồng bộ bản mới từ GitHub
-                                                  </>
-                                                )}
-                                              </button>
-                                            )}
+                                            {(() => {
+                                              const pendingContract = contracts.find(
+                                                (c) => c.gameId === item.id && c.status === "pending",
+                                              );
+                                              if (pendingContract) {
+                                                return (
+                                                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-lg text-[10px] leading-relaxed">
+                                                    Không thể đồng bộ mã nguồn khi hợp đồng phát hành đang chờ bạn ký. Vui lòng ký hoặc từ chối hợp đồng trước.
+                                                  </div>
+                                                );
+                                              }
+                                              if (item.originalItem.pendingUpdateSnapshotId) {
+                                                return (
+                                                  <div className="p-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-450 rounded-lg text-[10px] leading-relaxed">
+                                                    Phiên bản mới đang chờ duyệt và quét bảo mật. Phiên bản công khai của bạn vẫn đang hoạt động bình thường trên chợ.
+                                                  </div>
+                                                );
+                                              }
+                                              return (
+                                                <button
+                                                  onClick={() => handleSyncRepo(item.id, item.originalItem.githubRepoUrl!, item.originalItem.githubBranch)}
+                                                  disabled={syncingGameId !== null}
+                                                  className="flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-white font-bold rounded-lg text-xs transition-studio disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 cursor-pointer"
+                                                >
+                                                  {syncingGameId === item.id ? (
+                                                    <>
+                                                      <RefreshCw className="animate-spin" size={12} />
+                                                      Đang kéo code mới...
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <RefreshCw size={12} />
+                                                      Đồng bộ bản mới từ GitHub
+                                                    </>
+                                                  )}
+                                                </button>
+                                              );
+                                            })()}
 
                                             {syncError && syncingGameId === null && (
                                               <p className="text-[10px] text-rose-500 font-semibold mt-1">

@@ -16,6 +16,14 @@ export interface ContractRequestDto {
   buyerSignatureBase64?: string;
 }
 
+export interface ContractAiSuggestionResponse {
+  suggestedContractType: 'full_acquisition' | 'co_publishing';
+  suggestedLumpSumAmount?: number;
+  suggestedRevenueSplit?: number;
+  reasoning: string;
+  unavailable: boolean;
+}
+
 export const contractApi = {
   createOffer: async (data: ContractRequestDto): Promise<ApiResponse<ContractResponse>> => {
     const response = await api.post<ApiResponse<ContractResponse>>('/api/contracts/offers', data);
@@ -57,6 +65,14 @@ export const contractApi = {
     const response = await api.post<ApiResponse<ContractResponse>>(`/api/contracts/${contractId}/reject`, {
       rejectionReason
     });
+    return response.data;
+  },
+
+  suggestContractTerms: async (gameId: string): Promise<ApiResponse<ContractAiSuggestionResponse>> => {
+    const response = await api.get<ApiResponse<ContractAiSuggestionResponse>>(
+      '/api/contracts/ai-suggestion',
+      { params: { gameId } }
+    );
     return response.data;
   },
 };

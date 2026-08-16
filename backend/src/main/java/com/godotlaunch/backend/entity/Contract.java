@@ -83,4 +83,16 @@ public class Contract {
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
+    private Instant updatedAt;
+
+    /**
+     * JSON snapshot các field chính (contractType, revenueSplit, lumpSumAmount)
+     * của bản chào NGAY TRƯỚC lần ghi đè gần nhất — NULL nếu chưa từng bị sửa
+     * lại. Set thủ công trong ContractServiceImpl.createOffer() trước khi ghi
+     * đè, dùng để Developer thấy được "bản này khác bản trước ở đâu".
+     */
+    @Column(name = "previous_offer_snapshot", columnDefinition = "TEXT")
+    private String previousOfferSnapshot;
 }
