@@ -4,6 +4,7 @@ import com.godotlaunch.backend.dto.request.CreateDisputeRequest;
 import com.godotlaunch.backend.dto.request.ResolveDisputeRequest;
 import com.godotlaunch.backend.dto.response.ApiResponse;
 import com.godotlaunch.backend.dto.response.DisputeResponse;
+import com.godotlaunch.backend.dto.response.EvidenceRepoAccessResponse;
 import com.godotlaunch.backend.service.DisputeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +33,24 @@ public class DisputeController {
             @Valid @RequestBody CreateDisputeRequest request, Principal principal) {
         DisputeResponse res = disputeService.createDispute(request, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(res, "Đã gửi khiếu nại. Sản phẩm tạm gỡ chờ điều tra."));
+    }
+
+    @GetMapping("/check-evidence-repo")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Kiểm tra quyền truy cập repo bằng chứng trước khi gửi khiếu nại", description = "PUBLIC/PRIVATE_GRANTED: cho phép submit ngay. PRIVATE_NO_ACCESS: frontend hiện popup mời bot (botUsername) trước khi cho submit.")
+    public ResponseEntity<ApiResponse<EvidenceRepoAccessResponse>> checkEvidenceRepo(
+            @RequestParam String repoUrl) {
+        return ResponseEntity.ok(ApiResponse.success(
+                disputeService.checkEvidenceRepoAccess(repoUrl), "OK"));
+    }
+
+    @PostMapping("/accept-bot-for-evidence")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
+    @Operation(summary = "Bot accept lời mời collaborator vào repo bằng chứng", description = "Gọi sau khi reporter đã mời bot làm collaborator trên GitHub. Trả granted=true nếu bot đã đọc được repo.")
+    public ResponseEntity<ApiResponse<Boolean>> acceptBotForEvidence(
+            @RequestParam String repoUrl) {
+        boolean granted = disputeService.acceptBotInvitationForEvidence(repoUrl);
+        return ResponseEntity.ok(ApiResponse.success(granted, granted ? "Bot đã có quyền truy cập repo." : "Bot chưa nhận được lời mời. Vui lòng kiểm tra lại."));
     }
 
     @GetMapping("/my-reports")

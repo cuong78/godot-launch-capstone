@@ -35,6 +35,11 @@ public class UpdatePlatformSettingsRequest {
     @Max(value = 30, message = "Refund deadline days must not exceed 30")
     private Short refundDeadlineDays;
 
+    @NotNull(message = "Dispute ban threshold is required")
+    @Min(value = 1, message = "Dispute ban threshold must be at least 1")
+    @Max(value = 20, message = "Dispute ban threshold must not exceed 20")
+    private Short disputeBanThreshold;
+
     @NotNull(message = "Daily maintenance time is required")
     private LocalTime dailyMaintenanceTime;
 

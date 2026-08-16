@@ -214,6 +214,11 @@
         "description": "管理者が開発者向けの支払い処理を行う際に使う銀行口座情報です。"
       }
     },
+    "demoTopup": {
+      "button": "デモ入金 +500,000 VND",
+      "confirm": "[デモ] プラットフォームウォレットに{{amount}}を入金しますか？実際のお金ではなく、DEMO_MODE=trueの場合のみ動作します。",
+      "error": "デモ入金に失敗しました。バックエンドでDEMO_MODEが有効になっていない可能性があります。"
+    },
     "ledger": {
       "title": "プラットフォーム取引台帳",
       "description": "管理者ウォレットの変動を確認し、決済や出金操作の前に参照情報を追跡します。",
@@ -240,6 +245,8 @@
     "withdrawalHoldDaysHelper": "出金申請が自動的に振り込まれるまでのクーリングオフ期間",
     "refundDeadlineDaysLabel": "返金期限（日数）",
     "refundDeadlineDaysHelper": "著作権侵害の紛争でseller が返金しなければならない日数（超過すると自動的に禁止されます）",
+    "disputeBanThresholdLabel": "自動禁止のしきい値（回数）",
+    "disputeBanThresholdHelper": "違反が確定した回数（seller の著作権侵害または reporter の虚偽報告）がこの値に達するとアカウントが自動的に禁止されます",
     "dailyMaintenanceTimeLabel": "日次タスク実行時刻（ベトナム時間、HH:mm:ss）",
     "dailyMaintenanceTimeHelper": "自動出金・返金強制タスクを1日1回実行する時刻（Asia/Ho_Chi_Minh）"
   },

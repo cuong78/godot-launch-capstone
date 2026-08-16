@@ -43,6 +43,11 @@ export interface ResolveDisputePayload {
   banUser?: boolean;
 }
 
+export interface EvidenceRepoAccessResponse {
+  access: 'PUBLIC' | 'PRIVATE_GRANTED' | 'PRIVATE_NO_ACCESS';
+  botUsername: string | null;
+}
+
 export const disputeApi = {
   create: async (payload: CreateDisputePayload): Promise<ApiResponse<DisputeResponse>> => {
     const res = await api.post('/api/v1/disputes', payload);
@@ -78,6 +83,14 @@ export const disputeApi = {
   },
   getAiAnalysis: async (id: string): Promise<ApiResponse<string>> => {
     const res = await api.get(`/api/v1/disputes/${id}/ai-analysis`);
+    return res.data;
+  },
+  checkEvidenceRepoAccess: async (repoUrl: string): Promise<ApiResponse<EvidenceRepoAccessResponse>> => {
+    const res = await api.get('/api/v1/disputes/check-evidence-repo', { params: { repoUrl } });
+    return res.data;
+  },
+  acceptBotForEvidence: async (repoUrl: string): Promise<ApiResponse<boolean>> => {
+    const res = await api.post('/api/v1/disputes/accept-bot-for-evidence', null, { params: { repoUrl } });
     return res.data;
   },
 };

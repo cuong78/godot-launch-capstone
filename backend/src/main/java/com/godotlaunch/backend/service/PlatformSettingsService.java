@@ -19,4 +19,7 @@ public interface PlatformSettingsService {
     short getRefundDeadlineDays();
 
     LocalTime getDailyMaintenanceTime();
+
+    /** Số lần bị kết luận vi phạm (seller đạo nhái / reporter vu cáo) trước khi tự động ban. */
+    short getDisputeBanThreshold();
 }

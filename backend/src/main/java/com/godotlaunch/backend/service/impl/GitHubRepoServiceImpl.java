@@ -63,6 +63,17 @@ public class GitHubRepoServiceImpl implements GitHubRepoService {
     }
 
     @Override
+    public RepoAccess checkAccessForEvidence(String repoUrl) {
+        if (repoUrl == null || repoUrl.isBlank()) {
+            throw new AppException(ErrorCode.REPO_URL_REQUIRED);
+        }
+        // parseOwnerRepo() throw REPO_URL_REQUIRED nếu URL sai định dạng —
+        // để lỗi đó tự bung lên caller (rõ ràng hơn là lẫn vào PRIVATE_NO_ACCESS).
+        parseOwnerRepo(repoUrl);
+        return checkAccess(repoUrl);
+    }
+
+    @Override
     public RepoAccess checkAccess(String repoUrl) {
         String[] ownerRepo = parseOwnerRepo(repoUrl);
         Map<String, Object> repoData = fetchRepoMetadata(ownerRepo[0], ownerRepo[1]);

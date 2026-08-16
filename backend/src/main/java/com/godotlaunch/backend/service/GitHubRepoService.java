@@ -31,6 +31,19 @@ public interface GitHubRepoService {
     RepoAccess checkAccess(String repoUrl);
 
     /**
+     * Kiểm tra mức truy cập repo BẰNG CHỨNG trong dispute — KHÁC checkAccess()
+     * vì không có bước verifyOwnership() đi trước (D chỉ dán URL, không đăng
+     * ký sở hữu repo qua hệ thống). GitHub cố tình trả 404 giống hệt nhau
+     * cho "repo không tồn tại" lẫn "private mà bot chưa có quyền" (thiết kế
+     * bảo mật, không phải giới hạn kỹ thuật của code này — xem
+     * docs/26-dispute-refund-scope-and-gaps-plan.md mục 4.1), nên vẫn không
+     * phân biệt được 2 trường hợp — nhưng URL sai định dạng (không phải
+     * github.com/owner/repo) được validate riêng, trả PARSE lỗi rõ ràng
+     * thay vì lẫn vào PRIVATE_NO_ACCESS.
+     */
+    RepoAccess checkAccessForEvidence(String repoUrl);
+
+    /**
      * Bot poll + accept pending invitation cho repo này (nếu user vừa mời).
      * @return true nếu accept thành công (hoặc đã là collaborator)
      */

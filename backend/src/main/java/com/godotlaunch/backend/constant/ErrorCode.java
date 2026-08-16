@@ -120,6 +120,7 @@ public enum ErrorCode {
     PLATFORM_COMMISSION_RATE_INVALID(HttpStatus.BAD_REQUEST, "Platform commission rate must be between 0 and 100."),
     WITHDRAWAL_HOLD_DAYS_INVALID(HttpStatus.BAD_REQUEST, "Withdrawal hold days must be between 0 and 30."),
     REFUND_DEADLINE_DAYS_INVALID(HttpStatus.BAD_REQUEST, "Refund deadline days must be between 1 and 30."),
+    DISPUTE_BAN_THRESHOLD_INVALID(HttpStatus.BAD_REQUEST, "Dispute ban threshold must be between 1 and 20."),
     DAILY_MAINTENANCE_TIME_INVALID(HttpStatus.BAD_REQUEST, "Daily maintenance time is required."),
     AGREEMENT_VERSION_NOT_FOUND(HttpStatus.BAD_REQUEST, "No active distribution agreement version found."),
     PAYOUT_BALANCE_FETCH_FAILED(HttpStatus.BAD_GATEWAY, "Failed to fetch the PayOS payout account balance."),
@@ -151,7 +152,8 @@ public enum ErrorCode {
     // Security and File verification
     SECURITY_CHECK_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "Phát hiện mã độc trong tệp tin tải lên."),
     INVALID_FILE_STRUCTURE(HttpStatus.BAD_REQUEST, "Cấu trúc tệp tin tải lên không hợp lệ hoặc thiếu tệp index.html."),
-    MEDIA_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Ảnh/video vượt quá dung lượng cho phép.");
+    MEDIA_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Ảnh/video vượt quá dung lượng cho phép."),
+    DEMO_MODE_DISABLED(HttpStatus.FORBIDDEN, "Chức năng chỉ khả dụng khi DEMO_MODE=true.");
 
     private final HttpStatus httpStatus;
     private final String code;

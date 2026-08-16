@@ -18,6 +18,7 @@ public class PlatformSettingsResponse {
     private BigDecimal commissionRate;
     private Short withdrawalHoldDays;
     private Short refundDeadlineDays;
+    private Short disputeBanThreshold;
     private LocalTime dailyMaintenanceTime;
     private boolean maintenanceMode;
     private String announcementBanner;

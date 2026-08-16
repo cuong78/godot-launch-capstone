@@ -32,4 +32,15 @@ public interface DisputeService {
 
     /** Lấy thông tin khoản nợ dispute chưa thanh toán của seller đang đăng nhập (nếu có). */
     DisputeResponse getMyUnpaidDisputeDebt(String email);
+
+    /**
+     * Kiểm tra repo bằng chứng (evidenceRepoUrl) của reporter trước khi cho
+     * submit dispute — chặn nếu private mà bot chưa có quyền đọc, để admin
+     * luôn có dữ liệu phân tích ngay khi dispute được tạo (xem
+     * docs/26-dispute-refund-scope-and-gaps-plan.md mục 4).
+     */
+    com.godotlaunch.backend.dto.response.EvidenceRepoAccessResponse checkEvidenceRepoAccess(String repoUrl);
+
+    /** Bot tự accept lời mời collaborator vào repo bằng chứng sau khi reporter đã mời. */
+    boolean acceptBotInvitationForEvidence(String repoUrl);
 }

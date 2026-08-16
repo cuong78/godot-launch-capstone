@@ -89,7 +89,6 @@ public class DisputeServiceImpl implements DisputeService {
     @Value("${DEEPSEEK_MODEL:deepseek-chat}")
     private String deepseekModel;
 
-    private static final int SPAM_REPORT_LIMIT = 3;
     private static final String DEFAULT_CURRENCY = "VND";
 
     @Override
@@ -100,6 +99,18 @@ public class DisputeServiceImpl implements DisputeService {
 
         if (request.getGameId() == null) {
             throw new AppException(ErrorCode.BAD_REQUEST);
+        }
+
+        // Chặn ngay tại đây nếu evidence repo là private mà bot chưa có quyền
+        // đọc — đảm bảo admin luôn có dữ liệu để phân tích ngay khi dispute
+        // được tạo, thay vì chỉ phát hiện lúc bấm "Trợ lý AI Phán xử" (quá
+        // trễ, dispute đã tồn tại và game đã bị gỡ mà không ai biết cần mời
+        // bot). Xem docs/26-dispute-refund-scope-and-gaps-plan.md mục 4.
+        if (request.getEvidenceRepoUrl() != null && !request.getEvidenceRepoUrl().isBlank()) {
+            GitHubRepoService.RepoAccess access = gitHubRepoService.checkAccessForEvidence(request.getEvidenceRepoUrl());
+            if (access == GitHubRepoService.RepoAccess.PRIVATE_NO_ACCESS) {
+                throw new AppException(ErrorCode.REPO_NOT_FOUND);
+            }
         }
 
         Dispute dispute = new Dispute();
@@ -182,8 +193,12 @@ public class DisputeServiceImpl implements DisputeService {
 
         switch (resolution) {
             case "resolved_seller_fault" -> {
-                // TH3: A đạo nhái → Ban A hoặc khóa quyền
-                if (request.isBanUser()) {
+                // TH3: A đạo nhái → Ban A hoặc khóa quyền, hoặc tự động ban nếu
+                // đã đủ số lần vi phạm theo ngưỡng cấu hình (dispute_ban_threshold).
+                long sellerFaultCount = disputeRepository.countByReportedSellerIdAndStatus(
+                        dispute.getReportedSeller().getId(), "resolved_seller_fault");
+                int disputeBanThreshold = platformSettingsService.getDisputeBanThreshold();
+                if (request.isBanUser() || sellerFaultCount >= disputeBanThreshold) {
                     banSeller(dispute.getReportedSeller(), "copyright_theft");
                 } else {
                     lockSellerForRefund(dispute.getReportedSeller(), dispute);
@@ -251,15 +266,17 @@ public class DisputeServiceImpl implements DisputeService {
                     transactionRepository.save(txnPlatform);
                 }
 
-                Transaction txnReporter = new Transaction();
-                txnReporter.setWallet(lockedReporter);
-                txnReporter.setRelatedUser(seller);
-                txnReporter.setGame(dispute.getGame());
-                txnReporter.setAmount(reporterCompensation);
-                txnReporter.setType(TxnType.refund);
-                txnReporter.setReferenceId(refId);
-                txnReporter.setDescription("Receive copyright dispute compensation");
-                transactionRepository.save(txnReporter);
+                if (reporterCompensation.compareTo(BigDecimal.ZERO) > 0) {
+                    Transaction txnReporter = new Transaction();
+                    txnReporter.setWallet(lockedReporter);
+                    txnReporter.setRelatedUser(seller);
+                    txnReporter.setGame(dispute.getGame());
+                    txnReporter.setAmount(reporterCompensation);
+                    txnReporter.setType(TxnType.refund);
+                    txnReporter.setReferenceId(refId);
+                    txnReporter.setDescription("Receive copyright dispute compensation");
+                    transactionRepository.save(txnReporter);
+                }
 
                 dispute.setRefundAmount(reporterCompensation);
 
@@ -290,14 +307,17 @@ public class DisputeServiceImpl implements DisputeService {
                 }
 
                 // Notify seller (A)
+                boolean sellerAutoBanned = request.isBanUser() || sellerFaultCount >= disputeBanThreshold;
                 notificationService.createAndSendNotification(
                         dispute.getReportedSeller(),
                         admin,
                         NotificationType.PLAGIARISM_ALERT,
                         "Bạn bị kết luận vi phạm bản quyền cho game '" + dispute.getGame().getTitle() + "'. " +
-                        (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) > 0
-                                ? "Khoản nợ platform chưa trả là " + sellerOutstandingDebt + " VND. Vui lòng thanh toán qua PayOS trước hạn."
-                                : "Toàn bộ số tiền hoàn trả đã được khấu trừ thành công."),
+                        (sellerAutoBanned
+                                ? "Tài khoản của bạn đã bị cấm" + (sellerFaultCount >= disputeBanThreshold ? " do vi phạm bản quyền quá " + disputeBanThreshold + " lần." : ".")
+                                : (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) > 0
+                                        ? "Khoản nợ platform chưa trả là " + sellerOutstandingDebt + " VND. Vui lòng thanh toán qua PayOS trước hạn."
+                                        : "Toàn bộ số tiền hoàn trả đã được khấu trừ thành công.")),
                         dispute.getId().toString()
                 );
                 // Notify reporter (D)
@@ -319,18 +339,19 @@ public class DisputeServiceImpl implements DisputeService {
                 restoreProduct(dispute);
                 long spamCount = disputeRepository.countByReporterIdAndStatus(
                         dispute.getReporter().getId(), "resolved_reporter_fault");
-                if (spamCount >= SPAM_REPORT_LIMIT || request.isBanUser()) {
+                int disputeBanThreshold = platformSettingsService.getDisputeBanThreshold();
+                if (spamCount >= disputeBanThreshold || request.isBanUser()) {
                     banReporter(dispute.getReporter(), "spam_report");
                     safeNotify(dispute.getReporter().getId(),
-                            "Bạn đã vu cáo quá " + SPAM_REPORT_LIMIT + " lần và bị cấm.");
+                            "Bạn đã vu cáo quá " + disputeBanThreshold + " lần và bị cấm.");
                 } else {
                     safeNotify(dispute.getReporter().getId(),
                             "Khiếu nại của bạn bị bác. Vu cáo nhiều lần sẽ bị cấm tài khoản.");
                 }
 
                 // Notify reporter (B)
-                String repMessage = spamCount >= SPAM_REPORT_LIMIT || request.isBanUser()
-                        ? "Khiếu nại của bạn cho game '" + dispute.getGame().getTitle() + "' được kết luận là vu cáo. Bạn đã vu cáo quá " + SPAM_REPORT_LIMIT + " lần và tài khoản bị cấm."
+                String repMessage = spamCount >= disputeBanThreshold || request.isBanUser()
+                        ? "Khiếu nại của bạn cho game '" + dispute.getGame().getTitle() + "' được kết luận là vu cáo. Bạn đã vu cáo quá " + disputeBanThreshold + " lần và tài khoản bị cấm."
                         : "Khiếu nại của bạn cho game '" + dispute.getGame().getTitle() + "' được kết luận là vu cáo. Vu cáo nhiều lần sẽ bị cấm tài khoản.";
                 notificationService.createAndSendNotification(
                         dispute.getReporter(),
@@ -438,28 +459,34 @@ public class DisputeServiceImpl implements DisputeService {
                 walletRepository.save(lockedSeller);
                 walletRepository.save(lockedPlatform);
 
-                // Save transaction records
-                Transaction txnSeller = new Transaction();
-                txnSeller.setWallet(lockedSeller);
-                txnSeller.setRelatedUser(order.getBuyer());
-                txnSeller.setGame(dispute.getGame());
-                txnSeller.setAmount(sellerDebit.negate());
-                txnSeller.setType(TxnType.refund);
-                txnSeller.setReferenceId(refId);
-                txnSeller.setOrder(order);
-                txnSeller.setDescription("Automatic refund debit seller revenue for plagiarism verdict");
-                transactionRepository.save(txnSeller);
+                // Save transaction records — chỉ ghi khi amount khác 0
+                // (transactions_amount_check chặn refund amount = 0; sellerDebit/
+                // platformDebit có thể bằng 0 nếu toàn bộ price đã dồn hết sang phía kia).
+                if (sellerDebit.compareTo(BigDecimal.ZERO) > 0) {
+                    Transaction txnSeller = new Transaction();
+                    txnSeller.setWallet(lockedSeller);
+                    txnSeller.setRelatedUser(order.getBuyer());
+                    txnSeller.setGame(dispute.getGame());
+                    txnSeller.setAmount(sellerDebit.negate());
+                    txnSeller.setType(TxnType.refund);
+                    txnSeller.setReferenceId(refId);
+                    txnSeller.setOrder(order);
+                    txnSeller.setDescription("Automatic refund debit seller revenue for plagiarism verdict");
+                    transactionRepository.save(txnSeller);
+                }
 
-                Transaction txnPlatform = new Transaction();
-                txnPlatform.setWallet(lockedPlatform);
-                txnPlatform.setRelatedUser(order.getBuyer());
-                txnPlatform.setGame(dispute.getGame());
-                txnPlatform.setAmount(platformDebit.negate());
-                txnPlatform.setType(TxnType.refund);
-                txnPlatform.setReferenceId(refId);
-                txnPlatform.setOrder(order);
-                txnPlatform.setDescription("Automatic refund debit platform commission for plagiarism verdict");
-                transactionRepository.save(txnPlatform);
+                if (platformDebit.compareTo(BigDecimal.ZERO) > 0) {
+                    Transaction txnPlatform = new Transaction();
+                    txnPlatform.setWallet(lockedPlatform);
+                    txnPlatform.setRelatedUser(order.getBuyer());
+                    txnPlatform.setGame(dispute.getGame());
+                    txnPlatform.setAmount(platformDebit.negate());
+                    txnPlatform.setType(TxnType.refund);
+                    txnPlatform.setReferenceId(refId);
+                    txnPlatform.setOrder(order);
+                    txnPlatform.setDescription("Automatic refund debit platform commission for plagiarism verdict");
+                    transactionRepository.save(txnPlatform);
+                }
 
                 Transaction txnBuyer = new Transaction();
                 txnBuyer.setWallet(lockedBuyer);
@@ -632,6 +659,25 @@ public class DisputeServiceImpl implements DisputeService {
                 .findFirst()
                 .map(this::toResponse)
                 .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.godotlaunch.backend.dto.response.EvidenceRepoAccessResponse checkEvidenceRepoAccess(String repoUrl) {
+        GitHubRepoService.RepoAccess access = gitHubRepoService.checkAccessForEvidence(repoUrl);
+        return com.godotlaunch.backend.dto.response.EvidenceRepoAccessResponse.builder()
+                .access(access.name())
+                .botUsername(access == GitHubRepoService.RepoAccess.PRIVATE_NO_ACCESS
+                        ? gitHubRepoService.getBotUsername() : null)
+                .build();
+    }
+
+    @Override
+    public boolean acceptBotInvitationForEvidence(String repoUrl) {
+        if (repoUrl == null || repoUrl.isBlank()) {
+            throw new AppException(ErrorCode.REPO_URL_REQUIRED);
+        }
+        return gitHubRepoService.acceptBotInvitation(repoUrl);
     }
 
     /**

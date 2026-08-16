@@ -214,6 +214,11 @@
         "description": "Thông tin ngân hàng được dùng khi admin xử lý payout cho developer."
       }
     },
+    "demoTopup": {
+      "button": "Nạp demo +500.000 VND",
+      "confirm": "[DEMO] Nạp {{amount}} vào ví platform để chuẩn bị demo? Số tiền này không phải tiền thật, chỉ hoạt động khi DEMO_MODE=true.",
+      "error": "Không thể nạp demo. Có thể DEMO_MODE chưa được bật ở backend."
+    },
     "ledger": {
       "title": "Sổ giao dịch nền tảng",
       "description": "Theo dõi biến động ví admin và tra cứu mã tham chiếu trước khi xử lý thanh toán hoặc rút tiền.",
@@ -240,6 +245,8 @@
     "withdrawalHoldDaysHelper": "Thời gian chờ trước khi yêu cầu rút tiền được tự động chuyển khoản",
     "refundDeadlineDaysLabel": "Hạn hoàn tiền (ngày)",
     "refundDeadlineDaysHelper": "Số ngày seller phải hoàn tiền tranh chấp bản quyền trước khi bị tự động cấm",
+    "disputeBanThresholdLabel": "Ngưỡng tự động cấm (số lần)",
+    "disputeBanThresholdHelper": "Số lần bị kết luận vi phạm (seller đạo nhái hoặc reporter vu cáo) trước khi tài khoản tự động bị cấm",
     "dailyMaintenanceTimeLabel": "Giờ chạy tác vụ hàng ngày (giờ Việt Nam, HH:mm:ss)",
     "dailyMaintenanceTimeHelper": "Giờ chạy hàng ngày cho tác vụ tự động rút tiền và cưỡng chế hoàn tiền (Asia/Ho_Chi_Minh)"
   },
@@ -424,7 +431,7 @@
     "resolution": {
       "inconclusive": "TH1: Không đủ căn cứ → khôi phục sản phẩm, không phạt",
       "reporterFault": "TH2: Reporter vu cáo → khôi phục + trừ điểm reporter",
-      "sellerFault": "TH3: Seller đạo nhái → buộc hoàn tiền 5 ngày + ban"
+      "sellerFault": "TH3: Seller đạo nhái "
     },
     "modal": {
       "title": "Phán xử khiếu nại",

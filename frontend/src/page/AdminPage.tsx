@@ -1114,6 +1114,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setCommission(Number(settings.commissionRate) || 0);
     setWithdrawalHoldDays(Number(settings.withdrawalHoldDays) || 0);
     setRefundDeadlineDays(Number(settings.refundDeadlineDays) || 0);
+    setDisputeBanThreshold(Number(settings.disputeBanThreshold) || 3);
     setDailyMaintenanceTime(settings.dailyMaintenanceTime || "02:00:00");
     setMaintenance(Boolean(settings.maintenanceMode));
     setAnnouncement(settings.announcementBanner || "");
@@ -1144,6 +1145,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [commission, setCommission] = useState(10);
   const [withdrawalHoldDays, setWithdrawalHoldDays] = useState(5);
   const [refundDeadlineDays, setRefundDeadlineDays] = useState(5);
+  const [disputeBanThreshold, setDisputeBanThreshold] = useState(3);
   const [dailyMaintenanceTime, setDailyMaintenanceTime] = useState("02:00:00");
   const [maintenance, setMaintenance] = useState(false);
   const [announcement, setAnnouncement] = useState(
@@ -1408,6 +1410,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         commissionRate: commission,
         withdrawalHoldDays,
         refundDeadlineDays,
+        disputeBanThreshold,
         dailyMaintenanceTime,
         maintenanceMode: maintenance,
         announcementBanner: announcement.trim() || null,
@@ -3733,6 +3736,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             setRefundDeadlineDays(parseInt(e.target.value, 10) || 0)
                           }
                           helperText={t("settingsPanel.refundDeadlineDaysHelper")}
+                          required
+                        />
+
+                        <Input
+                          label={t("settingsPanel.disputeBanThresholdLabel")}
+                          type="number"
+                          min="1"
+                          max="20"
+                          step="1"
+                          value={disputeBanThreshold}
+                          onChange={(e) =>
+                            setDisputeBanThreshold(parseInt(e.target.value, 10) || 1)
+                          }
+                          helperText={t("settingsPanel.disputeBanThresholdHelper")}
                           required
                         />
 

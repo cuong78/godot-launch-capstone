@@ -32,6 +32,9 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
     private static final short DEFAULT_REFUND_DEADLINE_DAYS = 5;
     private static final short MIN_REFUND_DEADLINE_DAYS = 1;
     private static final short MAX_REFUND_DEADLINE_DAYS = 30;
+    private static final short DEFAULT_DISPUTE_BAN_THRESHOLD = 3;
+    private static final short MIN_DISPUTE_BAN_THRESHOLD = 1;
+    private static final short MAX_DISPUTE_BAN_THRESHOLD = 20;
     private static final LocalTime DEFAULT_DAILY_MAINTENANCE_TIME = LocalTime.of(2, 0, 0);
     private static final String DEFAULT_ANNOUNCEMENT = "GodotLaunch Matrix Engine Upgrade is complete!";
 
@@ -52,6 +55,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
         BigDecimal normalizedRate = normalizeCommissionRate(request.getCommissionRate());
         short normalizedHoldDays = normalizeWithdrawalHoldDays(request.getWithdrawalHoldDays());
         short normalizedRefundDeadlineDays = normalizeRefundDeadlineDays(request.getRefundDeadlineDays());
+        short normalizedDisputeBanThreshold = normalizeDisputeBanThreshold(request.getDisputeBanThreshold());
         LocalTime normalizedDailyMaintenanceTime = normalizeDailyMaintenanceTime(request.getDailyMaintenanceTime());
 
         PlatformSettings settings = platformSettingsRepository.findById(SETTINGS_ID)
@@ -64,6 +68,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
         settings.setCommissionRate(normalizedRate);
         settings.setWithdrawalHoldDays(normalizedHoldDays);
         settings.setRefundDeadlineDays(normalizedRefundDeadlineDays);
+        settings.setDisputeBanThreshold(normalizedDisputeBanThreshold);
         settings.setDailyMaintenanceTime(normalizedDailyMaintenanceTime);
         settings.setMaintenanceMode(Boolean.TRUE.equals(request.getMaintenanceMode()));
         settings.setAnnouncementBanner(normalizeAnnouncement(request.getAnnouncementBanner()));
@@ -118,6 +123,15 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
 
     @Override
     @Transactional(readOnly = true)
+    public short getDisputeBanThreshold() {
+        return platformSettingsRepository.findById(SETTINGS_ID)
+                .map(PlatformSettings::getDisputeBanThreshold)
+                .filter(threshold -> threshold != null)
+                .orElse(DEFAULT_DISPUTE_BAN_THRESHOLD);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public LocalTime getDailyMaintenanceTime() {
         return platformSettingsRepository.findById(SETTINGS_ID)
                 .map(PlatformSettings::getDailyMaintenanceTime)
@@ -130,6 +144,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
                 DEFAULT_COMMISSION_RATE,
                 DEFAULT_WITHDRAWAL_HOLD_DAYS,
                 DEFAULT_REFUND_DEADLINE_DAYS,
+                DEFAULT_DISPUTE_BAN_THRESHOLD,
                 DEFAULT_DAILY_MAINTENANCE_TIME,
                 false,
                 DEFAULT_ANNOUNCEMENT,
@@ -142,6 +157,7 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
                 settings.getCommissionRate() != null ? settings.getCommissionRate() : DEFAULT_COMMISSION_RATE,
                 settings.getWithdrawalHoldDays() != null ? settings.getWithdrawalHoldDays() : DEFAULT_WITHDRAWAL_HOLD_DAYS,
                 settings.getRefundDeadlineDays() != null ? settings.getRefundDeadlineDays() : DEFAULT_REFUND_DEADLINE_DAYS,
+                settings.getDisputeBanThreshold() != null ? settings.getDisputeBanThreshold() : DEFAULT_DISPUTE_BAN_THRESHOLD,
                 settings.getDailyMaintenanceTime() != null ? settings.getDailyMaintenanceTime() : DEFAULT_DAILY_MAINTENANCE_TIME,
                 settings.isMaintenanceMode(),
                 settings.getAnnouncementBanner(),
@@ -177,6 +193,16 @@ public class PlatformSettingsServiceImpl implements PlatformSettingsService {
         }
 
         return refundDeadlineDays;
+    }
+
+    private short normalizeDisputeBanThreshold(Short disputeBanThreshold) {
+        if (disputeBanThreshold == null
+                || disputeBanThreshold < MIN_DISPUTE_BAN_THRESHOLD
+                || disputeBanThreshold > MAX_DISPUTE_BAN_THRESHOLD) {
+            throw new AppException(ErrorCode.DISPUTE_BAN_THRESHOLD_INVALID);
+        }
+
+        return disputeBanThreshold;
     }
 
     private LocalTime normalizeDailyMaintenanceTime(LocalTime dailyMaintenanceTime) {

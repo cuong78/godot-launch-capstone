@@ -53,6 +53,11 @@
 7. **Khoảng trống #3 — chỉ cảnh báo buyer SAU KHI dispute có kết luận
    chính thức** (không cảnh báo lúc mới `open` như bản thiết kế trước) —
    tránh cảnh báo oan nếu sau đó dispute rơi vào TH1/TH2.
+8. **Khoảng trống #4 (mới) — chặn ngay lúc D nộp dispute nếu repo bằng
+   chứng là private mà bot chưa có quyền đọc.** Check chạy NGAY khi D submit
+   `ReportDisputeModal` (không phải lúc admin bấm "Trợ lý AI Phán xử" như
+   hiện tại) — D phải mời bot vào repo trước khi dispute được tạo thành
+   công, đảm bảo admin luôn có dữ liệu để phân tích ngay từ đầu.
 
 ---
 
@@ -280,7 +285,88 @@ chỉ cần sửa 1 dòng message.
 
 ---
 
-## 4. API/DTO cần rà soát khi triển khai
+## 4. Khoảng trống #4 — Chặn dispute có evidence repo private chưa cấp quyền bot
+
+### 4.1 Vấn đề cụ thể (đã xác nhận qua code, không suy đoán)
+
+`createDispute()`
+([DisputeServiceImpl.java:96-166](../backend/src/main/java/com/godotlaunch/backend/service/impl/DisputeServiceImpl.java#L96-L166))
+lưu thẳng `request.getEvidenceRepoUrl()` làm chuỗi text, **không gọi bất kỳ
+GitHub API nào để verify**. Việc crawl thật sự chỉ xảy ra sau đó, khi admin
+bấm "Trợ lý AI Phán xử" → `getAiAnalysis()`
+([DisputeServiceImpl.java:806-826](../backend/src/main/java/com/godotlaunch/backend/service/impl/DisputeServiceImpl.java#L806-L826)),
+gọi `gitHubRepoService.getRepoMetadata(evidenceRepoUrl)`. Nếu repo private
+và bot chưa được mời, GitHub trả 404 → `getRepoMetadata()` trả `null` →
+`gitInfo` **âm thầm** giữ nguyên message mặc định
+`"Không thể truy cập dữ liệu GitHub của B."` — admin không biết đây là do
+"private chưa cấp quyền" hay "repo không tồn tại", và D không hề được yêu
+cầu khắc phục.
+
+### 4.2 Hạ tầng đã có sẵn — không cần xây từ đầu
+
+`GitHubRepoServiceImpl`
+([GitHubRepoServiceImpl.java](../backend/src/main/java/com/godotlaunch/backend/service/impl/GitHubRepoServiceImpl.java))
+đã có đủ method cần thiết, hiện chỉ dùng cho luồng developer submit game
+(`GameController`/`GameServiceImpl`), CHƯA được gọi cho `evidenceRepoUrl`
+của dispute:
+- `checkAccess(repoUrl)` → trả `PUBLIC` / `PRIVATE_GRANTED` /
+  `PRIVATE_NO_ACCESS` (dòng 66-89) — phân biệt đúng chính xác 3 trường hợp
+  cần biết, khác hẳn `getRepoMetadata()` chỉ trả `null`/không-null.
+- `acceptBotInvitation(repoUrl)` (dòng 92-137) — bot tự động accept lời mời
+  collaborator nếu D đã mời.
+- `getBotUsername()` — trả username bot để hiển thị cho D biết mời ai.
+
+Frontend cũng đã có sẵn `BotInviteModal.tsx` (dùng cho developer submit
+game riêng) — component này **generic, không phụ thuộc gì vào luồng game**,
+tái dùng được nguyên vẹn cho dispute.
+
+**Lưu ý khác biệt quan trọng:** endpoint `POST .../games/accept-bot`
+hiện có (`GameController.java:70-79`) gọi
+`gameService.acceptBotInvitation()` → bên trong có `assertDeveloper(requester)`
+([GameServiceImpl.java:349-356](../backend/src/main/java/com/godotlaunch/backend/service/impl/GameServiceImpl.java#L349-L356)) —
+**chặn cứng role developer**. D (reporter) có thể không phải developer (dù
+`createDispute` cho phép `DEVELOPER, ADMIN` gọi theo `@PreAuthorize` đã biết
+trước — tức trên thực tế D bắt buộc phải là developer để tạo dispute, nên
+việc chặn role ở đây **không phải vấn đề thực tế**, nhưng vẫn cần 1 endpoint
+riêng cho dispute — không tái dùng thẳng `/games/accept-bot` vì nó gắn với
+ngữ cảnh "submit game", không phù hợp semantics với "gửi bằng chứng dispute").
+
+### 4.3 Việc cần làm
+
+**Backend — endpoint mới, KHÔNG sửa `createDispute()` trực tiếp thành 1
+luồng dài dòng:**
+- `GET /api/v1/disputes/check-evidence-repo?repoUrl=...` (hoặc tương tự) —
+  gọi `gitHubRepoService.checkAccess(repoUrl)`, trả về
+  `{access: "PUBLIC"|"PRIVATE_GRANTED"|"PRIVATE_NO_ACCESS", botUsername, repoInviteUrl}`.
+  `repoInviteUrl` tự build từ `repoUrl` + `/settings/access` (trang mời
+  collaborator trên GitHub — xác nhận đúng path GitHub thật khi code, không
+  đoán).
+- `POST /api/v1/disputes/accept-bot-for-evidence` (body: `{repoUrl}`) — gọi
+  `gitHubRepoService.acceptBotInvitation(repoUrl)`, trả `granted: boolean`.
+  Endpoint riêng biệt khỏi `/games/accept-bot`, dùng `@PreAuthorize` khớp
+  đúng role được phép tạo dispute (`DEVELOPER`, `ADMIN`) thay vì
+  `assertDeveloper` cứng nhắc.
+- **Sửa `createDispute()`**: trước khi lưu `Dispute`, nếu
+  `evidenceRepoUrl` không rỗng, gọi `checkAccess()`. Nếu
+  `PRIVATE_NO_ACCESS` → **ném lỗi mới** (thêm `ErrorCode` phù hợp, ví dụ
+  `EVIDENCE_REPO_PRIVATE_NO_ACCESS`) thay vì cho tạo dispute — chặn hẳn tại
+  bước submit như đã chốt (mục 0.8), không phải chỉ cảnh báo.
+
+**Frontend — `ReportDisputeModal.tsx`:**
+- Sau khi D nhập `evidenceRepoUrl` (blur khỏi input, hoặc ngay trước khi
+  bấm submit), gọi endpoint check ở trên.
+- Nếu `PRIVATE_NO_ACCESS` → mở `BotInviteModal.tsx` (import y hệt cách
+  `UploadPage.tsx` đã dùng) ngay trong modal report, dùng
+  `repoInviteUrl`/`botUsername` trả về từ API.
+- D bấm "Tôi đã mời bot" trong `BotInviteModal` → gọi
+  `accept-bot-for-evidence` → nếu `granted: true`, đóng `BotInviteModal`,
+  cho phép bấm "Gửi khiếu nại" (submit `createDispute` thật) bình thường.
+- Nếu `PUBLIC` hoặc `PRIVATE_GRANTED` ngay từ đầu → không cần hiện
+  `BotInviteModal`, D submit dispute trực tiếp như hiện tại.
+
+---
+
+## 5. API/DTO cần rà soát khi triển khai
 
 - `ResolveDisputeRequest`
   ([ResolveDisputeRequest.java](../backend/src/main/java/com/godotlaunch/backend/dto/request/ResolveDisputeRequest.java)):
@@ -298,7 +384,7 @@ chỉ cần sửa 1 dòng message.
 
 ---
 
-## 5. Việc KHÔNG làm trong phạm vi kế hoạch này
+## 6. Việc KHÔNG làm trong phạm vi kế hoạch này
 
 - Không đổi cửa sổ N ngày (`withdrawalHoldDays`) giới hạn buyer nào được
   tính vào `autoRefundRecentBuyers()` — giữ nguyên như hiện tại.
@@ -312,6 +398,12 @@ chỉ cần sửa 1 dòng message.
 - Không thiết kế bảng cấu hình multiplier phức tạp trong Platform Settings
   — hằng số hệ số (mục 1.1) hardcode trong service, admin không tự đổi bậc
   thang qua UI ở giai đoạn này, chỉ chỉnh được số cuối cùng khi resolve.
+- Không tái dùng thẳng endpoint `/games/accept-bot` cho luồng dispute (mục
+  4.2) — tạo endpoint riêng để tách biệt ngữ cảnh, tránh áp `assertDeveloper`
+  cứng nhắc không khớp semantics "gửi bằng chứng dispute".
+- Không đổi hành vi `getAiAnalysis()`/`getRepoMetadata()` hiện có (mục 4.1)
+  — sau khi chặn được `PRIVATE_NO_ACCESS` ngay lúc submit (mục 4.3), luồng
+  AI phân tích phía sau tự động có dữ liệu đầy đủ mà không cần sửa gì thêm.
 - **Không viết/sửa test.** Bỏ qua hoàn toàn việc cập nhật unit test/
   integration test cho các thay đổi trong kế hoạch này, kể cả khi sửa
   signature của method/DTO khiến test cũ (nếu có, vd `DisputeServiceImplTest`)

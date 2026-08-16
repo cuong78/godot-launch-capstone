@@ -337,6 +337,8 @@ export interface PlatformSettingsResponse {
   commissionRate: number;
   withdrawalHoldDays: number;
   refundDeadlineDays: number;
+  /** Số lần bị kết luận vi phạm (seller đạo nhái / reporter vu cáo) trước khi tự động ban */
+  disputeBanThreshold: number;
   /** "HH:mm:ss", giờ Việt Nam — giờ chạy job maintenance hàng ngày */
   dailyMaintenanceTime: string;
   maintenanceMode: boolean;
@@ -348,6 +350,7 @@ export interface UpdatePlatformSettingsRequest {
   commissionRate: number;
   withdrawalHoldDays: number;
   refundDeadlineDays: number;
+  disputeBanThreshold: number;
   dailyMaintenanceTime: string;
   maintenanceMode: boolean;
   announcementBanner?: string | null;

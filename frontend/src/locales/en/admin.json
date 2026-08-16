@@ -214,6 +214,11 @@
         "description": "Banking identity used when admin processes payout operations for developers."
       }
     },
+    "demoTopup": {
+      "button": "Demo top-up +500,000 VND",
+      "confirm": "[DEMO] Top up {{amount}} into the platform wallet to prepare for a demo? This is not real money and only works when DEMO_MODE=true.",
+      "error": "Could not demo top-up. DEMO_MODE may not be enabled on the backend."
+    },
     "ledger": {
       "title": "Platform Transaction Ledger",
       "description": "Review admin wallet movements and trace references before opening payment or withdrawal operations.",
@@ -240,6 +245,8 @@
     "withdrawalHoldDaysHelper": "Cooling-off period before a withdrawal is auto-paid out",
     "refundDeadlineDaysLabel": "Refund Deadline (days)",
     "refundDeadlineDaysHelper": "Days a seller has to refund a copyright-theft dispute before being auto-banned",
+    "disputeBanThresholdLabel": "Auto-ban Threshold (count)",
+    "disputeBanThresholdHelper": "Number of confirmed violations (seller copyright theft or reporter false report) before the account is automatically banned",
     "dailyMaintenanceTimeLabel": "Daily Maintenance Time (Vietnam time, HH:mm:ss)",
     "dailyMaintenanceTimeHelper": "Once-daily run time for auto-payout and refund enforcement jobs (Asia/Ho_Chi_Minh)"
   },

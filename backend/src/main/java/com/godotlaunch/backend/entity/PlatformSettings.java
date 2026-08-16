@@ -37,6 +37,13 @@ public class PlatformSettings {
     private Short refundDeadlineDays = 5;
 
     /**
+     * Số lần bị kết luận resolved_seller_fault hoặc resolved_reporter_fault
+     * trước khi tài khoản tự động bị ban (xem DisputeServiceImpl.resolveDispute()).
+     */
+    @Column(name = "dispute_ban_threshold", nullable = false)
+    private Short disputeBanThreshold = 3;
+
+    /**
      * Giờ chạy 2 job maintenance hàng ngày (WithdrawalAutoPayoutScheduler,
      * DisputeRefundEnforcementScheduler) — luôn hiểu là giờ Việt Nam
      * (Asia/Ho_Chi_Minh), xem DynamicDailyCronTrigger.

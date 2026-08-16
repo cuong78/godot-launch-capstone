@@ -24,6 +24,7 @@ public interface DisputeRepository extends JpaRepository<Dispute, UUID> {
     List<Dispute> findByReporterIdOrderByCreatedAtDesc(UUID reporterId);
     List<Dispute> findByReportedSellerIdOrderByCreatedAtDesc(UUID sellerId);
     long countByReporterIdAndStatus(UUID reporterId, String status);
+    long countByReportedSellerIdAndStatus(UUID reportedSellerId, String status);
     List<Dispute> findAllByOrderByCreatedAtDesc();
     boolean existsByReportedSellerIdAndStatus(UUID reportedSellerId, DisputeStatus status);
     boolean existsByGameIdAndStatus(UUID gameId, DisputeStatus status);

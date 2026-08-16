@@ -233,12 +233,19 @@ function ResolveModal({ dispute, onClose, onResolved }: {
   onResolved: () => void;
 }) {
   const { t } = useTranslation(['admin']);
+  const aiReportStorageKey = `dispute-ai-report:${dispute.id}`;
   const [resolution, setResolution] = useState<ResolveDisputePayload['resolution']>('resolved_inconclusive');
   const [note, setNote] = useState('');
   const [banUser, setBanUser] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(aiReportStorageKey);
+    } catch {
+      return null;
+    }
+  });
   const [loadingAi, setLoadingAi] = useState(false);
 
   const parseBoldText = (lineText: string) => {
@@ -300,6 +307,11 @@ function ResolveModal({ dispute, onClose, onResolved }: {
       const res = await disputeApi.getAiAnalysis(dispute.id);
       if (res.success && res.data) {
         setAiReport(res.data);
+        try {
+          localStorage.setItem(aiReportStorageKey, res.data);
+        } catch {
+          /* localStorage đầy hoặc bị chặn — không ảnh hưởng luồng chính */
+        }
       } else {
         setError(res.message || 'Lỗi khi chạy trợ lý AI.');
       }
@@ -345,8 +357,16 @@ function ResolveModal({ dispute, onClose, onResolved }: {
         refundAmount: resolution === 'resolved_seller_fault' ? Number(refundAmountStr) : undefined,
         banUser,
       });
-      if (res.success) onResolved();
-      else setError(res.message || t('disputePanel.resolveError'));
+      if (res.success) {
+        try {
+          localStorage.removeItem(aiReportStorageKey);
+        } catch {
+          /* ignore */
+        }
+        onResolved();
+      } else {
+        setError(res.message || t('disputePanel.resolveError'));
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || t('disputePanel.resolveError'));
     } finally {
@@ -389,20 +409,20 @@ function ResolveModal({ dispute, onClose, onResolved }: {
                   </p>
                 </div>
               </div>
-              {!aiReport && (
-                <button
-                  type="button"
-                  onClick={runAiAnalysis}
-                  disabled={loadingAi}
-                  className="flex items-center gap-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-[11px] font-bold px-3 py-1.5 cursor-pointer disabled:opacity-50 transition-all shadow-md shadow-indigo-500/10 hover:shadow-indigo-400/20"
-                >
-                  {loadingAi ? (
-                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('disputePanel.modal.aiLoading', { defaultValue: 'AI đang phân tích...' })}</>
-                  ) : (
-                    <><Sparkles className="w-3.5 h-3.5" /> {t('disputePanel.modal.aiBtn', { defaultValue: 'Trợ lý AI' })}</>
-                  )}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={runAiAnalysis}
+                disabled={loadingAi}
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-[11px] font-bold px-3 py-1.5 cursor-pointer disabled:opacity-50 transition-all shadow-md shadow-indigo-500/10 hover:shadow-indigo-400/20"
+              >
+                {loadingAi ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('disputePanel.modal.aiLoading', { defaultValue: 'AI đang phân tích...' })}</>
+                ) : aiReport ? (
+                  <><Sparkles className="w-3.5 h-3.5" /> {t('disputePanel.modal.aiRerunBtn', { defaultValue: 'Chạy lại AI' })}</>
+                ) : (
+                  <><Sparkles className="w-3.5 h-3.5" /> {t('disputePanel.modal.aiBtn', { defaultValue: 'Trợ lý AI' })}</>
+                )}
+              </button>
             </div>
 
             {/* Evidence Link */}

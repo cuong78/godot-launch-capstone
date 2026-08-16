@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { disputeApi } from '../api/disputeApi';
+import BotInviteModal from './BotInviteModal';
 
 interface Props {
   // 1 trong 2: sản phẩm bị tố
@@ -21,12 +22,22 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showBotInvite, setShowBotInvite] = useState(false);
+  const [botUsername, setBotUsername] = useState('');
+  const [botChecking, setBotChecking] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!reason.trim()) {
-      setError(t('reportDispute.errorReasonRequired'));
-      return;
+  const repoInviteUrl = (() => {
+    try {
+      const u = new URL(evidenceRepoUrl.trim());
+      const parts = u.pathname.replace(/^\//, '').replace(/\.git$/, '').split('/');
+      if (parts.length >= 2) return `https://github.com/${parts[0]}/${parts[1]}/settings/access`;
+    } catch {
+      /* ignore */
     }
+    return 'https://github.com';
+  })();
+
+  const submitDispute = async () => {
     setSubmitting(true);
     setError(null);
     try {
@@ -49,6 +60,66 @@ export default function ReportDisputeModal({ gameId, marketplaceItemId, productT
       setSubmitting(false);
     }
   };
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) {
+      setError(t('reportDispute.errorReasonRequired'));
+      return;
+    }
+    const repoUrl = evidenceRepoUrl.trim();
+    if (!repoUrl) {
+      await submitDispute();
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await disputeApi.checkEvidenceRepoAccess(repoUrl);
+      if (res.success && res.data.access === 'PRIVATE_NO_ACCESS') {
+        setBotUsername(res.data.botUsername || '');
+        setShowBotInvite(true);
+        setSubmitting(false);
+        return;
+      }
+      await submitDispute();
+    } catch (err: any) {
+      setSubmitting(false);
+      setError(err.response?.data?.message || err.message || t('reportDispute.errorSubmitFailed'));
+    }
+  };
+
+  const handleAcceptBotAndRetry = async () => {
+    const repoUrl = evidenceRepoUrl.trim();
+    if (!repoUrl) return;
+    setBotChecking(true);
+    setError(null);
+    try {
+      const res = await disputeApi.acceptBotForEvidence(repoUrl);
+      if (res.success && res.data) {
+        setShowBotInvite(false);
+        await submitDispute();
+      } else {
+        setError(res.message || t('reportDispute.errorSubmitFailed'));
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || t('reportDispute.errorSubmitFailed'));
+    } finally {
+      setBotChecking(false);
+    }
+  };
+
+  if (showBotInvite) {
+    return (
+      <BotInviteModal
+        botUsername={botUsername}
+        repoInviteUrl={repoInviteUrl}
+        checking={botChecking}
+        error={error}
+        onConfirm={handleAcceptBotAndRetry}
+        onClose={() => setShowBotInvite(false)}
+      />
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">

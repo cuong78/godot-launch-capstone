@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Landmark,
+  Loader2,
+  PlusCircle,
   ReceiptText,
   ShieldCheck,
   Wallet2,
@@ -166,6 +168,8 @@ export const AdminFinanceWalletPanel: React.FC<
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDemoTopupLoading, setIsDemoTopupLoading] = useState(false);
+  const [demoTopupError, setDemoTopupError] = useState<string | null>(null);
 
   const loadWalletInfo = useCallback(async () => {
     setIsLoadingWallet(true);
@@ -234,6 +238,27 @@ export const AdminFinanceWalletPanel: React.FC<
       setIsRefreshing(false);
     }
   }, [loadTransactions, loadWalletInfo, onRefreshPayoutBalance, page]);
+
+  const handleDemoTopup = useCallback(async () => {
+    if (!window.confirm(t("financeWallet.demoTopup.confirm", { amount: "500,000 VND" }))) {
+      return;
+    }
+    setIsDemoTopupLoading(true);
+    setDemoTopupError(null);
+    try {
+      const response = await walletApi.demoTopupPlatformWallet(500000);
+      if (!response.success) {
+        throw new Error(response.message || t("financeWallet.demoTopup.error"));
+      }
+      await loadWalletInfo();
+    } catch (err: any) {
+      setDemoTopupError(
+        err.response?.data?.message || err.message || t("financeWallet.demoTopup.error"),
+      );
+    } finally {
+      setIsDemoTopupLoading(false);
+    }
+  }, [loadWalletInfo, t]);
 
   useEffect(() => {
     onRefreshStateChange?.({
@@ -319,6 +344,22 @@ export const AdminFinanceWalletPanel: React.FC<
           <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
             {t("financeWallet.cards.platformLedger.description")}
           </p>
+          <button
+            type="button"
+            onClick={handleDemoTopup}
+            disabled={isDemoTopupLoading}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white/70 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500/30 dark:bg-transparent dark:text-emerald-300"
+          >
+            {isDemoTopupLoading ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <PlusCircle size={14} />
+            )}
+            {t("financeWallet.demoTopup.button")}
+          </button>
+          {demoTopupError && (
+            <p className="mt-2 text-[11px] text-rose-500 dark:text-rose-300">{demoTopupError}</p>
+          )}
         </div>
 
         <div className="rounded-[24px] border border-sky-200 bg-sky-50/80 p-5 shadow-[0_14px_30px_rgba(14,165,233,0.08)] dark:border-sky-500/20 dark:bg-sky-500/8 dark:shadow-none">
