@@ -20,11 +20,11 @@ public interface DisputeRepository extends JpaRepository<Dispute, UUID> {
     @Query("SELECT d FROM Dispute d WHERE d.id = :id")
     Optional<Dispute> findByIdWithLock(@Param("id") UUID id);
 
-    List<Dispute> findByStatusOrderByCreatedAtDesc(String status);
+    List<Dispute> findByStatusOrderByCreatedAtDesc(DisputeStatus status);
     List<Dispute> findByReporterIdOrderByCreatedAtDesc(UUID reporterId);
     List<Dispute> findByReportedSellerIdOrderByCreatedAtDesc(UUID sellerId);
-    long countByReporterIdAndStatus(UUID reporterId, String status);
-    long countByReportedSellerIdAndStatus(UUID reportedSellerId, String status);
+    long countByReporterIdAndStatus(UUID reporterId, DisputeStatus status);
+    long countByReportedSellerIdAndStatus(UUID reportedSellerId, DisputeStatus status);
     List<Dispute> findAllByOrderByCreatedAtDesc();
     boolean existsByReportedSellerIdAndStatus(UUID reportedSellerId, DisputeStatus status);
     boolean existsByGameIdAndStatus(UUID gameId, DisputeStatus status);

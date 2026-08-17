@@ -230,6 +230,35 @@ public class GitHubRepoServiceImpl implements GitHubRepoService {
         }
     }
 
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getRepoCommitsMetadata(String repoUrl) {
+        if (repoUrl == null || repoUrl.isBlank()) return null;
+        try {
+            String[] ownerRepo = parseOwnerRepo(repoUrl);
+            return fetchRepoCommits(ownerRepo[0], ownerRepo[1]);
+        } catch (Exception e) {
+            log.warn("Không thể fetch commits cho repo {}: {}", repoUrl, e.getMessage());
+            return null;
+        }
+    }
+
+    private java.util.List<java.util.Map<String, Object>> fetchRepoCommits(String owner, String repo) {
+        try {
+            WebClient.RequestHeadersSpec<?> req = webClient.get()
+                    .uri(URI.create("https://api.github.com/repos/" + owner + "/" + repo + "/commits?per_page=15"))
+                    .header("Accept", "application/vnd.github+json");
+            String botToken = githubConfig.getBotToken();
+            if (botToken != null && !botToken.isBlank()) {
+                req = req.header("Authorization", "Bearer " + botToken);
+            }
+            return req.retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<java.util.List<java.util.Map<String, Object>>>() {})
+                    .block();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private String[] parseOwnerRepo(String repoUrl) {
         try {
             URI uri = URI.create(repoUrl.trim().replaceAll("/$", ""));

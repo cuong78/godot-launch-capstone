@@ -139,7 +139,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         break;
 
       case 'PLAGIARISM_ALERT':
-        // Khiếu nại bản quyền → Admin đến Finance > Disputes; User đến detail
+        // Khiếu nại bản quyền → Admin đến Finance > Disputes; User/Buyer đến Ví cá nhân (Wallet) để kiểm tra tiền hoàn
         if (isAdmin) {
           setCurrentScreen('admin');
           dispatchAdminNavigation({
@@ -149,8 +149,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
             targetType: 'dispute',
           });
         } else {
-          setSelectedAssetId(notif.targetId);
-          setCurrentScreen('detail');
+          setCurrentScreen('wallet');
         }
         break;
 

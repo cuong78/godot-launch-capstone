@@ -59,4 +59,7 @@ public interface GitHubRepoService {
 
     /** Lấy dữ liệu metadata thô của repository từ GitHub API (created_at, pushed_at, owner...) */
     java.util.Map<String, Object> getRepoMetadata(String repoUrl);
+
+    /** Lấy lịch sử commits gần nhất của repository từ GitHub API (nội dung commit, thời gian commit, tần suất) */
+    java.util.List<java.util.Map<String, Object>> getRepoCommitsMetadata(String repoUrl);
 }

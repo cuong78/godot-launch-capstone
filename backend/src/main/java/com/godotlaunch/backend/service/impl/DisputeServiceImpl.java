@@ -168,6 +168,22 @@ public class DisputeServiceImpl implements DisputeService {
                         saved.getId().toString()
                 );
             }
+
+            // 4. Notify buyers of the game that product is temporarily suspended for investigation
+            List<Order> gameOrders = orderRepository.findByGameId(game.getId());
+            java.util.Set<UUID> notifiedBuyerIds = new java.util.HashSet<>();
+            for (Order gameOrder : gameOrders) {
+                User buyer = gameOrder.getBuyer();
+                if (buyer != null && !buyer.getId().equals(reporter.getId()) && !buyer.getId().equals(seller.getId()) && notifiedBuyerIds.add(buyer.getId())) {
+                    notificationService.createAndSendNotification(
+                            buyer,
+                            reporter,
+                            NotificationType.PLAGIARISM_ALERT,
+                            "Sản phẩm '" + game.getTitle() + "' mà bạn đã mua hiện đang bị tạm gỡ để phục vụ điều tra vi phạm bản quyền. Vui lòng chờ kết quả phán quyết từ hệ thống.",
+                            saved.getId().toString()
+                    );
+                }
+            }
         } catch (Exception e) {
             log.error("Failed to send dispute notifications: {}", e.getMessage(), e);
         }
@@ -196,7 +212,7 @@ public class DisputeServiceImpl implements DisputeService {
                 // TH3: A đạo nhái → Ban A hoặc khóa quyền, hoặc tự động ban nếu
                 // đã đủ số lần vi phạm theo ngưỡng cấu hình (dispute_ban_threshold).
                 long sellerFaultCount = disputeRepository.countByReportedSellerIdAndStatus(
-                        dispute.getReportedSeller().getId(), "resolved_seller_fault");
+                        dispute.getReportedSeller().getId(), DisputeStatus.resolved_seller_fault);
                 int disputeBanThreshold = platformSettingsService.getDisputeBanThreshold();
                 if (request.isBanUser() || sellerFaultCount >= disputeBanThreshold) {
                     banSeller(dispute.getReportedSeller(), "copyright_theft");
@@ -207,10 +223,10 @@ public class DisputeServiceImpl implements DisputeService {
                 // 1. Hoàn B,C (auto-refund buyer trong N ngày gần nhất — creditRestricted)
                 BigDecimal totalRefundedToBuyers = autoRefundRecentBuyers(dispute, admin);
 
-                // 2. Bồi thường D — lấy số admin đã xác nhận từ request (nếu null/âm thì 0)
+                // 2. Bồi thường D — lấy số admin đã xác nhận từ request hoặc tự động tính theo công thức gợi ý
                 BigDecimal reporterCompensation = request.getRefundAmount();
-                if (reporterCompensation == null || reporterCompensation.compareTo(BigDecimal.ZERO) < 0) {
-                    reporterCompensation = BigDecimal.ZERO;
+                if (reporterCompensation == null || reporterCompensation.compareTo(BigDecimal.ZERO) <= 0) {
+                    reporterCompensation = calculateSuggestedRefundAmount(dispute);
                 }
 
                 // 3. Cộng NGAY cho D (creditRestricted) & ghi nhận nợ A với platform
@@ -286,9 +302,6 @@ public class DisputeServiceImpl implements DisputeService {
                 // Total seller debited = total required minus platform advance
                 // Platform advance for buyers = (totalRefundedToBuyers - sellerDebitForBuyers)
                 // Platform advance for D = platformAdvanceForD
-                // Therefore sellerOutstandingDebt = totalRequired - (seller balance debited during resolution)
-                // Let's compute debt: if seller balance was insufficient, seller outstanding debt > 0
-                BigDecimal totalSellerDebited = WalletBalancePolicy.balance(getOrCreateWallet(seller));
                 // Compute debt directly:
                 BigDecimal sellerOutstandingDebt = totalRequired.subtract(sellerBalance.subtract(WalletBalancePolicy.balance(lockedSeller)));
                 if (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) < 0) {
@@ -304,6 +317,9 @@ public class DisputeServiceImpl implements DisputeService {
                 } else {
                     dispute.setRefundDeadline(null);
                     dispute.setRefundConfirmedAt(Instant.now());
+                    if (dispute.getReportedSeller().getLockedForDispute() != null) {
+                        unlockSellerRole(dispute.getReportedSeller());
+                    }
                 }
 
                 // Notify seller (A)
@@ -338,7 +354,7 @@ public class DisputeServiceImpl implements DisputeService {
                 // TH2: B vu cáo → khôi phục sản phẩm + đếm spam, ban nếu quá ngưỡng
                 restoreProduct(dispute);
                 long spamCount = disputeRepository.countByReporterIdAndStatus(
-                        dispute.getReporter().getId(), "resolved_reporter_fault");
+                        dispute.getReporter().getId(), DisputeStatus.resolved_reporter_fault);
                 int disputeBanThreshold = platformSettingsService.getDisputeBanThreshold();
                 if (spamCount >= disputeBanThreshold || request.isBanUser()) {
                     banReporter(dispute.getReporter(), "spam_report");
@@ -400,9 +416,7 @@ public class DisputeServiceImpl implements DisputeService {
     }
 
     private BigDecimal autoRefundRecentBuyers(Dispute dispute, User admin) {
-        short holdDays = platformSettingsService.getWithdrawalHoldDays();
-        Instant cutoff = Instant.now().minus(holdDays, ChronoUnit.DAYS);
-        List<Order> orders = orderRepository.findByGameIdAndPurchasedAtAfter(dispute.getGame().getId(), cutoff);
+        List<Order> orders = orderRepository.findByGameId(dispute.getGame().getId());
         if (orders.isEmpty()) {
             return BigDecimal.ZERO;
         }
@@ -860,14 +874,36 @@ public class DisputeServiceImpl implements DisputeService {
         String evidenceRepoOwner = null;
         if (dispute.getEvidenceRepoUrl() != null && !dispute.getEvidenceRepoUrl().isBlank()) {
             Map<String, Object> repoMeta = gitHubRepoService.getRepoMetadata(dispute.getEvidenceRepoUrl());
+            List<Map<String, Object>> commits = gitHubRepoService.getRepoCommitsMetadata(dispute.getEvidenceRepoUrl());
             if (repoMeta != null) {
                 if (repoMeta.get("owner") != null && repoMeta.get("owner") instanceof Map) {
                     evidenceRepoOwner = (String) ((Map<?, ?>) repoMeta.get("owner")).get("login");
                 }
-                gitInfo = String.format("- Ngày tạo Repo: %s\n- Cập nhật lần cuối: %s\n- Chủ sở hữu Repo: %s",
+                StringBuilder sb = new StringBuilder();
+                sb.append(String.format("- Ngày tạo Repo: %s\n- Cập nhật lần cuối (Pushed at): %s\n- Chủ sở hữu Repo trên GitHub: %s\n",
                         repoMeta.get("created_at"),
                         repoMeta.get("pushed_at"),
-                        evidenceRepoOwner != null ? evidenceRepoOwner : "N/A");
+                        evidenceRepoOwner != null ? evidenceRepoOwner : "N/A"));
+
+                if (commits != null && !commits.isEmpty()) {
+                    sb.append(String.format("- Tần suất & Số lượng Commit: Lấy được %d commit(s) gần nhất.\n", commits.size()));
+                    sb.append("- Lịch sử & Nội dung Commit gần đây:\n");
+                    for (int i = 0; i < Math.min(commits.size(), 7); i++) {
+                        Map<String, Object> c = commits.get(i);
+                        Map<?, ?> commitObj = c.get("commit") instanceof Map ? (Map<?, ?>) c.get("commit") : Map.of();
+                        String msg = commitObj.get("message") != null ? ((String) commitObj.get("message")).replace("\n", " ").trim() : "";
+                        if (msg.length() > 90) msg = msg.substring(0, 90) + "...";
+                        Map<?, ?> committerObj = commitObj.get("committer") instanceof Map ? (Map<?, ?>) commitObj.get("committer") : Map.of();
+                        String date = committerObj.get("date") != null ? committerObj.get("date").toString() : "N/A";
+                        sb.append(String.format("  + [%s] %s\n", date, msg));
+                    }
+                    if (commits.size() == 1) {
+                        sb.append("  * CẢNH BÁO TẦN SUẤT: Repo chỉ có duy nhất 1 commit (nghi vấn repo mới tạo nhanh hoặc dump toàn bộ code).\n");
+                    }
+                } else {
+                    sb.append("- Lịch sử commit: Không lấy được thông tin commit chi tiết.\n");
+                }
+                gitInfo = sb.toString();
             }
         }
 
@@ -910,7 +946,7 @@ public class DisputeServiceImpl implements DisputeService {
         if (latestSnapshot != null) {
             List<PlagiarismFlag> flags = plagiarismFlagRepository.findBySourceSnapshotIdOrderBySimilarityScoreDesc(latestSnapshot.getId());
             if (!flags.isEmpty()) {
-                flagsInfo.append("Các nghi vấn trùng lặp code phát hiện bởi hệ thống AST/MinHash:\n");
+                flagsInfo.append("Các nghi vấn trùng lặp code phát hiện bởi hệ thống AST/MinHash/CodeBERT:\n");
                 for (PlagiarismFlag flag : flags) {
                     flagsInfo.append(String.format("- Game trùng khớp: %s (Creator: %s), Độ tương đồng: %.2f%%\n",
                             flag.getMatchedGame().getTitle(),
@@ -918,7 +954,7 @@ public class DisputeServiceImpl implements DisputeService {
                             flag.getSimilarityScore() * 100));
                 }
             } else {
-                flagsInfo.append("Hệ thống AST/MinHash tự động không tìm thấy sự trùng lặp code bất thường nào với các game khác trên sàn.\n");
+                flagsInfo.append("Hệ thống AST/MinHash/CodeBERT tự động không tìm thấy sự trùng lặp code bất thường nào với các game khác trên sàn.\n");
             }
         }
 
@@ -943,7 +979,7 @@ public class DisputeServiceImpl implements DisputeService {
                 - Đường dẫn bằng chứng (GitHub repo gốc của B): %s
                 - Ghi chú bằng chứng của B: %s
                 
-                DỮ LIỆU GITHUB CỦA B:
+                DỮ LIỆU GITHUB CỦA B (THỜI GIAN TẠO, TẦN SUẤT & NỘI DUNG COMMIT):
                 %s
                 
                 DỮ LIỆU ĐỐI CHIẾU HỆ THỐNG (ĐỘ TƯƠNG ĐỒNG CODE):
@@ -954,12 +990,12 @@ public class DisputeServiceImpl implements DisputeService {
                 
                 LUỒNG QUYẾT ĐỊNH & TIÊU CHÍ (Yêu cầu tuân thủ nghiêm ngặt):
                 BƯỚC 1: Kiểm tra độ tương đồng mã nguồn (Code Similarity Check):
-                - Nếu độ tương đồng >= 90%%: Khả năng đạo nhái cực cao. Chuyển sang Bước 2 để xem mốc thời gian và tính chính danh của chủ sở hữu.
-                - Nếu độ tương đồng từ 70%% đến 90%%: Nghi vấn có sử dụng chung boilerplate hoặc clone một phần. Chuyển sang Bước 2.
-                - Nếu độ tương đồng < 70%%: Code khác biệt đáng kể. Đề xuất ngay Trường hợp 1 hoặc Trường hợp 2 trừ khi B có bằng chứng phi mã nguồn khác thuyết phục.
+                - Nếu độ tương đồng >= 90%% (Ngưỡng VI PHẠM / REJECT): Khả năng đạo nhái cực cao. Chuyển sang Bước 2 để xem mốc thời gian, lịch sử commit và tính chính danh của chủ sở hữu.
+                - Nếu độ tương đồng từ 70%% đến 89%% (Ngưỡng CẦN XEM XÉT / REVIEW): Nghi vấn có sử dụng chung bộ khung (boilerplate/template) hoặc clone một phần module. Chuyển sang Bước 2.
+                - Nếu độ tương đồng < 70%% (Ngưỡng AN TOÀN / ĐƯỢC / APPROVE): Code khác biệt đáng kể. Đề xuất ngay Trường hợp 1 hoặc Trường hợp 2 trừ khi B có bằng chứng phi mã nguồn khác thuyết phục.
                 
-                BƯỚC 2: Đối chiếu mốc thời gian và chủ sở hữu (Timeline & Ownership Check):
-                - Nếu repo bằng chứng của B thực chất là sở hữu của Seller A hoặc trùng với repo gốc của game A -> B ăn cắp repo để vu cáo. Đề xuất: Trường hợp 2 (Reporter vu cáo / Reporter vu khống).
+                BƯỚC 2: Đối chiếu mốc thời gian, tần suất & nội dung commit và chủ sở hữu (Timeline, Commits & Ownership Check):
+                - Nếu repo bằng chứng của B thực chất là sở hữu của Seller A hoặc trùng với repo gốc của game A -> B ăn cắp repo của A để vu cáo. Đề xuất: Trường hợp 2 (Reporter vu cáo / Reporter vu khống).
                 - Nếu chủ sở hữu repo của B trên GitHub không khớp với tài khoản GitHub đã liên kết của B trên hệ thống -> Báo cáo thiếu tính chính danh. Cần phân tích kỹ xem B có phải là tác giả thực sự hay không, hoặc đề xuất Trường hợp 1 (Không đủ căn cứ) hoặc Trường hợp 2 (Reporter vu cáo).
                 - Nếu B tạo repo GitHub trước khi A đăng game, độ tương đồng code cao, và repo thực sự thuộc quyền sở hữu của B -> A vi phạm. Đề xuất: Trường hợp 3 (Seller vi phạm thật / Seller vi phạm bản quyền).
                 - Nếu A đăng game trước khi B tạo repo GitHub -> B vu khống. Đề xuất: Trường hợp 2 (Reporter vu cáo).
