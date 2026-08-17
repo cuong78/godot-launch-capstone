@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/developer")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Developer KYC API", description = "Face verification for Tier 1 KYC — required before first marketplace publish")
 public class FaceVerifyController {
 
@@ -108,7 +110,14 @@ public class FaceVerifyController {
         } catch (FaceServiceClient.FaceServiceUnavailableException unavailable) {
             throw new AppException(ErrorCode.FACE_SERVICE_UNAVAILABLE);
         } catch (FaceServiceClient.FaceServiceException fse) {
-            throw new AppException(ErrorCode.FACE_LIVENESS_FAILED);
+            String detail = fse.getMessage();
+            log.warn("Liveness verification rejected user {}: {}", user.getId(), detail);
+            throw new AppException(
+                    ErrorCode.FACE_LIVENESS_FAILED,
+                    detail == null || detail.isBlank()
+                            ? ErrorCode.FACE_LIVENESS_FAILED.getMessage()
+                            : detail
+            );
         }
 
         // Mark verified

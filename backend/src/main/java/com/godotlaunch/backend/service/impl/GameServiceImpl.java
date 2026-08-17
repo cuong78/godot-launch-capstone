@@ -174,7 +174,16 @@ public class GameServiceImpl implements GameService {
         Game game = new Game();
         game.setTitle(request.getTitle());
         game.setDescription(request.getDescription());
-        game.setPriceProposed(request.getPriceProposed());
+        boolean isCoPublishing = request.getPublishingType()
+                == com.godotlaunch.backend.entity.enums.PublishingType.co_publishing;
+        if (isCoPublishing && request.getRevenueSplitProposed() == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_INPUT,
+                    "Revenue split proposed is required for co-publishing."
+            );
+        }
+        game.setPriceProposed(isCoPublishing ? null : request.getPriceProposed());
+        game.setRevenueSplitProposed(isCoPublishing ? request.getRevenueSplitProposed() : null);
         game.setCreator(creator);
         game.setStatus(GameStatus.draft);
         game.setPublishingType(request.getPublishingType());
@@ -848,6 +857,7 @@ public class GameServiceImpl implements GameService {
                 .description(game.getDescription())
                 .thumbnailUrl(getPresignedGetUrl(game.getThumbnailUrl()))
                 .priceProposed(game.getPriceProposed())
+                .revenueSplitProposed(game.getRevenueSplitProposed())
                 .downloadPrice(null)
                 .communityAvailable(game.isSourceListed())
                 .status(game.getStatus().name())

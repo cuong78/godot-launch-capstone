@@ -134,14 +134,31 @@ const getMarketplaceStatusLabel = (
 };
 
 const formatCurrencyValue = (
-  value: number | undefined,
+  value: number | null | undefined,
   locale: string,
   t: (key: string) => string,
 ) => {
-  if (value === 0 || value === undefined) {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+  if (value === 0) {
     return t("dashboard:table.free");
   }
   return `${value.toLocaleString(locale)} ${t("dashboard:table.currencyVnd")}`;
+};
+
+const formatGameFinancialProposal = (
+  game: GameResponse,
+  locale: string,
+  t: (key: string) => string,
+) => {
+  if (game.publishingType === "co_publishing") {
+    return game.revenueSplitProposed === null ||
+      game.revenueSplitProposed === undefined
+      ? "—"
+      : `${game.revenueSplitProposed}%`;
+  }
+  return formatCurrencyValue(game.priceProposed, locale, t);
 };
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -996,7 +1013,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   </span>
                                 </td>
                                 <td className="p-3 w-36 font-sans font-semibold dark:text-amber-400">
-                                  {formatCurrencyValue(game.priceProposed, locale, t)}
+                                  {formatGameFinancialProposal(game, locale, t)}
                                 </td>
                                 <td className="p-3 w-40 text-center">
                                   <div className="flex flex-col items-center gap-1.5 justify-center">

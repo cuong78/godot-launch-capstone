@@ -178,6 +178,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [publishingType, setPublishingType] = useState<
     "full_acquisition" | "co_publishing" | "marketplace_listing"
   >("full_acquisition");
+  const [revenueSplitProposed, setRevenueSplitProposed] = useState("70");
 
   // Custom dropdown state & ref for Publishing / Acquisition Model
   const [isPublishDropdownOpen, setIsPublishDropdownOpen] = useState(false);
@@ -522,7 +523,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       const res = await gameApi.createGameDraft({
         title,
         description,
-        priceProposed: priceNum,
+        // co_publishing: giá bán không áp dụng (admin tự quyết % lúc soạn hợp
+        // đồng) — gửi undefined thay vì 0 để không bị hiểu nhầm là "miễn phí"
+        // (HomepageServiceImpl dùng priceProposed === 0 để lọc game Free).
+        priceProposed: publishingType === "co_publishing" ? undefined : priceNum,
+        revenueSplitProposed:
+          publishingType === "co_publishing"
+            ? Number(revenueSplitProposed)
+            : undefined,
         categoryId: categoryId || undefined,
         publishingType,
         tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
@@ -542,9 +550,18 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       return;
     }
     const priceNum = parseFloat(priceInput.rawValue || "0");
-    if (isNaN(priceNum) || priceNum < 0) {
+    const priceRequired =
+      publishProgram === "marketplace" || publishingType !== "co_publishing";
+    if (priceRequired && (isNaN(priceNum) || priceNum < 0)) {
       showToast(t("errors.invalidPrice"), 'warning');
       return;
+    }
+    if (publishProgram === "game" && publishingType === "co_publishing") {
+      const split = Number(revenueSplitProposed);
+      if (!Number.isInteger(split) || split < 0 || split > 100) {
+        showToast(t("errors.invalidRevenueSplit"), "warning");
+        return;
+      }
     }
 
     try {
@@ -1070,6 +1087,188 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             </div>
           </div>
 
+          {publishProgram === "game" && (
+            <div className="flex flex-col gap-2">
+              <div>
+                <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+                  {t("form.publishingDestination")}
+                </label>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {t("form.publishingDestinationHint")}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPublishingType("marketplace_listing")}
+                  aria-pressed={publishingType === "marketplace_listing"}
+                  className={`group relative min-h-28 rounded-xl border p-4 text-left transition-studio ${
+                    publishingType === "marketplace_listing"
+                      ? "border-amber-400 bg-amber-500/10 shadow-[0_0_0_1px_rgba(251,191,36,0.08)] dark:bg-amber-500/10"
+                      : "border-slate-300 bg-white hover:border-amber-400/60 hover:bg-amber-500/5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-400/50"
+                  }`}
+                >
+                  <span className="flex items-start gap-3">
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                        publishingType === "marketplace_listing"
+                          ? "bg-amber-500 text-slate-950"
+                          : "bg-slate-100 text-slate-500 group-hover:text-amber-500 dark:bg-slate-800"
+                      }`}
+                    >
+                      <ShoppingBag size={19} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                          {t("form.marketplaceDestination")}
+                        </span>
+                        {publishingType === "marketplace_listing" && (
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950">
+                            <Check size={13} strokeWidth={3} />
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                        {t("form.marketplaceDestinationDescription")}
+                      </span>
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (publishingType === "marketplace_listing") {
+                      setPublishingType("full_acquisition");
+                    }
+                  }}
+                  aria-pressed={publishingType !== "marketplace_listing"}
+                  className={`group relative min-h-28 rounded-xl border p-4 text-left transition-studio ${
+                    publishingType !== "marketplace_listing"
+                      ? "border-amber-400 bg-amber-500/10 shadow-[0_0_0_1px_rgba(251,191,36,0.08)] dark:bg-amber-500/10"
+                      : "border-slate-300 bg-white hover:border-amber-400/60 hover:bg-amber-500/5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-400/50"
+                  }`}
+                >
+                  <span className="flex items-start gap-3">
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                        publishingType !== "marketplace_listing"
+                          ? "bg-amber-500 text-slate-950"
+                          : "bg-slate-100 text-slate-500 group-hover:text-amber-500 dark:bg-slate-800"
+                      }`}
+                    >
+                      <Gamepad2 size={20} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                          {t("form.mobileStoreDestination")}
+                        </span>
+                        {publishingType !== "marketplace_listing" && (
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950">
+                            <Check size={13} strokeWidth={3} />
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                        {t("form.mobileStoreDestinationDescription")}
+                      </span>
+                    </span>
+                  </span>
+                </button>
+              </div>
+
+              {publishingType !== "marketplace_listing" && (
+                <div className="flex flex-col gap-1.5 mt-2">
+                  <label className="text-xs font-semibold text-slate-655 dark:text-slate-400">
+                    {t("form.contractModel")}
+                  </label>
+                  <div className="relative" ref={publishDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsPublishDropdownOpen(!isPublishDropdownOpen)}
+                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none flex items-center justify-between transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 cursor-pointer"
+                      aria-haspopup="listbox"
+                      aria-expanded={isPublishDropdownOpen}
+                    >
+                      <span className="truncate">
+                        {publishingType === "full_acquisition"
+                          ? t("form.fullAcquisitionOption")
+                          : t("form.coPublishingOption")}
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        className={`text-slate-400 transition-transform duration-205 ${
+                          isPublishDropdownOpen ? "rotate-180 text-sky-500" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {isPublishDropdownOpen && (
+                      <ul
+                        className="absolute left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white p-1 shadow-2xl dark:bg-slate-950"
+                        role="listbox"
+                      >
+                        <li role="option" aria-selected={publishingType === "full_acquisition"}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPublishingType("full_acquisition");
+                              setIsPublishDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${
+                              publishingType === "full_acquisition"
+                                ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 font-semibold"
+                                : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                            }`}
+                          >
+                            <span className="truncate">
+                              {t("form.fullAcquisitionOption")}
+                            </span>
+                            {publishingType === "full_acquisition" && (
+                              <Check size={14} className="text-sky-500 shrink-0" />
+                            )}
+                          </button>
+                        </li>
+                        <li role="option" aria-selected={publishingType === "co_publishing"}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPublishingType("co_publishing");
+                              // Hợp đồng ăn chia % — giá bán không áp dụng ở
+                              // bước này, clear để tránh gửi lẫn priceProposed cũ.
+                              priceInput.setValue("");
+                              setIsPublishDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${
+                              publishingType === "co_publishing"
+                                ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 font-semibold"
+                                : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                            }`}
+                          >
+                            <span className="truncate">
+                              {t("form.coPublishingOption")}
+                            </span>
+                            {publishingType === "co_publishing" && (
+                              <Check size={14} className="text-sky-500 shrink-0" />
+                            )}
+                          </button>
+                        </li>
+                      </ul>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {publishingType === "full_acquisition"
+                      ? t("form.fullAcquisitionHint")
+                      : t("form.coPublishingHint")}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Input
               label={
@@ -1088,16 +1287,32 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               required
             />
 
-            <Input
-              label={t("form.priceLabel")}
-              prefix="VND"
-              placeholder={t("form.pricePlaceholder")}
-              type="text"
-              inputMode="numeric"
-              {...priceInput.inputProps}
-              className="[&_input]:h-12 [&_input]:rounded-xl"
-              required
-            />
+            {publishProgram === "game" && publishingType === "co_publishing" ? (
+              <Input
+                label={t("form.revenueSplitProposedLabel")}
+                suffix="%"
+                placeholder={t("form.revenueSplitProposedPlaceholder")}
+                type="number"
+                min={0}
+                max={100}
+                value={revenueSplitProposed}
+                onChange={(e) => setRevenueSplitProposed(e.target.value)}
+                helperText={t("form.revenueSplitProposedHelper")}
+                className="[&_input]:h-12 [&_input]:rounded-xl"
+                required
+              />
+            ) : (
+              <Input
+                label={t("form.priceLabel")}
+                prefix="VND"
+                placeholder={t("form.pricePlaceholder")}
+                type="text"
+                inputMode="numeric"
+                {...priceInput.inputProps}
+                className="[&_input]:h-12 [&_input]:rounded-xl"
+                required
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -1300,185 +1515,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   : t("form.selectUpToTags")}
               </p>
             </div>
-
-            {publishProgram === "game" && (
-              <div className="flex flex-col gap-2 md:col-span-2">
-                <div>
-                  <label className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
-                    {t("form.publishingDestination")}
-                  </label>
-                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                    {t("form.publishingDestinationHint")}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPublishingType("marketplace_listing")}
-                    aria-pressed={publishingType === "marketplace_listing"}
-                    className={`group relative min-h-28 rounded-xl border p-4 text-left transition-studio ${
-                      publishingType === "marketplace_listing"
-                        ? "border-amber-400 bg-amber-500/10 shadow-[0_0_0_1px_rgba(251,191,36,0.08)] dark:bg-amber-500/10"
-                        : "border-slate-300 bg-white hover:border-amber-400/60 hover:bg-amber-500/5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-400/50"
-                    }`}
-                  >
-                    <span className="flex items-start gap-3">
-                      <span
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                          publishingType === "marketplace_listing"
-                            ? "bg-amber-500 text-slate-950"
-                            : "bg-slate-100 text-slate-500 group-hover:text-amber-500 dark:bg-slate-800"
-                        }`}
-                      >
-                        <ShoppingBag size={19} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                            {t("form.marketplaceDestination")}
-                          </span>
-                          {publishingType === "marketplace_listing" && (
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950">
-                              <Check size={13} strokeWidth={3} />
-                            </span>
-                          )}
-                        </span>
-                        <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
-                          {t("form.marketplaceDestinationDescription")}
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (publishingType === "marketplace_listing") {
-                        setPublishingType("full_acquisition");
-                      }
-                    }}
-                    aria-pressed={publishingType !== "marketplace_listing"}
-                    className={`group relative min-h-28 rounded-xl border p-4 text-left transition-studio ${
-                      publishingType !== "marketplace_listing"
-                        ? "border-amber-400 bg-amber-500/10 shadow-[0_0_0_1px_rgba(251,191,36,0.08)] dark:bg-amber-500/10"
-                        : "border-slate-300 bg-white hover:border-amber-400/60 hover:bg-amber-500/5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-400/50"
-                    }`}
-                  >
-                    <span className="flex items-start gap-3">
-                      <span
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                          publishingType !== "marketplace_listing"
-                            ? "bg-amber-500 text-slate-950"
-                            : "bg-slate-100 text-slate-500 group-hover:text-amber-500 dark:bg-slate-800"
-                        }`}
-                      >
-                        <Gamepad2 size={20} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                            {t("form.mobileStoreDestination")}
-                          </span>
-                          {publishingType !== "marketplace_listing" && (
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-slate-950">
-                              <Check size={13} strokeWidth={3} />
-                            </span>
-                          )}
-                        </span>
-                        <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
-                          {t("form.mobileStoreDestinationDescription")}
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-                </div>
-
-                {publishingType !== "marketplace_listing" && (
-                  <div className="flex flex-col gap-1.5 mt-2">
-                    <label className="text-xs font-semibold text-slate-655 dark:text-slate-400">
-                      {t("form.contractModel")}
-                    </label>
-                    <div className="relative" ref={publishDropdownRef}>
-                      <button
-                        type="button"
-                        onClick={() => setIsPublishDropdownOpen(!isPublishDropdownOpen)}
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-350 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none flex items-center justify-between transition-studio focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 cursor-pointer"
-                        aria-haspopup="listbox"
-                        aria-expanded={isPublishDropdownOpen}
-                      >
-                        <span className="truncate">
-                          {publishingType === "full_acquisition"
-                            ? t("form.fullAcquisitionOption")
-                            : t("form.coPublishingOption")}
-                        </span>
-                        <ChevronDown
-                          size={16}
-                          className={`text-slate-400 transition-transform duration-205 ${
-                            isPublishDropdownOpen ? "rotate-180 text-sky-500" : ""
-                          }`}
-                        />
-                      </button>
-
-                      {isPublishDropdownOpen && (
-                        <ul
-                          className="absolute left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white p-1 shadow-2xl dark:bg-slate-950"
-                          role="listbox"
-                        >
-                          <li role="option" aria-selected={publishingType === "full_acquisition"}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPublishingType("full_acquisition");
-                                setIsPublishDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${
-                                publishingType === "full_acquisition"
-                                  ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 font-semibold"
-                                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/60"
-                              }`}
-                            >
-                              <span className="truncate">
-                                {t("form.fullAcquisitionOption")}
-                              </span>
-                              {publishingType === "full_acquisition" && (
-                                <Check size={14} className="text-sky-500 shrink-0" />
-                              )}
-                            </button>
-                          </li>
-                          <li role="option" aria-selected={publishingType === "co_publishing"}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPublishingType("co_publishing");
-                                setIsPublishDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${
-                                publishingType === "co_publishing"
-                                  ? "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 font-semibold"
-                                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/60"
-                              }`}
-                            >
-                              <span className="truncate">
-                                {t("form.coPublishingOption")}
-                              </span>
-                              {publishingType === "co_publishing" && (
-                                <Check size={14} className="text-sky-500 shrink-0" />
-                              )}
-                            </button>
-                          </li>
-                        </ul>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {publishingType === "full_acquisition"
-                        ? t("form.fullAcquisitionHint")
-                        : t("form.coPublishingHint")}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           </section>
 
@@ -1989,6 +2025,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   </p>
                 </div>
               )}
+
             </div>
           </div>
         </div>

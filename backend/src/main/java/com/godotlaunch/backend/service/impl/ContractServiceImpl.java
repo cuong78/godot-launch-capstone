@@ -5,12 +5,15 @@ import com.godotlaunch.backend.dto.response.ContractAiSuggestionResponse;
 import com.godotlaunch.backend.dto.response.ContractResponse;
 import com.godotlaunch.backend.entity.Contract;
 import com.godotlaunch.backend.entity.Game;
+import com.godotlaunch.backend.entity.AiReviewReport;
 import com.godotlaunch.backend.entity.User;
+import com.godotlaunch.backend.entity.enums.AiRecommendation;
 import com.godotlaunch.backend.entity.enums.ContractStatus;
 import com.godotlaunch.backend.entity.enums.ContractType;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.repository.ContractRepository;
+import com.godotlaunch.backend.repository.AiReviewReportRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.service.SeaweedFsService;
@@ -31,6 +34,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.Duration;
@@ -43,6 +48,7 @@ public class ContractServiceImpl implements ContractService {
 
     private final ContractRepository contractRepository;
     private final GameRepository gameRepository;
+    private final AiReviewReportRepository aiReviewReportRepository;
     private final UserRepository userRepository;
     private final SeaweedFsService seaweedFsService;
     private final EmailService emailService;
@@ -60,13 +66,23 @@ public class ContractServiceImpl implements ContractService {
     @Value("${DEEPSEEK_MODEL:deepseek-chat}")
     private String deepseekModel;
 
+    /** Giá mua đứt mặc định cho game mới, chưa có dữ liệu thị trường. */
+    @Value("${CONTRACT_AI_NEW_GAME_BUYOUT_VND:50000}")
+    private long newGameBuyoutVnd;
+
+    /** Trần cứng để LLM không thể đưa ra mức mua đứt phi thực tế. */
+    @Value("${CONTRACT_AI_MAX_BUYOUT_VND:500000}")
+    private long maxBuyoutVnd;
+
     public ContractServiceImpl(ContractRepository contractRepository, GameRepository gameRepository,
+                               AiReviewReportRepository aiReviewReportRepository,
                                UserRepository userRepository,
                                SeaweedFsService seaweedFsService, EmailService emailService,
                                AuditLogService auditLogService, NotificationService notificationService,
                                ObjectMapper objectMapper, WebClient webClient) {
         this.contractRepository = contractRepository;
         this.gameRepository = gameRepository;
+        this.aiReviewReportRepository = aiReviewReportRepository;
         this.userRepository = userRepository;
         this.seaweedFsService = seaweedFsService;
         this.emailService = emailService;
@@ -108,7 +124,14 @@ public class ContractServiceImpl implements ContractService {
         contract.setSeller(game.getCreator());
         contract.setContractType(request.getContractType());
         if (request.getContractType() == ContractType.co_publishing) {
-            contract.setRevenueSplit(request.getRevenueSplit());
+            // Admin luôn được tự chỉnh % qua request.getRevenueSplit(). Nếu để
+            // trống, fallback về % developer đã đề xuất lúc đăng game (tiện lợi,
+            // giống pattern lumpSumAmount ở nhánh full_acquisition bên dưới).
+            Short revenueSplit = request.getRevenueSplit();
+            if (revenueSplit == null) {
+                revenueSplit = game.getRevenueSplitProposed();
+            }
+            contract.setRevenueSplit(revenueSplit);
             contract.setLumpSumAmount(null);
         } else {
             // Admin luôn được tự chỉnh giá trọn gói qua request.getLumpSumAmount() —
@@ -192,85 +215,193 @@ public class ContractServiceImpl implements ContractService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
 
+        AiReviewReport reviewReport = aiReviewReportRepository
+                .findFirstByGameIdOrderByCreatedAtDesc(gameId)
+                .orElse(null);
+        int qualityScore = calculateQualityScore(reviewReport);
+        boolean strongGame = isStrongGame(game, reviewReport, qualityScore);
+        ContractType policyType = strongGame
+                ? ContractType.full_acquisition
+                : ContractType.co_publishing;
+        BigDecimal policyAmount = strongGame ? calculateBuyoutAmount(game) : null;
+        short policySplit = resolveRevenueSplit(game, reviewReport);
+        String fallbackReasoning = buildPolicyReasoning(
+                game, reviewReport, qualityScore, policyType, policyAmount, policySplit);
+
         if (deepseekApiKey == null || deepseekApiKey.isBlank()) {
-            return ContractAiSuggestionResponse.builder()
-                    .unavailable(true)
-                    .reasoning("Chưa cấu hình DEEPSEEK_API_KEY trong file backend/.env để gợi ý hợp đồng.")
-                    .build();
+            return buildPolicyResponse(
+                    policyType, policyAmount, policySplit, fallbackReasoning);
         }
 
-        String prompt = buildContractSuggestionPrompt(game);
         try {
+            String prompt = buildContractSuggestionPrompt(
+                    game, reviewReport, qualityScore, policyType, policyAmount, policySplit);
             String rawJson = callDeepSeekForJson(prompt);
             JsonNode node = objectMapper.readTree(extractJsonBlock(rawJson));
-
-            String typeStr = node.path("contractType").asText("full_acquisition");
-            ContractType suggestedType = "co_publishing".equalsIgnoreCase(typeStr)
-                    ? ContractType.co_publishing
-                    : ContractType.full_acquisition;
-
-            ContractAiSuggestionResponse.ContractAiSuggestionResponseBuilder builder =
-                    ContractAiSuggestionResponse.builder()
-                            .suggestedContractType(suggestedType)
-                            .reasoning(node.path("reasoning").asText(""))
-                            .unavailable(false);
-
-            if (suggestedType == ContractType.co_publishing) {
-                short split = (short) Math.max(0, Math.min(100, node.path("revenueSplit").asInt(70)));
-                builder.suggestedRevenueSplit(split);
-            } else {
-                long amount = Math.max(0, node.path("lumpSumAmount").asLong(0));
-                builder.suggestedLumpSumAmount(java.math.BigDecimal.valueOf(amount));
-            }
-
-            return builder.build();
+            String aiReasoning = node.path("reasoning").asText("").trim();
+            return buildPolicyResponse(
+                    policyType,
+                    policyAmount,
+                    policySplit,
+                    aiReasoning.isBlank() ? fallbackReasoning : aiReasoning);
         } catch (Exception e) {
             log.warn("Lỗi khi lấy gợi ý hợp đồng từ AI cho game {}: {}", gameId, e.getMessage());
-            return ContractAiSuggestionResponse.builder()
-                    .unavailable(true)
-                    .reasoning("Không thể lấy gợi ý từ AI lúc này. Vui lòng tự nhập điều khoản hoặc thử lại sau.")
-                    .build();
+            // Chính sách Java vẫn cho ra kết quả an toàn khi DeepSeek lỗi/mất mạng.
+            return buildPolicyResponse(
+                    policyType, policyAmount, policySplit, fallbackReasoning);
         }
     }
 
-    private String buildContractSuggestionPrompt(Game game) {
+    private ContractAiSuggestionResponse buildPolicyResponse(
+            ContractType type,
+            BigDecimal amount,
+            short revenueSplit,
+            String reasoning) {
+        ContractAiSuggestionResponse.ContractAiSuggestionResponseBuilder builder =
+                ContractAiSuggestionResponse.builder()
+                        .suggestedContractType(type)
+                        .reasoning(reasoning)
+                        .unavailable(false);
+        if (type == ContractType.full_acquisition) {
+            builder.suggestedLumpSumAmount(amount);
+        } else {
+            builder.suggestedRevenueSplit(revenueSplit);
+        }
+        return builder.build();
+    }
+
+    private int calculateQualityScore(AiReviewReport report) {
+        if (report == null) return -1;
+        List<Integer> scores = Arrays.asList(
+                        report.getCodeQualityScore(),
+                        report.getMediaMatchScore(),
+                        report.getDescriptionMatchScore(),
+                        report.getTagsMatchScore())
+                .stream()
+                .filter(Objects::nonNull)
+                .toList();
+        if (scores.isEmpty()) return -1;
+        return (int) Math.round(scores.stream().mapToInt(Integer::intValue).average().orElse(0));
+    }
+
+    private boolean isStrongGame(Game game, AiReviewReport report, int qualityScore) {
+        boolean reviewBlocksBuyout = report != null
+                && (report.isNsfwFlag()
+                || report.getOverallRecommendation() == AiRecommendation.reject);
+        if (reviewBlocksBuyout) return false;
+
+        boolean hasUsefulDescription = game.getDescription() != null
+                && game.getDescription().trim().length() >= 40;
+        boolean strongAiReview = report != null
+                && report.getOverallRecommendation() == AiRecommendation.approve
+                && qualityScore >= 80
+                && hasUsefulDescription;
+
+        int downloads = game.getDownloadCount() != null ? game.getDownloadCount() : 0;
+        int reviews = game.getReviewCount() != null ? game.getReviewCount() : 0;
+        BigDecimal rating = game.getAverageRating() != null
+                ? game.getAverageRating()
+                : BigDecimal.ZERO;
+        boolean strongMarketEvidence = downloads >= 1_000
+                && reviews >= 10
+                && rating.compareTo(BigDecimal.valueOf(4.2)) >= 0;
+
+        return strongAiReview || strongMarketEvidence;
+    }
+
+    private BigDecimal calculateBuyoutAmount(Game game) {
+        BigDecimal configuredMax = BigDecimal.valueOf(Math.max(0, maxBuyoutVnd));
+        BigDecimal developerProposal = game.getPriceProposed();
+        BigDecimal amount;
+
+        if (developerProposal != null && developerProposal.compareTo(BigDecimal.ZERO) > 0) {
+            // Không bao giờ gợi ý trả cao hơn mức chính Developer đã đề xuất.
+            amount = developerProposal;
+        } else {
+            long downloads = Math.max(0, game.getDownloadCount() != null
+                    ? game.getDownloadCount().longValue()
+                    : 0L);
+            long availableBonus = Math.max(0, maxBuyoutVnd - newGameBuyoutVnd);
+            long cappedDownloads = Math.min(downloads, availableBonus / 100L);
+            amount = BigDecimal.valueOf(Math.max(0, newGameBuyoutVnd) + cappedDownloads * 100L);
+        }
+
+        return amount.min(configuredMax).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
+    }
+
+    private short resolveRevenueSplit(Game game, AiReviewReport report) {
+        Short proposed = game.getRevenueSplitProposed();
+        if (proposed == null && report != null) {
+            proposed = report.getSuggestedRevenueSplit();
+        }
+        int split = proposed != null ? proposed : 70;
+        // Khoảng gợi ý an toàn; Admin vẫn có thể chỉnh trực tiếp trên form.
+        return (short) Math.max(50, Math.min(80, split));
+    }
+
+    private String buildPolicyReasoning(
+            Game game,
+            AiReviewReport report,
+            int qualityScore,
+            ContractType type,
+            BigDecimal amount,
+            short revenueSplit) {
+        int downloads = game.getDownloadCount() != null ? game.getDownloadCount() : 0;
+        int reviews = game.getReviewCount() != null ? game.getReviewCount() : 0;
+        String reviewStatus = report != null && report.getOverallRecommendation() != null
+                ? report.getOverallRecommendation().name()
+                : "chưa có";
+        String score = qualityScore >= 0 ? qualityScore + "/100" : "chưa có";
+
+        if (type == ContractType.co_publishing) {
+            return "Game chưa có đủ tín hiệu để nền tảng bỏ vốn mua đứt "
+                    + "(AI review: " + reviewStatus + ", điểm tổng hợp: " + score
+                    + ", " + downloads + " lượt tải, " + reviews + " đánh giá). "
+                    + "Ưu tiên đồng phát hành " + revenueSplit
+                    + "% cho Developer để giảm rủi ro vốn và đánh giá lại khi có thêm dữ liệu.";
+        }
+
+        return "Game đạt ngưỡng chất lượng và có tín hiệu đủ tốt "
+                + "(AI review: " + reviewStatus + ", điểm tổng hợp: " + score + "). "
+                + "Có thể mua đứt với mức " + formatVnd(amount)
+                + "; giá đã được giới hạn theo đề xuất của Developer, lượt tải và trần định giá nội bộ.";
+    }
+
+    private String buildContractSuggestionPrompt(
+            Game game,
+            AiReviewReport report,
+            int qualityScore,
+            ContractType policyType,
+            BigDecimal policyAmount,
+            short policySplit) {
         String category = game.getCategory() != null ? game.getCategory().getName() : "Không rõ";
-        String description = game.getDescription() != null && !game.getDescription().isBlank()
-                ? game.getDescription() : "Không có mô tả";
-        String proposedPrice = game.getPriceProposed() != null
-                ? String.format("%,d VND", game.getPriceProposed().longValue())
-                : "Chưa đề xuất";
+        String reviewStatus = report != null && report.getOverallRecommendation() != null
+                ? report.getOverallRecommendation().name()
+                : "chưa có";
+        String policyValue = policyType == ContractType.full_acquisition
+                ? formatVnd(policyAmount)
+                : policySplit + "% doanh thu cho Developer";
 
-        return String.format("""
-                Bạn là Trợ lý AI tư vấn hợp đồng phát hành cho sàn phân phối game GodotLaunch.
-                Hãy phân tích thông tin game dưới đây và đề xuất LOẠI HỢP ĐỒNG phát hành phù hợp nhất,
-                kèm mức giá/tỷ lệ chia doanh thu tương ứng.
+        return new StringBuilder()
+                .append("Bạn là trợ lý diễn giải quyết định hợp đồng của GodotLaunch.\n")
+                .append("Quyết định loại hợp đồng và mức tiền bên dưới đã được Java backend tính theo chính sách rủi ro; ")
+                .append("KHÔNG được thay đổi loại hợp đồng hoặc con số này.\n\n")
+                .append("Game: ").append(game.getTitle()).append('\n')
+                .append("Thể loại: ").append(category).append('\n')
+                .append("Có mô tả: ").append(game.getDescription() != null && !game.getDescription().isBlank()).append('\n')
+                .append("Lượt tải: ").append(game.getDownloadCount() != null ? game.getDownloadCount() : 0).append('\n')
+                .append("Số đánh giá: ").append(game.getReviewCount() != null ? game.getReviewCount() : 0).append('\n')
+                .append("AI review: ").append(reviewStatus).append('\n')
+                .append("Điểm chất lượng tổng hợp: ").append(qualityScore >= 0 ? qualityScore + "/100" : "chưa có").append('\n')
+                .append("Kết quả bắt buộc: ").append(policyType.name()).append(" — ").append(policyValue).append("\n\n")
+                .append("Chỉ trả về JSON hợp lệ theo mẫu: ")
+                .append("{\"reasoning\":\"Giải thích ngắn gọn 2-3 câu bằng tiếng Việt, phù hợp chính xác với kết quả bắt buộc\"}")
+                .toString();
+    }
 
-                THÔNG TIN GAME:
-                - Tên game: %s
-                - Thể loại: %s
-                - Mô tả: %s
-                - Giá developer đề xuất (nếu bán trên marketplace): %s
-                - Số lượt tải hiện tại: %d
-
-                HAI LOẠI HỢP ĐỒNG CÓ THỂ CHỌN:
-                1. full_acquisition (Mua đứt trọn gói): Platform trả 1 lần duy nhất, sở hữu toàn bộ game.
-                   Phù hợp với game nhỏ, đã hoàn thiện, ít cần cập nhật lâu dài, hoặc developer muốn nhận tiền ngay.
-                2. co_publishing (Đồng phát hành - chia doanh thu): Developer vẫn giữ quyền sở hữu, nhận % doanh thu
-                   theo thời gian. Phù hợp với game có tiềm năng doanh thu dài hạn, cần developer tiếp tục cập nhật,
-                   hoặc game đã có lượng người chơi/lượt tải tốt cho thấy tiềm năng thương mại lâu dài.
-
-                YÊU CẦU ĐẦU RA: CHỈ trả về đúng 1 khối JSON hợp lệ (không thêm markdown, không thêm giải thích
-                ngoài JSON), theo đúng cấu trúc sau:
-                {
-                  "contractType": "full_acquisition" hoặc "co_publishing",
-                  "lumpSumAmount": <số nguyên VND, chỉ điền nếu contractType là full_acquisition, ước tính hợp lý dựa trên giá đề xuất và tiềm năng game>,
-                  "revenueSplit": <số nguyên 0-100, chỉ điền nếu contractType là co_publishing, là % developer nhận>,
-                  "reasoning": "<giải thích ngắn gọn 2-3 câu bằng tiếng Việt lý do đề xuất mức trên>"
-                }
-                """,
-                game.getTitle(), category, description, proposedPrice,
-                game.getDownloadCount() != null ? game.getDownloadCount() : 0);
+    private String formatVnd(BigDecimal amount) {
+        if (amount == null) return "0 VND";
+        return java.text.NumberFormat.getIntegerInstance(Locale.US).format(amount.longValue()) + " VND";
     }
 
     /** DeepSeek đôi khi bọc JSON trong ```json ... ``` — tách phần JSON thuần trước khi parse. */

@@ -96,7 +96,7 @@ public class NotificationServiceImpl implements NotificationService {
         Notification saved = notificationRepository.save(notification);
         NotificationResponse response = mapToResponse(saved);
 
-        Runnable pushTask = () -> {
+        Runnable dispatchTask = () -> {
             try {
                 String targetEmail = recipient.getEmail().toLowerCase().trim();
                 // Push real-time over user queue
@@ -109,6 +109,17 @@ public class NotificationServiceImpl implements NotificationService {
             } catch (Exception e) {
                 log.error("Failed to push notification over WebSocket: {}", e.getMessage());
             }
+
+            try {
+                // EmailService handles the SMTP work asynchronously. Starting
+                // it here prevents a rolled-back transaction from emailing a
+                // success message for data that was never committed.
+                String subject = "Godot Launch - New Interaction!";
+                emailService.sendNotificationEmail(recipient.getEmail(), subject, message);
+                log.info("Successfully triggered async email notification to {}", recipient.getEmail());
+            } catch (Exception e) {
+                log.error("Failed to trigger email notification: {}", e.getMessage());
+            }
         };
 
         if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
@@ -116,21 +127,12 @@ public class NotificationServiceImpl implements NotificationService {
                 new org.springframework.transaction.support.TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        pushTask.run();
+                        dispatchTask.run();
                     }
                 }
             );
         } else {
-            pushTask.run();
-        }
-
-        try {
-            // Send email notification asynchronously
-            String subject = "Godot Launch - New Interaction!";
-            emailService.sendNotificationEmail(recipient.getEmail(), subject, message);
-            log.info("Successfully triggered async email notification to {}", recipient.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to trigger email notification: {}", e.getMessage());
+            dispatchTask.run();
         }
     }
 

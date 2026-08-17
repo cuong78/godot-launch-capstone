@@ -1,4 +1,5 @@
 import os
+import logging
 from dotenv import load_dotenv
 
 # Load .env TRƯỚC khi import google.cloud — SDK đọc credentials lúc import
@@ -26,6 +27,7 @@ import base64 as _b64
 import requests as _requests
 
 app = FastAPI(title="GodotLaunch AI Service", version="2.0.0")
+logger = logging.getLogger("uvicorn.error")
 
 # ArcFace uses normalized 512-d vectors and cosine distance (1 - similarity).
 FACE_DISTANCE_THRESHOLD = float(os.getenv("ARCFACE_MAX_COSINE_DISTANCE", "0.55"))
@@ -234,6 +236,10 @@ def verify_face_liveness(req: FaceLivenessRequest):
     try:
         embedding, captures = verify_frames([frame.model_dump() for frame in req.frames])
     except LivenessError as exc:
+        logger.warning(
+            "Liveness rejected user=%s challenge=%s: %s",
+            req.userId, req.challengeId, exc,
+        )
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if find_banned_face(embedding, FACE_DISTANCE_THRESHOLD):
@@ -314,11 +320,25 @@ def check_kyc_image(req: KycImageCheckRequest):
     if req.imageSide not in ("front", "back"):
         raise HTTPException(status_code=400, detail="imageSide phải là 'front' hoặc 'back'.")
 
-    embedding = clip_service.encode_image(req.imageBase64)
+    try:
+        embedding = clip_service.encode_image(req.imageBase64)
+    except clip_service.ClipEmbeddingError as exc:
+        logger.error(
+            "KYC image embedding unavailable user=%s side=%s: %s",
+            req.userId, req.imageSide, exc,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Dịch vụ tạo embedding ảnh KYC đang tạm thời không khả dụng. Vui lòng thử lại sau.",
+        ) from exc
     if embedding is None:
+        logger.warning(
+            "KYC image rejected before embedding user=%s side=%s: invalid image payload",
+            req.userId, req.imageSide,
+        )
         raise HTTPException(
             status_code=422,
-            detail="Không thể trích xuất đặc trưng ảnh. Vui lòng chụp/tải lại ảnh rõ hơn."
+            detail="Ảnh KYC không hợp lệ, quá lớn hoặc không giải mã được. Vui lòng chụp/tải lại ảnh."
         )
 
     duplicate_user_id = find_duplicate_kyc_image(req.userId, req.imageSide, embedding, KYC_IMAGE_THRESHOLD)

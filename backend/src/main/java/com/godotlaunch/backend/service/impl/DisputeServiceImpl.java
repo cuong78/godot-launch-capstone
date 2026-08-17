@@ -869,9 +869,22 @@ public class DisputeServiceImpl implements DisputeService {
         Dispute dispute = disputeRepository.findById(disputeId)
                 .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
 
-        // 1. Fetch GitHub metadata for B
-        String gitInfo = "Không thể truy cập dữ liệu GitHub của B.";
+        // 1. Fetch GitHub metadata for both A and B. Timeline decisions must compare
+        // GitHub repository creation times with each other, never a GitHub timestamp
+        // with Game.createdAt (which is only the upload time on Godot Launch).
+        String reportedGameRepo = dispute.getGame().getGithubRepoUrl();
+        Map<String, Object> reportedRepoMeta = reportedGameRepo == null || reportedGameRepo.isBlank()
+                ? null
+                : gitHubRepoService.getRepoMetadata(reportedGameRepo);
+        List<Map<String, Object>> reportedRepoCommits = reportedGameRepo == null || reportedGameRepo.isBlank()
+                ? null
+                : gitHubRepoService.getRepoCommitsMetadata(reportedGameRepo);
+        String reportedGitInfo = buildGitHubTimelineInfo(reportedRepoMeta, reportedRepoCommits);
+        Instant reportedRepoCreatedAt = parseGitHubInstant(reportedRepoMeta, "created_at");
+
+        String evidenceGitInfo = "Không thể truy cập dữ liệu GitHub của B.";
         String evidenceRepoOwner = null;
+        Instant evidenceRepoCreatedAt = null;
         if (dispute.getEvidenceRepoUrl() != null && !dispute.getEvidenceRepoUrl().isBlank()) {
             Map<String, Object> repoMeta = gitHubRepoService.getRepoMetadata(dispute.getEvidenceRepoUrl());
             List<Map<String, Object>> commits = gitHubRepoService.getRepoCommitsMetadata(dispute.getEvidenceRepoUrl());
@@ -879,37 +892,14 @@ public class DisputeServiceImpl implements DisputeService {
                 if (repoMeta.get("owner") != null && repoMeta.get("owner") instanceof Map) {
                     evidenceRepoOwner = (String) ((Map<?, ?>) repoMeta.get("owner")).get("login");
                 }
-                StringBuilder sb = new StringBuilder();
-                sb.append(String.format("- Ngày tạo Repo: %s\n- Cập nhật lần cuối (Pushed at): %s\n- Chủ sở hữu Repo trên GitHub: %s\n",
-                        repoMeta.get("created_at"),
-                        repoMeta.get("pushed_at"),
-                        evidenceRepoOwner != null ? evidenceRepoOwner : "N/A"));
-
-                if (commits != null && !commits.isEmpty()) {
-                    sb.append(String.format("- Tần suất & Số lượng Commit: Lấy được %d commit(s) gần nhất.\n", commits.size()));
-                    sb.append("- Lịch sử & Nội dung Commit gần đây:\n");
-                    for (int i = 0; i < Math.min(commits.size(), 7); i++) {
-                        Map<String, Object> c = commits.get(i);
-                        Map<?, ?> commitObj = c.get("commit") instanceof Map ? (Map<?, ?>) c.get("commit") : Map.of();
-                        String msg = commitObj.get("message") != null ? ((String) commitObj.get("message")).replace("\n", " ").trim() : "";
-                        if (msg.length() > 90) msg = msg.substring(0, 90) + "...";
-                        Map<?, ?> committerObj = commitObj.get("committer") instanceof Map ? (Map<?, ?>) commitObj.get("committer") : Map.of();
-                        String date = committerObj.get("date") != null ? committerObj.get("date").toString() : "N/A";
-                        sb.append(String.format("  + [%s] %s\n", date, msg));
-                    }
-                    if (commits.size() == 1) {
-                        sb.append("  * CẢNH BÁO TẦN SUẤT: Repo chỉ có duy nhất 1 commit (nghi vấn repo mới tạo nhanh hoặc dump toàn bộ code).\n");
-                    }
-                } else {
-                    sb.append("- Lịch sử commit: Không lấy được thông tin commit chi tiết.\n");
-                }
-                gitInfo = sb.toString();
+                evidenceRepoCreatedAt = parseGitHubInstant(repoMeta, "created_at");
+                evidenceGitInfo = buildGitHubTimelineInfo(repoMeta, commits);
             }
         }
+        String timelineComparison = buildGitHubTimelineComparison(reportedRepoCreatedAt, evidenceRepoCreatedAt);
 
         // Check ownership warnings
         StringBuilder warningBuilder = new StringBuilder();
-        String reportedGameRepo = dispute.getGame().getGithubRepoUrl();
         String sellerGithub = dispute.getReportedSeller().getGithubUsername();
         String reporterGithub = dispute.getReporter().getGithubUsername();
 
@@ -973,15 +963,24 @@ public class DisputeServiceImpl implements DisputeService {
                 
                 THÔNG TIN VỤ VIỆC:
                 - ID Khiếu nại: %s
-                - Game bị tố cáo (A): %s (Tác giả: %s, Đăng tải ngày: %s)
+                - Game bị tố cáo (A): %s (Tác giả: %s)
+                - Repository source của A: %s
                 - Người tố cáo (B): %s (Email: %s)
                 - Lý do tố cáo của B: %s
                 - Đường dẫn bằng chứng (GitHub repo gốc của B): %s
                 - Ghi chú bằng chứng của B: %s
-                
+
+                DỮ LIỆU GITHUB SOURCE CỦA A (SELLER):
+                %s
+
                 DỮ LIỆU GITHUB CỦA B (THỜI GIAN TẠO, TẦN SUẤT & NỘI DUNG COMMIT):
                 %s
-                
+
+                KẾT QUẢ ĐỐI CHIẾU MỐC TẠO SOURCE TRÊN GITHUB:
+                %s
+                - Đây là mốc nghiệp vụ bắt buộc để xét bên nào có source trước. Không được dùng ngày game được đăng/tạo trên Godot Launch để thay thế.
+                - `pushed_at` chỉ là lần cập nhật gần nhất, không phải thời điểm source/repository được tạo; không dùng `pushed_at` để kết luận bên nào tạo trước.
+
                 DỮ LIỆU ĐỐI CHIẾU HỆ THỐNG (ĐỘ TƯƠNG ĐỒNG CODE):
                 %s
 
@@ -997,8 +996,9 @@ public class DisputeServiceImpl implements DisputeService {
                 BƯỚC 2: Đối chiếu mốc thời gian, tần suất & nội dung commit và chủ sở hữu (Timeline, Commits & Ownership Check):
                 - Nếu repo bằng chứng của B thực chất là sở hữu của Seller A hoặc trùng với repo gốc của game A -> B ăn cắp repo của A để vu cáo. Đề xuất: Trường hợp 2 (Reporter vu cáo / Reporter vu khống).
                 - Nếu chủ sở hữu repo của B trên GitHub không khớp với tài khoản GitHub đã liên kết của B trên hệ thống -> Báo cáo thiếu tính chính danh. Cần phân tích kỹ xem B có phải là tác giả thực sự hay không, hoặc đề xuất Trường hợp 1 (Không đủ căn cứ) hoặc Trường hợp 2 (Reporter vu cáo).
-                - Nếu B tạo repo GitHub trước khi A đăng game, độ tương đồng code cao, và repo thực sự thuộc quyền sở hữu của B -> A vi phạm. Đề xuất: Trường hợp 3 (Seller vi phạm thật / Seller vi phạm bản quyền).
-                - Nếu A đăng game trước khi B tạo repo GitHub -> B vu khống. Đề xuất: Trường hợp 2 (Reporter vu cáo).
+                - Nếu repo source của B được tạo trên GitHub trước repo source của A, độ tương đồng code cao, và repo thực sự thuộc quyền sở hữu của B -> A vi phạm. Đề xuất: Trường hợp 3 (Seller vi phạm thật / Seller vi phạm bản quyền).
+                - Nếu repo source của A được tạo trên GitHub trước repo source của B -> B có dấu hiệu vu khống. Đề xuất: Trường hợp 2 (Reporter vu cáo), sau khi cân nhắc thêm lịch sử commit và quyền sở hữu.
+                - Nếu thiếu mốc `created_at` trên GitHub của một trong hai repo thì không được lấy ngày đăng trên Godot Launch làm fallback; xem mốc thời gian là chưa đủ căn cứ.
                 - Nếu không rõ ràng -> Đề xuất: Trường hợp 1 (Không đủ căn cứ).
                 
                 NHIỆM VỤ CỦA BẠN:
@@ -1011,18 +1011,91 @@ public class DisputeServiceImpl implements DisputeService {
                 dispute.getId(),
                 dispute.getGame().getTitle(),
                 dispute.getReportedSeller().getEmail(),
-                dispute.getGame().getCreatedAt().toString(),
+                reportedGameRepo != null ? reportedGameRepo : "Không cung cấp",
                 dispute.getReporter().getFullName(),
                 dispute.getReporter().getEmail(),
                 dispute.getReason(),
                 dispute.getEvidenceRepoUrl() != null ? dispute.getEvidenceRepoUrl() : "Không cung cấp",
                 dispute.getEvidenceNote() != null ? dispute.getEvidenceNote() : "Không có",
-                gitInfo,
+                reportedGitInfo,
+                evidenceGitInfo,
+                timelineComparison,
                 flagsInfo.toString(),
                 ownershipWarnings
         );
 
         return callDeepSeek(prompt);
+    }
+
+    private String buildGitHubTimelineInfo(Map<String, Object> repoMeta, List<Map<String, Object>> commits) {
+        if (repoMeta == null) {
+            return "Không thể truy cập metadata repository trên GitHub.";
+        }
+
+        String owner = "N/A";
+        if (repoMeta.get("owner") instanceof Map<?, ?> ownerMap && ownerMap.get("login") != null) {
+            owner = ownerMap.get("login").toString();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("- Ngày tạo repository/source trên GitHub (`created_at`): %s\n"
+                        + "- Cập nhật lần cuối (`pushed_at`, chỉ tham khảo): %s\n"
+                        + "- Chủ sở hữu Repo trên GitHub: %s\n",
+                repoMeta.get("created_at"), repoMeta.get("pushed_at"), owner));
+
+        if (commits == null || commits.isEmpty()) {
+            return sb.append("- Lịch sử commit: Không lấy được thông tin commit chi tiết.\n").toString();
+        }
+
+        sb.append(String.format("- Tần suất & Số lượng Commit: Lấy được %d commit(s) gần nhất.\n", commits.size()));
+        sb.append("- Lịch sử & Nội dung Commit gần đây:\n");
+        for (int i = 0; i < Math.min(commits.size(), 7); i++) {
+            Map<String, Object> commit = commits.get(i);
+            Map<?, ?> commitObj = commit.get("commit") instanceof Map ? (Map<?, ?>) commit.get("commit") : Map.of();
+            String message = commitObj.get("message") != null
+                    ? commitObj.get("message").toString().replace("\n", " ").trim()
+                    : "";
+            if (message.length() > 90) {
+                message = message.substring(0, 90) + "...";
+            }
+            Map<?, ?> committer = commitObj.get("committer") instanceof Map ? (Map<?, ?>) commitObj.get("committer") : Map.of();
+            String date = committer.get("date") != null ? committer.get("date").toString() : "N/A";
+            sb.append(String.format("  + [%s] %s\n", date, message));
+        }
+        if (commits.size() == 1) {
+            sb.append("- CẢNH BÁO TẦN SUẤT: Repo chỉ có duy nhất 1 commit (nghi vấn repo mới tạo nhanh hoặc dump toàn bộ code).\n");
+        }
+        return sb.toString();
+    }
+
+    private Instant parseGitHubInstant(Map<String, Object> repoMeta, String field) {
+        if (repoMeta == null || repoMeta.get(field) == null) {
+            return null;
+        }
+        try {
+            return Instant.parse(repoMeta.get(field).toString());
+        } catch (Exception e) {
+            log.warn("GitHub trả về timestamp {} không hợp lệ: {}", field, repoMeta.get(field));
+            return null;
+        }
+    }
+
+    String buildGitHubTimelineComparison(Instant reportedRepoCreatedAt, Instant evidenceRepoCreatedAt) {
+        if (reportedRepoCreatedAt == null || evidenceRepoCreatedAt == null) {
+            return "- Không đủ mốc `created_at` của cả hai repository trên GitHub để kết luận bên nào tạo source trước.";
+        }
+        if (reportedRepoCreatedAt.equals(evidenceRepoCreatedAt)) {
+            return "- Hai repository có cùng thời điểm tạo trên GitHub: " + reportedRepoCreatedAt + ".";
+        }
+
+        boolean sellerFirst = reportedRepoCreatedAt.isBefore(evidenceRepoCreatedAt);
+        Instant earlier = sellerFirst ? reportedRepoCreatedAt : evidenceRepoCreatedAt;
+        Instant later = sellerFirst ? evidenceRepoCreatedAt : reportedRepoCreatedAt;
+        long minutes = ChronoUnit.MINUTES.between(earlier, later);
+        return String.format("- Repo source của %s được tạo trên GitHub trước repo source của %s khoảng %d phút (%s so với %s).",
+                sellerFirst ? "A (Seller)" : "B (Reporter)",
+                sellerFirst ? "B (Reporter)" : "A (Seller)",
+                minutes, earlier, later);
     }
 
     private String callDeepSeek(String prompt) {

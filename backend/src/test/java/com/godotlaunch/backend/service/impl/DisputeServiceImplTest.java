@@ -17,11 +17,14 @@ import com.godotlaunch.backend.repository.BannedIdentityRepository;
 import com.godotlaunch.backend.repository.DisputeRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.OrderRepository;
+import com.godotlaunch.backend.repository.PlagiarismFlagRepository;
 import com.godotlaunch.backend.repository.RoleRepository;
+import com.godotlaunch.backend.repository.SourceSnapshotRepository;
 import com.godotlaunch.backend.repository.TransactionRepository;
 import com.godotlaunch.backend.repository.UserRepository;
 import com.godotlaunch.backend.repository.WalletRepository;
 import com.godotlaunch.backend.service.AuditLogService;
+import com.godotlaunch.backend.service.GitHubRepoService;
 import com.godotlaunch.backend.service.NotificationService;
 import com.godotlaunch.backend.service.PlatformSettingsService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +36,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -80,6 +85,15 @@ class DisputeServiceImplTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private SourceSnapshotRepository sourceSnapshotRepository;
+
+    @Mock
+    private PlagiarismFlagRepository plagiarismFlagRepository;
+
+    @Mock
+    private GitHubRepoService gitHubRepoService;
 
     @InjectMocks
     private DisputeServiceImpl disputeService;
@@ -293,5 +307,66 @@ class DisputeServiceImplTest {
         DisputeResponse response = disputeService.getDispute(disputeId);
 
         assertThat(response.getId()).isEqualTo(disputeId);
+    }
+
+    @Test
+    @DisplayName("AI dispute analysis fetches GitHub timeline for both seller and reporter source")
+    void getAiAnalysis_ShouldFetchBothGithubSourceTimelines() {
+        String sellerRepo = "https://github.com/seller/original-game";
+        String reporterRepo = "https://github.com/reporter/evidence-game";
+        game.setGithubRepoUrl(sellerRepo);
+        dispute.setEvidenceRepoUrl(reporterRepo);
+        dispute.setReason("Source copied");
+        reporter.setFullName("Reporter");
+
+        when(disputeRepository.findById(disputeId)).thenReturn(Optional.of(dispute));
+        when(gitHubRepoService.getRepoMetadata(sellerRepo)).thenReturn(Map.of(
+                "created_at", "2026-08-17T08:00:00Z",
+                "pushed_at", "2026-08-17T09:00:00Z",
+                "owner", Map.of("login", "seller")
+        ));
+        when(gitHubRepoService.getRepoMetadata(reporterRepo)).thenReturn(Map.of(
+                "created_at", "2026-08-17T08:30:00Z",
+                "pushed_at", "2026-08-17T09:30:00Z",
+                "owner", Map.of("login", "reporter")
+        ));
+        when(gitHubRepoService.getRepoCommitsMetadata(sellerRepo)).thenReturn(List.of());
+        when(gitHubRepoService.getRepoCommitsMetadata(reporterRepo)).thenReturn(List.of());
+        when(sourceSnapshotRepository.findFirstByGameIdOrderByCreatedAtDesc(game.getId()))
+                .thenReturn(Optional.empty());
+
+        disputeService.getAiAnalysis(disputeId);
+
+        verify(gitHubRepoService).getRepoMetadata(sellerRepo);
+        verify(gitHubRepoService).getRepoMetadata(reporterRepo);
+        verify(gitHubRepoService).getRepoCommitsMetadata(sellerRepo);
+        verify(gitHubRepoService).getRepoCommitsMetadata(reporterRepo);
+    }
+
+    @Test
+    @DisplayName("GitHub timeline comparison uses repository created_at values")
+    void buildGitHubTimelineComparison_ShouldUseGithubCreationTimes() {
+        String comparison = disputeService.buildGitHubTimelineComparison(
+                Instant.parse("2026-08-17T08:00:00Z"),
+                Instant.parse("2026-08-17T08:30:00Z")
+        );
+
+        assertThat(comparison)
+                .contains("A (Seller)")
+                .contains("B (Reporter)")
+                .contains("30 phút")
+                .contains("2026-08-17T08:00:00Z")
+                .contains("2026-08-17T08:30:00Z");
+    }
+
+    @Test
+    @DisplayName("GitHub timeline comparison never falls back when created_at is missing")
+    void buildGitHubTimelineComparison_ShouldBeInconclusiveWhenGithubCreationTimeMissing() {
+        String comparison = disputeService.buildGitHubTimelineComparison(
+                null,
+                Instant.parse("2026-08-17T08:30:00Z")
+        );
+
+        assertThat(comparison).contains("Không đủ mốc `created_at`");
     }
 }

@@ -45,6 +45,33 @@ class LivenessServiceTest(unittest.TestCase):
         with self.assertRaises(LivenessError):
             verify_frames(self.frames)
 
+    @patch("liveness_service.analyze_face")
+    def test_calibrates_movement_against_non_zero_center_pose(self, analyze):
+        values = {
+            "center": result(pitch=5, yaw=8),
+            "left": result(pitch=5, yaw=20),
+            "right": result(pitch=5, yaw=-4),
+            "up": result(pitch=13, yaw=8),
+            "down": result(pitch=-3, yaw=8),
+        }
+        analyze.side_effect = lambda image: values[image]
+
+        embedding, captures = verify_frames(self.frames)
+
+        self.assertEqual(512, len(embedding))
+        self.assertEqual(5, len(captures))
+
+    @patch("liveness_service.analyze_face")
+    def test_rejection_reports_measured_pose_deltas(self, analyze):
+        values = {
+            "center": result(), "left": result(yaw=5), "right": result(yaw=-5),
+            "up": result(pitch=15), "down": result(pitch=-15),
+        }
+        analyze.side_effect = lambda image: values[image]
+
+        with self.assertRaisesRegex(LivenessError, "độ lệch ghi nhận: 5.0° và 5.0°"):
+            verify_frames(self.frames)
+
 
 if __name__ == "__main__":
     unittest.main()

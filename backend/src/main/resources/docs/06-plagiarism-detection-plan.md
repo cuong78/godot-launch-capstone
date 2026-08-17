@@ -16,7 +16,7 @@ Hai module được gộp vào cùng luồng submit, không gộp vào cùng ent
 |---|---|---|
 | `SourceSnapshot` | Bản source ZIP bất biến của một lần submit | Đã triển khai |
 | `AiReviewReport` | Kết quả đánh giá nội tại một snapshot | Đã triển khai |
-| `CodeEmbedding` | Vector code của đúng một snapshot và model/version | Đã triển khai |
+| `CodeEmbedding` | Fingerprint cấu trúc code của đúng một snapshot và thuật toán/version | Đã triển khai |
 | `PlagiarismFlag` | Kết quả so sánh hai embedding/snapshot | Đã triển khai |
 | Trạng thái theo snapshot | Phân biệt pending/running/completed/failed | Đã triển khai bằng migration V11 |
 | Admin review | Xem report/flag và quyết định cuối | Đã triển khai |
@@ -83,7 +83,7 @@ sequenceDiagram
             BE->>PY: /ai/code-embedding(snapshotId, bundleUrl, bundleHash)
             PY->>FS: Tải cùng source-bundle.zip
             FS-->>PY: Immutable ZIP
-            PY->>PY: Xác minh hash + sample code + sinh embedding
+            PY->>PY: Xác minh hash + chuẩn hóa token + sinh structural fingerprint
             PY-->>BE: Embedding + modelName + modelVersion
             BE->>DB: INSERT CodeEmbedding(gameId, snapshotId, vector)
             BE->>DB: pgvector top-N, loại chính Game hiện tại
@@ -194,7 +194,7 @@ erDiagram
         uuid id PK
         uuid game_id FK
         uuid source_snapshot_id FK
-        vector embedding
+        vector structural_fingerprint
         string model_name
         string model_version
         timestamp created_at
@@ -273,13 +273,16 @@ có cấu trúc giữa hai Game/snapshot.
 
 ### `CodeEmbedding`
 
-Lưu vector code của một snapshot:
+Lưu fingerprint code của một snapshot. Fingerprint v2 kết hợp 80% shingle cấu
+trúc đã chuẩn hóa identifier/literal và 20% shingle token nguyên bản. Không dùng
+mean pooling trực tiếp hidden-state CodeBERT vì không gian đó cho cosine gần 1
+với cả các project không liên quan:
 
 ```text
 CodeEmbedding
   -> Game
   -> SourceSnapshot
-  -> modelName + modelVersion
+  -> algorithmName + algorithmVersion
   -> vector(768)
 ```
 
@@ -289,8 +292,8 @@ Ràng buộc unique:
 (source_snapshot_id, model_name, model_version)
 ```
 
-Một snapshot có thể được tính lại bằng model mới, nhưng không được tạo trùng
-embedding của cùng model/version.
+Một snapshot có thể được tính lại bằng thuật toán mới, nhưng không được tạo trùng
+fingerprint của cùng algorithm/version.
 
 ### `PlagiarismFlag`
 
@@ -305,7 +308,7 @@ Lưu đầy đủ hai phía của phép so sánh:
 Ngoài ra lưu:
 
 - `similarityScore`: cosine similarity từ `0.0` đến `1.0`.
-- `modelName`, `modelVersion`: model thực sự đã dùng cho cả hai vector.
+- `modelName`, `modelVersion`: thuật toán fingerprint thực sự đã dùng cho cả hai vector.
 - `reviewThreshold`, `rejectThreshold`: ngưỡng tại đúng thời điểm chạy.
 - `severity`: `review` hoặc `reject`.
 - `reviewedByAdmin`: admin đã xử lý flag hay chưa.
@@ -323,7 +326,7 @@ Khi query pgvector phải loại:
 
 - Chính embedding vừa tạo.
 - Embedding thuộc cùng `game_id`, tránh Game bị đánh dấu là đạo nhái chính phiên bản trước của nó.
-- Embedding sinh bởi model/version khác, vì vector từ hai model khác nhau không
+- Fingerprint sinh bởi algorithm/version khác, vì vector từ hai phiên bản khác nhau không
   nằm trong cùng không gian và không thể so cosine trực tiếp.
 
 Ngưỡng khởi đầu:
@@ -375,7 +378,7 @@ Do đó `plagiarismStatus = completed` và danh sách flag rỗng có nghĩa rõ
 - [x] `CodeEmbedding` gắn Game, SourceSnapshot và model/version.
 - [x] `PlagiarismFlag` giữ hai Game, snapshot, embedding và threshold.
 - [x] Migration V10 với constraint/index phục vụ audit.
-- [x] CodeBERT lazy-load; lưu revision Hugging Face thực tế trả về từ model.
+- [x] Structural fingerprint có version; chuẩn hóa token và feature hashing xác định.
 - [x] Trạng thái AI/plagiarism bền vững trên từng `SourceSnapshot`.
 - [x] Python endpoint `/ai/code-embedding` tải bundle và xác minh hash.
 - [x] Backend orchestration chạy sau khi transaction snapshot commit.

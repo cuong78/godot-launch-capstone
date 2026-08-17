@@ -109,6 +109,21 @@ class FaceVerifyControllerTest {
     }
 
     @Test
+    void returnsSpecificLivenessRejectionReason() {
+        String detail = "TURN_LEFT: ảnh bị mờ, vui lòng giữ camera ổn định.";
+        when(faceServiceClient.verifyLiveness(eq(userId), any(), any()))
+                .thenThrow(new FaceServiceClient.FaceServiceException(detail));
+
+        assertThatThrownBy(() -> controller.verifyFace(request(), principal))
+                .isInstanceOf(AppException.class)
+                .satisfies(error -> {
+                    AppException exception = (AppException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FACE_LIVENESS_FAILED);
+                    assertThat(exception.getMessage()).isEqualTo(detail);
+                });
+    }
+
+    @Test
     void returnsImmediatelyWhenAlreadyVerified() {
         user.setFaceVerified(true);
         assertThat(controller.verifyFace(request(), principal).getBody().getData().get("faceVerified")).isTrue();

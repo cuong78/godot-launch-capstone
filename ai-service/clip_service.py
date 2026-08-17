@@ -7,11 +7,15 @@ Self-host bằng Hugging Face transformers (CLIP ViT-B/32), chạy CPU. Lazy-loa
 import os
 import io
 import base64
+import logging
 import threading
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 _MODEL_NAME = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
+_MAX_IMAGE_BYTES = int(os.getenv("CLIP_MAX_IMAGE_BYTES", str(8 * 1024 * 1024)))
+_MAX_IMAGE_PIXELS = int(os.getenv("CLIP_MAX_IMAGE_PIXELS", "25000000"))
+logger = logging.getLogger(__name__)
 
 # Lazy singleton — chỉ load model lần gọi đầu (tránh chậm lúc service khởi động)
 _model = None
@@ -33,12 +37,32 @@ def _load():
         _processor = CLIPProcessor.from_pretrained(_MODEL_NAME)
 
 
+class ClipEmbeddingError(RuntimeError):
+    """CLIP model/processor failed after the input image was decoded."""
+
+
 def _decode_image(b64: str):
+    """Decode either a browser Data URL or plain base64 into a safe RGB image."""
     try:
-        raw = base64.b64decode(b64)
-        img = Image.open(io.BytesIO(raw)).convert("RGB")
-        return img
-    except Exception:
+        if not isinstance(b64, str) or not b64.strip():
+            return None
+
+        payload = b64.split(",", 1)[1] if "," in b64 else b64
+        # Browser Data URLs do not contain whitespace, but accepting it keeps
+        # plain base64 payloads from mobile/native clients interoperable.
+        payload = "".join(payload.split())
+        raw = base64.b64decode(payload, validate=True)
+        if not raw or len(raw) > _MAX_IMAGE_BYTES:
+            return None
+
+        with Image.open(io.BytesIO(raw)) as opened:
+            width, height = opened.size
+            if width <= 0 or height <= 0 or width * height > _MAX_IMAGE_PIXELS:
+                return None
+            opened.load()
+            return ImageOps.exif_transpose(opened).convert("RGB")
+    except Exception as exc:
+        logger.debug("Cannot decode CLIP image payload: %s", exc)
         return None
 
 
@@ -110,6 +134,19 @@ def _to_score(cosine: float) -> int:
     return int(round(norm * 100))
 
 
+def _image_feature_tensor(features):
+    """Normalize the get_image_features return shape across Transformers 4/5."""
+    # Transformers 4.x returns the projected feature Tensor directly.
+    if hasattr(features, "norm"):
+        return features
+    # Transformers 5.x returns BaseModelOutputWithPooling and places the
+    # projected CLIP embedding in pooler_output.
+    pooled = getattr(features, "pooler_output", None)
+    if pooled is not None and hasattr(pooled, "norm"):
+        return pooled
+    raise TypeError("CLIP get_image_features returned an unsupported value")
+
+
 def encode_image(image_b64: str) -> list[float] | None:
     """
     Trả về image embedding CLIP thô (512-dim, đã normalize) của 1 ảnh.
@@ -125,8 +162,9 @@ def encode_image(image_b64: str) -> list[float] | None:
 
         inputs = _processor(images=[img], return_tensors="pt")
         with torch.no_grad():
-            img_emb = _model.get_image_features(**inputs)
+            img_emb = _image_feature_tensor(_model.get_image_features(**inputs))
             img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
         return img_emb.squeeze(0).tolist()
-    except Exception:
-        return None
+    except Exception as exc:
+        logger.exception("CLIP image embedding inference failed")
+        raise ClipEmbeddingError("Không thể chạy model CLIP để tạo embedding ảnh.") from exc

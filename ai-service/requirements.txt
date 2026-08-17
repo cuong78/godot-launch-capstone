@@ -12,5 +12,8 @@ python-multipart>=0.0.9
 clamd>=1.0.2
 # AI review: CLIP (media↔text match) + NSFW classifier qua Hugging Face transformers.
 # LƯU Ý: torch KHÔNG để ở đây — cài riêng bản CPU-only trong Dockerfile (tránh kéo ~3GB CUDA).
-transformers>=4.44.2
+# Keep below 5: v5 changed CLIP get_image_features from Tensor to model output.
+# Runtime code supports both shapes, while this pin prevents other major API
+# changes from silently breaking AI/KYC embedding after a fresh install.
+transformers>=4.44.2,<5
 requests>=2.32.3

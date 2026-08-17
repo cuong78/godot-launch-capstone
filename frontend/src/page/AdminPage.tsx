@@ -1345,7 +1345,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setLumpSumAmount("");
     }
 
-    setRevenueSplit(70);
+    setRevenueSplit(
+      game.publishingType === "co_publishing"
+        ? (game.revenueSplitProposed ?? 70)
+        : 70,
+    );
     setAdditionalTerms("");
     setAdminSignatureBase64(null);
     setAiSuggestion(null);

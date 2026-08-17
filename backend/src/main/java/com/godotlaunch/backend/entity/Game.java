@@ -85,6 +85,10 @@ public class Game {
     @Column(name = "price_proposed", precision = 15, scale = 2)
     private BigDecimal priceProposed;
 
+    /** Developer đề xuất % doanh thu mong muốn (co_publishing) — chỉ tham khảo, admin sửa lại khi soạn Contract. */
+    @Column(name = "revenue_split_proposed")
+    private Short revenueSplitProposed;
+
     @Column(name = "download_count", nullable = false)
     private Integer downloadCount = 0;
 

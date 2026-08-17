@@ -16,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronizationUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -144,5 +146,53 @@ class NotificationServiceImplTest {
         verify(notificationRepository, times(1)).save(any(Notification.class));
         verify(simpMessagingTemplate, times(1)).convertAndSendToUser(eq(recipient.getEmail()), eq("/queue/notifications"), any(NotificationResponse.class));
         verify(emailService, times(1)).sendNotificationEmail(eq(recipient.getEmail()), anyString(), eq("Test Msg"));
+    }
+
+    @Test
+    @DisplayName("shouldDispatchNotificationOnlyAfterTransactionCommit")
+    void shouldDispatchNotificationOnlyAfterTransactionCommit() {
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(i -> i.getArgument(0));
+        TransactionSynchronizationManager.initSynchronization();
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+
+        try {
+            notificationService.createAndSendNotification(
+                    recipient, null, NotificationType.GAME_REVIEW_RESULT, "Committed Msg", "123");
+
+            verify(simpMessagingTemplate, never()).convertAndSendToUser(anyString(), anyString(), any());
+            verify(emailService, never()).sendNotificationEmail(anyString(), anyString(), anyString());
+
+            TransactionSynchronizationUtils.triggerAfterCommit();
+
+            verify(simpMessagingTemplate).convertAndSendToUser(
+                    eq(recipient.getEmail()), eq("/queue/notifications"), any(NotificationResponse.class));
+            verify(emailService).sendNotificationEmail(
+                    eq(recipient.getEmail()), anyString(), eq("Committed Msg"));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+    }
+
+    @Test
+    @DisplayName("shouldNotDispatchNotificationWhenTransactionRollsBack")
+    void shouldNotDispatchNotificationWhenTransactionRollsBack() {
+        when(notificationRepository.save(any(Notification.class))).thenAnswer(i -> i.getArgument(0));
+        TransactionSynchronizationManager.initSynchronization();
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+
+        try {
+            notificationService.createAndSendNotification(
+                    recipient, null, NotificationType.GAME_REVIEW_RESULT, "Rolled Back Msg", "123");
+
+            TransactionSynchronizationUtils.triggerAfterCompletion(
+                    org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK);
+
+            verify(simpMessagingTemplate, never()).convertAndSendToUser(anyString(), anyString(), any());
+            verify(emailService, never()).sendNotificationEmail(anyString(), anyString(), anyString());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
     }
 }

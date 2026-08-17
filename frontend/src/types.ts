@@ -469,6 +469,7 @@ export interface CreateGameRequest {
   title: string;
   description?: string;
   priceProposed?: number;
+  revenueSplitProposed?: number;
   categoryId?: string;
   publishingType?: "full_acquisition" | "co_publishing" | "marketplace_listing";
   githubRepoUrl?: string;
@@ -492,7 +493,8 @@ export interface GameResponse {
   title: string;
   description?: string;
   thumbnailUrl?: string;
-  priceProposed?: number;
+  priceProposed?: number | null;
+  revenueSplitProposed?: number | null;
   downloadPrice?: number;
   communityAvailable?: boolean;
   status?: string;

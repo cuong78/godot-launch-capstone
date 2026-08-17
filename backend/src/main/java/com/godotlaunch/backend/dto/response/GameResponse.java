@@ -21,6 +21,7 @@ public class GameResponse {
     private String description;
     private String thumbnailUrl;
     private BigDecimal priceProposed;
+    private Short revenueSplitProposed;
     private BigDecimal downloadPrice;
     private boolean communityAvailable;
     private String status;

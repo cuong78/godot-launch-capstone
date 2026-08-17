@@ -2,6 +2,7 @@ import base64
 import io
 import os
 import threading
+import warnings
 from dataclasses import dataclass
 
 import cv2
@@ -10,6 +11,16 @@ from PIL import Image
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# insightface 1.0.1 still calls skimage's legacy SimilarityTransform.estimate.
+# It works correctly today, but recent scikit-image versions emit this warning
+# for every face analysis and hide useful liveness rejection logs.
+warnings.filterwarnings(
+    "ignore",
+    message=r"`estimate` is deprecated.*",
+    category=FutureWarning,
+    module=r"insightface\.utils\.face_align",
+)
 
 
 @dataclass(frozen=True)
