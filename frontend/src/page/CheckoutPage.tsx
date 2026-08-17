@@ -372,33 +372,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             )}
 
             {/* EULA Inline Block (Match Developer Onboarding Page style) */}
-            {spendableBalance !== null && spendableBalance >= totalAmount && cart.length > 0 && unsupportedItems.length === 0 && !hasMultipleItems && (
-              <div className="mt-5 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-350 uppercase tracking-wider">
-                  <FileText size={14} className="text-emerald-500" />
-                  <span>Thỏa thuận Cấp phép EULA</span>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800/80 dark:bg-slate-900/40">
-                  <div className="max-h-48 overflow-y-auto pr-2 text-[11px] leading-relaxed text-slate-650 dark:text-slate-305 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent space-y-3 font-medium">
-                    {formatEulaContent(eulaText)}
-                  </div>
-                </div>
-
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-emerald-500/20 dark:border-slate-800 dark:bg-slate-900/30 dark:hover:border-emerald-500/10">
-                  <input
-                    type="checkbox"
-                    checked={eulaAccepted}
-                    onChange={(e) => setEulaAccepted(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 bg-white text-emerald-600 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-850"
-                  />
-                  <div className="text-xs text-slate-655 dark:text-slate-300">
-                    Tôi xác nhận đã đọc kĩ và đồng ý với Thỏa thuận Cấp phép Người dùng Cuối (EULA) của Godot Launch đối với các sản phẩm trong đơn hàng.
-                  </div>
-                </label>
-              </div>
-            )}
-
             {/* Action buttons */}
             {spendableBalance !== null && spendableBalance < totalAmount ? (
               <Button
@@ -419,7 +392,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 className="mt-5 w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-500/10 transition-all duration-300"
                 icon={<ReceiptText size={16} />}
                 onClick={onPlaceOrder}
-                disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder || isLoadingWallet || spendableBalance === null || !eulaAccepted}
+                disabled={cart.length === 0 || unsupportedItems.length > 0 || hasMultipleItems || isPlacingOrder || isLoadingWallet || spendableBalance === null}
               >
                 {isPlacingOrder ? t('payment:checkout.wallet.processingOrder') : t('payment:checkout.wallet.placeOrder')}
               </Button>

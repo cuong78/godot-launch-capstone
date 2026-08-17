@@ -817,9 +817,9 @@ export const DetailPage: React.FC<DetailPageProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-[#718096]">{t("detail.meta.fileSize")}</span>
+                  <span className="text-slate-500 dark:text-[#718096]">{t("detail.meta.fileFormat")}</span>
                   <span className="font-bold text-slate-800 dark:text-[#f4f7fb]">
-                    {t("detail.meta.fileSizeValue")}
+                    {t("detail.meta.fileFormatValue")}
                   </span>
                 </div>
               </div>
@@ -832,14 +832,13 @@ export const DetailPage: React.FC<DetailPageProps> = ({
               <h3 className="text-xs font-bold text-slate-500 dark:text-[#718096]">
                 {t("detail.tags.title")}
               </h3>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {focusedAsset.tagList.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="cursor-pointer rounded border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-600 transition-all hover:bg-sky-500/20 dark:text-[#38bdf8]"
-                    onClick={() => handleTagClick(tag)}
+                    className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-600 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-[#38bdf8]"
                   >
-                    {cleanText(tag)}
+                    #{cleanText(tag)}
                   </span>
                 ))}
               </div>

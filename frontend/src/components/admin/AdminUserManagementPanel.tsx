@@ -849,16 +849,18 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
         title={t('userPanel.roleDialogTitle')}
         description={t('userPanel.roleDialogDescription')}
       >
-        <div className="space-y-5">
-          <label className="space-y-1.5">
-            <span className="text-sm font-semibold font-display text-slate-800 dark:text-slate-200">{t('userPanel.headers.role')}</span>
+        <div className="flex flex-col min-h-[260px] justify-between">
+          <div className="space-y-2 mb-6">
+            <label className="block text-sm font-semibold font-display text-slate-800 dark:text-slate-200">
+              {t('userPanel.headers.role')}
+            </label>
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                className="flex w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white/92 px-3.5 py-2.5 text-left text-sm text-slate-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/15 dark:border-slate-700/90 dark:bg-slate-950/70 dark:text-white"
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white/92 px-4 py-3 text-left text-sm text-slate-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/15 dark:border-slate-700/90 dark:bg-slate-950/70 dark:text-white"
               >
-                <span className="truncate">
+                <span className="truncate font-medium">
                   {roleDraft === 'admin'
                     ? t('roles.admin')
                     : roleDraft === 'developer'
@@ -866,7 +868,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                     : t('roles.customer')}
                 </span>
                 <ChevronDown
-                  size={15}
+                  size={16}
                   className={`text-slate-500 transition-transform duration-200 ${roleDropdownOpen ? 'rotate-180' : ''}`}
                 />
               </button>
@@ -877,7 +879,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                     className="fixed inset-0 z-40"
                     onClick={() => setRoleDropdownOpen(false)}
                   />
-                  <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-950/95">
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xl dark:border-slate-800/80 dark:bg-slate-950/95">
                     {[
                       { value: 'admin', label: t('roles.admin') },
                       { value: 'developer', label: t('roles.developer') },
@@ -890,7 +892,7 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                           setRoleDraft(opt.value as AdminUserRole);
                           setRoleDropdownOpen(false);
                         }}
-                        className={`w-full px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 first:rounded-t-xl last:rounded-b-xl ${
+                        className={`w-full px-4 py-3 text-left text-sm transition-colors hover:bg-sky-500/5 dark:hover:bg-slate-800 ${
                           roleDraft === opt.value
                             ? 'bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 font-bold'
                             : 'text-slate-700 dark:text-slate-300'
@@ -903,11 +905,11 @@ export const AdminUserManagementPanel: React.FC<AdminUserManagementPanelProps> =
                 </>
               )}
             </div>
-          </label>
+          </div>
 
           {renderActionError}
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-auto">
             <Button type="button" variant="outline" onClick={goBackToDetail} disabled={isSubmitting}>
               {t('userPanel.cancel')}
             </Button>

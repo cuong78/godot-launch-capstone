@@ -344,10 +344,19 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   const sortedAssetListings = React.useMemo(() => {
     let result = [...assetListings];
 
-    // Local Tags filter
+    // Local Tags filter (Case-insensitive & flexible matching)
     if (selectedTags.length > 0) {
       result = result.filter(item => 
-        selectedTags.some(t => item.tag === t || item.tagList?.includes(t))
+        selectedTags.some(st => {
+          const lowerSt = st.trim().toLowerCase();
+          if (!lowerSt) return true;
+          const matchTag = item.tag?.trim().toLowerCase() === lowerSt;
+          const matchTagList = item.tagList?.some(t => {
+            const lowerT = t.trim().toLowerCase();
+            return lowerT === lowerSt || lowerT.includes(lowerSt) || lowerSt.includes(lowerT);
+          });
+          return matchTag || Boolean(matchTagList);
+        })
       );
     }
 

@@ -52,6 +52,7 @@ import { disputeApi, DisputeResponse } from './api/disputeApi';
 import { DisputeRepaymentModal } from './components/DisputeRepaymentModal';
 import { orderApi } from './api/orderApi';
 import { cartApi } from './api/cartApi';
+import { agreementApi } from './api/agreementApi';
 import { dispatchAdminNavigation } from './utils/adminNavigation';
 import {
   PendingCheckoutContext,
@@ -654,7 +655,7 @@ export default function App() {
       : t('app.marketplace.gameTag'),
     tagList: game.tags && game.tags.length > 0 ? game.tags : [game.publishingType || 'Marketplace', game.status || 'Published'],
     version: game.version || '1.0.0',
-    lastUpdated: t('app.marketplace.justNow'),
+    lastUpdated: formatMarketplaceDate(game.updatedAt || game.createdAt, t),
     details: {
       tilesCount: 'N/A',
       spritesCount: 'Included',
@@ -793,7 +794,11 @@ export default function App() {
   };
 
   const handleTagClick = (tag: string) => {
-    const matchingAsset = assets.find(a => a.tagList?.includes(tag) || a.tag === tag);
+    setSearchText('');
+    const matchingAsset = assets.find(a => 
+      a.tagList?.some(t => t.trim().toLowerCase() === tag.trim().toLowerCase()) || 
+      a.tag?.trim().toLowerCase() === tag.trim().toLowerCase()
+    );
     if (matchingAsset) {
       setCatalogType(matchingAsset.itemType === 'asset' ? 'asset' : 'game');
     }
@@ -1023,6 +1028,12 @@ export default function App() {
 
     setIsPlacingOrder(true);
     try {
+      try {
+        await agreementApi.accept('BUYER_EULA');
+      } catch (err) {
+        console.error("Failed to record EULA acceptance:", err);
+      }
+
       const checkoutItem = cart[0];
       const orderType = checkoutItem.itemType === 'source_code' ? 'source_code_purchase' : 'asset_purchase';
 

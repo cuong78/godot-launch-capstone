@@ -487,9 +487,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     ],
     [t],
   );
-  const [activeTab, setActiveTab] = useState<AdminTabKey>("moderation");
-  const [activeSection, setActiveSection] =
-    useState<AdminSectionKey>("overview");
+  const [activeTab, setActiveTab] = useState<AdminTabKey>(() => {
+    const saved = sessionStorage.getItem("admin_active_tab");
+    return (saved as AdminTabKey) || "moderation";
+  });
+  const [activeSection, setActiveSection] = useState<AdminSectionKey>(() => {
+    const saved = sessionStorage.getItem("admin_active_section");
+    return (saved as AdminSectionKey) || "overview";
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("admin_active_tab", activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    sessionStorage.setItem("admin_active_section", activeSection);
+  }, [activeSection]);
   const [financeRefreshState, setFinanceRefreshState] =
     useState<FinanceRefreshState | null>(null);
   const [payoutBalance, setPayoutBalance] =

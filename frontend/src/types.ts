@@ -17,6 +17,7 @@ export interface Asset {
   isBestseller?: boolean;
   version?: string;
   lastUpdated?: string;
+  fileSize?: string;
   details?: {
     tilesCount: string;
     spritesCount: string;
