@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useFaceVerify } from "../context/FaceVerifyContext";
 import BotInviteModal from "../components/BotInviteModal";
+import { UploadGuideModal } from "../components/UploadGuideModal";
 import { tagApi, TagResponse } from "../api/tagApi";
 import {
   CheckCircle2,
@@ -28,6 +29,7 @@ import {
   Layers3,
   CircleDollarSign,
   Download,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "../components/Button";
 import {
@@ -159,6 +161,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Step State
   const [step, setStep] = useState<1 | 2>(1);
   const [gameId, setGameId] = useState<string | null>(null);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   
   // Game Web Demo upload states
   const [demoFile, setDemoFile] = useState<File | null>(null);
@@ -324,6 +327,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       if (current.length >= MAX_SELECTED_TAGS) return current;
       return [...current, tag];
     });
+    setTagQuery("");
   };
 
   // Sync categoryId when publishProgram, itemType or categories list changes
@@ -916,6 +920,12 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         />
       )}
 
+      <UploadGuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
+        programType={publishProgram}
+      />
+
       {/* Page Header */}
       <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85 sm:p-7">
         <div className="pointer-events-none absolute -right-20 -top-24 h-52 w-52 rounded-full bg-amber-400/15 blur-3xl dark:bg-amber-400/10" />
@@ -957,6 +967,14 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           </div>
 
           <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end">
+            <button
+              type="button"
+              onClick={() => setIsGuideModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 px-3.5 py-2 font-display text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-95 cursor-pointer"
+            >
+              <BookOpen size={15} className="text-amber-500" />
+              <span>Hướng dẫn xuất Web & Đóng gói</span>
+            </button>
             <span className="rounded-full border border-amber-300/70 bg-amber-50 px-3.5 py-2 font-mono text-xs font-bold text-amber-700 shadow-sm dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300">
               {t("page.stepCounter", { step })}
             </span>
@@ -1451,6 +1469,19 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     setTagQuery(event.target.value);
                     setIsTagDropdownOpen(true);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && tagOptions.length > 0) {
+                      e.preventDefault();
+                      const firstUnselected = tagOptions.find(
+                        (tag) => !selectedTags.some((selected) => selected.id === tag.id)
+                      );
+                      if (firstUnselected) {
+                        toggleTag(firstUnselected);
+                      }
+                    } else if (e.key === "Backspace" && !tagQuery && selectedTags.length > 0) {
+                      toggleTag(selectedTags[selectedTags.length - 1]);
+                    }
+                  }}
                   onFocus={() => setIsTagDropdownOpen(true)}
                   placeholder={selectedTags.length === 0 ? t("form.searchTagsPlaceholder") : ""}
                   autoComplete="off"
@@ -1593,6 +1624,30 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
             )}
 
+            {/* Banner Hướng dẫn Xuất Web HTML5 & Đóng gói ZIP */}
+            <div className="p-4.5 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent border border-amber-400/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/25">
+                  <BookOpen size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    Quy chuẩn đóng gói & Xuất Web Demo (Godot HTML5)
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Xem hướng dẫn cấu hình Export Template và cấu trúc thư mục trước khi tải tệp ZIP lên.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGuideModalOpen(true)}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all shrink-0 active:scale-95 cursor-pointer"
+              >
+                <BookOpen size={14} /> Xem hướng dẫn
+              </button>
+            </div>
+
             {/* Unified Upload Area for both Marketplace and Game */}
             <div className="space-y-6 animate-fade-in">
               {/* Hướng dẫn cấu trúc thư mục */}
@@ -1611,17 +1666,26 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                         : "Để tự động phân tách hình ảnh, video và tệp tin dự án, vui lòng chuẩn bị cấu trúc thư mục của bạn đúng theo sơ đồ bên dưới trước khi nén thành file ZIP."}
                     </p>
                   </div>
-                  <a
-                    href={
-                      publishProgram === "game"
-                        ? `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/v1/games/template`
-                        : `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/v1/assets/template`
-                    }
-                    download={publishProgram === "game" ? "game_template.zip" : "asset_template.zip"}
-                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 active:scale-95"
-                  >
-                    <Download size={13} /> Tải Template Mẫu
-                  </a>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsGuideModalOpen(true)}
+                      className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 border border-slate-700 dark:border-slate-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 active:scale-95 cursor-pointer"
+                    >
+                      <BookOpen size={13} className="text-amber-400" /> Xem hướng dẫn
+                    </button>
+                    <a
+                      href={
+                        publishProgram === "game"
+                          ? `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/v1/games/template`
+                          : `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/v1/assets/template`
+                      }
+                      download={publishProgram === "game" ? "game_template.zip" : "asset_template.zip"}
+                      className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 active:scale-95"
+                    >
+                      <Download size={13} /> Tải Template Mẫu
+                    </a>
+                  </div>
                 </div>
 
                 {/* Sơ đồ cây thư mục trực quan */}
