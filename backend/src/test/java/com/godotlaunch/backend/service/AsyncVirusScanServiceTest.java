@@ -113,6 +113,34 @@ class AsyncVirusScanServiceTest {
     }
 
     @Test
+    @DisplayName("shouldRejectGame_WhenVirusDetectedInDeepSubfolder")
+    void shouldRejectGame_WhenVirusDetectedInDeepSubfolder() throws Exception {
+        // Create a temporary zip containing a nested file
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
+            zos.putNextEntry(new java.util.zip.ZipEntry("deep/folder/malware.exe"));
+            zos.write("fake virus content".getBytes());
+            zos.closeEntry();
+        }
+        byte[] zipBytes = baos.toByteArray();
+
+        when(gameRepository.findById(gameId)).thenReturn(Optional.of(mockGame));
+        when(seaweedFsService.getObjectStream("game.zip"))
+                .thenAnswer(inv -> new ByteArrayInputStream(zipBytes))
+                .thenAnswer(inv -> new ByteArrayInputStream(zipBytes));
+        
+        // 1st scan (outer zip stream) = clean (true), 2nd scan (extracted malware.exe in subfolder) = virus (false)
+        when(clamAVService.scanStream(any())).thenReturn(true).thenReturn(false);
+
+        // Act
+        asyncVirusScanService.scanAndProcessGame(gameId, "game.zip");
+
+        // Assert
+        verify(seaweedFsService, times(1)).deleteObject("game.zip");
+        verify(auditLogService, times(1)).publish(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("shouldScanAndProcessAsset_WhenClean")
     void shouldScanAndProcessAsset_WhenClean() {
         // Arrange

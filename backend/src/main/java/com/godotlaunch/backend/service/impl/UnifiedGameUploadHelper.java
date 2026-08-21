@@ -46,6 +46,9 @@ public class UnifiedGameUploadHelper {
             // 2. Giải nén và thực hiện validate bảo mật (Zip Slip & Zip Bomb)
             unzipAndValidate(rawZipFile, tempDir);
 
+            // 2.5. Quét virus ClamAV đệ quy trên TOÀN BỘ các file giải nén trước khi xử lý media/web_demo
+            scanDirectoryForViruses(tempDir);
+
             // 3. Tự động xử lý bọc ngoài (Unwrap folder)
             File rootDir = tempDir;
             File[] filesInTemp = tempDir.listFiles(f -> {
@@ -370,5 +373,33 @@ public class UnifiedGameUploadHelper {
         if (lower.endsWith(".mov")) return "video/quicktime";
         if (lower.endsWith(".zip")) return "application/zip";
         return "application/octet-stream";
+    }
+
+    private void scanDirectoryForViruses(File tempDir) {
+        log.info("Đang tiến hành quét ClamAV đệ quy toàn bộ tệp tin giải nén trong {}", tempDir.getName());
+        try (var stream = Files.walk(tempDir.toPath())) {
+            java.util.List<Path> filesToScan = stream
+                    .filter(Files::isRegularFile)
+                    .toList();
+
+            log.info("Tìm thấy {} tệp tin giải nén. Bắt đầu quét virus qua ClamAV...", filesToScan.size());
+            for (Path filePath : filesToScan) {
+                try (InputStream is = new FileInputStream(filePath.toFile())) {
+                    boolean isClean = clamAVService.scanStream(is);
+                    if (!isClean) {
+                        String fileName = filePath.getFileName().toString();
+                        String cleanRelPath = tempDir.toPath().relativize(filePath).toString().replace('\\', '/');
+                        log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin: {} (Đường dẫn: {})", fileName, cleanRelPath);
+                        throw new SecurityException("Phát hiện mã độc (Virus/Malware) trong tệp tin: " + fileName + ". Tiến hành từ chối và hủy tải lên để bảo vệ an toàn.");
+                    }
+                }
+            }
+            log.info("Quét ClamAV đệ quy hoàn tất: AN TOÀN 100% cho {} tệp tin.", filesToScan.size());
+        } catch (SecurityException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Lỗi khi duyệt thư mục tạm để quét virus: {}", e.getMessage(), e);
+            throw new RuntimeException("Lỗi trong quá trình quét virus: " + e.getMessage(), e);
+        }
     }
 }

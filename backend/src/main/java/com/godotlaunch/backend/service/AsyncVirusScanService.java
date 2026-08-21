@@ -89,7 +89,7 @@ public class AsyncVirusScanService {
                 return;
             }
 
-            log.info("Quét mã độc hoàn tất: AN TOÀN cho gameId: {}", gameId);
+            log.info("Quét mã độc file nén hoàn tất: AN TOÀN cho gameId: {}", gameId);
 
             // Bước 2: Tải file nén về giải nén an toàn để chống Zip Bomb / Zip Slip và kiểm tra cấu trúc
             tempDir = Files.createTempDirectory("godot_scan_" + gameId.toString());
@@ -97,7 +97,28 @@ public class AsyncVirusScanService {
                 SafeZipUnpacker.unzipSafely(inputStream, tempDir);
             }
 
-            // Sạch và hợp lệ
+            // Bước 3: Quét đệ quy ClamAV cho TẤT CẢ các file nằm sâu trong các thư mục con
+            boolean isDeepClean = scanDirectoryRecursively(tempDir);
+            if (!isDeepClean) {
+                log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin ẩn sâu thuộc thư mục con của gameId: {}. Tiến hành xóa tệp và từ chối game.", gameId);
+                updateGameStatus(gameId, GameStatus.rejected);
+                seaweedFsService.deleteObject(objectKey);
+
+                auditLogService.publish(
+                        game.getCreator().getId(),
+                        ActorRole.developer,
+                        AuditAction.security_alert,
+                        AuditTarget.game,
+                        gameId,
+                        null,
+                        null,
+                        "PHÁT HIỆN MÃ ĐỘC (Malware detected in subfolder file) trong tệp nén của game: " + game.getTitle(),
+                        null
+                );
+                return;
+            }
+
+            log.info("Quét đệ quy toàn bộ thư mục giải nén hoàn tất: AN TOÀN CHO TẤT CẢ FILE CON đối với gameId: {}", gameId);
             String fileUrl = seaweedFsService.getFileUrl(objectKey);
             boolean isLive = game.getStatus() == GameStatus.published
                     || game.getStatus() == GameStatus.approved
@@ -260,7 +281,7 @@ public class AsyncVirusScanService {
                 return;
             }
 
-            log.info("Quét mã độc hoàn tất: AN TOÀN cho marketplace item: {}", itemId);
+            log.info("Quét mã độc file nén hoàn tất: AN TOÀN cho marketplace item: {}", itemId);
 
             // Bước 2: Giải nén an toàn để chống Zip Bomb / Zip Slip
             tempDir = Files.createTempDirectory("marketplace_scan_" + itemId.toString());
@@ -268,7 +289,28 @@ public class AsyncVirusScanService {
                 SafeZipUnpacker.unzipSafely(inputStream, tempDir);
             }
 
-            log.info("Kiểm tra cấu trúc và tính an toàn của tệp ZIP hoàn tất cho marketplace item: {}", itemId);
+            // Bước 3: Quét đệ quy ClamAV cho TẤT CẢ các file nằm sâu trong các thư mục con
+            boolean isDeepClean = scanDirectoryRecursively(tempDir);
+            if (!isDeepClean) {
+                log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin ẩn sâu thuộc thư mục con của marketplace item: {}. Tiến hành xóa tệp và gỡ bỏ sản phẩm.", itemId);
+                updateAssetStatus(itemId, ItemStatus.removed);
+                seaweedFsService.deleteObject(objectKey);
+
+                auditLogService.publish(
+                        item.getSeller().getId(),
+                        ActorRole.developer,
+                        AuditAction.security_alert,
+                        AuditTarget.marketplace_item,
+                        itemId,
+                        null,
+                        null,
+                        "PHÁT HIỆN MÃ ĐỘC (Malware detected in subfolder file) trong tệp nén của marketplace item: " + item.getTitle(),
+                        null
+                );
+                return;
+            }
+
+            log.info("Kiểm tra đệ quy cấu trúc và tính an toàn của tệp ZIP hoàn tất cho marketplace item: {}", itemId);
 
             auditLogService.publish(
                     item.getSeller().getId(),
@@ -355,5 +397,37 @@ public class AsyncVirusScanService {
             }
         }
         Files.delete(path);
+    }
+
+    /**
+     * Quét đệ quy ClamAV cho tất cả các file nằm sâu trong các thư mục con sau khi giải nén.
+     *
+     * @param tempDir Thư mục gốc đã giải nén
+     * @return true nếu tất cả các file đều sạch, false nếu phát hiện có ít nhất 1 file chứa virus
+     */
+    private boolean scanDirectoryRecursively(Path tempDir) throws IOException {
+        try (var stream = Files.walk(tempDir)) {
+            java.util.List<Path> filesToScan = stream
+                    .filter(Files::isRegularFile)
+                    .toList();
+
+            log.info("Tiến hành quét đệ quy ClamAV cho {} tệp tin giải nén...", filesToScan.size());
+
+            for (Path filePath : filesToScan) {
+                try (InputStream is = Files.newInputStream(filePath)) {
+                    boolean isClean = clamAVService.scanStream(is);
+                    if (!isClean) {
+                        String fileName = filePath.getFileName().toString();
+                        String cleanRelPath = tempDir.relativize(filePath).toString().replace('\\', '/');
+                        log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin: {} (Đường dẫn: {})", fileName, cleanRelPath);
+                        return false;
+                    }
+                } catch (Exception e) {
+                    log.error("Lỗi khi đọc/quét tệp tin con {}: {}", filePath, e.getMessage(), e);
+                    throw new RuntimeException("Lỗi quét an toàn tệp tin con " + tempDir.relativize(filePath) + ": " + e.getMessage(), e);
+                }
+            }
+            return true;
+        }
     }
 }
