@@ -1402,33 +1402,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                                 "[HỦY HỢP ĐỒNG]",
                                               );
                                             return (
-                                              <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 space-y-2">
-                                                <span className="font-bold flex items-center gap-1.5 text-xs">
-                                                  <AlertTriangle size={14} />
+                                              <div className="p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-rose-500 space-y-3 shadow-sm">
+                                                <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider">
+                                                  <AlertTriangle size={16} className="shrink-0 text-rose-500" />
+                                                  <span>
+                                                    {isDeveloperCancelled
+                                                      ? t("dashboard:table.contractCancelled")
+                                                      : t("dashboard:table.gameRejected")}
+                                                  </span>
+                                                </div>
+                                                <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-350">
                                                   {isDeveloperCancelled
-                                                    ? t(
-                                                        "dashboard:table.contractCancelled",
-                                                      )
-                                                    : t(
-                                                        "dashboard:table.gameRejected",
-                                                      )}
-                                                </span>
-                                                <p className="text-[10px] leading-normal text-slate-500 dark:text-slate-400">
-                                                  {isDeveloperCancelled
-                                                    ? t(
-                                                        "dashboard:table.contractCancelledHint",
-                                                      )
-                                                    : t(
-                                                        "dashboard:table.gameRejectedHint",
-                                                      )}
+                                                    ? t("dashboard:table.contractCancelledHint")
+                                                    : t("dashboard:table.gameRejectedHint")}
                                                 </p>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => setDeleteConfirmItem({ id: game.id, title: game.title, type: "game" })}
-                                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-600 dark:text-rose-400 font-bold rounded-lg text-xs transition-colors cursor-pointer"
-                                                >
-                                                  <Trash2 size={13} /> Xóa game này khỏi Bảng thống kê
-                                                </button>
+                                                <div className="p-2.5 bg-rose-500/5 dark:bg-rose-500/10 rounded-xl border border-rose-500/15 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+                                                   <strong>Lưu ý lưu trữ:</strong> Để tối ưu tài nguyên hệ thống, tệp ZIP và các file media cũ của bản nộp này đã được tự động giải phóng.
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2 pt-1">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setDeleteConfirmItem({ id: game.id, title: game.title, type: "game" })}
+                                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-600 dark:text-rose-400 font-bold rounded-xl text-xs transition-colors cursor-pointer active:scale-95"
+                                                  >
+                                                    <Trash2 size={13} /> Xóa game khỏi Bảng thống kê
+                                                  </button>
+                                                </div>
                                               </div>
                                             );
                                           })()}
