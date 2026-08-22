@@ -104,7 +104,22 @@ public class AssetServiceImpl implements AssetService {
 
         Asset item = new Asset();
         item.setSeller(seller);
-        item.setTitle(request.getTitle());
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            String trimmedTitle = request.getTitle().trim();
+            List<ItemStatus> activeStatuses = List.of(
+                    ItemStatus.active,
+                    ItemStatus.pending
+            );
+            if (assetRepository.existsByTitleIgnoreCaseAndStatusIn(trimmedTitle, activeStatuses)) {
+                throw new AppException(
+                        ErrorCode.INVALID_INPUT,
+                        "Tên tài nguyên \"" + trimmedTitle + "\" đã tồn tại trên hệ thống. Vui lòng chọn tên khác."
+                );
+            }
+            item.setTitle(trimmedTitle);
+        } else {
+            item.setTitle(request.getTitle());
+        }
         item.setDescription(request.getDescription());
         item.setPrice(request.getPrice());
         item.setStatus(ItemStatus.pending);
@@ -226,9 +241,19 @@ public class AssetServiceImpl implements AssetService {
                     log.warn("Lỗi khi serialize pending_tags cho asset {}: {}", item.getId(), e.getMessage());
                 }
             }
-        } else {
-            if (request.getTitle() != null) {
-                item.setTitle(request.getTitle());
+            if (request.getTitle() != null && !request.getTitle().isBlank()) {
+                String trimmedTitle = request.getTitle().trim();
+                List<ItemStatus> activeStatuses = List.of(
+                        ItemStatus.active,
+                        ItemStatus.pending
+                );
+                if (assetRepository.existsByTitleIgnoreCaseAndStatusInAndIdNot(trimmedTitle, activeStatuses, id)) {
+                    throw new AppException(
+                            ErrorCode.INVALID_INPUT,
+                            "Tên tài nguyên \"" + trimmedTitle + "\" đã tồn tại trên hệ thống. Vui lòng chọn tên khác."
+                    );
+                }
+                item.setTitle(trimmedTitle);
             }
             if (request.getDescription() != null) {
                 item.setDescription(request.getDescription());

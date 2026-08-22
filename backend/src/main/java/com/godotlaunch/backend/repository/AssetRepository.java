@@ -14,6 +14,8 @@ import java.util.UUID;
 
 @Repository
 public interface AssetRepository extends JpaRepository<Asset, UUID> {
+    boolean existsByTitleIgnoreCaseAndStatusIn(String title, java.util.Collection<com.godotlaunch.backend.entity.enums.ItemStatus> statuses);
+    boolean existsByTitleIgnoreCaseAndStatusInAndIdNot(String title, java.util.Collection<com.godotlaunch.backend.entity.enums.ItemStatus> statuses, java.util.UUID id);
     List<Asset> findBySellerId(UUID sellerId);
     List<Asset> findByStatus(ItemStatus status);
 

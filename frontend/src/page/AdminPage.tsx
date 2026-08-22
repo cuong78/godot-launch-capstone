@@ -1183,6 +1183,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
+  const [approvingIds, setApprovingIds] = useState<Record<string, boolean>>({});
+
   const handleApproveGame = (game: GameResponse) => {
     if (!game.publishingType || game.publishingType === "marketplace_listing") {
       showConfirm(
@@ -1190,6 +1192,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           title: game.title,
         }),
         async () => {
+          setApprovingIds((prev) => ({ ...prev, [game.id]: true }));
           try {
             const res = await gameApi.approveGame(game.id);
             if (res.success) {
@@ -1210,6 +1213,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               t("errors.approveGame"),
               'error',
             );
+          } finally {
+            setApprovingIds((prev) => ({ ...prev, [game.id]: false }));
           }
         }
       );
@@ -1286,6 +1291,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         title: item.title,
       }),
       async () => {
+        setApprovingIds((prev) => ({ ...prev, [item.id]: true }));
         try {
           const res = await marketplaceApi.approveMarketplaceItem(item.id);
           if (res.success) {
@@ -1306,6 +1312,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               t("errors.approveMarketplaceItem"),
             'error',
           );
+        } finally {
+          setApprovingIds((prev) => ({ ...prev, [item.id]: false }));
         }
       }
     );

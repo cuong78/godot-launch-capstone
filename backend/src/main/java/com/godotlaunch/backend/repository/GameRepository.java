@@ -17,6 +17,9 @@ import java.util.UUID;
 
 @Repository
 public interface GameRepository extends JpaRepository<Game, UUID> {
+    boolean existsByTitleIgnoreCaseAndStatusIn(String title, java.util.Collection<com.godotlaunch.backend.entity.enums.GameStatus> statuses);
+    boolean existsByTitleIgnoreCaseAndStatusInAndIdNot(String title, java.util.Collection<com.godotlaunch.backend.entity.enums.GameStatus> statuses, java.util.UUID id);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT g FROM Game g WHERE g.id = :gameId")
     Optional<Game> findByIdForUpdate(@Param("gameId") UUID gameId);

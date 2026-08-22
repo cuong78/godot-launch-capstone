@@ -512,38 +512,73 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Logic API tách riêng để có thể gọi lại sau khi face verify xong
   const submitDraft = async (priceNum: number) => {
     if (publishProgram === "marketplace") {
-      const res = await marketplaceApi.createMarketplaceItem({
-        title,
-        description,
-        price: priceNum,
-        categoryId: categoryId || undefined,
-        tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-        version: version.trim() || undefined,
-      });
-      if (res.success && res.data?.itemId) {
-        setGameId(res.data.itemId);
-        setStep(2);
-      } else showToast(res.message || t("errors.failedCreateMarketplaceItem"), 'error');
+      if (gameId) {
+        const res = await marketplaceApi.updateMarketplaceItem(gameId, {
+          title,
+          description,
+          price: priceNum,
+          categoryId: categoryId || undefined,
+          tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        });
+        if (res.success) {
+          setStep(2);
+        } else {
+          showToast(res.message || t("errors.failedCreateMarketplaceItem"), 'error');
+        }
+      } else {
+        const res = await marketplaceApi.createMarketplaceItem({
+          title,
+          description,
+          price: priceNum,
+          categoryId: categoryId || undefined,
+          tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+          version: version.trim() || undefined,
+        });
+        if (res.success && res.data?.itemId) {
+          setGameId(res.data.itemId);
+          setStep(2);
+        } else {
+          showToast(res.message || t("errors.failedCreateMarketplaceItem"), 'error');
+        }
+      }
     } else {
-      const res = await gameApi.createGameDraft({
-        title,
-        description,
-        // co_publishing: giá bán không áp dụng (admin tự quyết % lúc soạn hợp
-        // đồng) — gửi undefined thay vì 0 để không bị hiểu nhầm là "miễn phí"
-        // (HomepageServiceImpl dùng priceProposed === 0 để lọc game Free).
-        priceProposed: publishingType === "co_publishing" ? undefined : priceNum,
-        revenueSplitProposed:
-          publishingType === "co_publishing"
-            ? Number(revenueSplitProposed)
-            : undefined,
-        categoryId: categoryId || undefined,
-        publishingType,
-        tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-      });
-      if (res.success && res.data?.gameId) {
-        setGameId(res.data.gameId);
-        setStep(2);
-      } else showToast(res.message || t("errors.failedCreateGameDraft"), 'error');
+      if (gameId) {
+        const res = await gameApi.updateGame(gameId, {
+          title,
+          description,
+          priceProposed: publishingType === "co_publishing" ? undefined : priceNum,
+          categoryId: categoryId || undefined,
+          publishingType,
+          tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        });
+        if (res.success) {
+          setStep(2);
+        } else {
+          showToast(res.message || t("errors.failedCreateGameDraft"), 'error');
+        }
+      } else {
+        const res = await gameApi.createGameDraft({
+          title,
+          description,
+          // co_publishing: giá bán không áp dụng (admin tự quyết % lúc soạn hợp
+          // đồng) — gửi undefined thay vì 0 để không bị hiểu nhầm là "miễn phí"
+          // (HomepageServiceImpl dùng priceProposed === 0 để lọc game Free).
+          priceProposed: publishingType === "co_publishing" ? undefined : priceNum,
+          revenueSplitProposed:
+            publishingType === "co_publishing"
+              ? Number(revenueSplitProposed)
+              : undefined,
+          categoryId: categoryId || undefined,
+          publishingType,
+          tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        });
+        if (res.success && res.data?.gameId) {
+          setGameId(res.data.gameId);
+          setStep(2);
+        } else {
+          showToast(res.message || t("errors.failedCreateGameDraft"), 'error');
+        }
+      }
     }
   };
 
@@ -1987,7 +2022,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 size="md"
                 onClick={() => {
                   setStep(1);
-                  setGameId(null);
+                  // Preserve gameId so editing Step 1 details updates the current record
                   setUploadStatus({});
                   setUploadProgress({});
                   setScanStatus("idle");

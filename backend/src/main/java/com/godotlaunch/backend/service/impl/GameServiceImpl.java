@@ -172,7 +172,24 @@ public class GameServiceImpl implements GameService {
         assertDeveloper(creator);
 
         Game game = new Game();
-        game.setTitle(request.getTitle());
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            String trimmedTitle = request.getTitle().trim();
+            List<GameStatus> activeStatuses = List.of(
+                    GameStatus.published,
+                    GameStatus.pending,
+                    GameStatus.approved,
+                    GameStatus.awaiting_store_build
+            );
+            if (gameRepository.existsByTitleIgnoreCaseAndStatusIn(trimmedTitle, activeStatuses)) {
+                throw new AppException(
+                        ErrorCode.INVALID_INPUT,
+                        "Tên trò chơi \"" + trimmedTitle + "\" đã tồn tại trên hệ thống. Vui lòng chọn tên khác."
+                );
+            }
+            game.setTitle(trimmedTitle);
+        } else {
+            game.setTitle(request.getTitle());
+        }
         game.setDescription(request.getDescription());
         boolean isCoPublishing = request.getPublishingType()
                 == com.godotlaunch.backend.entity.enums.PublishingType.co_publishing;
@@ -185,7 +202,7 @@ public class GameServiceImpl implements GameService {
         game.setPriceProposed(isCoPublishing ? null : request.getPriceProposed());
         game.setRevenueSplitProposed(isCoPublishing ? request.getRevenueSplitProposed() : null);
         game.setCreator(creator);
-        game.setStatus(GameStatus.draft);
+        game.setStatus(GameStatus.pending);
         game.setPublishingType(request.getPublishingType());
         game.setSourceListed(request.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing);
         game.setGithubRepoUrl(request.getGithubRepoUrl());
@@ -208,7 +225,7 @@ public class GameServiceImpl implements GameService {
         GameVersion initialVersion = new GameVersion();
         initialVersion.setGame(savedGame);
         initialVersion.setVersionNumber("1.0.0");
-        initialVersion.setChangelog("Initial draft");
+        initialVersion.setChangelog("Initial version");
         initialVersion.setFileUrl("pending");
         initialVersion.setCurrent(true);
         gameVersionRepository.save(initialVersion);
@@ -530,8 +547,21 @@ public class GameServiceImpl implements GameService {
             }
             sourceSnapshotRepository.save(snap);
         } else {
-            if (request.getTitle() != null) {
-                game.setTitle(request.getTitle());
+            if (request.getTitle() != null && !request.getTitle().isBlank()) {
+                String trimmedTitle = request.getTitle().trim();
+                List<GameStatus> activeStatuses = List.of(
+                        GameStatus.published,
+                        GameStatus.pending,
+                        GameStatus.approved,
+                        GameStatus.awaiting_store_build
+                );
+                if (gameRepository.existsByTitleIgnoreCaseAndStatusInAndIdNot(trimmedTitle, activeStatuses, gameId)) {
+                    throw new AppException(
+                            ErrorCode.INVALID_INPUT,
+                            "Tên trò chơi \"" + trimmedTitle + "\" đã tồn tại trên hệ thống. Vui lòng chọn tên khác."
+                    );
+                }
+                game.setTitle(trimmedTitle);
             }
             if (request.getDescription() != null) {
                 game.setDescription(request.getDescription());

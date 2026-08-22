@@ -21,6 +21,7 @@ public class EmailServiceImpl implements EmailService {
         this.mailSender = mailSender;
     }
 
+    @org.springframework.scheduling.annotation.Async
     @Override
     public void sendGameStatusNotification(String to, String gameTitle, String status, String reason) {
         String subject = "Godot Launch - Update on your project: " + gameTitle;
@@ -68,6 +69,7 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(to, subject, htmlBody);
     }
 
+    @org.springframework.scheduling.annotation.Async
     @Override
     public void sendAssetStatusNotification(String to, String itemTitle, String status, String reason) {
         String subject = "Godot Launch - Update on your marketplace asset: " + itemTitle;

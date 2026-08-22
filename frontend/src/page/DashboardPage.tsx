@@ -418,7 +418,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         // Filter by creatorName matching current user's email
         const filtered = response.data.filter(
           (game) =>
-            game.creatorName?.toLowerCase() === currentUser.email.toLowerCase(),
+            game.creatorName?.toLowerCase() === currentUser.email.toLowerCase() &&
+            game.status !== "draft" &&
+            game.status !== "removed",
         );
         setMyGames(filtered);
         return true;
@@ -452,7 +454,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     try {
       const response = await marketplaceApi.getMyMarketplaceItems();
       if (response.success && response.data) {
-        const activeItems = response.data.filter((item) => item.status !== "removed");
+        const activeItems = response.data.filter(
+          (item) => item.status !== "removed" && item.status !== "draft",
+        );
         setMyMarketplaceItems(activeItems);
         return true;
       } else {
