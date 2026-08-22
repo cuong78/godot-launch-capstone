@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Star, Trash2, Search, RefreshCw, MessageSquare, AlertCircle } from 'lucide-react';
 import { reviewApi, ReviewResponse } from '../../api/reviewApi';
 import { AdminDialog } from './AdminDialog';
+import { CustomSelect } from '../CustomSelect';
 
 export const AdminReviewManagementPanel: React.FC = () => {
   const { t } = useTranslation(['admin']);
@@ -142,18 +143,20 @@ export const AdminReviewManagementPanel: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500 font-medium">{t('reviews.filterRatingLabel', 'Số sao:')}</span>
-          <select
-            value={filterRating}
-            onChange={(e) => setFilterRating(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="rounded-xl border border-slate-200 bg-slate-50 py-2 px-3 text-xs font-semibold text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 cursor-pointer"
-          >
-            <option value="all">{t('reviews.allRatings', 'Tất cả (1-5 sao)')}</option>
-            <option value="5">5 ⭐⭐⭐⭐⭐</option>
-            <option value="4">4 ⭐⭐⭐⭐</option>
-            <option value="3">3 ⭐⭐⭐</option>
-            <option value="2">2 ⭐⭐</option>
-            <option value="1">1 ⭐ (Cần chú ý)</option>
-          </select>
+          <CustomSelect
+            value={String(filterRating)}
+            onChange={(val) => setFilterRating(val === 'all' ? 'all' : Number(val))}
+            options={[
+              { value: 'all', label: t('reviews.allRatings', 'Tất cả (1-5 sao)') },
+              { value: '5', label: '5 ⭐⭐⭐⭐⭐' },
+              { value: '4', label: '4 ⭐⭐⭐⭐' },
+              { value: '3', label: '3 ⭐⭐⭐' },
+              { value: '2', label: '2 ⭐⭐' },
+              { value: '1', label: '1 ⭐ (Cần chú ý)' },
+            ]}
+            enableSearch={false}
+            className="w-48"
+          />
         </div>
       </div>
 

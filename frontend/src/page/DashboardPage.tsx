@@ -185,12 +185,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const isDeveloperOrAdmin = currentUser?.role === "developer" || currentUser?.role === "admin";
 
   // Tab control: 'my-games' | 'marketplace-items' | 'sales' | 'payment-center'
-  const [activeTab, setActiveTab] =
-    useState<DashboardWorkspaceId>(initialTab || (isDeveloperOrAdmin ? "my-games" : "payment-center"));
+  const getInitialTab = (): DashboardWorkspaceId => {
+    if (initialTab) return initialTab;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam && ["my-games", "marketplace-items", "sales", "payment-center"].includes(tabParam)) {
+        return tabParam as DashboardWorkspaceId;
+      }
+      const saved = localStorage.getItem("godotlaunch_dashboard_active_tab");
+      if (saved && ["my-games", "marketplace-items", "sales", "payment-center"].includes(saved)) {
+        return saved as DashboardWorkspaceId;
+      }
+    } catch {
+      /* ignore */
+    }
+    return isDeveloperOrAdmin ? "my-games" : "payment-center";
+  };
+
+  const [activeTab, setActiveTab] = useState<DashboardWorkspaceId>(getInitialTab);
+
+  const handleTabChange = (tab: DashboardWorkspaceId) => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem("godotlaunch_dashboard_active_tab", tab);
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.replaceState({}, "", url.toString());
+    } catch {
+      /* ignore */
+    }
+  };
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      handleTabChange(initialTab);
     }
   }, [initialTab]);
 
@@ -793,9 +822,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {t("dashboard:stats.revenue")}
               </span>
               <div className="flex items-baseline gap-1">
-                <span className="text-[10px] text-emerald-500 font-bold font-sans">
-                  +12%
-                </span>
                 <span className="text-2xl font-sans font-bold dark:text-white">
                   {(salesStats?.totalRevenue ?? 0).toLocaleString(locale)}
                 </span>
@@ -870,7 +896,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             items={workspaceItems}
             navigationLabel={t("dashboard:workspace.navigationLabel")}
             mobileLabel={t("dashboard:workspace.mobileLabel")}
-            onChange={setActiveTab}
+            onChange={handleTabChange}
           />
 
           <div className="min-w-0">

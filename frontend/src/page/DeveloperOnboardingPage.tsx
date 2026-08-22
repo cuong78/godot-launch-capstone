@@ -13,6 +13,7 @@ import { agreementApi } from '../api/agreementApi';
 import { useAuth } from '../hooks/useAuth';
 import { ScreenType } from '../types';
 import { BANK_OPTIONS } from '../utils/bankOptions';
+import { CustomSelect } from '../components/CustomSelect';
 
 interface DeveloperOnboardingPageProps {
   setCurrentScreen: (screen: ScreenType) => void;
@@ -780,20 +781,16 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
                           <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-400">
                             {t('onboarding.payout.bankName')} <span className="text-rose-500">*</span>
                           </label>
-                          <select
+                          <CustomSelect
                             value={bankName}
-                            onChange={(event) => {
-                              setBankName(event.target.value);
+                            onChange={(val) => {
+                              setBankName(val);
                               setPayoutError(null);
                             }}
+                            options={[...BANK_OPTIONS]}
+                            placeholder={t('onboarding.payout.bankPlaceholder')}
                             disabled={isSavingPayout}
-                            className="w-full rounded-xl border border-slate-300 bg-white/90 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-white dark:[color-scheme:dark]"
-                          >
-                            <option value="" disabled>{t('onboarding.payout.bankPlaceholder')}</option>
-                            {BANK_OPTIONS.map((bank) => (
-                              <option key={bank} value={bank}>{bank}</option>
-                            ))}
-                          </select>
+                          />
                         </div>
 
                         <div>

@@ -15,6 +15,19 @@ MIN_DETECTION_SCORE = float(os.getenv("LIVENESS_MIN_DETECTION_SCORE", "0.65"))
 MIN_BLUR_SCORE = float(os.getenv("LIVENESS_MIN_BLUR_SCORE", "25"))
 
 
+ACTION_LABELS = {
+    "CENTER": "Khi nhìn thẳng",
+    "TURN_LEFT": "Khi quay mặt sang trái",
+    "TURN_RIGHT": "Khi quay mặt sang phải",
+    "LOOK_UP": "Khi ngẩng đầu lên",
+    "LOOK_DOWN": "Khi cúi đầu xuống",
+}
+
+
+def get_action_label(action: str) -> str:
+    return ACTION_LABELS.get(action, action)
+
+
 class LivenessError(ValueError):
     pass
 
@@ -29,16 +42,17 @@ def verify_frames(frames: list[dict]) -> tuple[list[float], list[dict]]:
     results: list[dict] = []
     for frame in frames:
         action = frame["action"]
+        label = get_action_label(action)
         try:
             analysis = analyze_face(frame["imageBase64"])
         except ValueError as exc:
-            raise LivenessError(f"{action}: {exc}") from exc
+            raise LivenessError(f"{label}: {exc}") from exc
         if analysis.detection_score < MIN_DETECTION_SCORE:
-            raise LivenessError(f"{action}: khuôn mặt chưa đủ rõ.")
+            raise LivenessError(f"{label}: khuôn mặt chưa đủ rõ, vui lòng giữ mặt trong khung hình.")
         if analysis.blur_score < MIN_BLUR_SCORE:
-            raise LivenessError(f"{action}: ảnh bị mờ, vui lòng giữ camera ổn định.")
+            raise LivenessError(f"{label}: ảnh bị mờ, vui lòng giữ camera ổn định.")
         if not 25 <= analysis.brightness <= 235:
-            raise LivenessError(f"{action}: ánh sáng không phù hợp.")
+            raise LivenessError(f"{label}: ánh sáng không phù hợp (quá tối hoặc quá chói).")
         analyses[action] = analysis
         results.append({
             "action": action, "pitch": round(analysis.pitch, 2),
@@ -48,7 +62,7 @@ def verify_frames(frames: list[dict]) -> tuple[list[float], list[dict]]:
 
     center = analyses["CENTER"]
     if abs(center.pitch) > MAX_CENTER_POSE or abs(center.yaw) > MAX_CENTER_POSE:
-        raise LivenessError("CENTER: vui lòng nhìn thẳng vào camera.")
+        raise LivenessError("Khi nhìn thẳng: vui lòng giữ mặt chính giữa và nhìn thẳng camera.")
 
     left, right = analyses["TURN_LEFT"], analyses["TURN_RIGHT"]
     left_yaw_delta = left.yaw - center.yaw
@@ -75,7 +89,8 @@ def verify_frames(frames: list[dict]) -> tuple[list[float], list[dict]]:
         )
 
     for action, analysis in analyses.items():
+        label = get_action_label(action)
         if cosine_similarity(center.embedding, analysis.embedding) < MIN_SAME_PERSON_SIMILARITY:
-            raise LivenessError(f"{action}: khuôn mặt không khớp với ảnh trung tâm.")
+            raise LivenessError(f"{label}: khuôn mặt không khớp với ảnh trung tâm.")
 
     return average_embeddings([analysis.embedding for analysis in analyses.values()]), results

@@ -31,6 +31,16 @@ function poseFromMatrix(data: number[]) {
   };
 }
 
+function formatFaceVerifyError(msg: string): string {
+  if (!msg) return '';
+  return msg
+    .replace(/^LOOK_DOWN:\s*/i, 'Khi cúi đầu xuống: ')
+    .replace(/^LOOK_UP:\s*/i, 'Khi ngẩng đầu lên: ')
+    .replace(/^TURN_LEFT:\s*/i, 'Khi quay mặt sang trái: ')
+    .replace(/^TURN_RIGHT:\s*/i, 'Khi quay mặt sang phải: ')
+    .replace(/^CENTER:\s*/i, 'Khi nhìn thẳng: ');
+}
+
 export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
   onSuccess, onClose, description, successMessage,
 }) => {
@@ -72,7 +82,7 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
     try {
       await loadChallenge();
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || t('faceVerify.errorDefault'));
+      setError(formatFaceVerifyError(err.response?.data?.message || err.message || t('faceVerify.errorDefault')));
     }
   };
 
@@ -113,7 +123,7 @@ export const FaceVerifyModal: React.FC<FaceVerifyModalProps> = ({
       setStep('success');
       window.setTimeout(onSuccess, 1500);
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || t('faceVerify.errorDefault'));
+      setError(formatFaceVerifyError(err.response?.data?.message || err.message || t('faceVerify.errorDefault')));
       setStep('camera');
       try {
         await loadChallenge();

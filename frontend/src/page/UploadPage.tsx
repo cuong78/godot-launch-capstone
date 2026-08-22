@@ -234,6 +234,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [repoError, setRepoError] = useState<string | null>(null);
 
   // Unified upload states
   const [unifiedFile, setUnifiedFile] = useState<File | null>(null);
@@ -751,11 +752,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const handleSubmitRepo = async () => {
     if (!gameId) return;
     if (!gameRepoUrl.trim()) {
-      setUploadError(t("errors.enterRepositoryLink"));
+      setRepoError(t("errors.enterRepositoryLink"));
       return;
     }
     setRepoSubmitting(true);
-    setUploadError(null);
+    setRepoError(null);
     setScanStatus("scanning");
     setScanMessage(t("scan.repoVerifying"));
     try {
@@ -766,12 +767,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
       );
       if (res.success) {
         setRepoSubmitted(true);
+        setRepoError(null);
         setUploadStatus((prev) => ({ ...prev, game: "completed" }));
         setScanStatus("clean");
         setScanMessage(t("success.repoAwaitingApproval"));
       } else {
         setScanStatus("failed");
-        setUploadError(res.message || t("errors.failedSubmitRepository"));
+        setRepoError(res.message || t("errors.failedSubmitRepository"));
       }
     } catch (err: any) {
       // Repo private mà bot chưa có quyền → hiện hướng dẫn mời bot
@@ -786,7 +788,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         setShowBotInvite(true);
       } else {
         setScanStatus("failed");
-        setUploadError(
+        setRepoError(
           err.response?.data?.message ||
             err.message ||
             t("errors.failedSubmitRepository"),
@@ -801,20 +803,20 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const handleAcceptBotAndRetry = async () => {
     if (!gameRepoUrl.trim()) return;
     setBotChecking(true);
-    setUploadError(null);
+    setRepoError(null);
     try {
       const res = await gameApi.acceptBot(gameRepoUrl.trim());
       if (res.success && res.data.granted) {
         setShowBotInvite(false);
         await handleSubmitRepo(); // bot has permission -> retry submit
       } else {
-        setUploadError(
+        setRepoError(
           res.message ||
             t("errors.invitationNotFound"),
         );
       }
     } catch (err: any) {
-      setUploadError(
+      setRepoError(
         err.response?.data?.message || t("errors.couldNotConnect"),
       );
     } finally {
@@ -914,7 +916,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
           botUsername={botUsername}
           repoInviteUrl={repoInviteUrl}
           checking={botChecking}
-          error={uploadError}
+          error={repoError}
           onConfirm={handleAcceptBotAndRetry}
           onClose={() => setShowBotInvite(false)}
         />
@@ -1659,13 +1661,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsGuideModalOpen(true)}
-                      className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 border border-slate-700 dark:border-slate-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0 active:scale-95 cursor-pointer"
-                    >
-                      <BookOpen size={13} className="text-amber-400" /> Xem hướng dẫn
-                    </button>
                     <a
                       href={
                         publishProgram === "game"
@@ -1934,7 +1929,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       type="text"
                       placeholder={t("artifacts.repoUrlPlaceholder")}
                       value={gameRepoUrl}
-                      onChange={(e) => setGameRepoUrl(e.target.value)}
+                      onChange={(e) => {
+                        setGameRepoUrl(e.target.value);
+                        if (repoError) setRepoError(null);
+                      }}
                       disabled={repoSubmitted}
                       className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
                     />
@@ -1942,7 +1940,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       type="text"
                       placeholder={t("artifacts.repoBranchPlaceholder")}
                       value={gameRepoBranch}
-                      onChange={(e) => setGameRepoBranch(e.target.value)}
+                      onChange={(e) => {
+                        setGameRepoBranch(e.target.value);
+                        if (repoError) setRepoError(null);
+                      }}
                       disabled={repoSubmitted}
                       className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-955 border border-slate-250 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-355 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
                     />
@@ -1951,7 +1952,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                         type="button"
                         onClick={handleSubmitRepo}
                         disabled={repoSubmitting || !gameRepoUrl.trim()}
-                        className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-studio"
+                        className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-studio cursor-pointer"
                       >
                         {repoSubmitting ? (
                           <>
@@ -1967,6 +1968,13 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1 mt-1">
                         <CheckCircle2 size={13} /> {t("artifacts.repoVerified")}
                       </span>
+                    )}
+
+                    {repoError && (
+                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl text-xs font-semibold flex items-center gap-2 mt-2.5 animate-fade-in">
+                        <AlertTriangle size={15} className="shrink-0" />
+                        <span>{repoError}</span>
+                      </div>
                     )}
                   </>
                 )}
@@ -1994,6 +2002,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   setUnifiedUploadProgress(0);
                   setUnifiedExtractedMedia(null);
                   setUnifiedError(null);
+                  setRepoError(null);
                 }}
               >
                 {t("status.backToDetails")}

@@ -160,18 +160,17 @@ function CreatorJourneyDialog({
         aria-modal="true"
         aria-labelledby="creator-journey-title"
         aria-describedby="creator-journey-description"
-        className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_28px_80px_-28px_rgba(15,23,42,0.58)] outline-none dark:border-slate-800 dark:bg-slate-900"
+        className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl outline-none dark:border-white/10 dark:bg-slate-900"
         style={{
           animation:
             "creatorJourneyDialogIn 220ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-sky-400 to-emerald-400" />
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white/85 p-2 text-slate-400 transition-studio hover:border-slate-300 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-400/20 dark:border-slate-800 dark:bg-slate-950/80 dark:hover:text-white"
+          className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white/85 p-2 text-slate-400 transition-studio hover:border-slate-300 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-400/20 dark:border-white/10 dark:bg-slate-950/80 dark:hover:text-white"
           aria-label={t("creator_journey_close")}
         >
           <X size={18} />

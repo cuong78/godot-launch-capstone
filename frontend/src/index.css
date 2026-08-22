@@ -336,17 +336,6 @@ select {
     0 8px 20px rgba(0, 0, 0, 0.18);
 }
 
-.dark .launch-nav-active::after {
-  content: "";
-  position: absolute;
-  right: 22%;
-  bottom: -1px;
-  left: 22%;
-  height: 1px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--launch-cyan), #93c5fd 58%, var(--launch-amber));
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.28);
-}
 
 .dark .launch-header-control {
   border-color: rgba(96, 119, 148, 0.34);
@@ -377,27 +366,20 @@ select {
 }
 
 .dark #godotlaunch-navbar .launch-header-cta {
-  border-color: rgba(253, 230, 138, 0.72);
+  border-color: rgba(253, 230, 138, 0.85);
   background: linear-gradient(180deg, #fcd34d, #fbbf24);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.48) inset,
-    0 8px 24px rgba(245, 158, 11, 0.2),
-    0 0 0 1px rgba(251, 191, 36, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.48) inset;
 }
 
 .dark #godotlaunch-navbar .launch-header-cta:hover {
   transform: translateY(-1px);
   background: linear-gradient(180deg, #fde68a, #fbbf24);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.54) inset,
-    0 11px 28px rgba(245, 158, 11, 0.26);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.54) inset;
 }
 
 .dark #godotlaunch-navbar .launch-header-cta:active {
   transform: translateY(0);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.4) inset,
-    0 5px 16px rgba(245, 158, 11, 0.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset;
 }
 
 .dark .launch-mobile-nav {
@@ -509,20 +491,19 @@ select {
 }
 
 .dark .launch-primary-action {
-  border-color: rgba(253, 230, 138, 0.78);
+  border-color: rgba(253, 230, 138, 0.85);
   background:
     linear-gradient(180deg, #fcd34d 0%, #fbbf24 54%, #f59e0b 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.42) inset,
-    0 4px 0 #8a5c05,
-    0 12px 26px rgba(245, 158, 11, 0.18);
+    0 4px 0 #8a5c05;
 }
 
 .dark .launch-primary-action:hover {
+  border-color: rgba(254, 243, 199, 0.95);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.5) inset,
-    0 3px 0 #8a5c05,
-    0 16px 34px rgba(245, 158, 11, 0.25);
+    0 3px 0 #8a5c05;
 }
 
 /* Reusable elevation for data-heavy cards without changing their light theme. */
