@@ -15,6 +15,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { Button } from "../components/Button";
+import { SteamProductCard } from "../components/SteamProductCard";
 import { Asset, CategoryResponse } from "../types";
 import { gameApi } from "../api/gameApi";
 
@@ -932,110 +933,18 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                 {/* Main Card Grid */}
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {sortedAssetListings.map((asset) => (
-                    <article
+                    <SteamProductCard
                       key={asset.id}
-                      onClick={() => handleViewAssetDetails(asset)}
-                      className="group cursor-pointer flex flex-col justify-between overflow-hidden rounded-lg border border-slate-200/80 dark:border-night-700/60 bg-white dark:bg-[#0d0d0d] hover:border-sky-500/50 dark:hover:border-sky-500/40 transition-colors duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
-                    >
-                      {/* Thumbnail section */}
-                      <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-night-950/60 border-b border-slate-150 dark:border-night-700/40">
-                        <img
-                          referrerPolicy="no-referrer"
-                          src={asset.image}
-                          alt={asset.title}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                        />
-                        
-                        {/* Parent Category Badge Overlay */}
-                        {asset.category && (
-                          <div className="absolute top-2.5 left-2.5 z-10">
-                            <span className="rounded-full bg-slate-950/45 dark:bg-black/50 px-2.5 py-0.5 text-[10px] font-semibold text-white/90 border border-white/10 backdrop-blur-md shadow-sm select-none">
-                              {getParentCategoryName(asset.category)}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Hover Actions overlay */}
-                        <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                          {creatorOwnedProductIds.has(asset.id) ? (
-                            <span className="rounded bg-sky-500 text-white px-2 py-0.5 text-[9px] font-bold tracking-wider shadow-sm uppercase">
-                              {t("card.owner", "OWNER")}
-                            </span>
-                          ) : ownedProductIds.has(asset.id) ? (
-                            <span className="rounded bg-emerald-500 text-white px-2 py-0.5 text-[9px] font-bold tracking-wider shadow-sm uppercase">
-                              {t("card.owned", "OWNED")}
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToCart(asset);
-                              }}
-                              className="p-1.5 rounded bg-slate-900/90 hover:bg-sky-500 text-white hover:text-white transition-colors shadow-sm cursor-pointer border border-white/10"
-                              title={t("card.addToCart", "Add to Cart")}
-                            >
-                              <ShoppingCart size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Content details section */}
-                      <div className="flex flex-1 flex-col p-4 text-left justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <h5
-                              className="font-display text-sm font-bold leading-5 text-slate-850 dark:text-zinc-100 group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors duration-200 line-clamp-1"
-                              title={asset.title}
-                            >
-                              {asset.title}
-                            </h5>
-                          </div>
-                          
-                          <div className="text-[11px] text-slate-400 dark:text-zinc-500">
-                            by {asset.author}
-                          </div>
-                          
-                          <div className="flex items-center gap-1.5 mt-1">
-                            {/* Star rating and reviewed count from real API */}
-                            <span className="flex items-center gap-0.5 text-amber-500 dark:text-amber-400 font-bold text-[11px]">
-                              <Star size={11} className="fill-current text-amber-500" />
-                              <span>{(asset.rating || 0).toFixed(1)}</span>
-                            </span>
-                            <span className="text-slate-400 dark:text-slate-500 text-[10px]">
-                              ({asset.reviewedCount || 0} {i18n.language === 'vi' ? 'đánh giá' : 'reviews'})
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Bottom separator with price */}
-                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-night-700/30 flex items-center justify-between">
-                          <div className="text-xs font-bold text-slate-800 dark:text-zinc-200">
-                            {asset.price === 0 ? (
-                              <span className="text-emerald-500 dark:text-emerald-400 font-extrabold uppercase tracking-wider text-[10px]">
-                                {t("common.free", "FREE")}
-                              </span>
-                            ) : (
-                                formatCurrencyAmount(asset.price, numberLocale)
-                            )}
-                          </div>
-                          
-                          <div>
-                            {creatorOwnedProductIds.has(asset.id) ? (
-                              <span className="text-[9px] font-bold text-sky-500 tracking-wider">
-                                {t("card.owner", "OWNER")}
-                              </span>
-                            ) : ownedProductIds.has(asset.id) ? (
-                              <span className="text-[9px] font-bold text-emerald-500 tracking-wider">
-                                {t("card.owned", "OWNED")}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-
-                      </div>
-                    </article>
+                      item={{
+                        ...asset,
+                        category: getParentCategoryName(asset.category) || asset.category,
+                      }}
+                      onViewDetails={handleViewAssetDetails}
+                      onAddToCart={handleAddToCart}
+                      isOwner={creatorOwnedProductIds.has(asset.id)}
+                      isOwned={ownedProductIds.has(asset.id)}
+                      numberLocale={numberLocale}
+                    />
                   ))}
                 </div>
               </section>

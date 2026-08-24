@@ -455,7 +455,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       const response = await marketplaceApi.getMyMarketplaceItems();
       if (response.success && response.data) {
         const activeItems = response.data.filter(
-          (item) => item.status !== "removed" && item.status !== "draft",
+          (item) => item.status !== "removed" && (item.status as string) !== "draft",
         );
         setMyMarketplaceItems(activeItems);
         return true;

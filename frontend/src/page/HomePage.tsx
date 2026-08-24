@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/Button';
+import { SteamProductCard } from '../components/SteamProductCard';
 import { Asset } from '../types';
 import { BannerResponse } from '../api/bannerApi';
 import { contentApi, HomepageProduct, HomepageSection } from '../api/contentApi';
@@ -71,6 +72,9 @@ interface HomepageSectionRowProps {
   t: any;
   numberLocale: string;
   creatorOwnedProductIds: Set<string>;
+  ownedProductIds: Set<string>;
+  assets: Asset[];
+  handleAddToCart: (asset: Asset) => void;
 }
 
 const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
@@ -80,6 +84,9 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
   t,
   numberLocale,
   creatorOwnedProductIds,
+  ownedProductIds,
+  assets,
+  handleAddToCart,
 }) => {
   const [startIndex, setStartIndex] = React.useState(0);
   const itemsPerPage = 3;
@@ -148,41 +155,53 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
 
             {/* Grid */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleProducts.map((product) => (
-                <button 
-                  key={`${section.id}-${product.itemType}-${product.id}`} 
-                  type="button" 
-                  onClick={() => openProduct(product)} 
-                  className="launch-raised launch-interactive launch-media-card group/product w-full overflow-hidden rounded-2xl border border-slate-200/90 bg-white/92 text-left shadow-[0_14px_30px_rgba(148,163,184,0.14)] transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:bg-white hover:shadow-[0_20px_40px_rgba(148,163,184,0.18)] dark:border-slate-700/45 dark:bg-night-850/88 dark:shadow-[0_18px_44px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.025)] dark:hover:border-slate-600/70 dark:hover:bg-night-800 dark:hover:shadow-[0_24px_54px_rgba(0,0,0,0.42)]"
-                >
-                  <div className="relative aspect-video overflow-hidden bg-slate-900">
-                    {product.thumbnailUrl ? (
-                      <img src={product.thumbnailUrl} alt={product.title} className="h-full w-full object-cover transition-transform duration-500 group-hover/product:scale-105" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-slate-500">{t('home:sectionRow.noPreview')}</div>
-                    )}
-                    <span className="absolute top-2.5 left-2.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm border border-white/10">
-                      {product.itemType === 'GAME'
-                        ? t('home:sectionRow.badges.game')
-                        : t('home:sectionRow.badges.asset')}
-                    </span>
-                    {creatorOwnedProductIds.has(product.id) && (
-                      <span className="absolute right-2.5 top-2.5 rounded border border-sky-300/20 bg-sky-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-                        {t('marketplace:card.owner')}
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-1.5 p-4.5">
-                    <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-slate-900 transition-colors group-hover/product:text-sky-500 dark:text-white dark:group-hover/product:text-sky-400">{product.title}</h3>
-                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">{product.creatorName ?? product.categoryName ?? t('home:sectionRow.creatorFallback')}</p>
-                    <p className="pt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      {!product.price
-                        ? t('marketplace:common.free')
-                        : `${t('marketplace:common.from')} ₫${product.price.toLocaleString(numberLocale)}`}
-                    </p>
-                  </div>
-                </button>
-              ))}
+              {visibleProducts.map((product) => {
+                const fullAsset = assets.find((a) => a.id === product.id);
+                const itemToRender = {
+                  id: product.id,
+                  title: product.title,
+                  price: product.price ?? fullAsset?.price ?? 0,
+                  rating: fullAsset?.rating ?? (product as any).rating ?? (product as any).averageRating ?? 5.0,
+                  reviewedCount: fullAsset?.reviewedCount ?? (product as any).reviewedCount ?? (product as any).reviewCount ?? 0,
+                  author: fullAsset?.author || product.creatorName || product.categoryName,
+                  category: fullAsset?.category || product.categoryName || (product.itemType === 'GAME' ? t('home:sectionRow.badges.game') : t('home:sectionRow.badges.asset')),
+                  thumbnailUrl: fullAsset?.image || product.thumbnailUrl,
+                  videoUrl: fullAsset?.videoUrl || (product as any).videoUrl,
+                  screenshots: (fullAsset?.screenshots && fullAsset.screenshots.length > 0) ? fullAsset.screenshots : (product as any).screenshots,
+                  itemType: product.itemType,
+                };
+
+                return (
+                  <SteamProductCard
+                    key={`${section.id}-${product.itemType}-${product.id}`}
+                    item={itemToRender}
+                    onViewDetails={() => openProduct(product)}
+                    onAddToCart={() => {
+                      if (fullAsset) {
+                        handleAddToCart(fullAsset);
+                      } else {
+                        handleAddToCart({
+                          id: product.id,
+                          title: product.title,
+                          price: product.price || 0,
+                          rating: 5.0,
+                          reviewedCount: 0,
+                          author: product.creatorName || 'GodotLaunch Creator',
+                          authorAvatar: '',
+                          category: product.categoryName || 'General',
+                          description: product.description || '',
+                          image: product.thumbnailUrl || '',
+                          tag: product.tags?.[0] || '',
+                          tagList: product.tags || [],
+                        });
+                      }
+                    }}
+                    isOwner={creatorOwnedProductIds.has(product.id)}
+                    isOwned={ownedProductIds.has(product.id)}
+                    numberLocale={numberLocale}
+                  />
+                );
+              })}
             </div>
           </>
         ) : (
@@ -400,6 +419,39 @@ export const HomePage: React.FC<HomePageProps> = ({
 
     return () => window.clearInterval(rotation);
   }, [heroSlides.length, isHeroPaused]);
+
+  const sectionsToDisplay = React.useMemo<HomepageSection[]>(() => {
+    if (homepageSections.length > 0) {
+      return homepageSections;
+    }
+    if (!assets || assets.length === 0) return [];
+
+    const mappedProducts: HomepageProduct[] = assets.map((a) => ({
+      id: a.id,
+      itemType: a.itemType === 'source_code' ? 'GAME' : 'ASSET',
+      title: a.title,
+      description: a.description,
+      thumbnailUrl: a.image,
+      price: a.price,
+      creatorId: a.sellerId,
+      creatorEmail: a.sellerEmail,
+      creatorName: a.author,
+      categoryName: a.category,
+      tags: a.tagList || [],
+    }));
+
+    return [
+      {
+        id: 'fallback-recent',
+        title: t('home:sections.recentReleases', 'Recent Releases'),
+        sectionType: 'RECENT_RELEASES',
+        displayOrder: 1,
+        active: true,
+        system: true,
+        products: mappedProducts,
+      },
+    ];
+  }, [homepageSections, assets, t]);
 
   return (
     <div className="animate-fade-in">
@@ -642,7 +694,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         `}</style>
       </div>
       <div className="mx-auto w-full max-w-[1480px] space-y-12 px-5 py-12 sm:px-8 lg:px-12">
-        {homepageSections.map((section) => (
+        {sectionsToDisplay.map((section) => (
           <HomepageSectionRow
             key={section.id}
             section={section}
@@ -651,6 +703,9 @@ export const HomePage: React.FC<HomePageProps> = ({
             t={t}
             numberLocale={numberLocale}
             creatorOwnedProductIds={creatorOwnedProductIds}
+            ownedProductIds={ownedProductIds}
+            assets={assets}
+            handleAddToCart={handleAddToCart}
           />
         ))}
       </div>
