@@ -200,6 +200,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   const [tagSearchError, setTagSearchError] = useState("");
   const tagPickerRef = useRef<HTMLDivElement>(null);
   const selectedTagIds = selectedTags.map((tag) => tag.id);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // New Marketplace Fields
 
@@ -585,24 +586,52 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
   // Handle Draft Creation (Step 1 submit)
   const handleCreateDraft = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!title) {
-      showToast(t("errors.titleRequired"), 'warning');
-      return;
+    const newErrors: Record<string, string> = {};
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      newErrors.title = "Vui lòng nhập tên sản phẩm.";
+    } else if (trimmedTitle.length < 3) {
+      newErrors.title = "Tên sản phẩm phải có ít nhất 3 ký tự.";
     }
+
+    if (!categoryId) {
+      newErrors.categoryId = "Vui lòng chọn danh mục cho sản phẩm.";
+    }
+
     const priceNum = parseFloat(priceInput.rawValue || "0");
     const priceRequired =
       publishProgram === "marketplace" || publishingType !== "co_publishing";
     if (priceRequired && (isNaN(priceNum) || priceNum < 0)) {
-      showToast(t("errors.invalidPrice"), 'warning');
-      return;
+      newErrors.price = t("errors.invalidPrice") || "Vui lòng nhập giá bán hợp lệ.";
     }
+
     if (publishProgram === "game" && publishingType === "co_publishing") {
       const split = Number(revenueSplitProposed);
       if (!Number.isInteger(split) || split < 0 || split > 100) {
-        showToast(t("errors.invalidRevenueSplit"), "warning");
-        return;
+        newErrors.revenueSplit = t("errors.invalidRevenueSplit") || "Tỷ lệ chia sẻ doanh thu phải từ 0% đến 100%.";
       }
     }
+
+    if (selectedTagIds.length === 0) {
+      newErrors.tags = "Vui lòng chọn ít nhất 1 thẻ (tag) cho sản phẩm.";
+    }
+
+    const trimmedDesc = description.trim();
+    if (!trimmedDesc) {
+      newErrors.description = "Vui lòng nhập mô tả chi tiết cho sản phẩm.";
+    } else if (trimmedDesc.length < 10) {
+      newErrors.description = "Mô tả sản phẩm phải có ít nhất 10 ký tự.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrors(newErrors);
+      const firstError = Object.values(newErrors)[0];
+      showToast(firstError, 'warning');
+      return;
+    }
+
+    setFormErrors({});
 
     try {
       await submitDraft(priceNum);
@@ -1329,7 +1358,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   : t("form.assetTitlePlaceholder")
               }
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (formErrors.title) setFormErrors((prev) => ({ ...prev, title: undefined }));
+              }}
+              error={formErrors.title}
               className="[&_input]:h-12 [&_input]:rounded-xl"
               required
             />
@@ -1343,7 +1376,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 min={0}
                 max={100}
                 value={revenueSplitProposed}
-                onChange={(e) => setRevenueSplitProposed(e.target.value)}
+                onChange={(e) => {
+                  setRevenueSplitProposed(e.target.value);
+                  if (formErrors.revenueSplit) setFormErrors((prev) => ({ ...prev, revenueSplit: undefined }));
+                }}
+                error={formErrors.revenueSplit}
                 helperText={t("form.revenueSplitProposedHelper")}
                 className="[&_input]:h-12 [&_input]:rounded-xl"
                 required
@@ -1356,6 +1393,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                 type="text"
                 inputMode="numeric"
                 {...priceInput.inputProps}
+                onChange={(e) => {
+                  priceInput.inputProps.onChange(e);
+                  if (formErrors.price) setFormErrors((prev) => ({ ...prev, price: undefined }));
+                }}
+                error={formErrors.price}
                 className="[&_input]:h-12 [&_input]:rounded-xl"
                 required
               />
@@ -1379,7 +1421,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   <button
                     type="button"
                     onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                    className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-left text-sm text-slate-800 outline-none transition-studio focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                    className={`flex h-12 w-full items-center justify-between rounded-xl border ${
+                      formErrors.categoryId
+                        ? 'border-red-500 ring-4 ring-red-500/10'
+                        : 'border-slate-300 dark:border-slate-800'
+                    } bg-white px-3.5 py-2.5 text-left text-sm text-slate-800 outline-none transition-studio focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10 dark:bg-slate-900 dark:text-slate-100`}
                   >
                     <span className="truncate">
                       {categories.find((cat) => cat.id === categoryId)?.name ?? "—"}
@@ -1391,6 +1437,9 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                       }`}
                     />
                   </button>
+                  {formErrors.categoryId && (
+                    <span className="text-xs text-red-500 font-medium mt-1">{formErrors.categoryId}</span>
+                  )}
                 </div>
               )}
 
@@ -1417,6 +1466,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                           type="button"
                           onClick={() => {
                             setCategoryId(cat.id);
+                            if (formErrors.categoryId) setFormErrors((prev) => ({ ...prev, categoryId: undefined }));
                             setIsCategoryDropdownOpen(false);
                           }}
                           className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
@@ -1459,7 +1509,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
               </div>
 
               <div
-                className="relative flex min-h-12 w-full flex-wrap items-center gap-1.5 rounded-xl border border-slate-300 bg-white p-2.5 outline-none transition-studio focus-within:border-amber-400 focus-within:ring-4 focus-within:ring-amber-500/10 dark:border-slate-800 dark:bg-slate-900"
+                className={`relative flex min-h-12 w-full flex-wrap items-center gap-1.5 rounded-xl border ${
+                  formErrors.tags
+                    ? 'border-red-500 ring-4 ring-red-500/10'
+                    : 'border-slate-300 dark:border-slate-800'
+                } bg-white p-2.5 outline-none transition-studio focus-within:border-amber-400 focus-within:ring-4 focus-within:ring-amber-500/10 dark:bg-slate-900`}
                 onClick={() => document.getElementById("tag-search")?.focus()}
               >
                 {/* Search icon */}
@@ -1527,6 +1581,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   />
                 )}
               </div>
+
+              {formErrors.tags && (
+                <span className="text-xs text-red-500 font-medium mt-0.5">{formErrors.tags}</span>
+              )}
 
               {isTagDropdownOpen && (
                 <div
@@ -1609,7 +1667,11 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             }
             rows={5}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              if (formErrors.description) setFormErrors((prev) => ({ ...prev, description: undefined }));
+            }}
+            error={formErrors.description}
             className="rounded-2xl border border-slate-200/80 bg-slate-50/55 p-5 dark:border-slate-800 dark:bg-slate-900/35 sm:p-6 [&_textarea]:min-h-36 [&_textarea]:rounded-xl [&_textarea]:resize-y"
           />
 

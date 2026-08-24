@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
@@ -278,10 +279,10 @@ export const AdminWithdrawalDetailModal: React.FC<
     )
     : 0;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white/95 px-6 py-5 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/75 p-4 sm:p-6 backdrop-blur-md animate-fade-in">
+      <div className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+        <div className="sticky top-0 z-20 flex items-start justify-between gap-4 border-b border-slate-200 bg-white/95 px-6 py-5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
           <div>
             <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
               {t("withdrawal.detail.title")}
@@ -685,7 +686,7 @@ export const AdminWithdrawalDetailModal: React.FC<
         </div>
 
         {statusNotice && noticeMeta && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-md">
             <div
               className={`w-full max-w-md rounded-[28px] border p-6 shadow-2xl ${noticeMeta.className}`}
             >
@@ -714,7 +715,7 @@ export const AdminWithdrawalDetailModal: React.FC<
         )}
 
         {payoutProgress && progressMeta && (
-          <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+          <div className="fixed inset-0 z-[10010] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
             <div className="w-full max-w-lg rounded-[30px] border border-slate-800 bg-slate-950/95 p-6 text-white shadow-[0_30px_100px_rgba(2,6,23,0.78)]">
               <div className="flex items-start gap-4">
                 <div
@@ -764,6 +765,7 @@ export const AdminWithdrawalDetailModal: React.FC<
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
