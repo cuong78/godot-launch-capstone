@@ -22,5 +22,10 @@ public class ExternalPublishResponse {
     private Instant submittedAt;
     private Instant liveAt;
     private String rejectedReason;
+    private String provider;
+    private String packageName;
+    private Boolean reportingEnabled;
+    private Instant publishedAt;
+    private String mockRegistrationId;
     private Instant createdAt;
 }

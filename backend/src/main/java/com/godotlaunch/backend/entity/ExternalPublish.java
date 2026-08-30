@@ -52,6 +52,21 @@ public class ExternalPublish {
     @Column(name = "rejected_reason", columnDefinition = "TEXT")
     private String rejectedReason;
 
+    @Column(name = "provider", length = 50)
+    private String provider = "GOOGLE_PLAY_MOCK";
+
+    @Column(name = "package_name", unique = true)
+    private String packageName;
+
+    @Column(name = "reporting_enabled")
+    private Boolean reportingEnabled = true;
+
+    @Column(name = "published_at")
+    private Instant publishedAt;
+
+    @Column(name = "mock_registration_id", length = 100)
+    private String mockRegistrationId;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 

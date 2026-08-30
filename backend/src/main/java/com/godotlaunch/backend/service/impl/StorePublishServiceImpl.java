@@ -132,6 +132,11 @@ public class StorePublishServiceImpl implements StorePublishService {
                 .submittedAt(publish.getSubmittedAt())
                 .liveAt(publish.getLiveAt())
                 .rejectedReason(publish.getRejectedReason())
+                .provider(publish.getProvider())
+                .packageName(publish.getPackageName())
+                .reportingEnabled(publish.getReportingEnabled())
+                .publishedAt(publish.getPublishedAt())
+                .mockRegistrationId(publish.getMockRegistrationId())
                 .createdAt(publish.getCreatedAt())
                 .build();
     }

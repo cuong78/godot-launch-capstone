@@ -280,7 +280,97 @@ export interface ExternalPublishResponse {
   submittedAt?: string | null;
   liveAt?: string | null;
   rejectedReason?: string | null;
+  provider?: string | null;
+  packageName?: string | null;
+  reportingEnabled?: boolean | null;
+  publishedAt?: string | null;
+  mockRegistrationId?: string | null;
   createdAt?: string;
+}
+
+export interface EligibleStoreGameResponse {
+  gameId: string;
+  gameTitle: string;
+  gameStatus: string;
+  creatorName: string;
+  creatorEmail: string;
+  externalPublishId?: string | null;
+  provider?: string | null;
+  packageName?: string | null;
+  publishStatus?: string | null;
+  reportingEnabled?: boolean;
+  publishedAt?: string | null;
+  createdAt?: string | null;
+  totalInstalls?: number;
+  hasCoPublishingContract?: boolean;
+  contractType?: string | null;
+  revenueSplit?: number | null;
+}
+
+export interface GooglePlayMockConfigDto {
+  provider: string;
+  bucketUri: string;
+  serviceAccountEmail: string;
+  dailySyncTime: string;
+  enabled: boolean;
+}
+
+export interface StoreDailyMetricResponse {
+  id: string;
+  externalPublishId: string;
+  gameId: string;
+  gameTitle: string;
+  packageName: string;
+  metricDate: string;
+  countryCode: string;
+  dailyUserInstalls: number;
+}
+
+export interface StoreReportImportResponse {
+  id: string;
+  provider: string;
+  externalPublishId: string;
+  gameTitle: string;
+  packageName: string;
+  sourceObjectPath: string;
+  reportMonth: string;
+  syncedAt: string;
+  rawFileUrl: string;
+  fileChecksum: string;
+  rowCount: number;
+  status: string;
+  errorMessage?: string | null;
+}
+
+export interface StoreRevenueStatementResponse {
+  id: string;
+  externalPublishId: string;
+  gameId: string;
+  gameTitle: string;
+  packageName: string;
+  provider: string;
+  periodKey: string;
+  externalPayoutId: string;
+  grossRevenue: number;
+  googleFeeRate: number;
+  googleFeeAmount: number;
+  netStoreProceeds: number;
+  developerShareRate: number;
+  developerEarnings: number;
+  platformRetainedRevenue: number;
+  currency: string;
+  status: string;
+  settledAt: string;
+}
+
+export interface StoreRevenueSummaryResponse {
+  totalGrossRevenue: number;
+  totalGoogleFee: number;
+  totalNetStoreProceeds: number;
+  totalDeveloperPayable: number;
+  totalPlatformRetained: number;
+  totalPublishedGames: number;
+  totalDailyUserInstalls: number;
 }
 
 export interface PageResponse<T> {

@@ -77,6 +77,7 @@ import ExternalPublishStatusCard from "../components/admin/ExternalPublishStatus
 import { AdminMarketplaceActivityChart } from "../components/admin/AdminMarketplaceActivityChart";
 import { AdminBannerPanel } from "../components/admin/AdminBannerPanel";
 import { AdminContentManagementPanel } from "../components/admin/AdminContentManagementPanel";
+import { GooglePlayMockManager } from "../components/admin/GooglePlayMockManager";
 import { AdminShell } from "../components/admin/AdminShell";
 import {
   AdminSidebarNav,
@@ -114,7 +115,8 @@ type AdminTabKey =
   | "banners"
   | "disputes"
   | "agreement"
-  | "content";
+  | "content"
+  | "google_play_mock";
 
 type AdminSectionKey =
   | "overview"
@@ -145,7 +147,7 @@ const ADMIN_SECTION_TABS: Record<
   finance: ["wallet", "payments", "withdrawal", "disputes"],
   users: ["users"],
   content: ["content"],
-  system: ["logs", "settings", "storage", "agreement"],
+  system: ["logs", "settings", "storage", "agreement", "google_play_mock"],
 };
 
 const ADMIN_DEFAULT_TAB_BY_SECTION: Record<
@@ -710,6 +712,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               return { key: tabKey, label: t("tabs.disputes") };
             case "agreement":
               return { key: tabKey, label: t("tabs.agreement") };
+            case "google_play_mock":
+              return { key: tabKey, label: "Google Play Mock" };
             default:
               return { key: tabKey, label: tabKey };
           }
@@ -2239,11 +2243,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                 t,
                                               );
                                             return (
-                                              <span
-                                                className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-mono border ${statusInfo.colorClass}`}
-                                              >
-                                                {statusInfo.text}
-                                              </span>
+                                              <div className="flex flex-col items-center gap-1.5 justify-center">
+                                                <span
+                                                  className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold font-mono border ${statusInfo.colorClass}`}
+                                                >
+                                                  {statusInfo.text}
+                                                </span>
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedContract(contract);
+                                                    setViewerMode("view");
+                                                    setIsViewerOpen(true);
+                                                  }}
+                                                  className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 font-bold rounded text-[10px] transition-all cursor-pointer shadow-sm"
+                                                >
+                                                  <FileText size={10} />
+                                                  Xem hợp đồng
+                                                </button>
+                                              </div>
                                             );
                                           })()}
                                         </td>
@@ -2354,20 +2373,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                             }
 
                                             if (contract.status === "signed") {
-                                              if (
-                                                game.status?.toLowerCase() ===
-                                                "published"
-                                              ) {
-                                                return (
-                                                  <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
-                                                    {t("moderationQueue.decision.liveGooglePlay")}
-                                                  </span>
-                                                );
-                                              }
                                               return (
-                                                <span className="inline-block px-2.5 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-500 rounded-lg text-[10px] font-bold font-display animate-pulse">
-                                                  {t("moderationQueue.decision.waitingBuild")}
-                                                </span>
+                                                <div className="flex flex-col items-center gap-1">
+                                                  {game.status?.toLowerCase() === "published" ? (
+                                                    <span className="inline-block px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-[10px] font-bold font-display">
+                                                      {t("moderationQueue.decision.liveGooglePlay")}
+                                                    </span>
+                                                  ) : (
+                                                    <span className="inline-block px-2.5 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-500 rounded-lg text-[10px] font-bold font-display animate-pulse">
+                                                      {t("moderationQueue.decision.waitingBuild")}
+                                                    </span>
+                                                  )}
+                                                </div>
                                               );
                                             }
 
@@ -3879,6 +3896,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   />
                 )}
                 {activeTab === "agreement" && <AdminAgreementPanel />}
+                {activeTab === "google_play_mock" && <GooglePlayMockManager />}
 
                 {/* Tab 4: Platform Settings */}
                 {activeTab === "settings" && (

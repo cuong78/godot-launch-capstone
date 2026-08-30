@@ -547,7 +547,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         const res = await gameApi.updateGame(gameId, {
           title,
           description,
-          priceProposed: publishingType === "co_publishing" ? undefined : priceNum,
+          priceProposed: priceNum,
           categoryId: categoryId || undefined,
           publishingType,
           tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
@@ -561,10 +561,7 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
         const res = await gameApi.createGameDraft({
           title,
           description,
-          // co_publishing: giá bán không áp dụng (admin tự quyết % lúc soạn hợp
-          // đồng) — gửi undefined thay vì 0 để không bị hiểu nhầm là "miễn phí"
-          // (HomepageServiceImpl dùng priceProposed === 0 để lọc game Free).
-          priceProposed: publishingType === "co_publishing" ? undefined : priceNum,
+          priceProposed: priceNum,
           revenueSplitProposed:
             publishingType === "co_publishing"
               ? Number(revenueSplitProposed)
@@ -1368,23 +1365,41 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
             />
 
             {publishProgram === "game" && publishingType === "co_publishing" ? (
-              <Input
-                label={t("form.revenueSplitProposedLabel")}
-                suffix="%"
-                placeholder={t("form.revenueSplitProposedPlaceholder")}
-                type="number"
-                min={0}
-                max={100}
-                value={revenueSplitProposed}
-                onChange={(e) => {
-                  setRevenueSplitProposed(e.target.value);
-                  if (formErrors.revenueSplit) setFormErrors((prev) => ({ ...prev, revenueSplit: undefined }));
-                }}
-                error={formErrors.revenueSplit}
-                helperText={t("form.revenueSplitProposedHelper")}
-                className="[&_input]:h-12 [&_input]:rounded-xl"
-                required
-              />
+              <>
+                <Input
+                  label={t("form.priceLabel")}
+                  prefix="VND"
+                  placeholder={t("form.pricePlaceholder")}
+                  type="text"
+                  inputMode="numeric"
+                  {...priceInput.inputProps}
+                  onChange={(e) => {
+                    priceInput.inputProps.onChange(e);
+                    if (formErrors.price) setFormErrors((prev) => ({ ...prev, price: undefined }));
+                  }}
+                  error={formErrors.price}
+                  helperText="Giá niêm yết bán đề xuất trên Store (VNĐ/lượt tải)"
+                  className="[&_input]:h-12 [&_input]:rounded-xl"
+                  required
+                />
+                <Input
+                  label={t("form.revenueSplitProposedLabel")}
+                  suffix="%"
+                  placeholder={t("form.revenueSplitProposedPlaceholder")}
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={revenueSplitProposed}
+                  onChange={(e) => {
+                    setRevenueSplitProposed(e.target.value);
+                    if (formErrors.revenueSplit) setFormErrors((prev) => ({ ...prev, revenueSplit: undefined }));
+                  }}
+                  error={formErrors.revenueSplit}
+                  helperText="Tỷ lệ % doanh thu đề xuất sau khi trừ 15% phí sàn CH Play"
+                  className="[&_input]:h-12 [&_input]:rounded-xl"
+                  required
+                />
+              </>
             ) : (
               <Input
                 label={t("form.priceLabel")}

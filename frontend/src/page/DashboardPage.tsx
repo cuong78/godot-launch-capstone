@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Github,
   Upload,
+  Globe,
 } from "lucide-react";
 import axios from "axios";
 import { Button } from "../components/Button";
@@ -48,6 +49,7 @@ import type {
   DashboardWorkspaceItem,
 } from "../components/developer-dashboard/DashboardSidebar";
 import { PaymentDetailPage } from "./PaymentDetailPage";
+import { DeveloperStorePerformance } from "../components/developer/DeveloperStorePerformance";
 
 interface DashboardPageProps {
   currentUser: User | null;
@@ -190,11 +192,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     try {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      if (tabParam && ["my-games", "marketplace-items", "sales", "payment-center"].includes(tabParam)) {
+      if (tabParam && ["my-games", "marketplace-items", "sales", "store-performance", "payment-center"].includes(tabParam)) {
         return tabParam as DashboardWorkspaceId;
       }
       const saved = localStorage.getItem("godotlaunch_dashboard_active_tab");
-      if (saved && ["my-games", "marketplace-items", "sales", "payment-center"].includes(saved)) {
+      if (saved && ["my-games", "marketplace-items", "sales", "store-performance", "payment-center"].includes(saved)) {
         return saved as DashboardWorkspaceId;
       }
     } catch {
@@ -805,6 +807,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             count: salesStats?.totalUnitsSold ?? 0,
             icon: TrendingUp,
           },
+          {
+            id: "store-performance" as const,
+            label: "Hiệu Suất Google Play",
+            count: myGames.filter((g) => g.status === "published" || g.status === "approved").length,
+            icon: Globe,
+          },
         ]
       : []),
     {
@@ -1056,6 +1064,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                             c.status !== "cancelled",
                                         );
                                       if (contract) {
+                                        if (contract.status === "signed") {
+                                          return (
+                                            <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border font-sans bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm">
+                                              🟢 STORE LIVE
+                                            </span>
+                                          );
+                                        }
                                         const statusInfo = getContractStatusLabel(contract.status, t);
                                         return (
                                           <span
@@ -1065,16 +1080,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                           </span>
                                         );
                                       }
+                                      if (game.status?.toLowerCase() === "published") {
+                                        return (
+                                          <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border font-sans bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm">
+                                            🟢 STORE LIVE
+                                          </span>
+                                        );
+                                      }
                                       return (
                                         <span
                                           className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider border font-sans ${
-                                            game.status?.toLowerCase() === "published"
-                                              ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-250/20"
-                                              : game.status?.toLowerCase() === "pending"
-                                                ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400 border-amber-250/20 animate-pulse"
-                                                : game.status?.toLowerCase() === "rejected"
-                                                  ? "bg-rose-50 dark:bg-rose-955/30 text-rose-600 dark:text-rose-400 border-rose-250/20"
-                                                  : "bg-slate-55/10 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-205/50 dark:border-slate-800/50"
+                                            game.status?.toLowerCase() === "pending"
+                                              ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400 border-amber-250/20 animate-pulse"
+                                              : game.status?.toLowerCase() === "rejected"
+                                                ? "bg-rose-50 dark:bg-rose-955/30 text-rose-600 dark:text-rose-400 border-rose-250/20"
+                                                : "bg-slate-55/10 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-205/50 dark:border-slate-800/50"
                                           }`}
                                         >
                                           {getGameStatusLabel(game.status, t)}
@@ -2239,6 +2259,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Tab: Store Performance */}
+            {activeTab === "store-performance" && (
+              <div className="p-4 sm:p-6">
+                <DeveloperStorePerformance myGames={myGames} />
               </div>
             )}
 

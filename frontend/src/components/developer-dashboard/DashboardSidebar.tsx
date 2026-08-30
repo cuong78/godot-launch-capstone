@@ -6,6 +6,7 @@ export type DashboardWorkspaceId =
   | "my-games"
   | "marketplace-items"
   | "sales"
+  | "store-performance"
   | "payment-center";
 
 export interface DashboardWorkspaceItem {

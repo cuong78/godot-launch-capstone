@@ -239,7 +239,7 @@
   "contract.document.section2Title": "2. ĐỐI TƯỢNG HỢP ĐỒNG",
   "contract.document.section2BodyPrefix": "Bên B cam kết là chủ sở hữu hợp pháp duy nhất đối với sản phẩm trò chơi điện tử tương tác có tiêu đề là \"{{title}}\". Hình thức hợp tác đã được các bên thống nhất lựa chọn là:",
   "contract.document.section3Title": "3. ĐIỀU KHOẢN TÀI CHÍNH & KHAI THÁC",
-  "contract.document.section3CoPublishingIntro": "Hai bên thống nhất cùng vận hành và chia sẻ doanh thu thu được từ hoạt động thương mại hóa Trò chơi (sau khi đã trừ các khoản thuế phát sinh và phí cổng thanh toán của bên thứ ba) theo tỷ lệ như sau:",
+  "contract.document.section3CoPublishingIntro": "Hai bên thống nhất cùng vận hành và chia sẻ doanh thu thu được từ hoạt động thương mại hóa Trò chơi trên Chợ ứng dụng (Google Play Console). Tổng doanh thu gộp được tính bằng Giá niêm yết bán trên Store nhân với Tổng số lượt tải. Sau khi tự động trừ 15% phí dịch vụ nền tảng Google Play Console (Service Fee), 85% doanh thu thuần còn lại sẽ được phân chia theo tỷ lệ như sau:",
   "contract.document.section3CoPublishingSellerShare": "Tỷ lệ của Bên B (Nhà phát triển): {{percent}}%",
   "contract.document.section3CoPublishingBuyerShare": "Tỷ lệ của Bên A (Nền tảng): {{percent}}%",
   "contract.document.section3CoPublishingPayout": "Bên A có trách nhiệm tự động quyết toán phần doanh thu được chia của Bên B vào tài khoản ví điện tử Godot Launch của Bên B ngay khi mỗi giao dịch bán Trò chơi hoàn tất thành công.",
