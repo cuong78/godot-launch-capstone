@@ -1,9 +1,0 @@
-- [x] Backend: Cập nhật `extractObjectKeyFromUrl` và `getPresignedGetUrl` trong `MarketplaceItemServiceImpl.java`
-- [x] Backend: Cập nhật `extractObjectKeyFromUrl` và `getPresignedGetUrl` trong `GameServiceImpl.java`
-- [x] Xác nhận biên dịch thành công (mvn clean compile)
-- [x] Frontend: Bổ sung ánh xạ `videoUrl` trong `mapMarketplaceItemToAsset` ở `App.tsx` để hiển thị video trên trang chi tiết sản phẩm
-- [x] Frontend: Nâng cấp thumbnail video trong `DetailPage.tsx` bằng thẻ `<video preload="metadata">` để hiển thị khung hình thực tế thay vì icon cuộn phim đen
-- [x] Frontend: Thiết lập hiển thị danh sách badge tags tại cột bên phải, bên dưới khối Single License Pack của trang chi tiết (`DetailPage.tsx`) và hiển thị nhiều tag trên card danh mục (`MarketplacePage.tsx`)
-- [x] Frontend: Chuyển ô nhập Proposed Price thành dạng text và tự động thêm dấu chấm phân tách hàng nghìn khi người dùng gõ phím, đồng thời làm sạch dấu chấm trước khi gửi lên API
-- [x] Backend & Frontend: Thêm trường `licenseTerms` vào database migration, entity, request DTO và UI form upload để người bán điền điều khoản bản quyền khi chọn license Proprietary; đồng thời tích hợp modal hộp thoại yêu cầu người mua xác nhận và cam kết tuân thủ các điều khoản bản quyền này trước khi tiến hành thanh toán/tải về tại `DetailPage.tsx`
-- [x] Frontend: Cấu hình hiển thị nhãn động cho ô nhập phiên bản: là "Project / Source Code Version" khi chọn tải lên Source Code và "Asset Version" khi chọn tải lên Asset

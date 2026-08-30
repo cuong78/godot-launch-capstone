@@ -23,56 +23,42 @@ Nền tảng dành cho cộng đồng **Godot Engine** — giúp developers subm
  Realtime  WebSocket (Spring Messaging)
  ```
  
- ## Chạy nhanh
- 
- ### Backend
- ```bash
- # Set env vars (hoặc tạo .env)
- export DB_URL=jdbc:postgresql://localhost:5432/godotlaunch
- export DB_USERNAME=postgres
- export DB_PASSWORD=your_password
- export MAIL_USERNAME=... MAIL_PASSWORD=...
- export ENCRYPTION_KEY=your_32_char_key
- export GOOGLE_CLIENT_ID=...
- export GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=...
- export FRONTEND_URL=http://localhost:3000
- 
- cd backend && ./mvnw spring-boot:run
- ```
- 
- ### Frontend
- ```bash
- cd frontend && npm install && npm run dev
- ```
- 
- ### SeaweedFS (local storage)
-```bash
-docker-compose -f docker-compose.seaweedfs.yml up -d
-# master: localhost:9333  |  volume: localhost:8081
+## Cài đặt và chạy dự án
+
+Dự án được bàn giao dưới dạng file ZIP và chạy local trên Windows bằng Docker Desktop, Java 21, Node.js và Python 3.14.
+
+Xem [HUONG_DAN_CAI_DAT.md](HUONG_DAN_CAI_DAT.md) để biết cách đặt các file `.env`, sửa `INSIGHTFACE_HOME` theo user Windows và setup đầy đủ.
+
+Sau khi chuẩn bị môi trường, có thể setup và chạy toàn bộ dự án bằng một lệnh:
+
+```powershell
+make first-run
+```
+
+Những lần tiếp theo chỉ cần:
+
+```powershell
+make run
 ```
 
 ## Cấu trúc thư mục
 
 ```
+├── ai-service/       FastAPI + InsightFace/AI services
 ├── backend/          Spring Boot API
 ├── frontend/         React SPA
-├── docs/             Tài liệu dự án
-│   ├── architecture/ Kiến trúc & folder structure
-│   ├── backend/      Quy tắc backend
-│   ├── frontend/     Quy tắc frontend
-│   └── resource/     GitHub OAuth, SeaweedFS
-├── CLAUDE.md         Context file cho AI coding assistants
-├── WIKI.md           Wiki kỹ thuật chi tiết
-└── docker-compose.seaweedfs.yml
+├── docs/             Tài liệu kiến trúc và nghiệp vụ
+├── resource/         Dữ liệu media mẫu
+├── scripts/          Launcher PowerShell và kiểm thử setup
+├── docker-compose.yml Docker dependencies
+└── Makefile          Các lệnh doctor/setup/run/first-run
 ```
 
 ## Tài liệu
 
-- [WIKI.md](WIKI.md) — Kiến trúc chi tiết, database schema, API, luồng nghiệp vụ
-- [CLAUDE.md](CLAUDE.md) — Context file tối ưu cho AI (đọc trước khi code)
-- [docs/architecture/](docs/architecture/) — Folder structure & system design
-- [docs/backend/](docs/backend/) — Quy tắc & convention backend
-- [docs/frontend/](docs/frontend/) — Quy tắc & convention frontend
+- [HUONG_DAN_CAI_DAT.md](HUONG_DAN_CAI_DAT.md) — Cài đặt từ file ZIP và chạy toàn bộ hệ thống
+- [docs/](docs/) — Kiến trúc, luồng nghiệp vụ và hướng dẫn kỹ thuật
+- [backend/RULES.md](backend/RULES.md) — Quy tắc phát triển backend
 
 ## Flyway Migrations
 

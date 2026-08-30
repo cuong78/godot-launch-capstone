@@ -25,7 +25,7 @@ services:
       - seaweedfs-net
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d godot_launch" ]
+      test: [ "CMD-SHELL", "pg_isready -U user_godot_launch -d godot_launch" ]
       interval: 10s
       timeout: 5s
       retries: 5
