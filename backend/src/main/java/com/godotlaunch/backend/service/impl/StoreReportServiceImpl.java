@@ -283,7 +283,7 @@ public class StoreReportServiceImpl implements StoreReportService {
         int month = Integer.parseInt(yyyyMM.substring(4, 6));
         String reportMonth = String.format("%04d-%02d", year, month);
 
-        String sourceObjectPath = "stats/installs/installs_" + publish.getPackageName() + "_" + yyyyMM + "_country.csv";
+        String sourceObjectPath = "stats/installs/installs_" + publish.getPackageName() + "_" + yyyyMM + ".csv";
 
         String csvContent = googlePlayMockClient.fetchInstallReportCsv(publish.getPackageName(), yyyyMM);
 
@@ -631,12 +631,21 @@ public class StoreReportServiceImpl implements StoreReportService {
             if (line.isBlank()) continue;
 
             String[] cols = line.split(",");
-            if (cols.length < 4) continue;
+            if (cols.length < 3) continue;
 
             String dateStr = cols[0].trim();
             String packageName = cols[1].trim();
-            String country = cols[2].trim();
-            int installs = Integer.parseInt(cols[3].trim());
+            final String country;
+            int installs;
+
+            if (cols.length == 3) {
+                country = "GLOBAL";
+                installs = Integer.parseInt(cols[2].trim());
+            } else {
+                // Backward compatibility for 4-column CSV with country
+                country = cols[2].trim();
+                installs = Integer.parseInt(cols[3].trim());
+            }
 
             LocalDate metricDate = LocalDate.parse(dateStr);
 

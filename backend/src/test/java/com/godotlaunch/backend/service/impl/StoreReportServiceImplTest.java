@@ -128,7 +128,7 @@ class StoreReportServiceImplTest {
     @Test
     void syncDownloadsForGame_ShouldParseCsvAndUpsertMetrics() {
         when(externalPublishRepository.findById(publishId)).thenReturn(Optional.of(publish));
-        String csv = "Date,Package Name,Country,Daily User Installs\n2026-08-28,com.godotlaunch.skyadventure,VN,5";
+        String csv = "Date,Package Name,Daily User Installs\n2026-08-28,com.godotlaunch.skyadventure,5";
         when(googlePlayMockClient.fetchInstallReportCsv(eq("com.godotlaunch.skyadventure"), anyString())).thenReturn(csv);
         when(seaweedFsService.uploadStream(any(InputStream.class), anyString(), eq("text/csv"))).thenReturn("http://seaweedfs/csv");
         when(storeReportImportRepository.save(any(StoreReportImport.class))).thenAnswer(i -> {

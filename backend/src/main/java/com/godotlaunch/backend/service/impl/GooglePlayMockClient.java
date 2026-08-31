@@ -37,7 +37,7 @@ public class GooglePlayMockClient {
     public String fetchInstallReportCsv(String packageName, String yyyyMM) {
         try {
             return webClient.get()
-                    .uri(mockServerUrl + "/internal/v1/reports/installs/" + packageName + "/" + yyyyMM + "?dimension=country")
+                    .uri(mockServerUrl + "/internal/v1/reports/installs/" + packageName + "/" + yyyyMM + "?dimension=overview")
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();

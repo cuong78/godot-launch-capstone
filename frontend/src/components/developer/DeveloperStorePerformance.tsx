@@ -368,88 +368,78 @@ export const DeveloperStorePerformance: React.FC<DeveloperStorePerformanceProps>
           {/* Section 2: Daily User Install Metrics */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Daily Installs Table */}
-            <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col">
               <div className="p-4 border-b border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/40">
                 <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   Chi tiết Lượt cài đặt người dùng mới (Daily User Installs)
                 </h3>
               </div>
-              <div className="overflow-y-auto max-h-96">
-                <table className="w-full text-center border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider sticky top-0 bg-slate-50 dark:bg-slate-950">
-                      <th className="py-3 px-4 text-center">Ngày</th>
-                      <th className="py-3 px-4 text-center">Quốc gia</th>
-                      <th className="py-3 px-4 text-center">Daily User Installs</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-                    {metrics.length === 0 ? (
-                      <tr>
-                        <td colSpan={3} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
-                          Chưa có chỉ số lượt tải nào.
-                        </td>
-                      </tr>
-                    ) : (
-                      metrics.map((m) => (
-                        <tr key={m.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3 px-4 text-center align-middle font-mono text-xs text-slate-600 dark:text-slate-300">{m.metricDate}</td>
-                          <td className="py-3 px-4 text-center align-middle font-semibold text-xs text-emerald-600 dark:text-emerald-400">{m.countryCode}</td>
-                          <td className="py-3 px-4 text-center align-middle font-bold text-slate-900 dark:text-white">+{m.dailyUserInstalls}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+
+              {/* Fixed Header Bar */}
+              <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 px-4 py-3 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider grid grid-cols-2 text-center select-none">
+                <div>Ngày</div>
+                <div>Daily User Installs</div>
+              </div>
+
+              {/* Scrollable Data Rows Only */}
+              <div className="overflow-y-auto max-h-80 divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                {metrics.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    Chưa có chỉ số lượt tải nào.
+                  </div>
+                ) : (
+                  metrics.map((m) => (
+                    <div key={m.id} className="grid grid-cols-2 text-center px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors items-center">
+                      <div className="font-mono text-xs text-slate-600 dark:text-slate-300">{m.metricDate}</div>
+                      <div className="font-bold text-slate-900 dark:text-white">+{m.dailyUserInstalls}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
             {/* CSV Imports & Download */}
-            <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col">
               <div className="p-4 border-b border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/40">
                 <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display flex items-center gap-2">
                   <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   Lịch sử Đợt Import CSV Report
                 </h3>
               </div>
-              <div className="overflow-y-auto max-h-96">
-                <table className="w-full text-center border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider sticky top-0 bg-slate-50 dark:bg-slate-950">
-                      <th className="py-3 px-4 text-center">Thời gian Sync</th>
-                      <th className="py-3 px-4 text-center">Kỳ</th>
-                      <th className="py-3 px-4 text-center">Số dòng</th>
-                      <th className="py-3 px-4 text-center">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-                    {imports.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
-                          Chưa có lịch sử import CSV nào.
-                        </td>
-                      </tr>
-                    ) : (
-                      imports.map((imp) => (
-                        <tr key={imp.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3 px-4 text-center align-middle text-xs text-slate-600 dark:text-slate-400">{new Date(imp.syncedAt).toLocaleDateString('vi-VN')}</td>
-                          <td className="py-3 px-4 text-center align-middle font-semibold text-xs text-emerald-600 dark:text-emerald-400">{imp.reportMonth}</td>
-                          <td className="py-3 px-4 text-center align-middle text-xs font-bold text-slate-900 dark:text-white">{imp.rowCount} dòng</td>
-                          <td className="py-3 px-4 text-center align-middle">
-                            <button
-                              onClick={() => handleDownloadCsv(imp.id, `installs_${imp.packageName}_${imp.reportMonth}.csv`)}
-                              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                              <span>Tải CSV</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+
+              {/* Fixed Header Bar */}
+              <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 px-4 py-3 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider grid grid-cols-12 text-center items-center select-none">
+                <div className="col-span-4">Thời gian Sync</div>
+                <div className="col-span-2">Kỳ</div>
+                <div className="col-span-3">Số dòng</div>
+                <div className="col-span-3">Thao tác</div>
+              </div>
+
+              {/* Scrollable Data Rows Only */}
+              <div className="overflow-y-auto max-h-80 divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                {imports.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    Chưa có lịch sử import CSV nào.
+                  </div>
+                ) : (
+                  imports.map((imp) => (
+                    <div key={imp.id} className="grid grid-cols-12 text-center px-4 py-3 text-sm hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors items-center">
+                      <div className="col-span-4 text-xs text-slate-600 dark:text-slate-400">{new Date(imp.syncedAt).toLocaleDateString('vi-VN')}</div>
+                      <div className="col-span-2 font-semibold text-xs text-emerald-600 dark:text-emerald-400">{imp.reportMonth}</div>
+                      <div className="col-span-3 text-xs font-bold text-slate-900 dark:text-white">{imp.rowCount} dòng</div>
+                      <div className="col-span-3">
+                        <button
+                          onClick={() => handleDownloadCsv(imp.id, `installs_${imp.packageName}_${imp.reportMonth}.csv`)}
+                          className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Tải CSV</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
