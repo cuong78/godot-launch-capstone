@@ -11,6 +11,7 @@ import java.util.UUID;
 @Repository
 public interface StoreRevenueStatementRepository extends JpaRepository<StoreRevenueStatement, UUID> {
     Optional<StoreRevenueStatement> findByExternalPayoutId(String externalPayoutId);
+    Optional<StoreRevenueStatement> findByGameIdAndPeriodKey(UUID gameId, String periodKey);
     List<StoreRevenueStatement> findByGameIdOrderBySettledAtDesc(UUID gameId);
     List<StoreRevenueStatement> findAllByOrderBySettledAtDesc();
 }

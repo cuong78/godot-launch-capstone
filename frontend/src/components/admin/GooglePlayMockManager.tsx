@@ -509,19 +509,17 @@ export const GooglePlayMockManager: React.FC = () => {
 
                               <button
                                 onClick={() => {
-                                  const gameImports = imports.filter((imp) => imp.gameTitle === title || (game.packageName && imp.packageName === game.packageName));
-                                  const latestMonthStr = gameImports.length > 0 ? gameImports[0].reportMonth.replace('-', '') : `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-                                  const existingStms = statements.filter((s) => s.gameTitle === title || (game.packageName && s.packageName === game.packageName));
-                                  const nextSeq = String(existingStms.length + 1).padStart(2, '0');
+                                  const now = new Date();
+                                  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                                   setPayoutModal({
                                     open: true,
                                     publishId: extPubId || gameId,
                                     title: title,
-                                    periodKey: `${latestMonthStr}-demo-${nextSeq}`,
+                                    periodKey: currentMonthStr,
                                   });
                                 }}
                                 disabled={loading}
-                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 dark:bg-gradient-to-r dark:from-amber-600 dark:to-orange-600 dark:hover:from-amber-500 dark:hover:to-orange-500 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                                className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
                               >
                                 <Play className="w-3.5 h-3.5 fill-current" />
                                 <span>Demo Payout</span>
@@ -898,7 +896,7 @@ export const GooglePlayMockManager: React.FC = () => {
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-amber-700 dark:text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
                 />
                 <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                  💡 Kỳ đã hạch toán (ví dụ: {payoutModal.periodKey}) không thể thực hiện lặp lại. Đổi số đợt (-02, -03...) để hạch toán đợt Payout mới.
+                  💡 Mô phỏng đợt hạch toán CH Play theo tháng (ví dụ: {payoutModal.periodKey}). Khi ấn Payout, hệ thống sẽ đối soát lượt tải. Nếu có lượt tải mới, tiền chênh lệch sẽ tự động cộng vào ví Developer. Nếu không có lượt tải mới, doanh thu giữ nguyên mà không bị hạch toán trùng.
                 </p>
               </div>
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
