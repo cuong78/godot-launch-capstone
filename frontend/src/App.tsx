@@ -54,6 +54,7 @@ import { orderApi } from './api/orderApi';
 import { cartApi } from './api/cartApi';
 import { agreementApi } from './api/agreementApi';
 import { dispatchAdminNavigation } from './utils/adminNavigation';
+import { isAdminPortalHost, redirectToRolePortal } from './utils/authRedirect';
 import {
   PendingCheckoutContext,
   clearPaymentQrSession,
@@ -244,7 +245,10 @@ const screenToPath = (screen: ScreenType, assetId?: string): string => {
 
 export default function App() {
   const { t, i18n } = useTranslation(['shared']);
-  const initialRoute = pathToScreen(window.location.pathname);
+  const requestedRoute = pathToScreen(window.location.pathname);
+  const initialRoute = isAdminPortalHost() && window.location.pathname === '/'
+    ? { screen: 'admin' as ScreenType }
+    : requestedRoute;
   const [currentScreen, setCurrentScreen] = useState<ScreenType>(initialRoute.screen);
   const [checkoutOriginScreen, setCheckoutOriginScreen] = useState<ScreenType>(
     initialRoute.screen === 'checkout' ? 'marketplace' : initialRoute.screen,
@@ -252,6 +256,12 @@ export default function App() {
   const { currentUser, logout } = useAuth();
   const { showToast } = useToast();
   const [unpaidDisputeDebt, setUnpaidDisputeDebt] = useState<DisputeResponse | null>(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      redirectToRolePortal(currentUser);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (currentUser) {

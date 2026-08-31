@@ -91,6 +91,7 @@ spring:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  admin-url: ${ADMIN_URL:http://localhost:3000}
   backend-url: ${BACKEND_URL:http://localhost:8080}
 
   game-version-notifications:
@@ -129,6 +130,7 @@ app:
         bot-token: ${GITHUB_BOT_TOKEN:}
   google-play:
     mock: ${GOOGLE_PLAY_MOCK:true}
+    mock-url: ${GOOGLE_PLAY_MOCK_URL:http://localhost:8082}
     poll-interval-ms: ${GOOGLE_PLAY_POLL_INTERVAL_MS:1800000}
     mock-review-delay-seconds: ${GOOGLE_PLAY_MOCK_REVIEW_DELAY_SECONDS:30}
     service-account-path: ${GOOGLE_PLAY_SERVICE_ACCOUNT_PATH:}
@@ -151,6 +153,7 @@ storage:
     filer-port: ${SEAWEEDFS_FILER_PORT:8888}
     public-host: ${SEAWEEDFS_PUBLIC_HOST:localhost}
     public-port: ${SEAWEEDFS_PUBLIC_PORT:8888}
+    public-url: ${SEAWEEDFS_PUBLIC_URL:}
     base-path: ${SEAWEEDFS_BASE_PATH:/godotlaunch}
 
 management:
@@ -161,4 +164,3 @@ management:
   endpoint:
     health:
       show-details: when-authorized
-

@@ -100,7 +100,8 @@ export const AiChatWidget: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/v1/chat/stream', {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+      const response = await fetch(`${apiBaseUrl}/api/v1/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

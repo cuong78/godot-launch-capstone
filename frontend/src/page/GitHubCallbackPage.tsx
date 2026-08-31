@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { resolvePostLoginScreen } from '../utils/authRedirect';
+import { redirectToRolePortal, resolvePostLoginScreen } from '../utils/authRedirect';
 
 interface GitHubCallbackPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -22,8 +22,9 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
   useEffect(() => {
     const processCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const errorParam = urlParams.get('error');
-      const tokenParam = urlParams.get('token');
+      const tokenParam = urlParams.get('token') || hashParams.get('token');
       const linkPending = localStorage.getItem("github_link_pending") === "true";
       setIsLinkFlow(linkPending);
 
@@ -72,6 +73,7 @@ export const GitHubCallbackPage: React.FC<GitHubCallbackPageProps> = ({
           localStorage.setItem("github_link_success", "true");
           setCurrentScreen('developer-onboarding');
         } else {
+          if (redirectToRolePortal(user)) return;
           setCurrentScreen(resolvePostLoginScreen(user));
         }
       } catch (err: any) {

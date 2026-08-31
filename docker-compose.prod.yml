@@ -1,0 +1,162 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: godot_launch
+      POSTGRES_USER: user_godot_launch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_godot_launch -d godot_launch"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mongodb:
+    image: mongo:7
+    volumes:
+      - mongodb-data:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:3.80
+    command: master -ip=seaweedfs-master -port=9333
+    restart: unless-stopped
+
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:3.80
+    command: volume -mserver=seaweedfs-master:9333 -port=8081 -dir=/data
+    volumes:
+      - seaweedfs-data:/data
+    depends_on:
+      - seaweedfs-master
+    restart: unless-stopped
+
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs:3.80
+    command: filer -master=seaweedfs-master:9333 -port=8888
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
+    ports:
+      - 127.0.0.1:8888:8888
+    restart: unless-stopped
+
+  google-play-mock:
+    build: ./google-play-mock
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8082/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  clamav:
+    image: clamav/clamav:1.4
+    volumes:
+      - clamav-data:/var/lib/clamav
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "3"]
+      interval: 30s
+      timeout: 10s
+      start_period: 180s
+      retries: 5
+
+  ai-service:
+    build: ./ai-service
+    env_file:
+      - ./ai-service/.env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: godot_launch
+      DB_USER: user_godot_launch
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+      HF_HOME: /models
+      INSIGHTFACE_HOME: /models/insightface
+      TRANSFORMERS_OFFLINE: "0"
+    volumes:
+      - ai-model-cache:/models
+    ports:
+      - 127.0.0.1:8001:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+
+  backend:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/godot_launch
+      DB_USERNAME: user_godot_launch
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD}
+      MONGO_URI: mongodb://mongodb:27017/godot_launch?uuidRepresentation=standard
+      REDIS_HOST: redis
+      SEAWEEDFS_FILER_HOST: seaweedfs-filer
+      SEAWEEDFS_PUBLIC_URL: https://godotlaunch.shop/files
+      FRONTEND_URL: https://godotlaunch.shop
+      ADMIN_URL: https://app.godotlaunch.shop
+      BACKEND_URL: https://godotlaunch.shop
+      GITHUB_REDIRECT_URI: https://godotlaunch.shop/api/v1/auth/github/callback
+      GOOGLE_PLAY_MOCK_URL: http://google-play-mock:8082
+      CLAMAV_HOST: clamav
+      AI_SERVICE_URL: http://ai-service:8001
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m
+    ports:
+      - 127.0.0.1:8080:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
+      seaweedfs-filer:
+        condition: service_started
+      clamav:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: https://godotlaunch.shop
+        VITE_PUBLIC_APP_URL: https://godotlaunch.shop
+        VITE_ADMIN_APP_URL: https://app.godotlaunch.shop
+    ports:
+      - 127.0.0.1:3000:80
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  mongodb-data:
+  redis-data:
+  seaweedfs-data:
+  clamav-data:
+  ai-model-cache:
