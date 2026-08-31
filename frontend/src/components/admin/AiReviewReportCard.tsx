@@ -270,11 +270,12 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
             <NsfwChip flag={report.nsfwFlag ?? false} />
           </div>
 
-          {/* Khuyến nghị chiến lược định giá & hợp đồng (nếu AI có gợi ý) */}
-          {(report.suggestedPrice != null ||
-            report.suggestedRevenueSplit != null ||
-            (report.rawOutput as any)?.code?.suggestedContractType ||
-            (report.rawOutput as any)?.code?.suggestedLumpSumAmount) && (
+          {/* Khuyến nghị chiến lược định giá & hợp đồng (CHỈ HIỂN THỊ DÀNH CHO GAME ĐĂNG KÝ PHÁT HÀNH STORE - gameId) */}
+          {Boolean(gameId) &&
+            (report.suggestedPrice != null ||
+              report.suggestedRevenueSplit != null ||
+              (report.rawOutput as any)?.code?.suggestedContractType ||
+              (report.rawOutput as any)?.code?.suggestedLumpSumAmount) && (
             <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 space-y-2">
               <span className="text-[11px] uppercase font-mono tracking-wider text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
                 <DollarSign size={13} /> {t("aiReviewCard.pricing.title")}
