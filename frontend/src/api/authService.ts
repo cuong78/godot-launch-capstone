@@ -2,7 +2,8 @@ import { tokenStorage } from '../utils/tokenStorage';
 import { authApi } from './authApi';
 
 export const loginWithGitHub = (rememberMe?: boolean): void => {
-  window.location.href = `http://localhost:8080/api/v1/auth/github${rememberMe ? '?rememberMe=true' : ''}`;
+  const apiBaseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+  window.location.href = `${apiBaseUrl}/api/v1/auth/github${rememberMe ? '?rememberMe=true' : ''}`;
 };
 
 export const handleGitHubCallback = (): string => {

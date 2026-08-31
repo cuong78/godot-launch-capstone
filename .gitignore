@@ -1,5 +1,6 @@
 # Local Environment Variables
 .env
+.env.production
 
 # JetBrains IDEs
 .idea/
@@ -26,5 +27,4 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .venv/
-
 

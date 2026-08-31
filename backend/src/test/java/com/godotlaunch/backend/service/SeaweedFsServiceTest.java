@@ -38,7 +38,7 @@ class SeaweedFsServiceTest {
 
     @BeforeEach
     void setUp() {
-        seaweedFsService = new SeaweedFsService("localhost", 8888, "localhost", 8888, "/godotlaunch");
+        seaweedFsService = new SeaweedFsService("localhost", 8888, "localhost", 8888, "", "/godotlaunch");
         ReflectionTestUtils.setField(seaweedFsService, "seaweedAdapter", seaweedAdapter);
         ReflectionTestUtils.setField(seaweedFsService, "httpClient", httpClient);
     }

@@ -17,7 +17,7 @@ import { User } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { authApi } from '../api/authApi';
 import { loginWithGitHub } from '../api/authService';
-import { resolvePostLoginScreen } from '../utils/authRedirect';
+import { redirectToRolePortal, resolvePostLoginScreen } from '../utils/authRedirect';
 
 interface SignInPageProps {
   setCurrentScreen: (screen: any) => void;
@@ -83,6 +83,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
         loginWithGoogle({ idToken, rememberMe })
           .then((user) => {
             setCurrentUser(user);
+            if (redirectToRolePortal(user)) return;
             setCurrentScreen(resolvePostLoginScreen(user));
             window.scrollTo({ top: 0, behavior: 'smooth' });
           })
@@ -124,6 +125,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     try {
       const user = await signIn({ email, password, rememberMe: keepSignedIn });
       setCurrentUser(user);
+      if (redirectToRolePortal(user)) return;
       setCurrentScreen(resolvePostLoginScreen(user));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {

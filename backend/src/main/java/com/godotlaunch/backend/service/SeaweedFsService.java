@@ -26,6 +26,7 @@ public class SeaweedFsService {
     private final int filerPort;
     private final String publicHost;
     private final int publicPort;
+    private final String publicUrl;
     private final String basePath;
     private final HttpClient httpClient;
 
@@ -34,11 +35,13 @@ public class SeaweedFsService {
             @Value("${storage.seaweedfs.filer-port:8888}") int filerPort,
             @Value("${storage.seaweedfs.public-host:localhost}") String publicHost,
             @Value("${storage.seaweedfs.public-port:8888}") int publicPort,
+            @Value("${storage.seaweedfs.public-url:}") String publicUrl,
             @Value("${storage.seaweedfs.base-path:/godotlaunch}") String basePath) {
         this.filerHost = filerHost;
         this.filerPort = filerPort;
         this.publicHost = publicHost;
         this.publicPort = publicPort;
+        this.publicUrl = publicUrl == null ? "" : publicUrl.replaceAll("/$", "");
         this.basePath = basePath != null ? basePath.replaceAll("/$", "") : "/godotlaunch";
         this.seaweedAdapter = new SeaweedFsAdapter(filerHost, filerPort, basePath);
         this.httpClient = HttpClient.newBuilder()
@@ -51,7 +54,9 @@ public class SeaweedFsService {
             return rawUrl;
         }
         String internalPrefix = "http://" + filerHost + ":" + filerPort;
-        String publicPrefix = "http://" + publicHost + ":" + publicPort;
+        String publicPrefix = publicUrl.isBlank()
+                ? "http://" + publicHost + ":" + publicPort
+                : publicUrl;
         
         if (rawUrl.startsWith(internalPrefix)) {
             return rawUrl.replace(internalPrefix, publicPrefix);

@@ -12,6 +12,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
@@ -24,6 +25,7 @@ public class ApplicationInitConfig {
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
     JdbcTemplate jdbcTemplate;
+    Environment environment;
 
     @Bean
     public ApplicationRunner initializer() {
@@ -60,8 +62,22 @@ public class ApplicationInitConfig {
     private void initAdminUser() {
         String adminEmail = "admin@godotlaunch.com";
 
-        if (userRepository.findByEmail(adminEmail).isPresent()) {
-            log.info("Admin user already exists. Skipping initialization.");
+        String initialPassword = environment.getProperty("ADMIN_INITIAL_PASSWORD");
+        if (initialPassword == null || initialPassword.isBlank()) {
+            log.warn("ADMIN_INITIAL_PASSWORD is not configured; admin bootstrap is disabled.");
+            return;
+        }
+
+        var existingAdmin = userRepository.findByEmail(adminEmail);
+        if (existingAdmin.isPresent()) {
+            User admin = existingAdmin.get();
+            if (passwordEncoder.matches("admin", admin.getPasswordHash())) {
+                admin.setPasswordHash(passwordEncoder.encode(initialPassword));
+                userRepository.save(admin);
+                log.info("Replaced insecure default admin password from bootstrap configuration.");
+            } else {
+                log.info("Admin user already exists. Skipping initialization.");
+            }
             return;
         }
 
@@ -70,12 +86,12 @@ public class ApplicationInitConfig {
 
         User admin = new User();
         admin.setEmail(adminEmail);
-        admin.setPasswordHash(passwordEncoder.encode("admin"));
+        admin.setPasswordHash(passwordEncoder.encode(initialPassword));
         admin.setFullName("Platform Administrator");
         admin.setStatus("active");
         admin.setRole(adminRole);
 
         userRepository.save(admin);
-        log.info("Admin user has been created with default password: admin");
+        log.info("Admin user has been created from bootstrap configuration.");
     }
 }
