@@ -57,11 +57,7 @@ const formatMoney = (
   fallback = "N/A",
 ) => {
   if (value == null) return fallback;
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
+  return `${new Intl.NumberFormat("vi-VN").format(value)}đ`;
 };
 
 const formatTimestamp = (value: string | null | undefined, fallback = "N/A") => {

@@ -64,11 +64,7 @@ const resolveLocale = (language: string) => {
 };
 
 const formatMoney = (amount: number, currency: string, locale: string) =>
-  new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currency || "VND",
-    maximumFractionDigits: 0,
-  }).format(Number(amount || 0));
+  `${new Intl.NumberFormat(locale).format(Number(amount || 0))}đ`;
 
 const formatRemainingTime = (remainingMs: number) => {
   const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));

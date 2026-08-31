@@ -18,6 +18,7 @@ import { Button } from "../components/Button";
 import { SteamProductCard } from "../components/SteamProductCard";
 import { Asset, CategoryResponse } from "../types";
 import { gameApi } from "../api/gameApi";
+import { useAuth } from "../hooks/useAuth";
 
 interface MarketplacePageProps {
   allAssets: Asset[];
@@ -155,7 +156,7 @@ const resolveNumberLocale = (language?: string | null) => {
 };
 
 const formatCurrencyAmount = (amount: number, locale: string) =>
-  `${new Intl.NumberFormat(locale).format(amount)} đ`;
+  `${new Intl.NumberFormat(locale).format(amount)}đ`;
 
 export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   allAssets,
@@ -180,6 +181,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
   selectedTags,
   setSelectedTags,
 }) => {
+  const { user: currentUser } = useAuth();
   const { t, i18n } = useTranslation(["marketplace"]);
   const numberLocale = resolveNumberLocale(
     i18n.resolvedLanguage || i18n.language,
@@ -941,7 +943,11 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({
                       }}
                       onViewDetails={handleViewAssetDetails}
                       onAddToCart={handleAddToCart}
-                      isOwner={creatorOwnedProductIds.has(asset.id)}
+                      isOwner={Boolean(
+                        creatorOwnedProductIds.has(asset.id) ||
+                        (currentUser?.id && asset.sellerId === currentUser.id) ||
+                        (currentUser?.email && asset.sellerEmail?.trim().toLowerCase() === currentUser.email.trim().toLowerCase())
+                      )}
                       isOwned={ownedProductIds.has(asset.id)}
                       numberLocale={numberLocale}
                     />

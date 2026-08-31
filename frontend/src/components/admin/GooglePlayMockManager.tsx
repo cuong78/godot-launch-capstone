@@ -17,6 +17,7 @@ import {
   CreditCard,
   Building,
   Search,
+  X,
 } from 'lucide-react';
 import { storeReportApi } from '../../api/storeReportApi';
 import {
@@ -25,9 +26,7 @@ import {
   StoreReportImportResponse,
   StoreRevenueStatementResponse,
   StoreRevenueSummaryResponse,
-  ExternalPublishResponse,
 } from '../../types';
-import { gameApi } from '../../api/gameApi';
 
 export const GooglePlayMockManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'imports' | 'statements'>('overview');
@@ -199,39 +198,44 @@ export const GooglePlayMockManager: React.FC = () => {
   };
 
   const formatVnd = (amount?: number) => {
-    if (amount === undefined || amount === null) return '0 ₫';
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    if (amount === undefined || amount === null) return '0đ';
+    return `${new Intl.NumberFormat('vi-VN').format(amount)}đ`;
+  };
+
+  const formatPriceInput = (val: string | number) => {
+    const digits = String(val).replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    return new Intl.NumberFormat('vi-VN').format(Number(digits));
   };
 
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-xl backdrop-blur-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none" />
+      <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-slate-50/80 p-6 shadow-sm dark:border-emerald-500/30 dark:from-emerald-950/30 dark:via-slate-900/80 dark:to-slate-900 relative overflow-hidden backdrop-blur-md">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Globe className="w-7 h-7 text-emerald-400" />
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+                <Globe className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 Google Play Mock Reports & Revenue Share
               </h2>
-              <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                 MOCK MODE
               </span>
             </div>
-            <p className="text-slate-300 text-sm max-w-2xl">
-              Giả lập luồng báo cáo CSV lượt cài đặt hàng ngày từ Google Play Console, quản lý cấu hình Publisher, và thực hiện nút Demo Payout hạch toán chia 85% doanh thu thuần theo hợp đồng co-publishing.
+            <p className="text-slate-600 dark:text-slate-300 text-sm max-w-2xl leading-relaxed">
+              Quản lý tích hợp Google Play Console báo cáo lượt cài đặt hàng ngày, cấu hình tài khoản Publisher và thực hiện hạch toán chia 85% doanh thu thuần theo hợp đồng co-publishing.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={fetchData}
               disabled={loading}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-medium transition flex items-center gap-2 border border-slate-700 shadow-md"
+              className="px-4 py-2 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-semibold transition flex items-center gap-2 border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Làm mới
+              <RefreshCw className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
             </button>
           </div>
         </div>
@@ -240,18 +244,26 @@ export const GooglePlayMockManager: React.FC = () => {
       {/* Alert Message */}
       {message && (
         <div
-          className={`p-4 rounded-xl border flex items-center justify-between text-sm ${
+          className={`p-4 rounded-xl border flex items-center justify-between text-sm transition-all ${
             message.type === 'success'
-              ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
-              : 'bg-rose-950/60 border-rose-500/40 text-rose-200'
+              ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+              : 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-500/40 text-rose-800 dark:text-rose-200'
           }`}
         >
-          <div className="flex items-center gap-2">
-            {message.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <AlertTriangle className="w-5 h-5 text-rose-400" />}
-            <span>{message.text}</span>
+          <div className="flex items-center gap-2.5">
+            {message.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+            )}
+            <span className="font-medium leading-relaxed">{message.text}</span>
           </div>
-          <button onClick={() => setMessage(null)} className="text-xs text-slate-400 hover:text-white">
-            Đóng
+          <button
+            onClick={() => setMessage(null)}
+            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded transition"
+            aria-label="Đóng"
+          >
+            <X size={16} />
           </button>
         </div>
       )}
@@ -259,100 +271,128 @@ export const GooglePlayMockManager: React.FC = () => {
       {/* Finance Overview Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-md">
-            <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-medium uppercase tracking-wider">Gross Store Revenue</span>
-              <DollarSign className="w-5 h-5 text-emerald-400" />
+          <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Gross Store Revenue</span>
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <DollarSign size={18} />
+              </div>
             </div>
-            <div className="text-2xl font-bold text-white mb-1">{formatVnd(summary.totalGrossRevenue)}</div>
-            <p className="text-xs text-slate-400">100% doanh thu tổng báo cáo từ Store</p>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mb-1 font-display">
+              {formatVnd(summary.totalGrossRevenue)}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Total gross revenue from store</p>
           </div>
 
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-md">
-            <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-medium uppercase tracking-wider">Net Store Proceeds (85%)</span>
-              <Building className="w-5 h-5 text-cyan-400" />
+          <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Net Store Proceeds (85%)</span>
+              <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                <Building size={18} />
+              </div>
             </div>
-            <div className="text-2xl font-bold text-cyan-300 mb-1">{formatVnd(summary.totalNetStoreProceeds)}</div>
-            <p className="text-xs text-slate-400">Đã trừ 15% Google Fee ({formatVnd(summary.totalGoogleFee)})</p>
+            <div className="text-2xl font-bold text-cyan-700 dark:text-cyan-300 mb-1 font-display">
+              {formatVnd(summary.totalNetStoreProceeds)}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">After 15% Google Fee ({formatVnd(summary.totalGoogleFee)})</p>
           </div>
 
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-md">
-            <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-medium uppercase tracking-wider">Developer Payable</span>
-              <CreditCard className="w-5 h-5 text-amber-400" />
+          <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Developer Payable</span>
+              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <CreditCard size={18} />
+              </div>
             </div>
-            <div className="text-2xl font-bold text-amber-300 mb-1">{formatVnd(summary.totalDeveloperPayable)}</div>
-            <p className="text-xs text-slate-400">Tiền chia theo snapshot hợp đồng cho dev</p>
+            <div className="text-2xl font-bold text-amber-700 dark:text-amber-300 mb-1 font-display">
+              {formatVnd(summary.totalDeveloperPayable)}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Allocated earnings for developers</p>
           </div>
 
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-md">
-            <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-medium uppercase tracking-wider">Platform Retained</span>
-              <TrendingUp className="w-5 h-5 text-purple-400" />
+          <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Platform Retained</span>
+              <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                <TrendingUp size={18} />
+              </div>
             </div>
-            <div className="text-2xl font-bold text-purple-300 mb-1">{formatVnd(summary.totalPlatformRetained)}</div>
-            <p className="text-xs text-slate-400">Doanh thu giữ lại thực của GodotLaunch</p>
+            <div className="text-2xl font-bold text-purple-700 dark:text-purple-300 mb-1 font-display">
+              {formatVnd(summary.totalPlatformRetained)}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Net revenue retained by GodotLaunch</p>
           </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-800 gap-6">
+      {/* Tabs Bar */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 sm:gap-6 overflow-x-auto select-none">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`pb-3 text-sm font-semibold transition relative flex items-center gap-2 ${
-            activeTab === 'overview' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-slate-200'
+          className={`pb-3 pt-1 text-sm font-semibold transition relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'overview'
+              ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500 font-bold'
+              : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <Package className="w-4 h-4" />
-          Game Xuất bản Mock ({publishedGames.length})
+          <span>Game Xuất bản Mock ({publishedGames.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('config')}
-          className={`pb-3 text-sm font-semibold transition relative flex items-center gap-2 ${
-            activeTab === 'config' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-slate-200'
+          className={`pb-3 pt-1 text-sm font-semibold transition relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'config'
+              ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500 font-bold'
+              : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <Settings className="w-4 h-4" />
-          Cấu hình Publisher
+          <span>Cấu hình Publisher</span>
         </button>
         <button
           onClick={() => setActiveTab('imports')}
-          className={`pb-3 text-sm font-semibold transition relative flex items-center gap-2 ${
-            activeTab === 'imports' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-slate-200'
+          className={`pb-3 pt-1 text-sm font-semibold transition relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'imports'
+              ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500 font-bold'
+              : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <FileText className="w-4 h-4" />
-          Lịch sử Import CSV ({imports.length})
+          <span>Lịch sử Import CSV ({imports.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('statements')}
-          className={`pb-3 text-sm font-semibold transition relative flex items-center gap-2 ${
-            activeTab === 'statements' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-slate-200'
+          className={`pb-3 pt-1 text-sm font-semibold transition relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'statements'
+              ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500 font-bold'
+              : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
-          Payout Statements ({statements.length})
+          <span>Payout Statements ({statements.length})</span>
         </button>
       </div>
 
       {/* TAB 1: OVERVIEW GAMES */}
       {activeTab === 'overview' && (
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-950/40">
+        <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50/80 dark:bg-slate-950/40">
             <div>
-              <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Danh sách Game trên Google Play</h3>
-              <p className="text-xs text-slate-400">Các game đã ký hợp đồng Co-Publishing hoặc Mua đứt (Awaiting Build / Published)</p>
+              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+                Danh sách Game trên Google Play
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Các game đã ký hợp đồng Co-Publishing hoặc Mua đứt (Awaiting Build / Published)
+              </p>
             </div>
             <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Tìm game, tác giả, package..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500 placeholder:text-slate-500"
+                className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -360,7 +400,7 @@ export const GooglePlayMockManager: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 text-xs font-semibold uppercase">
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                   <th className="p-4">Game</th>
                   <th className="p-4">Package Name</th>
                   <th className="p-4">Trạng thái Mock</th>
@@ -368,10 +408,10 @@ export const GooglePlayMockManager: React.FC = () => {
                   <th className="p-4 text-right">Thao tác Admin</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                 {publishedGames.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">
+                    <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                       Chưa có game nào trong danh sách xuất bản.
                     </td>
                   </tr>
@@ -386,98 +426,98 @@ export const GooglePlayMockManager: React.FC = () => {
                       return title.includes(q) || creator.includes(q) || pkg.includes(q);
                     })
                     .map((game: any) => {
-                    const isMocked = !!game.packageName;
-                    const gameId = game.gameId || game.id;
-                    const title = game.gameTitle || game.title || 'Untitled Game';
-                    const creatorName = game.creatorName || game.creatorEmail || 'N/A';
-                    const extPubId = game.externalPublishId;
+                      const isMocked = !!game.packageName;
+                      const gameId = game.gameId || game.id;
+                      const title = game.gameTitle || game.title || 'Untitled Game';
+                      const creatorName = game.creatorName || game.creatorEmail || 'N/A';
+                      const extPubId = game.externalPublishId;
 
-                    return (
-                      <tr key={gameId} className="hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-medium text-white">
-                          <div>
-                            <div className="font-semibold text-white flex items-center gap-2">
-                              <span>{title}</span>
-                              {game.contractType === 'full_acquisition' && (
-                                <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-full">
-                                  Mua đứt (100% Platform)
-                                </span>
-                              )}
-                              {game.contractType === 'co_publishing' && (
-                                <span className="px-2 py-0.5 text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-full">
-                                  Co-Publishing ({game.revenueSplit ?? 80}%)
-                                </span>
-                              )}
+                      return (
+                        <tr key={gameId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="p-4 font-medium">
+                            <div className="space-y-1">
+                              <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                <span>{title}</span>
+                                {game.contractType === 'full_acquisition' && (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 dark:border-purple-500/30 rounded-full">
+                                    Mua đứt (100% Platform)
+                                  </span>
+                                )}
+                                {game.contractType === 'co_publishing' && (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 dark:border-cyan-500/30 rounded-full">
+                                    Co-Publishing ({game.revenueSplit ?? 80}%)
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">Tác giả: {creatorName}</div>
                             </div>
-                            <div className="text-xs text-slate-400">Tác giả: {creatorName}</div>
-                          </div>
-                        </td>
-                        <td className="p-4 font-mono text-xs text-emerald-300">
-                          {game.packageName ? game.packageName : <span className="text-slate-500 italic">Chưa kích hoạt</span>}
-                        </td>
-                        <td className="p-4">
-                          {isMocked ? (
-                            <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-medium flex items-center w-fit gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              PUBLISHED_MOCK
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-full text-xs font-medium flex items-center w-fit gap-1">
-                              Chờ kích hoạt ({game.gameStatus || 'awaiting_build'})
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-4 font-semibold text-white">
-                          {game.totalInstalls || metrics.filter((m) => m.gameId === gameId).reduce((acc, curr) => acc + (curr.dailyUserInstalls || 0), 0)} installs
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() =>
-                                setActivateModal({
-                                  open: true,
-                                  publishId: extPubId || gameId,
-                                  isGameId: !extPubId,
-                                  title: title,
-                                  packageName: game.packageName || `com.godotlaunch.${title.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-                                  priceProposed: String(game.priceProposed || (game.contractType === 'full_acquisition' ? 199000 : 99000)),
-                                  contractType: game.contractType,
-                                })
-                              }
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition"
-                            >
-                              {isMocked ? 'Sửa Giá / Package' : 'Kích hoạt Mock'}
-                            </button>
+                          </td>
+                          <td className="p-4 font-mono text-xs text-emerald-600 dark:text-emerald-400">
+                            {game.packageName ? game.packageName : <span className="text-slate-400 dark:text-slate-500 italic">Chưa kích hoạt</span>}
+                          </td>
+                          <td className="p-4">
+                            {isMocked ? (
+                              <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-semibold flex items-center w-fit gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                PUBLISHED_MOCK
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 rounded-full text-xs font-semibold flex items-center w-fit gap-1">
+                                Chờ kích hoạt ({game.gameStatus || 'awaiting_build'})
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 font-semibold text-slate-900 dark:text-white">
+                            {game.totalInstalls || metrics.filter((m) => m.gameId === gameId).reduce((acc, curr) => acc + (curr.dailyUserInstalls || 0), 0)} installs
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() =>
+                                  setActivateModal({
+                                    open: true,
+                                    publishId: extPubId || gameId,
+                                    isGameId: !extPubId,
+                                    title: title,
+                                    packageName: game.packageName || `com.godotlaunch.${title.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+                                    priceProposed: String(game.priceProposed || (game.contractType === 'full_acquisition' ? 199000 : 99000)),
+                                    contractType: game.contractType,
+                                  })
+                                }
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
+                              >
+                                {isMocked ? 'Sửa Giá / Package' : 'Kích hoạt Mock'}
+                              </button>
 
-                            <button
-                              onClick={() => handleSyncDownloads(extPubId || gameId, title)}
-                              disabled={loading}
-                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
-                              Sync Lượt Tải
-                            </button>
+                              <button
+                                onClick={() => handleSyncDownloads(extPubId || gameId, title)}
+                                disabled={loading}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>Sync Lượt Tải</span>
+                              </button>
 
-                            <button
-                              onClick={() =>
-                                setPayoutModal({
-                                  open: true,
-                                  publishId: extPubId || gameId,
-                                  title: title,
-                                  periodKey: `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-demo-01`,
-                                })
-                              }
-                              disabled={loading}
-                              className="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5"
-                            >
-                              <Play className="w-3.5 h-3.5 fill-current" />
-                              Demo Nhận Doanh Thu
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                              <button
+                                onClick={() =>
+                                  setPayoutModal({
+                                    open: true,
+                                    publishId: extPubId || gameId,
+                                    title: title,
+                                    periodKey: `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-demo-01`,
+                                  })
+                                }
+                                disabled={loading}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 dark:bg-gradient-to-r dark:from-amber-600 dark:to-orange-600 dark:hover:from-amber-500 dark:hover:to-orange-500 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                                <span>Demo Payout</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                 )}
               </tbody>
             </table>
@@ -487,25 +527,27 @@ export const GooglePlayMockManager: React.FC = () => {
 
       {/* TAB 2: PUBLISHER CONFIG */}
       {activeTab === 'config' && (
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 shadow-xl max-w-3xl">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Settings className="w-5 h-5 text-emerald-400" />
+        <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-6 shadow-sm max-w-3xl">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2 font-display">
+            <Settings className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             Cấu hình Publisher Google Play Mock
           </h3>
           <form onSubmit={handleUpdateConfig} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Provider Type</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Provider Type
+              </label>
               <input
                 type="text"
                 disabled
                 value={config.provider}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-400 text-sm font-mono"
+                className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-500 dark:text-slate-400 text-sm font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                Google Cloud Storage Bucket URI <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                Google Cloud Storage Bucket URI <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -513,14 +555,16 @@ export const GooglePlayMockManager: React.FC = () => {
                 value={config.bucketUri}
                 onChange={(e) => setConfig({ ...config, bucketUri: e.target.value })}
                 placeholder="gs://pubsite_prod_rev_01234567890987654321"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm font-mono focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-slate-100 text-sm font-mono focus:border-emerald-500 focus:outline-none"
               />
-              <p className="text-xs text-slate-400 mt-1">Định dạng chuẩn Google Play Bucket: gs://pubsite_prod_rev_&lt;publisher-id&gt;</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Định dạng chuẩn Google Play Bucket: gs://pubsite_prod_rev_&lt;publisher-id&gt;
+              </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                Service Account Email <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                Service Account Email <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -528,32 +572,38 @@ export const GooglePlayMockManager: React.FC = () => {
                 value={config.serviceAccountEmail}
                 onChange={(e) => setConfig({ ...config, serviceAccountEmail: e.target.value })}
                 placeholder="godotlaunch-play-reports@your-project.iam.gserviceaccount.com"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm font-mono focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-slate-100 text-sm font-mono focus:border-emerald-500 focus:outline-none"
               />
-              <p className="text-xs text-slate-400 mt-1">GCP Service Account Email dùng để xác thực quyền truy cập Play Console</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                GCP Service Account Email dùng để xác thực quyền truy cập Play Console
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Daily Sync Time (UTC+7)</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Daily Sync Time (UTC+7)
+                </label>
                 <input
                   type="text"
                   value={config.dailySyncTime}
                   onChange={(e) => setConfig({ ...config, dailySyncTime: e.target.value })}
                   placeholder="02:00"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:border-emerald-500 focus:outline-none"
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center pt-6">
-                <label className="flex items-center gap-3 cursor-pointer">
+              <div className="flex items-center sm:pt-6">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={config.enabled}
                     onChange={(e) => setConfig({ ...config, enabled: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 rounded bg-slate-950 border-slate-700 focus:ring-emerald-500"
+                    className="w-4 h-4 text-emerald-600 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-emerald-500 accent-emerald-500"
                   />
-                  <span className="text-sm font-medium text-slate-200">Kích hoạt Daily Scheduler Sync</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Kích hoạt Daily Scheduler Sync
+                  </span>
                 </label>
               </div>
             </div>
@@ -562,7 +612,7 @@ export const GooglePlayMockManager: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold shadow-lg transition"
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold shadow-sm transition cursor-pointer"
               >
                 Lưu Cấu Hình
               </button>
@@ -573,14 +623,16 @@ export const GooglePlayMockManager: React.FC = () => {
 
       {/* TAB 3: IMPORT HISTORY */}
       {activeTab === 'imports' && (
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-slate-800 bg-slate-950/40">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Lịch sử Import Report CSV từ SeaweedFS</h3>
+        <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/40">
+            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+              Lịch sử Import Report CSV từ SeaweedFS
+            </h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 text-xs font-semibold uppercase">
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                   <th className="p-4">Thời gian Sync</th>
                   <th className="p-4">Game / Package</th>
                   <th className="p-4">Source Object Path</th>
@@ -590,32 +642,38 @@ export const GooglePlayMockManager: React.FC = () => {
                   <th className="p-4 text-right">Raw File</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                 {imports.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                    <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                       Chưa có đợt import CSV nào được ghi nhận.
                     </td>
                   </tr>
                 ) : (
                   imports.map((imp) => (
-                    <tr key={imp.id} className="hover:bg-slate-800/40 transition">
-                      <td className="p-4 text-slate-300 text-xs">{new Date(imp.syncedAt).toLocaleString('vi-VN')}</td>
-                      <td className="p-4">
-                        <div className="font-medium text-white">{imp.gameTitle}</div>
-                        <div className="text-xs font-mono text-emerald-400">{imp.packageName}</div>
+                    <tr key={imp.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="p-4 text-slate-600 dark:text-slate-400 text-xs">
+                        {new Date(imp.syncedAt).toLocaleString('vi-VN')}
                       </td>
-                      <td className="p-4 font-mono text-xs text-slate-400 truncate max-w-xs">{imp.sourceObjectPath}</td>
-                      <td className="p-4 text-xs font-semibold text-slate-200">{imp.reportMonth}</td>
-                      <td className="p-4 text-xs font-bold text-white">{imp.rowCount} dòng</td>
-                      <td className="p-4 font-mono text-[10px] text-slate-500 truncate max-w-[120px]">{imp.fileChecksum}</td>
+                      <td className="p-4">
+                        <div className="font-semibold text-slate-900 dark:text-white">{imp.gameTitle}</div>
+                        <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400">{imp.packageName}</div>
+                      </td>
+                      <td className="p-4 font-mono text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">
+                        {imp.sourceObjectPath}
+                      </td>
+                      <td className="p-4 text-xs font-semibold text-slate-800 dark:text-slate-200">{imp.reportMonth}</td>
+                      <td className="p-4 text-xs font-bold text-slate-900 dark:text-white">{imp.rowCount} dòng</td>
+                      <td className="p-4 font-mono text-[10px] text-slate-400 dark:text-slate-500 truncate max-w-[120px]">
+                        {imp.fileChecksum}
+                      </td>
                       <td className="p-4 text-right">
                         <button
                           onClick={() => handleDownloadCsv(imp.id, `installs_${imp.packageName}_${imp.reportMonth}.csv`)}
-                          className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition inline-flex items-center gap-1"
+                          className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <Download className="w-3.5 h-3.5 text-emerald-400" />
-                          Tải Raw CSV
+                          <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Tải Raw CSV</span>
                         </button>
                       </td>
                     </tr>
@@ -629,45 +687,68 @@ export const GooglePlayMockManager: React.FC = () => {
 
       {/* TAB 4: REVENUE STATEMENTS */}
       {activeTab === 'statements' && (
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-slate-800 bg-slate-950/40">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Lịch sử Payout Statements & Chia doanh thu</h3>
+        <div className="bg-white dark:bg-slate-900/80 border border-slate-200/90 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/40 flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+              Lịch sử Payout Statements & Chia doanh thu
+            </h3>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Tổng số: <strong className="text-slate-900 dark:text-white">{statements.length}</strong> bản ghi
+            </span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
+            <table className="w-full text-center border-collapse text-sm">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 text-xs font-semibold uppercase">
-                  <th className="p-4">External Payout ID</th>
-                  <th className="p-4">Game</th>
-                  <th className="p-4">Gross Revenue</th>
-                  <th className="p-4">Google Fee (15%)</th>
-                  <th className="p-4">Net Proceeds (85%)</th>
-                  <th className="p-4">Developer Earnings</th>
-                  <th className="p-4">Platform Retained</th>
-                  <th className="p-4 text-right">Ngày Settle</th>
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider">
+                  <th className="py-3.5 px-4 text-center">External Payout ID</th>
+                  <th className="py-3.5 px-4 text-center">Game</th>
+                  <th className="py-3.5 px-4 text-center">Gross Revenue</th>
+                  <th className="py-3.5 px-4 text-center">Google Fee (15%)</th>
+                  <th className="py-3.5 px-4 text-center">Net Proceeds (85%)</th>
+                  <th className="py-3.5 px-4 text-center">Developer Earnings</th>
+                  <th className="py-3.5 px-4 text-center">Platform Retained</th>
+                  <th className="py-3.5 px-4 text-center">Ngày Settle</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                 {statements.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-500">
+                    <td colSpan={8} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                       Chưa có Payout Statement nào được tạo.
                     </td>
                   </tr>
                 ) : (
                   statements.map((stm) => (
-                    <tr key={stm.id} className="hover:bg-slate-800/40 transition">
-                      <td className="p-4 font-mono text-xs text-amber-300 font-medium">{stm.externalPayoutId}</td>
-                      <td className="p-4 font-medium text-white">{stm.gameTitle}</td>
-                      <td className="p-4 text-xs font-bold text-white">{formatVnd(stm.grossRevenue)}</td>
-                      <td className="p-4 text-xs text-rose-300 font-medium">-{formatVnd(stm.googleFeeAmount)}</td>
-                      <td className="p-4 text-xs font-semibold text-cyan-300">{formatVnd(stm.netStoreProceeds)}</td>
-                      <td className="p-4 text-xs font-bold text-emerald-400">
-                        {formatVnd(stm.developerEarnings)}
-                        <span className="text-[10px] block text-slate-400">({stm.developerShareRate}% contract)</span>
+                    <tr key={stm.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-4 text-center align-middle">
+                        <span className="inline-block px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 font-mono text-xs font-semibold border border-amber-500/20">
+                          {stm.externalPayoutId}
+                        </span>
                       </td>
-                      <td className="p-4 text-xs font-bold text-purple-300">{formatVnd(stm.platformRetainedRevenue)}</td>
-                      <td className="p-4 text-right text-xs text-slate-400">{new Date(stm.settledAt).toLocaleDateString('vi-VN')}</td>
+                      <td className="py-3.5 px-4 text-center align-middle font-semibold text-slate-900 dark:text-white">
+                        {stm.gameTitle}
+                      </td>
+                      <td className="py-3.5 px-4 text-center align-middle text-xs font-bold text-slate-900 dark:text-white">
+                        {formatVnd(stm.grossRevenue)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center align-middle text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        -{formatVnd(stm.googleFeeAmount)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center align-middle text-xs font-bold text-cyan-700 dark:text-cyan-300">
+                        {formatVnd(stm.netStoreProceeds)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center align-middle text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        <div>{formatVnd(stm.developerEarnings)}</div>
+                        <span className="text-[10px] inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-normal">
+                          {stm.developerShareRate}% Hợp đồng
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center align-middle text-xs font-bold text-purple-700 dark:text-purple-300">
+                        {formatVnd(stm.platformRetainedRevenue)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center align-middle text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {new Date(stm.settledAt).toLocaleDateString('vi-VN')}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -680,59 +761,87 @@ export const GooglePlayMockManager: React.FC = () => {
       {/* MODAL: ACTIVATE MOCK */}
       {activateModal.open &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fade-in">
-            <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Globe className="w-5 h-5 text-emerald-400" />
-                Kích hoạt Google Play Mock
-              </h3>
-              <p className="text-sm text-slate-300">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+                  <Globe className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  Kích hoạt Google Play Mock
+                </h3>
+                <button
+                  onClick={() => setActivateModal({ open: false, publishId: '', isGameId: false, title: '', packageName: '', priceProposed: '199000', contractType: '' })}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                 Thiết lập Package Name và Giá niêm yết bán trên Store để xuất bản game <strong>{activateModal.title}</strong> lên Google Play Mock.
               </p>
 
               {activateModal.contractType === 'full_acquisition' ? (
-                <div className="p-3 bg-purple-950/60 border border-purple-500/40 rounded-xl text-xs text-purple-200">
+                <div className="p-3.5 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-500/40 rounded-xl text-xs text-purple-800 dark:text-purple-200 leading-relaxed">
                   ⚡ <strong>Hợp đồng Mua Đứt (Full Acquisition):</strong> Sàn GodotLaunch toàn quyền thiết lập giá bán trên CH Play. Khi phát sinh lượt tải, <strong>100% doanh thu thuần</strong> (sau trừ 15% phí CH Play) sẽ tự động chảy về <strong>Ví Hệ Thống GodotLaunch</strong>.
                 </div>
               ) : (
-                <div className="p-3 bg-cyan-950/60 border border-cyan-500/40 rounded-xl text-xs text-cyan-200">
+                <div className="p-3.5 bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-500/40 rounded-xl text-xs text-cyan-800 dark:text-cyan-200 leading-relaxed">
                   🤝 <strong>Hợp đồng Đồng Phát Hành (Co-Publishing):</strong> Doanh thu thuần = Số lượt tải × Giá niêm yết (sau trừ 15% phí CH Play). Hệ thống sẽ trích % chia cho Developer theo hợp đồng.
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Package Name</label>
-                <input
-                  type="text"
-                  value={activateModal.packageName}
-                  onChange={(e) => setActivateModal({ ...activateModal, packageName: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-emerald-300 font-mono text-sm focus:border-emerald-500 focus:outline-none"
-                />
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    Package Name
+                  </label>
+                  <input
+                    type="text"
+                    value={activateModal.packageName}
+                    onChange={(e) => setActivateModal({ ...activateModal, packageName: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-emerald-700 dark:text-emerald-300 font-mono text-sm focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    Giá bán niêm yết trên Store (VNĐ / lượt tải)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formatPriceInput(activateModal.priceProposed)}
+                      onChange={(e) => {
+                        const rawDigits = e.target.value.replace(/[^0-9]/g, '');
+                        setActivateModal({ ...activateModal, priceProposed: rawDigits });
+                      }}
+                      placeholder="990.000"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-16 py-2.5 text-amber-700 dark:text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500 font-mono">
+                      đ
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                    <span>
+                      Hiển thị: <strong className="text-amber-600 dark:text-amber-400 font-mono">{formatVnd(Number(activateModal.priceProposed) || 0)}</strong>
+                    </span>
+                    <span>Doanh thu gộp = Lượt tải × Giá niêm yết</span>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Giá bán niêm yết trên Store (VND / lượt tải)</label>
-                <input
-                  type="number"
-                  step={1000}
-                  value={activateModal.priceProposed}
-                  onChange={(e) => setActivateModal({ ...activateModal, priceProposed: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">Ví dụ: 99000, 199000. Doanh thu gộp = Số lượt tải × Giá niêm yết.</p>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => setActivateModal({ open: false, publishId: '', isGameId: false, title: '', packageName: '', priceProposed: '199000', contractType: '' })}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-700"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium transition cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleActivateMock}
                   disabled={loading}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold shadow"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold shadow-sm transition cursor-pointer"
                 >
                   Xác nhận Kích hoạt
                 </button>
@@ -745,35 +854,46 @@ export const GooglePlayMockManager: React.FC = () => {
       {/* MODAL: DEMO PAYOUT */}
       {payoutModal.open &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fade-in">
-            <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Play className="w-5 h-5 text-amber-400 fill-current" />
-                Demo Nhận Doanh Thu Google Play
-              </h3>
-              <p className="text-sm text-slate-300">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+                  <Play className="w-5 h-5 text-amber-500 fill-current" />
+                  Demo Nhận Doanh Thu Google Play
+                </h3>
+                <button
+                  onClick={() => setPayoutModal({ open: false, publishId: '', title: '', periodKey: '' })}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                 Mô phỏng đợt Google Play thanh toán tiền cho game <strong>{payoutModal.title}</strong>. Hệ thống sẽ tự động trừ 15% Google Fee, hạch toán 85% Net Proceeds và chia % cho Developer theo hợp đồng.
               </p>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Period Key (Kỳ thanh toán)</label>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  Period Key (Kỳ thanh toán)
+                </label>
                 <input
                   type="text"
                   value={payoutModal.periodKey}
                   onChange={(e) => setPayoutModal({ ...payoutModal, periodKey: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-amber-700 dark:text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
                 />
               </div>
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => setPayoutModal({ open: false, publishId: '', title: '', periodKey: '' })}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-700"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium transition cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleDemoPayout}
                   disabled={loading}
-                  className="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-sm font-semibold shadow"
+                  className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-sm font-semibold shadow-sm transition cursor-pointer"
                 >
                   Thực hiện Payout
                 </button>

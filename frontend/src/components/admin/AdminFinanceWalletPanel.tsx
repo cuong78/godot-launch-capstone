@@ -36,11 +36,7 @@ const formatMoney = (
     return fallback;
   }
 
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currency || "VND",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return `${new Intl.NumberFormat(locale).format(value)}đ`;
 };
 
 const formatTimestamp = (

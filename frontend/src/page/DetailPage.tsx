@@ -385,7 +385,7 @@ export const DetailPage: React.FC<DetailPageProps> = ({
   }, [focusedAsset.author, focusedAsset.id, assets]);
 
   const formatPrice = React.useCallback(
-    (price: number) => `${new Intl.NumberFormat(numberLocale).format(price)} đ`,
+    (price: number) => `${new Intl.NumberFormat(numberLocale).format(price)}đ`,
     [numberLocale],
   );
 

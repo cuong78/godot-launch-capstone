@@ -6,6 +6,7 @@ import { SteamProductCard } from '../components/SteamProductCard';
 import { Asset } from '../types';
 import { BannerResponse } from '../api/bannerApi';
 import { contentApi, HomepageProduct, HomepageSection } from '../api/contentApi';
+import { useAuth } from '../hooks/useAuth';
 
 interface HomePageProps {
   assets: Asset[];
@@ -88,6 +89,7 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
   assets,
   handleAddToCart,
 }) => {
+  const { user: currentUser } = useAuth();
   const [startIndex, setStartIndex] = React.useState(0);
   const itemsPerPage = 3;
   const products = section.products || [];
@@ -196,8 +198,18 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
                         });
                       }
                     }}
-                    isOwner={creatorOwnedProductIds.has(product.id)}
-                    isOwned={ownedProductIds.has(product.id)}
+                    isOwner={Boolean(
+                      creatorOwnedProductIds.has(product.id) ||
+                      (fullAsset && creatorOwnedProductIds.has(fullAsset.id)) ||
+                      (currentUser?.id && (product.creatorId === currentUser.id || fullAsset?.sellerId === currentUser.id)) ||
+                      (currentUser?.email && (
+                        (product.creatorEmail && product.creatorEmail.trim().toLowerCase() === currentUser.email.trim().toLowerCase()) ||
+                        (fullAsset?.sellerEmail && fullAsset.sellerEmail.trim().toLowerCase() === currentUser.email.trim().toLowerCase())
+                      ))
+                    )}
+                    isOwned={Boolean(
+                      ownedProductIds.has(product.id) || (fullAsset && ownedProductIds.has(fullAsset.id))
+                    )}
                     numberLocale={numberLocale}
                   />
                 );

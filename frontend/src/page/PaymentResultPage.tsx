@@ -37,7 +37,7 @@ const resolveLocale = (language: string) => {
 const formatMoney = (amount: number, locale = 'vi-VN', freeLabel = 'FREE') =>
   amount === 0
     ? freeLabel
-    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'VND' }).format(amount);
+    : `${new Intl.NumberFormat(locale).format(amount)}đ`;
 
 const formatTimestamp = (value?: string | null, locale = 'vi-VN', fallback = 'Not available') => {
   if (!value) {

@@ -9,9 +9,11 @@ import com.godotlaunch.backend.utils.TranslationUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -21,10 +23,13 @@ public class HomepageServiceImpl implements HomepageService {
     private final HomepageSectionRepository sectionRepository;
     private final GameRepository gameRepository;
     private final AssetRepository assetRepository;
+    private final MediaRepository mediaRepository;
+    private final SeaweedFsService seaweedFsService;
     private final BannerService bannerService;
     private final HomepageCacheService cacheService;
 
-    @Override @Transactional(readOnly = true)
+    @Override
+    @Transactional(readOnly = true)
     public HomepageResponse getHomepage() {
         Optional<HomepageResponse> cached = cacheService.get();
         if (cached.isPresent()) return cached.get();
@@ -38,7 +43,10 @@ public class HomepageServiceImpl implements HomepageService {
         return response;
     }
 
-    @Override public void invalidateCache() { cacheService.evict(); }
+    @Override
+    public void invalidateCache() {
+        cacheService.evict();
+    }
 
     private HomepageSectionResponse buildSection(HomepageSection section, List<Game> games, List<Asset> assets) {
         List<HomepageProductResponse> products;
@@ -74,27 +82,77 @@ public class HomepageServiceImpl implements HomepageService {
     }
 
     private boolean matches(Category category, Set<Tag> itemTags, ContentCollection collection) {
-        Set<UUID> categoryIds = collection.getCategories().stream().map(Category::getId).collect(java.util.stream.Collectors.toSet());
-        Set<UUID> selectedTagIds = collection.getTags().stream().map(Tag::getId).collect(java.util.stream.Collectors.toSet());
-        Set<UUID> itemTagIds = itemTags.stream().map(Tag::getId).collect(java.util.stream.Collectors.toSet());
+        Set<UUID> categoryIds = collection.getCategories().stream().map(Category::getId).collect(Collectors.toSet());
+        Set<UUID> selectedTagIds = collection.getTags().stream().map(Tag::getId).collect(Collectors.toSet());
+        Set<UUID> itemTagIds = itemTags.stream().map(Tag::getId).collect(Collectors.toSet());
         boolean categoryMatch = categoryIds.isEmpty() || (category != null && categoryIds.contains(category.getId()));
         boolean tagMatch = selectedTagIds.isEmpty() || itemTagIds.containsAll(selectedTagIds);
         return categoryMatch && tagMatch;
     }
 
-    private boolean isFree(BigDecimal price) { return price == null || price.compareTo(BigDecimal.ZERO) == 0; }
-    private HomepageProductResponse mapGame(Game game) {
-        return HomepageProductResponse.builder().id(game.getId()).itemType("GAME").title(game.getTitle()).description(game.getDescription())
-                .thumbnailUrl(game.getThumbnailUrl()).price(game.getPriceProposed()).creatorName(game.getCreator() != null ? game.getCreator().getFullName() : null)
-                .categoryName(game.getCategory() == null ? null : game.getCategory().getName())
-                .tags(game.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(game.getDownloadCount()).createdAt(game.getCreatedAt())
-                .videoUrl(game.getVideoUrl()).screenshots(game.getScreenshots()).build();
+    private boolean isFree(BigDecimal price) {
+        return price == null || price.compareTo(BigDecimal.ZERO) == 0;
     }
+
+    private HomepageProductResponse mapGame(Game game) {
+        List<Media> mediaList = mediaRepository.findByGame_IdOrderByCreatedAtDesc(game.getId());
+        List<String> screenshots = mediaList.stream()
+                .filter(m -> "image".equalsIgnoreCase(m.getMediaType()) || "screenshot".equalsIgnoreCase(m.getMediaType()))
+                .map(m -> seaweedFsService.resolvePublicUrl(m.getMediaUrl()))
+                .collect(Collectors.toList());
+        String videoUrl = mediaList.stream()
+                .filter(m -> "video".equalsIgnoreCase(m.getMediaType()))
+                .map(m -> seaweedFsService.resolvePublicUrl(m.getMediaUrl()))
+                .findFirst()
+                .orElse(null);
+
+        return HomepageProductResponse.builder()
+                .id(game.getId())
+                .itemType("GAME")
+                .title(game.getTitle())
+                .description(game.getDescription())
+                .thumbnailUrl(seaweedFsService.resolvePublicUrl(game.getThumbnailUrl()))
+                .price(game.getPriceProposed())
+                .creatorName(game.getCreator() != null ? game.getCreator().getFullName() : null)
+                .creatorId(game.getCreator() != null ? game.getCreator().getId() : null)
+                .creatorEmail(game.getCreator() != null ? game.getCreator().getEmail() : null)
+                .categoryName(game.getCategory() == null ? null : game.getCategory().getName())
+                .tags(game.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList())
+                .popularity(game.getDownloadCount())
+                .createdAt(game.getCreatedAt())
+                .videoUrl(videoUrl)
+                .screenshots(screenshots)
+                .build();
+    }
+
     private HomepageProductResponse mapAsset(Asset asset) {
-        return HomepageProductResponse.builder().id(asset.getId()).itemType("ASSET").title(asset.getTitle()).description(asset.getDescription())
-                .thumbnailUrl(asset.getThumbnailUrl()).price(asset.getPrice()).creatorName(asset.getSeller() != null ? asset.getSeller().getFullName() : null)
+        List<Media> mediaList = mediaRepository.findByAsset_IdOrderByCreatedAtDesc(asset.getId());
+        List<String> screenshots = mediaList.stream()
+                .filter(m -> "image".equalsIgnoreCase(m.getMediaType()) || "screenshot".equalsIgnoreCase(m.getMediaType()))
+                .map(m -> seaweedFsService.resolvePublicUrl(m.getMediaUrl()))
+                .collect(Collectors.toList());
+        String videoUrl = mediaList.stream()
+                .filter(m -> "video".equalsIgnoreCase(m.getMediaType()))
+                .map(m -> seaweedFsService.resolvePublicUrl(m.getMediaUrl()))
+                .findFirst()
+                .orElse(null);
+
+        return HomepageProductResponse.builder()
+                .id(asset.getId())
+                .itemType("ASSET")
+                .title(asset.getTitle())
+                .description(asset.getDescription())
+                .thumbnailUrl(seaweedFsService.resolvePublicUrl(asset.getThumbnailUrl()))
+                .price(asset.getPrice())
+                .creatorName(asset.getSeller() != null ? asset.getSeller().getFullName() : null)
+                .creatorId(asset.getSeller() != null ? asset.getSeller().getId() : null)
+                .creatorEmail(asset.getSeller() != null ? asset.getSeller().getEmail() : null)
                 .categoryName(asset.getCategory() == null ? null : asset.getCategory().getName())
-                .tags(asset.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(0).createdAt(asset.getCreatedAt())
-                .videoUrl(asset.getVideoUrl()).screenshots(asset.getMediaUrls()).build();
+                .tags(asset.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList())
+                .popularity(0)
+                .createdAt(asset.getCreatedAt())
+                .videoUrl(videoUrl)
+                .screenshots(screenshots)
+                .build();
     }
 }

@@ -56,11 +56,7 @@ const formatMoney = (
   fallback = "N/A",
 ) => {
   if (value == null) return fallback;
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currency || resolveCurrency(),
-    maximumFractionDigits: 0,
-  }).format(value);
+  return `${new Intl.NumberFormat(locale).format(value)}đ`;
 };
 
 const formatTimestamp = (

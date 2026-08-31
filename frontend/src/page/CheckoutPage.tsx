@@ -92,7 +92,7 @@ const formatMoney = (
 ) =>
   amount === 0
     ? freeLabel
-    : new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
+    : `${new Intl.NumberFormat(locale).format(amount)}đ`;
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   cart,

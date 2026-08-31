@@ -321,7 +321,7 @@ export const SteamProductCard: React.FC<SteamProductCardProps> = ({
               </span>
             ) : (
               <span className="text-xs font-extrabold tracking-tight text-slate-900 dark:text-zinc-100 font-display">
-                ₫{Number(item.price).toLocaleString(numberLocale)}
+                {Number(item.price).toLocaleString(numberLocale)}đ
               </span>
             )}
           </div>

@@ -44,7 +44,7 @@ type PaymentSortOption =
   | 'EXPIRED';
 
 const formatMoney = (amount: number, locale: string) =>
-  new Intl.NumberFormat(locale, { style: 'currency', currency: 'VND' }).format(amount);
+  `${new Intl.NumberFormat(locale).format(amount)}đ`;
 
 const formatTimestamp = (value: string | null | undefined, locale: string, emptyLabel: string) => {
   if (!value) {
