@@ -20,4 +20,7 @@ public class HomepageProductResponse {
     private List<String> tags;
     private Integer popularity;
     private Instant createdAt;
+    private String videoUrl;
+    private List<String> screenshots;
 }
+

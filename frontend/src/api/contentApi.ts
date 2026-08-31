@@ -42,6 +42,7 @@ export interface HomepageProduct {
   thumbnailUrl?: string; price?: number; creatorId?: string; creatorEmail?: string;
   creatorName?: string; categoryName?: string;
   tags: string[]; popularity?: number; createdAt?: string;
+  videoUrl?: string; screenshots?: string[];
 }
 export interface HomepageSection {
   id: string; title: string; sectionType: HomepageSectionType; collectionId?: string;

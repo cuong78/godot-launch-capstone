@@ -85,14 +85,16 @@ public class HomepageServiceImpl implements HomepageService {
     private boolean isFree(BigDecimal price) { return price == null || price.compareTo(BigDecimal.ZERO) == 0; }
     private HomepageProductResponse mapGame(Game game) {
         return HomepageProductResponse.builder().id(game.getId()).itemType("GAME").title(game.getTitle()).description(game.getDescription())
-                .thumbnailUrl(game.getThumbnailUrl()).price(game.getPriceProposed()).creatorName(game.getCreator().getFullName())
+                .thumbnailUrl(game.getThumbnailUrl()).price(game.getPriceProposed()).creatorName(game.getCreator() != null ? game.getCreator().getFullName() : null)
                 .categoryName(game.getCategory() == null ? null : game.getCategory().getName())
-                .tags(game.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(game.getDownloadCount()).createdAt(game.getCreatedAt()).build();
+                .tags(game.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(game.getDownloadCount()).createdAt(game.getCreatedAt())
+                .videoUrl(game.getVideoUrl()).screenshots(game.getScreenshots()).build();
     }
     private HomepageProductResponse mapAsset(Asset asset) {
         return HomepageProductResponse.builder().id(asset.getId()).itemType("ASSET").title(asset.getTitle()).description(asset.getDescription())
-                .thumbnailUrl(asset.getThumbnailUrl()).price(asset.getPrice()).creatorName(asset.getSeller().getFullName())
+                .thumbnailUrl(asset.getThumbnailUrl()).price(asset.getPrice()).creatorName(asset.getSeller() != null ? asset.getSeller().getFullName() : null)
                 .categoryName(asset.getCategory() == null ? null : asset.getCategory().getName())
-                .tags(asset.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(0).createdAt(asset.getCreatedAt()).build();
+                .tags(asset.getTags().stream().map(TranslationUtils::resolveTagName).sorted().toList()).popularity(0).createdAt(asset.getCreatedAt())
+                .videoUrl(asset.getVideoUrl()).screenshots(asset.getMediaUrls()).build();
     }
 }

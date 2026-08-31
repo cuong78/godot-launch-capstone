@@ -696,7 +696,16 @@ export default function App() {
           mappedGames = eligible.map(mapGameToAsset);
         }
 
-        setAssets([...mappedAssets, ...mappedGames]);
+        setAssets((prev) => {
+          const newItems = [...mappedAssets, ...mappedGames];
+          const itemMap = new Map(newItems.map((item) => [item.id, item]));
+          prev.forEach((prevItem) => {
+            if (!itemMap.has(prevItem.id)) {
+              itemMap.set(prevItem.id, prevItem);
+            }
+          });
+          return Array.from(itemMap.values());
+        });
       } catch (err) {
         console.error('Failed to load catalog items from backend:', err);
       }
@@ -710,6 +719,58 @@ export default function App() {
       isCancelled = true;
     };
   }, [currentScreen, i18n.language, searchText]);
+
+  useEffect(() => {
+    if (currentScreen !== 'detail' || !selectedAssetId) return;
+
+    let cancelled = false;
+
+    const fetchSingleItemDetail = async () => {
+      const existing = assets.find((a) => a.id === selectedAssetId);
+      if (existing && existing.description && (existing.screenshots?.length || existing.videoUrl)) {
+        return;
+      }
+
+      try {
+        const gameRes = await gameApi.getGameById(selectedAssetId).catch(() => null);
+        if (!cancelled && gameRes?.success && gameRes.data) {
+          const mapped = mapGameToAsset(gameRes.data);
+          setAssets((prev) => {
+            const idx = prev.findIndex((a) => a.id === mapped.id);
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...mapped };
+              return next;
+            }
+            return [mapped, ...prev];
+          });
+          return;
+        }
+
+        const assetRes = await marketplaceApi.getMarketplaceItemById(selectedAssetId).catch(() => null);
+        if (!cancelled && assetRes?.success && assetRes.data) {
+          const mapped = mapMarketplaceItemToAsset(assetRes.data, t);
+          setAssets((prev) => {
+            const idx = prev.findIndex((a) => a.id === mapped.id);
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...mapped };
+              return next;
+            }
+            return [mapped, ...prev];
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load item detail for ID:', selectedAssetId, err);
+      }
+    };
+
+    fetchSingleItemDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentScreen, selectedAssetId, t]);
 
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tech' | 'documentation'>('overview');
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0);
@@ -776,12 +837,21 @@ export default function App() {
   }, [showToast, t]);
 
   // Switch to Detail Screen helper
-  const handleViewAssetDetails = (asset: Asset) => {
+  const handleViewAssetDetails = useCallback((asset: Asset) => {
+    setAssets((prev) => {
+      const idx = prev.findIndex((a) => a.id === asset.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...asset };
+        return next;
+      }
+      return [asset, ...prev];
+    });
     setSelectedAssetId(asset.id);
     setSelectedThumbIndex(0);
     setCurrentScreen('detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
   // Switch to Marketplace with Category pre-selected helper
   const handleCategoryClick = (categoryName: string) => {

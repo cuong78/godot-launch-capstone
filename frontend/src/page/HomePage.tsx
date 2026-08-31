@@ -166,9 +166,9 @@ const HomepageSectionRow: React.FC<HomepageSectionRowProps> = ({
                   author: fullAsset?.author || product.creatorName || product.categoryName,
                   category: fullAsset?.category || product.categoryName || (product.itemType === 'GAME' ? t('home:sectionRow.badges.game') : t('home:sectionRow.badges.asset')),
                   thumbnailUrl: fullAsset?.image || product.thumbnailUrl,
-                  videoUrl: fullAsset?.videoUrl || (product as any).videoUrl,
-                  screenshots: (fullAsset?.screenshots && fullAsset.screenshots.length > 0) ? fullAsset.screenshots : (product as any).screenshots,
-                  itemType: product.itemType,
+                  videoUrl: product.videoUrl || fullAsset?.videoUrl,
+                  screenshots: (product.screenshots && product.screenshots.length > 0) ? product.screenshots : (fullAsset?.screenshots || []),
+                  itemType: product.itemType === 'GAME' ? 'source_code' : 'asset',
                 };
 
                 return (
@@ -369,16 +369,18 @@ export const HomePage: React.FC<HomePageProps> = ({
       sellerEmail: product.creatorEmail,
       title: product.title,
       price: product.price ?? 0,
-      rating: 0,
+      rating: 5.0,
       reviewedCount: 0,
       author: product.creatorName ?? 'GodotLaunch Creator',
       authorAvatar: '',
       category: product.categoryName ?? (product.itemType === 'GAME' ? 'Game' : 'Asset'),
       description: product.description ?? '',
       image: product.thumbnailUrl ?? '',
-      tag: product.tags[0] ?? product.itemType,
-      tagList: product.tags,
+      tag: product.tags?.[0] ?? product.itemType,
+      tagList: product.tags || [],
       itemType: product.itemType === 'GAME' ? 'source_code' : 'asset',
+      videoUrl: product.videoUrl,
+      screenshots: product.screenshots,
     });
   }, [assets, handleViewAssetDetails]);
 
