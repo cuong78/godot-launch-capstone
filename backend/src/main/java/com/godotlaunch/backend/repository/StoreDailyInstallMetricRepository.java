@@ -21,6 +21,12 @@ public interface StoreDailyInstallMetricRepository extends JpaRepository<StoreDa
     @Query("SELECT SUM(m.dailyUserInstalls) FROM StoreDailyInstallMetric m WHERE m.game.id = :gameId")
     Long sumDailyUserInstallsByGameId(@Param("gameId") UUID gameId);
 
+    @Query("SELECT SUM(m.dailyUserInstalls) FROM StoreDailyInstallMetric m WHERE m.game.id = :gameId AND m.metricDate >= :startDate AND m.metricDate <= :endDate")
+    Long sumDailyUserInstallsByGameIdAndDateRange(
+            @Param("gameId") UUID gameId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
     @Query("SELECT SUM(m.dailyUserInstalls) FROM StoreDailyInstallMetric m WHERE m.externalPublish.id = :externalPublishId")
     Long sumDailyUserInstallsByExternalPublishId(@Param("externalPublishId") UUID externalPublishId);
 

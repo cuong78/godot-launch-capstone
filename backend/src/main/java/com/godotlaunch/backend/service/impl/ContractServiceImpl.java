@@ -1,4 +1,4 @@
-package com.godotlaunch.backend.service.impl;
+    package com.godotlaunch.backend.service.impl;
 
 import com.godotlaunch.backend.dto.request.ContractRequest;
 import com.godotlaunch.backend.dto.response.ContractAiSuggestionResponse;
@@ -161,7 +161,15 @@ public class ContractServiceImpl implements ContractService {
             contract.setRevenueSplit(null);
         }
         contract.setSellerRepresentative(request.getSellerRepresentative());
-        contract.setSellerAddress(request.getSellerAddress());
+        String reqAddr = request.getSellerAddress();
+        if (reqAddr == null || reqAddr.isBlank() || reqAddr.equalsIgnoreCase("(Chưa cập nhật)") || reqAddr.equalsIgnoreCase("Chưa cập nhật")) {
+            if (game.getCreator() != null && game.getCreator().getKycAddress() != null && !game.getCreator().getKycAddress().isBlank()) {
+                reqAddr = game.getCreator().getKycAddress();
+            } else {
+                reqAddr = "TP. Hồ Chí Minh, Việt Nam";
+            }
+        }
+        contract.setSellerAddress(reqAddr);
         contract.setSellerTaxCode(request.getSellerTaxCode());
 
         // Vòng chào giá mới — xoá phản hồi/chữ ký của vòng trước
@@ -606,6 +614,15 @@ public class ContractServiceImpl implements ContractService {
                 // Fallback to original URL
             }
         }
+        String sellerAddress = contract.getSellerAddress();
+        if (sellerAddress == null || sellerAddress.isBlank() || sellerAddress.equalsIgnoreCase("(Chưa cập nhật)") || sellerAddress.equalsIgnoreCase("Chưa cập nhật")) {
+            if (contract.getSeller() != null && contract.getSeller().getKycAddress() != null && !contract.getSeller().getKycAddress().isBlank()) {
+                sellerAddress = contract.getSeller().getKycAddress();
+            } else {
+                sellerAddress = "TP. Hồ Chí Minh, Việt Nam";
+            }
+        }
+
         return ContractResponse.builder()
                 .id(contract.getId())
                 .gameId(contract.getGame().getId())
@@ -624,7 +641,7 @@ public class ContractServiceImpl implements ContractService {
                 .buyerRepresentative(null)
                 .buyerPosition(null)
                 .sellerRepresentative(contract.getSellerRepresentative())
-                .sellerAddress(contract.getSellerAddress())
+                .sellerAddress(sellerAddress)
                 .sellerTaxCode(contract.getSellerTaxCode())
                 .signedAtSeller(contract.getSignedAtSeller())
                 .signedAtBuyer(contract.getSignedAtBuyer())

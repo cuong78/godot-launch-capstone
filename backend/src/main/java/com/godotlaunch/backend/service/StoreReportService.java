@@ -15,6 +15,7 @@ public interface StoreReportService {
     ExternalPublishResponse activateMockPublish(UUID externalPublishId, ActivateMockPublishRequest request, UUID adminId);
     ExternalPublishResponse activateMockPublishForGame(UUID gameId, ActivateMockPublishRequest request, UUID adminId);
     StoreReportImportResponse syncDownloadsForGame(UUID externalPublishId, UUID adminId);
+    StoreReportImportResponse syncDownloadsForGame(UUID externalPublishId, String yyyyMM, UUID adminId);
     void syncAllActiveGamesDownloads();
 
     StoreRevenueStatementResponse executeDemoPayout(UUID externalPublishId, String periodKey, UUID adminId);

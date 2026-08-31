@@ -150,6 +150,7 @@ class StoreReportServiceImplTest {
         when(externalPublishRepository.findById(publishId)).thenReturn(Optional.of(publish));
         when(contractRepository.findFirstByGameId(gameId)).thenReturn(Optional.of(contract));
         when(storeRevenueStatementRepository.findByExternalPayoutId(anyString())).thenReturn(Optional.empty());
+        when(storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(any(), any(), any())).thenReturn(100L);
 
         Map<String, Object> payoutMap = new HashMap<>();
         payoutMap.put("externalPayoutId", "MOCK-GP-202608-com.godotlaunch.skyadventure");

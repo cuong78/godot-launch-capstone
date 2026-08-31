@@ -140,8 +140,14 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
     contract.buyerRepresentative || t('contract.platform.defaultRepresentative');
   const buyerPosition =
     contract.buyerPosition || t('contract.platform.defaultPosition');
+  const isValidAddress = (addr?: string | null) =>
+    Boolean(addr && addr.trim() && addr !== 'Chưa cập nhật' && addr !== '(Chưa cập nhật)');
+
   const sellerAddressDisplay =
-    sellerAddress || contract.sellerAddress || t('contract.document.notUpdated');
+    (isValidAddress(sellerAddress) && sellerAddress) ||
+    (isValidAddress(contract.sellerAddress) && contract.sellerAddress) ||
+    currentUser?.kycAddress ||
+    'TP. Hồ Chí Minh, Việt Nam';
 
   useEffect(() => {
     if (mode !== 'sign-developer' || contract.signedAtSeller) return;
@@ -464,16 +470,22 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                   {t('contract.document.section3Title')}
                 </div>
                 {contract.contractType === 'co_publishing' ? (
-                  <div className="text-slate-805 dark:text-slate-200 text-justify text-xs space-y-2 leading-relaxed">
+                  <div className="text-slate-800 dark:text-slate-200 text-justify text-xs space-y-2 leading-relaxed">
                     <p>
-                      {t('contract.document.section3CoPublishingIntro')}
+                      <strong>{t('contract.document.section3CoPublishing31')}</strong> {t('contract.document.section3CoPublishing31Body')}
                     </p>
-                    <ul className="list-disc pl-5 font-bold space-y-0.5">
+                    <ul className="list-disc pl-6 font-semibold space-y-0.5 my-1">
                       <li>{t('contract.document.section3CoPublishingSellerShare', { percent: contract.revenueSplit ?? 0 })}</li>
                       <li>{t('contract.document.section3CoPublishingBuyerShare', { percent: 100 - (contract.revenueSplit || 0) })}</li>
                     </ul>
                     <p>
-                      {t('contract.document.section3CoPublishingPayout')}
+                      <strong>{t('contract.document.section3CoPublishing32')}</strong> {t('contract.document.section3CoPublishing32Body')}
+                    </p>
+                    <p className="pl-3 py-1.5 my-1.5 border-l-2 border-slate-400 dark:border-slate-500 font-mono text-[11px] text-slate-900 dark:text-slate-100 bg-slate-100/60 dark:bg-slate-800/40 rounded-r">
+                      <strong>{t('contract.document.section3CoPublishingFormulaLabel')}</strong> {t('contract.document.section3CoPublishingFormulaText', { percent: contract.revenueSplit ?? 0 })}
+                    </p>
+                    <p>
+                      <strong>{t('contract.document.section3CoPublishing33')}</strong> {t('contract.document.section3CoPublishing33Body')}
                     </p>
                   </div>
                 ) : (
@@ -489,6 +501,9 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Page break for printing & PDF export */}
+              <div className="print-page-break" style={{ pageBreakBefore: 'always', breakBefore: 'page' }} />
 
               {/* Section 4: IP & Confidentiality */}
               <div className="space-y-2">

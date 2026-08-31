@@ -76,9 +76,10 @@ public class AdminStoreReportController {
     @Operation(summary = "Đồng bộ thủ công lượt cài đặt hàng ngày (Manual Sync)")
     public ResponseEntity<ApiResponse<StoreReportImportResponse>> syncDownloads(
             @PathVariable UUID externalPublishId,
+            @RequestParam(value = "yyyyMM", required = false) String yyyyMM,
             Authentication authentication) {
         UUID adminId = getUserId(authentication);
-        StoreReportImportResponse response = storeReportService.syncDownloadsForGame(externalPublishId, adminId);
+        StoreReportImportResponse response = storeReportService.syncDownloadsForGame(externalPublishId, yyyyMM, adminId);
         return ResponseEntity.ok(ApiResponse.success(response, "Đồng bộ report CSV từ Google Play Mock thành công"));
     }
 

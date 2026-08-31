@@ -528,7 +528,7 @@
       "error": "Không thể lấy gợi ý từ AI lúc này."
     },
     "revenueSplitLabel": "Tỷ lệ chia sẻ doanh thu cho Developer (%)",
-    "revenueSplitHelper": "Ví dụ: 70 có nghĩa là Developer nhận 70% và Platform nhận 30% doanh thu phát hành",
+    "revenueSplitHelper": "Số tiền ăn chia Developer nhận được = (Giá bán thỏa thuận × Số lượt tải − 15% phí CH Play) × Tỷ lệ % này.",
     "lumpSumLabel": "Số tiền mua đứt trọn gói (VNĐ)",
     "lumpSumPlaceholder": "Ví dụ: 100.000.000",
     "negotiationHelper": "Đang trong tiến trình thương lượng lại giá",

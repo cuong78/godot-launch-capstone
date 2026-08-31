@@ -129,12 +129,14 @@ export const GooglePlayMockManager: React.FC = () => {
     setLoading(true);
     setMessage(null);
     try {
-      const priceNum = Number(activateModal.priceProposed) || 99000;
+      const isFullAcquisition = activateModal.contractType === 'full_acquisition';
+      const priceNum = isFullAcquisition ? (Number(activateModal.priceProposed) || 199000) : 0;
       const res = activateModal.isGameId
         ? await storeReportApi.activateMockPublishForGame(activateModal.publishId, activateModal.packageName, priceNum)
         : await storeReportApi.activateMockPublish(activateModal.publishId, activateModal.packageName, priceNum);
       if (res.success) {
-        setMessage({ type: 'success', text: `Đã kích hoạt Google Play Mock thành công cho game ${activateModal.title} (Giá niêm yết: ${priceNum.toLocaleString('vi-VN')} ₫)!` });
+        const priceMsg = isFullAcquisition ? ` (Giá niêm yết: ${priceNum.toLocaleString('vi-VN')} ₫)` : '';
+        setMessage({ type: 'success', text: `Đã kích hoạt Google Play Mock thành công cho game ${activateModal.title}${priceMsg}!` });
         setActivateModal({ open: false, publishId: '', isGameId: false, title: '', packageName: '', priceProposed: '199000', contractType: '' });
         fetchData();
       }
@@ -151,7 +153,10 @@ export const GooglePlayMockManager: React.FC = () => {
     try {
       const res = await storeReportApi.syncDownloads(publishId);
       if (res.success) {
-        setMessage({ type: 'success', text: `Đồng bộ CSV lượt cài đặt thành công cho game ${title}! (${res.data.rowCount} chỉ số mới/cập nhật)` });
+        setMessage({
+          type: 'success',
+          text: `Đồng bộ CSV lượt cài đặt thành công cho game ${title} (Kỳ ${res.data.reportMonth})! (${res.data.rowCount} dòng chỉ số cài đặt mới/cập nhật)`,
+        });
         fetchData();
       }
     } catch (err: any) {
@@ -486,7 +491,11 @@ export const GooglePlayMockManager: React.FC = () => {
                                 }
                                 className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
                               >
-                                {isMocked ? 'Sửa Giá / Package' : 'Kích hoạt Mock'}
+                                {isMocked
+                                  ? game.contractType === 'full_acquisition'
+                                    ? 'Sửa Giá / Package'
+                                    : 'Sửa Package'
+                                  : 'Kích hoạt Mock'}
                               </button>
 
                               <button
@@ -499,14 +508,18 @@ export const GooglePlayMockManager: React.FC = () => {
                               </button>
 
                               <button
-                                onClick={() =>
+                                onClick={() => {
+                                  const gameImports = imports.filter((imp) => imp.gameTitle === title || (game.packageName && imp.packageName === game.packageName));
+                                  const latestMonthStr = gameImports.length > 0 ? gameImports[0].reportMonth.replace('-', '') : `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+                                  const existingStms = statements.filter((s) => s.gameTitle === title || (game.packageName && s.packageName === game.packageName));
+                                  const nextSeq = String(existingStms.length + 1).padStart(2, '0');
                                   setPayoutModal({
                                     open: true,
                                     publishId: extPubId || gameId,
                                     title: title,
-                                    periodKey: `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-demo-01`,
-                                  })
-                                }
+                                    periodKey: `${latestMonthStr}-demo-${nextSeq}`,
+                                  });
+                                }}
                                 disabled={loading}
                                 className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 dark:bg-gradient-to-r dark:from-amber-600 dark:to-orange-600 dark:hover:from-amber-500 dark:hover:to-orange-500 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
                               >
@@ -803,32 +816,34 @@ export const GooglePlayMockManager: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    Giá bán niêm yết trên Store (VNĐ / lượt tải)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formatPriceInput(activateModal.priceProposed)}
-                      onChange={(e) => {
-                        const rawDigits = e.target.value.replace(/[^0-9]/g, '');
-                        setActivateModal({ ...activateModal, priceProposed: rawDigits });
-                      }}
-                      placeholder="990.000"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-16 py-2.5 text-amber-700 dark:text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
-                    />
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500 font-mono">
-                      đ
-                    </span>
+                {activateModal.contractType === 'full_acquisition' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Giá bán niêm yết trên Store (VNĐ / lượt tải)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={formatPriceInput(activateModal.priceProposed)}
+                        onChange={(e) => {
+                          const rawDigits = e.target.value.replace(/[^0-9]/g, '');
+                          setActivateModal({ ...activateModal, priceProposed: rawDigits });
+                        }}
+                        placeholder="199.000"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-16 py-2.5 text-amber-700 dark:text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
+                      />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500 font-mono">
+                        đ
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                      <span>
+                        Hiển thị: <strong className="text-amber-600 dark:text-amber-400 font-mono">{formatVnd(Number(activateModal.priceProposed) || 0)}</strong>
+                      </span>
+                      <span>Doanh thu gộp = Lượt tải × Giá niêm yết</span>
+                    </div>
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>
-                      Hiển thị: <strong className="text-amber-600 dark:text-amber-400 font-mono">{formatVnd(Number(activateModal.priceProposed) || 0)}</strong>
-                    </span>
-                    <span>Doanh thu gộp = Lượt tải × Giá niêm yết</span>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -882,6 +897,9 @@ export const GooglePlayMockManager: React.FC = () => {
                   onChange={(e) => setPayoutModal({ ...payoutModal, periodKey: e.target.value })}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-amber-700 dark:text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
                 />
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                  💡 Kỳ đã hạch toán (ví dụ: {payoutModal.periodKey}) không thể thực hiện lặp lại. Đổi số đợt (-02, -03...) để hạch toán đợt Payout mới.
+                </p>
               </div>
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button

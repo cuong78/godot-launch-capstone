@@ -239,7 +239,7 @@
   "contract.document.section2Title": "2. SUBJECT MATTER OF THE CONTRACT",
   "contract.document.section2BodyPrefix": "Party B represents and warrants that it is the sole lawful owner of the interactive video game product titled \"{{title}}\". The collaboration model selected by the parties is:",
   "contract.document.section3Title": "3. FINANCIAL AND COMMERCIAL TERMS",
-  "contract.document.section3CoPublishingIntro": "The parties agree to jointly operate and share revenue earned from commercializing the Game, after deducting applicable taxes and third-party payment gateway fees, according to the following ratio:",
+  "contract.document.section3CoPublishingIntro": "The parties agree to jointly operate and share revenue earned from commercializing the Game on Google Play Store. The revenue share for Party B (Developer) is calculated based on the agreed listed selling price multiplied by total downloads, minus 15% Google Play Service Fee; the remaining 85% net store proceeds are split according to the contract ratio as follows:",
   "contract.document.section3CoPublishingSellerShare": "Party B (Developer) share: {{percent}}%",
   "contract.document.section3CoPublishingBuyerShare": "Party A (Platform) share: {{percent}}%",
   "contract.document.section3CoPublishingPayout": "Party A is responsible for automatically settling Party B's revenue share into Party B's Godot Launch electronic wallet immediately after each successful game sale transaction is completed.",

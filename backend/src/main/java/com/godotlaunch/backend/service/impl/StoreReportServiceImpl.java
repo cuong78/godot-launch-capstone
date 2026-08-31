@@ -246,6 +246,12 @@ public class StoreReportServiceImpl implements StoreReportService {
     @Override
     @Transactional
     public StoreReportImportResponse syncDownloadsForGame(UUID externalPublishId, UUID adminId) {
+        return syncDownloadsForGame(externalPublishId, null, adminId);
+    }
+
+    @Override
+    @Transactional
+    public StoreReportImportResponse syncDownloadsForGame(UUID externalPublishId, String targetYyyyMM, UUID adminId) {
         ExternalPublish publish = externalPublishRepository.findById(externalPublishId)
                 .orElseGet(() -> externalPublishRepository.findFirstByGame_IdOrderByCreatedAtDesc(externalPublishId)
                         .orElseThrow(() -> new RuntimeException("Chưa tìm thấy bản ghi xuất bản Google Play cho game này. Vui lòng bấm Kích hoạt Mock trước!")));
@@ -254,8 +260,29 @@ public class StoreReportServiceImpl implements StoreReportService {
             throw new RuntimeException("Game chưa được cấu hình Package Name để đồng bộ report");
         }
 
-        String yyyyMM = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-        String reportMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        String yyyyMM = targetYyyyMM;
+        if (yyyyMM == null || yyyyMM.isBlank() || !yyyyMM.matches("\\d{6}")) {
+            Optional<StoreReportImport> latestOpt = storeReportImportRepository
+                    .findByExternalPublish_Game_IdOrderBySyncedAtDesc(publish.getGame().getId())
+                    .stream()
+                    .filter(imp -> imp.getReportMonth() != null && imp.getReportMonth().matches("\\d{4}-\\d{2}"))
+                    .findFirst();
+
+            if (latestOpt.isPresent()) {
+                String[] parts = latestOpt.get().getReportMonth().split("-");
+                int y = Integer.parseInt(parts[0]);
+                int m = Integer.parseInt(parts[1]);
+                YearMonth nextYm = YearMonth.of(y, m).plusMonths(1);
+                yyyyMM = nextYm.format(DateTimeFormatter.ofPattern("yyyyMM"));
+            } else {
+                yyyyMM = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+            }
+        }
+
+        int year = Integer.parseInt(yyyyMM.substring(0, 4));
+        int month = Integer.parseInt(yyyyMM.substring(4, 6));
+        String reportMonth = String.format("%04d-%02d", year, month);
+
         String sourceObjectPath = "stats/installs/installs_" + publish.getPackageName() + "_" + yyyyMM + "_country.csv";
 
         String csvContent = googlePlayMockClient.fetchInstallReportCsv(publish.getPackageName(), yyyyMM);
@@ -336,7 +363,30 @@ public class StoreReportServiceImpl implements StoreReportService {
         }
 
         if (periodKey == null || periodKey.isBlank()) {
-            periodKey = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM")) + "-demo-01";
+            periodKey = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM")) + "-demo-01";
+        }
+
+        // Extract target month (YYYYMM) from periodKey
+        String yyyyMM = null;
+        int targetYear = 0;
+        int targetMonth = 0;
+
+        java.util.regex.Matcher m6 = java.util.regex.Pattern.compile("(\\d{4})(\\d{2})").matcher(periodKey);
+        java.util.regex.Matcher m7 = java.util.regex.Pattern.compile("(\\d{4})-(\\d{2})").matcher(periodKey);
+
+        if (m6.find()) {
+            targetYear = Integer.parseInt(m6.group(1));
+            targetMonth = Integer.parseInt(m6.group(2));
+            yyyyMM = String.format("%04d%02d", targetYear, targetMonth);
+        } else if (m7.find()) {
+            targetYear = Integer.parseInt(m7.group(1));
+            targetMonth = Integer.parseInt(m7.group(2));
+            yyyyMM = String.format("%04d%02d", targetYear, targetMonth);
+        } else {
+            YearMonth ym = YearMonth.now();
+            targetYear = ym.getYear();
+            targetMonth = ym.getMonthValue();
+            yyyyMM = ym.format(DateTimeFormatter.ofPattern("yyyyMM"));
         }
 
         // Determine unit price of the game (from priceProposed)
@@ -345,25 +395,31 @@ public class StoreReportServiceImpl implements StoreReportService {
             unitPrice = new BigDecimal("99000"); // Default 99,000 VND for demo
         }
 
-        // Determine total installs for this game from daily metrics
-        Long totalInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameId(game.getId());
-        if (totalInstalls == null || totalInstalls == 0) {
+        // Calculate installs for this target month
+        LocalDate startDate = LocalDate.of(targetYear, Math.min(Math.max(targetMonth, 1), 12), 1);
+        LocalDate endDate = startDate.plusMonths(1).minusDays(1);
+
+        Long periodInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(game.getId(), startDate, endDate);
+
+        if (periodInstalls == null || periodInstalls == 0) {
             try {
-                syncDownloadsForGame(externalPublishId, adminId);
-                totalInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameId(game.getId());
+                // Auto-sync installs for the target month from mock Google Play
+                syncDownloadsForGame(externalPublishId, yyyyMM, adminId);
+                periodInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(game.getId(), startDate, endDate);
             } catch (Exception e) {
-                log.warn("Auto-sync downloads failed for game {}: {}", game.getTitle(), e.getMessage());
+                log.warn("Auto-sync downloads failed for month {} game {}: {}", yyyyMM, game.getTitle(), e.getMessage());
             }
         }
-        if (totalInstalls == null || totalInstalls == 0) {
-            totalInstalls = 100L; // Fallback 100 installs for demo
+
+        if (periodInstalls == null || periodInstalls == 0) {
+            periodInstalls = 100L; // Fallback 100 installs for demo
         }
 
-        // Calculate Gross Revenue dynamically = Total Installs * Unit Price
-        BigDecimal grossRevenue = unitPrice.multiply(BigDecimal.valueOf(totalInstalls));
+        // Calculate Gross Revenue dynamically for THIS PERIOD = Period Installs * Unit Price
+        BigDecimal grossRevenue = unitPrice.multiply(BigDecimal.valueOf(periodInstalls));
 
-        // Fetch payout statement from mock container with totalInstalls and unitPrice
-        Map<String, Object> payoutStatementMap = googlePlayMockClient.fetchPayoutStatement(publish.getPackageName(), periodKey, totalInstalls, unitPrice);
+        // Fetch payout statement from mock container with periodInstalls and unitPrice
+        Map<String, Object> payoutStatementMap = googlePlayMockClient.fetchPayoutStatement(publish.getPackageName(), periodKey, periodInstalls, unitPrice);
         String externalPayoutId = (String) payoutStatementMap.get("externalPayoutId");
 
         // Financial Calculation (15% Google Fee, 85% Net Proceeds, Contract Split)
@@ -374,39 +430,29 @@ public class StoreReportServiceImpl implements StoreReportService {
         BigDecimal developerEarnings = netStoreProceeds.multiply(developerShareRate).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         BigDecimal platformRetained = netStoreProceeds.subtract(developerEarnings);
 
-        // Check if statement already exists -> update it with current calculation instead of returning stale numbers
+        // Check if statement already exists -> Reject duplicate payout to prevent double-crediting
         Optional<StoreRevenueStatement> existingOpt = storeRevenueStatementRepository.findByExternalPayoutId(externalPayoutId);
-        StoreRevenueStatement statement;
         if (existingOpt.isPresent()) {
-            statement = existingOpt.get();
-            statement.setGrossRevenue(grossRevenue);
-            statement.setGoogleFeeRate(googleFeeRate);
-            statement.setGoogleFeeAmount(googleFeeAmount);
-            statement.setNetStoreProceeds(netStoreProceeds);
-            statement.setDeveloperShareRate(developerShareRate);
-            statement.setDeveloperEarnings(developerEarnings);
-            statement.setPlatformRetainedRevenue(platformRetained);
-            statement.setSettledAt(Instant.now());
-            log.info("[MOCK PAYOUT RE-SETTLED] Updated statement {} for game {}: Gross={}, Fee={}, Net={}", externalPayoutId, game.getTitle(), grossRevenue, googleFeeAmount, netStoreProceeds);
-        } else {
-            statement = StoreRevenueStatement.builder()
-                    .externalPublish(publish)
-                    .game(game)
-                    .provider("GOOGLE_PLAY_MOCK")
-                    .periodKey(periodKey)
-                    .externalPayoutId(externalPayoutId)
-                    .grossRevenue(grossRevenue)
-                    .googleFeeRate(googleFeeRate)
-                    .googleFeeAmount(googleFeeAmount)
-                    .netStoreProceeds(netStoreProceeds)
-                    .developerShareRate(developerShareRate)
-                    .developerEarnings(developerEarnings)
-                    .platformRetainedRevenue(platformRetained)
-                    .currency("VND")
-                    .status("paid")
-                    .settledAt(Instant.now())
-                    .build();
+            throw new RuntimeException("Kỳ thanh toán (Period Key) '" + periodKey + "' đã được hạch toán và chuyển tiền thành công trước đó! Vui lòng nhập Period Key mới (ví dụ: đổi thành đợt tiếp theo như " + periodKey + "-02) để thực hiện Payout.");
         }
+
+        StoreRevenueStatement statement = StoreRevenueStatement.builder()
+                .externalPublish(publish)
+                .game(game)
+                .provider("GOOGLE_PLAY_MOCK")
+                .periodKey(periodKey)
+                .externalPayoutId(externalPayoutId)
+                .grossRevenue(grossRevenue)
+                .googleFeeRate(googleFeeRate)
+                .googleFeeAmount(googleFeeAmount)
+                .netStoreProceeds(netStoreProceeds)
+                .developerShareRate(developerShareRate)
+                .developerEarnings(developerEarnings)
+                .platformRetainedRevenue(platformRetained)
+                .currency("VND")
+                .status("paid")
+                .settledAt(Instant.now())
+                .build();
         statement = storeRevenueStatementRepository.save(statement);
 
         // Credit Developer Wallet & Record Transaction if developerShareRate > 0

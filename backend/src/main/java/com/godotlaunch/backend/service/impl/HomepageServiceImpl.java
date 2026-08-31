@@ -124,7 +124,7 @@ public class HomepageServiceImpl implements HomepageService {
                 .screenshots(screenshots)
                 .build();
     }
-
+ 
     private HomepageProductResponse mapAsset(Asset asset) {
         List<Media> mediaList = mediaRepository.findByAsset_IdOrderByCreatedAtDesc(asset.getId());
         List<String> screenshots = mediaList.stream()
