@@ -10,6 +10,7 @@ chỉ trả rule-based (graceful, service vẫn chạy).
 """
 import os
 import json
+import re
 from pathlib import Path
 
 import requests
@@ -34,7 +35,8 @@ import source_service
 
 def analyze(tmp_dir: str, title: str = "", description: str = "",
             old_tmp_dir: str | None = None, old_title: str = "",
-            old_description: str = "", is_update: bool = False) -> dict:
+            old_description: str = "", is_update: bool = False,
+            contentType: str = "code", category: str | None = None) -> dict:
     """
     Phân tích thư mục source đã clone (và so sánh với bản cũ nếu là update).
     """
@@ -56,17 +58,23 @@ def analyze(tmp_dir: str, title: str = "", description: str = "",
                               is_update=is_update, old_title=old_title,
                               old_description=old_description, diff_stats=diff_stats)
 
-    # Điểm gộp: ưu tiên DeepSeek; nếu skip → suy ra điểm thô từ rule-based
-    if deepseek and not deepseek.get("skipped"):
+    # Điểm gộp: ưu tiên DeepSeek; nếu skip hoặc lỗi → suy ra điểm thô từ rule-based
+    if deepseek and not deepseek.get("skipped") and deepseek.get("codeQualityScore") is not None:
         code_score = deepseek.get("codeQualityScore")
-        desc_score = deepseek.get("descriptionMatchScore")
-        suggested_price = deepseek.get("suggestedPrice")
-        revenue_split = deepseek.get("suggestedRevenueSplit")
-        pricing_rationale = deepseek.get("pricingRationale")
+        desc_score = deepseek.get("descriptionMatchScore") if deepseek.get("descriptionMatchScore") is not None else 85
+        # CHỈ gợi ý hợp đồng & giá khi đây là Game gửi phát hành lên CH Play (contentType == "code")
+        is_game_publishing = (contentType == "code") and (category is None or category.lower() not in ["asset", "plugin", "tool", "model", "audio", "ui_theme"])
+        suggested_contract_type = deepseek.get("suggestedContractType", "co_publishing") if is_game_publishing else None
+        suggested_lump_sum = deepseek.get("suggestedLumpSumAmount") if is_game_publishing else None
+        suggested_price = deepseek.get("suggestedPrice") if is_game_publishing else None
+        revenue_split = deepseek.get("suggestedRevenueSplit") if is_game_publishing else None
+        pricing_rationale = deepseek.get("pricingRationale") if is_game_publishing else None
     else:
         code_score = _rule_fallback_score(rule)
-        desc_score = None  # không có ảnh/text model ở đây → CLIP lo phần ảnh
-        suggested_price = None      # không có DeepSeek → không gợi ý giá
+        desc_score = 85 if rule["isGodotProject"] else 50
+        suggested_contract_type = None
+        suggested_lump_sum = None
+        suggested_price = None
         revenue_split = None
         pricing_rationale = ""
 
@@ -76,6 +84,8 @@ def analyze(tmp_dir: str, title: str = "", description: str = "",
         "diffStats": diff_stats,
         "codeQualityScore": code_score,
         "descriptionMatchScore": desc_score,
+        "suggestedContractType": suggested_contract_type,
+        "suggestedLumpSumAmount": suggested_lump_sum,
         "suggestedPrice": suggested_price,
         "suggestedRevenueSplit": revenue_split,
         "pricingRationale": pricing_rationale,
@@ -266,34 +276,36 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
     ) or "(không có file mẫu)"
 
     system_prompt = (
-        "Bạn là chuyên gia kiểm duyệt và review code Godot Engine cho marketplace. "
-        "Nhiệm vụ của bạn là đánh giá chất lượng mã nguồn, độ trung thực của mô tả so với thực tế code, "
-        "và chỉ ra chi tiết các vấn đề hoặc tiêu chí đánh giá. "
-        "Yêu cầu đặc biệt:\n"
-        "1. KHÔNG được đưa ra bất kỳ đề xuất giá bán hoặc tỉ lệ ăn chia doanh thu nào.\n"
-        "2. Giải thích cực kỳ chi tiết lý do cho các điểm số trong danh sách `issues`:\n"
-        "   - Phải có một mục issue loại 'code_quality_analysis' giải thích rõ tại sao lại đạt điểm số `codeQualityScore` đó, "
-        "được đánh giá trên tiêu chí nào (cấu trúc thư mục, đặt tên, tổ chức mã nguồn, code smell, comment, độ hoàn thiện) và bị trừ điểm bởi những lỗi/vấn đề cụ thể gì.\n"
-        "   - Phải có một mục issue loại 'description_match_analysis' giải thích rõ tại sao lại đạt điểm số `descriptionMatchScore` đó, "
-        "mô tả của developer có phóng đại hay không đúng thực tế code không, có chứa ngôn từ nhạy cảm/bậy bạ hay không.\n"
-        "   - Nếu đây là bản cập nhật (isUpdate = True), BẮT BUỘC phải có một mục issue loại 'version_update_analysis' so sánh chi tiết giữa bản cũ và mới: "
-        "mã nguồn có thay đổi/cải thiện/sửa lỗi gì so với bản cũ, tỷ lệ tương đồng code, độ trung thực khi cập nhật (có phải cùng dự án không hay upload game hoàn toàn khác) và so sánh tiêu đề/mô tả mới vs cũ.\n"
-        "3. QUAN TRỌNG VỀ ĐỊNH DẠNG TEXT: Trong tất cả các chuỗi `detail` và `summary`, khi liệt kê danh sách các mục/vấn đề (ví dụ 1), 2), 3)... hoặc (1), (2), (3)... hoặc các gạch đầu dòng), "
-        "BẮT BUỘC phải sử dụng ký tự xuống dòng '\\n' giữa từng mục rõ ràng, tuyệt đối KHÔNG viết liền thành một đoạn văn dính nhau từ trên xuống dưới.\n\n"
-        "Trả về DUY NHẤT một JSON object, không markdown, không giải thích thêm.\n"
-        "Schema:\n"
+        "Bạn là chuyên gia thẩm định mã nguồn, kiểm duyệt và phân tích thương mại hóa trò chơi điện tử Godot Engine cho Nền tảng phát hành GodotLaunch.\n"
+        "Nhiệm vụ của bạn là đánh giá chi tiết chất lượng mã nguồn, độ trung thực của mô tả so với thực tế code, chỉ ra các cờ rủi ro, "
+        "đồng thời xây dựng CHIẾN LƯỢC ĐỊNH GIÁ & HỢP ĐỒNG PHÁT HÀNH TRÊN CH PLAY.\n\n"
+        "Yêu cầu đánh giá BẮT BUỘC:\n"
+        "1. CHẤM ĐIỂM CHẤT LƯỢNG CODE (`codeQualityScore`: số nguyên 0-100): Đánh giá cấu trúc thư mục, tổ chức mã nguồn, naming convention, comment, kiến trúc Godot, độ sạch của code.\n"
+        "2. CHẤM ĐIỂM ĐỘ TRUNG THỰC MÔ TẢ (`descriptionMatchScore`: số nguyên 0-100): Kiểm tra đối chiếu xem mô tả của Developer có đúng với thực tế mã nguồn và tính năng game không, có phóng đại không.\n"
+        "3. ĐÁNH GIÁ ĐỘ HOÀN THIỆN (`completeness`: 'low', 'medium', hoặc 'high').\n"
+        "4. XÁC ĐỊNH HÌNH THỨC HỢP ĐỒNG ĐỀ XUẤT (`suggestedContractType`: 'co_publishing' hoặc 'full_acquisition').\n"
+        "5. ĐỀ XUẤT GIÁ MUA ĐỨT (`suggestedLumpSumAmount`: số tiền VNĐ một lần nếu Mua đứt, ví dụ: 15000000).\n"
+        "6. ĐỀ XUẤT GIÁ BÁN STORE CH PLAY (`suggestedPrice`: giá niêm yết CH Play VNĐ/lượt tải, ví dụ: 29000, 49000).\n"
+        "7. ĐỀ XUẤT TỶ LỆ ĂN CHIA (`suggestedRevenueSplit`: % cho Developer nếu Đồng phát hành, ví dụ: 70).\n"
+        "8. LÝ DO ĐỊNH GIÁ (`pricingRationale`): Phân tích chi tiết bài toán kinh doanh, lợi nhuận cho hệ thống và quyền lợi Developer bằng tiếng Việt.\n"
+        "9. DANH SÁCH ISSUES (`issues`): Bắt buộc chứa 1 issue loại 'code_quality_analysis' giải thích chi tiết điểm codeQualityScore, và 1 issue loại 'description_match_analysis' giải thích chi tiết điểm descriptionMatchScore.\n"
+        "10. TÓM TẮT TỔNG QUAN (`summary`): Tóm tắt nhận xét đánh giá tổng quan bằng tiếng Việt.\n"
+        "11. QUAN TRỌNG VỀ ĐỊNH DẠNG TEXT: Trong tất cả các chuỗi `detail`, `pricingRationale` và `summary`, BẮT BUỘC phải sử dụng ký tự xuống dòng '\\n' giữa từng mục rõ ràng, tuyệt đối KHÔNG viết liền thành một đoạn văn dính nhau.\n\n"
+        "Trả về DUY NHẤT một JSON object hợp lệ theo mẫu sau:\n"
         "{\n"
-        "  \"codeQualityScore\": int 0-100,\n"
-        "  \"descriptionMatchScore\": int 0-100,\n"
-        "  \"completeness\": \"low|medium|high\",\n"
+        "  \"codeQualityScore\": 85,\n"
+        "  \"descriptionMatchScore\": 90,\n"
+        "  \"completeness\": \"high\",\n"
+        "  \"suggestedContractType\": \"co_publishing\",\n"
+        "  \"suggestedLumpSumAmount\": 15000000,\n"
+        "  \"suggestedPrice\": 49000,\n"
+        "  \"suggestedRevenueSplit\": 70,\n"
+        "  \"pricingRationale\": \"Game có lối chơi hấp dẫn, định giá 49.000 VNĐ vừa túi tiền người mua và tối ưu doanh thu cho cả hai bên.\",\n"
         "  \"issues\": [\n"
-        "    {\n"
-        "      \"type\": \"code_quality_analysis\"|\"description_match_analysis\"|\"version_update_analysis\"|string,\n"
-        "      \"severity\": \"low\"|\"medium\"|\"high\",\n"
-        "      \"detail\": string (giải thích rất chi tiết bằng tiếng Việt về tiêu chí đánh giá, trình bày xuống dòng '\\n' từng mục 1), 2), 3)... rõ ràng)\n"
-        "    }\n"
+        "    {\"type\": \"code_quality_analysis\", \"severity\": \"low\", \"detail\": \"Mã nguồn tổ chức tốt, đạt 85 điểm.\\n1) Đặt tên biến chuẩn.\\n2) Cấu trúc hợp lý.\"},\n"
+        "    {\"type\": \"description_match_analysis\", \"severity\": \"low\", \"detail\": \"Mô tả khớp thực tế code, đạt 90 điểm.\"}\n"
         "  ],\n"
-        "  \"summary\": string (tiếng Việt, tóm tắt nhận xét tổng quan chi tiết, xuống dòng giữa các ý)\n"
+        "  \"summary\": \"Nhận xét tổng quan: Tựa game hoàn thiện tốt, đạt chuẩn phát hành.\"\n"
         "}"
     )
 
@@ -355,7 +367,23 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"]
-        parsed = json.loads(content)
+
+        # Làm sạch chuỗi JSON nếu DeepSeek bọc trong markdown ```json ... ```
+        cleaned_content = content.strip()
+        if "```" in cleaned_content:
+            m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned_content, re.DOTALL | re.IGNORECASE)
+            if m:
+                cleaned_content = m.group(1)
+            else:
+                cleaned_content = re.sub(r"^```(?:json)?\s*", "", cleaned_content, flags=re.IGNORECASE)
+                cleaned_content = re.sub(r"\s*```$", "", cleaned_content)
+        
+        start = cleaned_content.find('{')
+        end = cleaned_content.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            cleaned_content = cleaned_content[start:end+1]
+
+        parsed = json.loads(cleaned_content)
         return {
             "skipped": False,
             "reason": "",
@@ -363,12 +391,16 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
             "descriptionMatchScore": _clamp(parsed.get("descriptionMatchScore")),
             "completeness": parsed.get("completeness"),
             "issues": parsed.get("issues", []) if isinstance(parsed.get("issues"), list) else [],
-            "suggestedPrice": None,
-            "suggestedRevenueSplit": None,
-            "pricingRationale": None,
+            "suggestedContractType": str(parsed.get("suggestedContractType", "co_publishing")),
+            "suggestedLumpSumAmount": _num(parsed.get("suggestedLumpSumAmount")),
+            "suggestedPrice": _num(parsed.get("suggestedPrice")),
+            "suggestedRevenueSplit": _clamp(parsed.get("suggestedRevenueSplit")),
+            "pricingRationale": str(parsed.get("pricingRationale", "")),
             "summary": str(parsed.get("summary", "")),
         }
     except Exception as e:
+        import logging
+        logging.getLogger("uvicorn.error").error(f"Lỗi phân tích DeepSeek: {e}", exc_info=True)
         return {"skipped": True, "reason": f"DeepSeek lỗi: {str(e)[:200]}",
                 "codeQualityScore": None, "descriptionMatchScore": None,
                 "completeness": None, "issues": [],
