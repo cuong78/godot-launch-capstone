@@ -27,7 +27,7 @@ Trong tài liệu, thay các placeholder sau:
 
 ```text
 <SERVER_IP>       IP public của VPS mới
-<PROJECT_DIR>     /root/godot-launch-capstone
+<PROJECT_DIR>     /ubuntu/godot-launch-capstone
 <DOMAIN>          godotlaunch.shop
 <ADMIN_DOMAIN>    app.godotlaunch.shop
 <PGADMIN_DOMAIN>  pgadmin.godotlaunch.shop
@@ -95,19 +95,19 @@ pwsh --version
 ## 5. Lấy source và đặt secrets
 
 ```bash
-sudo mkdir -p /root/godot-launch-capstone
-sudo chown -R "$USER":"$USER" /root/godot-launch-capstone
-cd /root
+sudo mkdir -p /ubuntu/godot-launch-capstone
+sudo chown -R "$USER":"$USER" /ubuntu/godot-launch-capstone
+cd /ubuntu
 git clone <REPOSITORY_URL> godot-launch-capstone
-cd /root/godot-launch-capstone
+cd /ubuntu/godot-launch-capstone
 ```
 
 Chép các file bí mật vào đúng vị trí:
 
 ```text
-/root/godot-launch-capstone/.env.production
-/root/godot-launch-capstone/backend/.env
-/root/godot-launch-capstone/ai-service/.env
+/ubuntu/godot-launch-capstone/.env.production
+/ubuntu/godot-launch-capstone/backend/.env
+/ubuntu/godot-launch-capstone/ai-service/.env
 ```
 
 `.env.production` được Compose dùng để thay biến `${...}` và tối thiểu phải có:
@@ -138,7 +138,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml config >/tm
 Không chạy `docker compose down -v`; tùy chọn `-v` sẽ xóa database và storage.
 
 ```bash
-cd /root/godot-launch-capstone
+cd /ubuntu/godot-launch-capstone
 docker compose --env-file .env.production -f docker-compose.prod.yml pull
 docker compose --env-file .env.production -f docker-compose.prod.yml build --pull
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d
@@ -221,7 +221,7 @@ tạo lại dữ liệu development; không chạy trên production có dữ li�
 Lấy container ID bằng Compose để không phụ thuộc tên project:
 
 ```bash
-cd /root/godot-launch-capstone
+cd /ubuntu/godot-launch-capstone
 PG_CONTAINER=$(docker compose --env-file .env.production -f docker-compose.prod.yml ps -q postgres)
 REDIS_CONTAINER=$(docker compose --env-file .env.production -f docker-compose.prod.yml ps -q redis)
 ```
@@ -235,13 +235,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File ./backend/seed/run_all_seeds.ps1 \
   -Force
 
 pwsh -NoProfile -ExecutionPolicy Bypass -File ./upload_banner_images.ps1 \
-  -SourceFolder "/root/godot-launch-capstone/resource/media/banner" \
+  -SourceFolder "/ubuntu/godot-launch-capstone/resource/media/banner" \
   -FilerUrl "http://localhost:8888" \
   -ContainerName "$PG_CONTAINER" \
   -PublicBaseUrl "https://godotlaunch.shop/files"
 
 pwsh -NoProfile -ExecutionPolicy Bypass -File ./upload_game_images.ps1 \
-  -SourceFolder "/root/godot-launch-capstone/resource/media" \
+  -SourceFolder "/ubuntu/godot-launch-capstone/resource/media" \
   -FilerUrl "http://localhost:8888" \
   -ContainerName "$PG_CONTAINER" \
   -PublicBaseUrl "https://godotlaunch.shop/files"
@@ -253,7 +253,7 @@ user/database khác, truyền thêm `-DbUser` và `-DbName`.
 ## 9. Kiểm tra sau deploy
 
 ```bash
-cd /root/godot-launch-capstone
+cd /ubuntu/godot-launch-capstone
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
 curl -fsS https://godotlaunch.shop/ >/dev/null
 curl -fsS http://127.0.0.1:8080/actuator/health || true
@@ -275,7 +275,7 @@ tải bị ngắt, kiểm tra disk và `proxy_buffering off`.
 ## 10. Cập nhật code
 
 ```bash
-cd /root/godot-launch-capstone
+cd /ubuntu/godot-launch-capstone
 git pull --ff-only
 docker compose --env-file .env.production -f docker-compose.prod.yml build --pull
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d
@@ -342,10 +342,10 @@ Không restart liên tục khi disk đầy; xử lý disk trước.
 Thực hiện backup trước khi seed, nâng cấp hoặc thay đổi storage:
 
 ```bash
-mkdir -p /root/backups/godotlaunch
+mkdir -p /ubuntu/backups/godotlaunch
 PG_CONTAINER=$(docker compose --env-file .env.production -f docker-compose.prod.yml ps -q postgres)
 docker exec "$PG_CONTAINER" pg_dump -U user_godot_launch -d godot_launch \
-  | gzip > /root/backups/godotlaunch/postgres-$(date +%F).sql.gz
+  | gzip > /ubuntu/backups/godotlaunch/postgres-$(date +%F).sql.gz
 ```
 
 Snapshot toàn bộ VPS là phương án khôi phục SeaweedFS đơn giản nhất. Không dùng
