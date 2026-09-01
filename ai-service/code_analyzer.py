@@ -36,7 +36,8 @@ import source_service
 def analyze(tmp_dir: str, title: str = "", description: str = "",
             old_tmp_dir: str | None = None, old_title: str = "",
             old_description: str = "", is_update: bool = False,
-            contentType: str = "code", category: str | None = None) -> dict:
+            contentType: str = "code", category: str | None = None,
+            publishing_type: str | None = None, old_tags: list[str] | None = None) -> dict:
     """
     Phân tích thư mục source đã clone (và so sánh với bản cũ nếu là update).
     """
@@ -56,14 +57,14 @@ def analyze(tmp_dir: str, title: str = "", description: str = "",
 
     deepseek = _deepseek_eval(root, title, description, rule,
                               is_update=is_update, old_title=old_title,
-                              old_description=old_description, diff_stats=diff_stats)
+                              old_description=old_description, old_tags=old_tags, diff_stats=diff_stats)
 
     # Điểm gộp: ưu tiên DeepSeek; nếu skip hoặc lỗi → suy ra điểm thô từ rule-based
     if deepseek and not deepseek.get("skipped") and deepseek.get("codeQualityScore") is not None:
         code_score = deepseek.get("codeQualityScore")
         desc_score = deepseek.get("descriptionMatchScore") if deepseek.get("descriptionMatchScore") is not None else 85
-        # CHỈ gợi ý hợp đồng & giá khi đây là Game gửi phát hành lên CH Play (contentType == "code")
-        is_game_publishing = (contentType == "code") and (category is None or category.lower() not in ["asset", "plugin", "tool", "model", "audio", "ui_theme"])
+        # CHỈ gợi ý hợp đồng & giá khi đây là Game gửi phát hành lên CH Play (full_acquisition hoặc co_publishing), KHÔNG áp dụng cho marketplace_listing
+        is_game_publishing = (contentType == "code") and (publishing_type in ["full_acquisition", "co_publishing"] or (publishing_type is None and (category is None or category.lower() not in ["asset", "plugin", "tool", "model", "audio", "ui_theme"]))) and (publishing_type != "marketplace_listing")
         suggested_contract_type = deepseek.get("suggestedContractType", "co_publishing") if is_game_publishing else None
         suggested_lump_sum = deepseek.get("suggestedLumpSumAmount") if is_game_publishing else None
         suggested_price = deepseek.get("suggestedPrice") if is_game_publishing else None
@@ -248,7 +249,8 @@ def _pick_sample_files(root: Path) -> list[tuple[str, str]]:
 
 def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
                    is_update: bool = False, old_title: str = "",
-                   old_description: str = "", diff_stats: dict | None = None) -> dict:
+                   old_description: str = "", old_tags: list[str] | None = None,
+                   diff_stats: dict | None = None) -> dict:
     api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
     base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
     model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
@@ -288,7 +290,7 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
         "6. ĐỀ XUẤT GIÁ BÁN STORE CH PLAY (`suggestedPrice`: giá niêm yết CH Play VNĐ/lượt tải, ví dụ: 29000, 49000).\n"
         "7. ĐỀ XUẤT TỶ LỆ ĂN CHIA (`suggestedRevenueSplit`: % cho Developer nếu Đồng phát hành, ví dụ: 70).\n"
         "8. LÝ DO ĐỊNH GIÁ (`pricingRationale`): Phân tích chi tiết bài toán kinh doanh, lợi nhuận cho hệ thống và quyền lợi Developer bằng tiếng Việt.\n"
-        "9. DANH SÁCH ISSUES (`issues`): Bắt buộc chứa 1 issue loại 'code_quality_analysis' giải thích chi tiết điểm codeQualityScore, và 1 issue loại 'description_match_analysis' giải thích chi tiết điểm descriptionMatchScore.\n"
+        "9. DANH SÁCH ISSUES (`issues`): Bắt buộc chứa 1 issue loại 'code_quality_analysis' giải thích chi tiết điểm codeQualityScore, 1 issue loại 'description_match_analysis' giải thích chi tiết điểm descriptionMatchScore, VÀ NẾU LÀ BẢN CẬP NHẬT (`is_update` là true), BẮT BUỘC THÊM 1 issue loại 'update_analysis' phân tích đánh giá chi tiết các thay đổi của bản cập nhật mới (về tiêu đề, mô tả, media, mã nguồn diff) so với bản cũ.\n"
         "10. TÓM TẮT TỔNG QUAN (`summary`): Tóm tắt nhận xét đánh giá tổng quan bằng tiếng Việt.\n"
         "11. QUAN TRỌNG VỀ ĐỊNH DẠNG TEXT: Trong tất cả các chuỗi `detail`, `pricingRationale` và `summary`, BẮT BUỘC phải sử dụng ký tự xuống dòng '\\n' giữa từng mục rõ ràng, tuyệt đối KHÔNG viết liền thành một đoạn văn dính nhau.\n\n"
         "Trả về DUY NHẤT một JSON object hợp lệ theo mẫu sau:\n"
@@ -303,7 +305,8 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
         "  \"pricingRationale\": \"Game có lối chơi hấp dẫn, định giá 49.000 VNĐ vừa túi tiền người mua và tối ưu doanh thu cho cả hai bên.\",\n"
         "  \"issues\": [\n"
         "    {\"type\": \"code_quality_analysis\", \"severity\": \"low\", \"detail\": \"Mã nguồn tổ chức tốt, đạt 85 điểm.\\n1) Đặt tên biến chuẩn.\\n2) Cấu trúc hợp lý.\"},\n"
-        "    {\"type\": \"description_match_analysis\", \"severity\": \"low\", \"detail\": \"Mô tả khớp thực tế code, đạt 90 điểm.\"}\n"
+        "    {\"type\": \"description_match_analysis\", \"severity\": \"low\", \"detail\": \"Mô tả khớp thực tế code, đạt 90 điểm.\"},\n"
+        "    {\"type\": \"update_analysis\", \"severity\": \"low\", \"detail\": \"Phân tích bản cập nhật:\\n- Tiêu đề & mô tả được tinh chỉnh rõ ràng hơn.\\n- Thêm 3 file script mới và sửa 2 file scene.\"}\n"
         "  ],\n"
         "  \"summary\": \"Nhận xét tổng quan: Tựa game hoàn thiện tốt, đạt chuẩn phát hành.\"\n"
         "}"
@@ -327,6 +330,8 @@ def _deepseek_eval(root: Path, title: str, description: str, rule: dict,
             f"- Tiêu đề cũ: {old_title if old_title else '(Không thay đổi / giống tiêu đề mới)'}\n"
             f"- Mô tả cũ: {old_description if old_description else '(Không thay đổi / giống mô tả mới)'}\n"
         )
+        if old_tags:
+            user_prompt += f"- Tags cũ: {', '.join(old_tags)}\n"
         if diff_stats:
             user_prompt += (
                 f"- Thống kê Diff Source Bundle: Thêm {diff_stats.get('addedCount')} file, Sửa {diff_stats.get('modifiedCount')} file, Xóa {diff_stats.get('removedCount')} file.\n"

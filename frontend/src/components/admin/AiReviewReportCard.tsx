@@ -29,6 +29,7 @@ import {
 interface Props {
   gameId?: string;
   itemId?: string;
+  publishingType?: string;
 }
 
 function formatReviewText(text?: string): string {
@@ -43,7 +44,7 @@ function formatReviewText(text?: string): string {
  * Card hiển thị AI review report (ĐỀ XUẤT). Admin xem điểm + flags + bằng chứng,
  * rồi tự quyết định duyệt/từ chối — AI KHÔNG phán quyết.
  */
-const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
+const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId, publishingType }) => {
   const { t } = useTranslation(["admin"]);
   const [report, setReport] = useState<AiReviewReport | null>(null);
   const [overview, setOverview] = useState<GameReviewOverview | null>(null);
@@ -272,6 +273,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
 
           {/* Khuyến nghị chiến lược định giá & hợp đồng (CHỈ HIỂN THỊ DÀNH CHO GAME ĐĂNG KÝ PHÁT HÀNH STORE - gameId) */}
           {Boolean(gameId) &&
+            (publishingType || overview?.publishingType) !== "marketplace_listing" &&
             (report.suggestedPrice != null ||
               report.suggestedRevenueSplit != null ||
               (report.rawOutput as any)?.code?.suggestedContractType ||
@@ -332,7 +334,7 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
                     {severityIcon(f.severity)}
                   </span>
                   <div className="min-w-0">
-                    <span className="font-bold font-mono">{f.type}</span>
+                    <span className="font-bold font-mono">{formatFlagType(f.type)}</span>
                     {typeof f.evidenceIndex === "number" && (
                       <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-mono opacity-80">
                         <Eye size={9} />{" "}
@@ -624,6 +626,21 @@ function severityIcon(sev: string): React.ReactNode {
   if (sev === "high") return <XCircle size={13} />;
   if (sev === "medium") return <AlertTriangle size={13} />;
   return <AlertTriangle size={13} />;
+}
+
+function formatFlagType(type: string): string {
+  switch (type) {
+    case "update_analysis":
+      return "🔄 Thẩm định bản cập nhật (Update Review)";
+    case "update_completely_different_project":
+      return "🚨 Cảnh báo: Mã nguồn thay đổi dự án hoàn toàn khác!";
+    case "code_quality_analysis":
+      return "🔍 Đánh giá chất lượng mã nguồn";
+    case "description_match_analysis":
+      return "📝 Đối chiếu độ trung thực mô tả";
+    default:
+      return type;
+  }
 }
 
 export default AiReviewReportCard;

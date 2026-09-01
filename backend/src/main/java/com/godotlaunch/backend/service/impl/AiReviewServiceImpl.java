@@ -100,14 +100,36 @@ public class AiReviewServiceImpl implements AiReviewService {
         }
         try {
             String category = game.getCategory() != null ? game.getCategory().getName() : null;
-            String videoUrl = getPresignedGetUrl(firstGameMediaUrl(gameId, "video"));
-            List<String> screenshots = gameMediaUrls(gameId,
-                    "screenshot", "thumbnail", "image").stream()
-                    .map(this::getPresignedGetUrl)
-                    .collect(java.util.stream.Collectors.toList());
 
-            if (game.getThumbnailUrl() != null && !game.getThumbnailUrl().isBlank()) {
-                String thumbPresigned = getPresignedGetUrl(game.getThumbnailUrl());
+            String videoUrl;
+            if (snapshot.getPendingVideoUrl() != null && !snapshot.getPendingVideoUrl().isBlank()) {
+                videoUrl = "DELETE_VIDEO".equals(snapshot.getPendingVideoUrl()) ? null : getPresignedGetUrl(snapshot.getPendingVideoUrl());
+            } else {
+                videoUrl = getPresignedGetUrl(firstGameMediaUrl(gameId, "video"));
+            }
+
+            List<String> screenshots = new java.util.ArrayList<>();
+            if (snapshot.getPendingScreenshots() != null && !snapshot.getPendingScreenshots().isBlank()) {
+                try {
+                    List<String> pendingList = objectMapper.readValue(snapshot.getPendingScreenshots(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                    if (pendingList != null) {
+                        screenshots.addAll(pendingList.stream().map(this::getPresignedGetUrl).toList());
+                    }
+                } catch (Exception e) {
+                    log.warn("Lỗi parse pendingScreenshots cho AI review: {}", e.getMessage());
+                }
+            }
+            if (screenshots.isEmpty()) {
+                screenshots = gameMediaUrls(gameId, "screenshot", "thumbnail", "image").stream()
+                        .map(this::getPresignedGetUrl)
+                        .collect(java.util.stream.Collectors.toList());
+            }
+
+            String thumbUrl = (snapshot.getPendingThumbnailUrl() != null && !snapshot.getPendingThumbnailUrl().isBlank())
+                    ? snapshot.getPendingThumbnailUrl() : game.getThumbnailUrl();
+
+            if (thumbUrl != null && !thumbUrl.isBlank()) {
+                String thumbPresigned = getPresignedGetUrl(thumbUrl);
                 if (!screenshots.contains(thumbPresigned)) {
                     screenshots.add(0, thumbPresigned);
                 }
@@ -161,8 +183,9 @@ public class AiReviewServiceImpl implements AiReviewService {
                 }
             }
 
+            String publishingTypeStr = game.getPublishingType() != null ? game.getPublishingType().name() : null;
             AiReviewResult result = aiReviewClient.review(
-                    "code", snapshot.getId(), snapshot.getBundleUrl(), snapshot.getBundleHash(),
+                    "code", publishingTypeStr, snapshot.getId(), snapshot.getBundleUrl(), snapshot.getBundleHash(),
                     snapshot.getCommitSha(),
                     currentTitle, currentDescription, category,
                     videoUrl, screenshots, currentTags,

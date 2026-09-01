@@ -7,6 +7,7 @@ import i18n, { normalizeLanguageCode } from '../config/i18n';
 
 export interface AuthContextType {
   currentUser: User | null;
+  user: User | null;
   loading: boolean;
   error: string | null;
   signUp: (data: SignUpRequest) => Promise<User>;
@@ -226,6 +227,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <AuthContext.Provider value={{
       currentUser,
+      user: currentUser,
       loading,
       error,
       signUp,

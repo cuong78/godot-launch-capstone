@@ -2841,6 +2841,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                                                     <div className="pt-2">
                                                       <AiReviewReportCard
                                                         gameId={game.id}
+                                                        publishingType={game.publishingType}
                                                       />
                                                     </div>
 

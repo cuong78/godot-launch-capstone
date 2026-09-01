@@ -54,6 +54,7 @@ export interface User {
   bankName?: string;
   bankAccount?: string;
   bankAccountHolder?: string;
+  kycAddress?: string;
   createdAt?: string;
 }
 
@@ -255,6 +256,7 @@ export interface PlagiarismFlag {
 
 export interface GameReviewOverview {
   gameId: string;
+  publishingType?: string | null;
   sourceSnapshotId?: string | null;
   commitSha?: string | null;
   aiReviewStatus?: ReviewProcessStatus | null;

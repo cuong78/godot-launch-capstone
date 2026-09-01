@@ -11,6 +11,7 @@ import java.util.UUID;
 @Builder
 public class GameReviewOverviewResponse {
     private UUID gameId;
+    private String publishingType;
     private UUID sourceSnapshotId;
     private String commitSha;
     private String aiReviewStatus;

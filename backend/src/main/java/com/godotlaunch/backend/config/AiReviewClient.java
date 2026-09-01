@@ -54,10 +54,19 @@ public class AiReviewClient {
                                  String bundleHash, String commitSha,
                                  String title, String description, String category,
                                  String videoUrl, List<String> screenshotUrls, List<String> tags) {
-        return review(contentType, snapshotId, bundleUrl, bundleHash, commitSha, title, description, category, videoUrl, screenshotUrls, tags, false, null, null, null, null);
+        return review(contentType, null, snapshotId, bundleUrl, bundleHash, commitSha, title, description, category, videoUrl, screenshotUrls, tags, false, null, null, null, null);
     }
 
     public AiReviewResult review(String contentType, UUID snapshotId, String bundleUrl,
+                                 String bundleHash, String commitSha,
+                                 String title, String description, String category,
+                                 String videoUrl, List<String> screenshotUrls, List<String> tags,
+                                 boolean isUpdate, String oldBundleUrl, String oldTitle,
+                                 String oldDescription, List<String> oldTags) {
+        return review(contentType, null, snapshotId, bundleUrl, bundleHash, commitSha, title, description, category, videoUrl, screenshotUrls, tags, isUpdate, oldBundleUrl, oldTitle, oldDescription, oldTags);
+    }
+
+    public AiReviewResult review(String contentType, String publishingType, UUID snapshotId, String bundleUrl,
                                  String bundleHash, String commitSha,
                                  String title, String description, String category,
                                  String videoUrl, List<String> screenshotUrls, List<String> tags,
@@ -67,6 +76,7 @@ public class AiReviewClient {
 
         Map<String, Object> body = new HashMap<>();
         body.put("contentType", contentType == null ? "code" : contentType);
+        if (publishingType != null) body.put("publishingType", publishingType);
         if (snapshotId != null) body.put("snapshotId", snapshotId.toString());
         if (bundleUrl != null) body.put("bundleUrl", bundleUrl);
         if (bundleHash != null) body.put("bundleHash", bundleHash);

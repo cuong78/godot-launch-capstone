@@ -6,6 +6,7 @@ import com.godotlaunch.backend.dto.response.AiReviewReportResponse;
 import com.godotlaunch.backend.dto.response.GameReviewOverviewResponse;
 import com.godotlaunch.backend.dto.response.PlagiarismFlagResponse;
 import com.godotlaunch.backend.entity.AiReviewReport;
+import com.godotlaunch.backend.entity.Game;
 import com.godotlaunch.backend.entity.PlagiarismFlag;
 import com.godotlaunch.backend.entity.SourceSnapshot;
 import com.godotlaunch.backend.repository.AiReviewReportRepository;
@@ -57,14 +58,16 @@ public class AiReviewQueryServiceImpl implements AiReviewQueryService {
 
     @Override
     public GameReviewOverviewResponse getGameOverview(UUID gameId) {
-        if (!gameRepository.existsById(gameId)) {
-            throw new IllegalArgumentException("Game not found: " + gameId);
-        }
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new IllegalArgumentException("Game not found: " + gameId));
+        String publishingType = game.getPublishingType() != null ? game.getPublishingType().name() : null;
+
         SourceSnapshot snapshot = sourceSnapshotRepository
                 .findFirstByGameIdOrderByCreatedAtDesc(gameId).orElse(null);
         if (snapshot == null) {
             return GameReviewOverviewResponse.builder()
                     .gameId(gameId)
+                    .publishingType(publishingType)
                     .plagiarismFlags(List.of())
                     .build();
         }
@@ -78,6 +81,7 @@ public class AiReviewQueryServiceImpl implements AiReviewQueryService {
 
         return GameReviewOverviewResponse.builder()
                 .gameId(gameId)
+                .publishingType(publishingType)
                 .sourceSnapshotId(snapshot.getId())
                 .commitSha(snapshot.getCommitSha())
                 .aiReviewStatus(snapshot.getAiReviewStatus().name())

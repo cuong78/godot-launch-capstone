@@ -129,6 +129,7 @@ class SourceProcessResponse(BaseModel):
 class AiReviewRequest(BaseModel):
     # Loại nội dung: 'code' (game/marketplace source từ repo) | 'asset' (chỉ media)
     contentType: str = "code"
+    publishingType: Optional[str] = None # 'full_acquisition' | 'co_publishing' | 'marketplace_listing'
     snapshotId: Optional[str] = None    # exact SourceSnapshot của game
     bundleUrl: Optional[str] = None     # immutable ZIP đã scan và lưu trên storage
     bundleHash: Optional[str] = None    # canonical hash để kiểm tra bundle không bị đổi
@@ -490,7 +491,9 @@ def ai_review(req: AiReviewRequest):
             code_res = code_analyzer.analyze(
                 tmp_dir, req.title, req.description,
                 old_tmp_dir=old_tmp_dir, old_title=req.oldTitle or "",
-                old_description=req.oldDescription or "", is_update=req.isUpdate
+                old_description=req.oldDescription or "", is_update=req.isUpdate,
+                contentType=req.contentType, category=req.category, publishing_type=req.publishingType,
+                old_tags=req.oldTags
             )
             raw["code"] = code_res
             code_quality = code_res.get("codeQualityScore")
