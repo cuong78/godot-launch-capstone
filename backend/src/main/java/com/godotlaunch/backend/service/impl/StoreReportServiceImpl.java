@@ -283,7 +283,7 @@ public class StoreReportServiceImpl implements StoreReportService {
         int month = Integer.parseInt(yyyyMM.substring(4, 6));
         String reportMonth = String.format("%04d-%02d", year, month);
 
-        String sourceObjectPath = "stats/installs/installs_" + publish.getPackageName() + "_" + yyyyMM + "_country.csv";
+        String sourceObjectPath = "stats/installs/installs_" + publish.getPackageName() + "_" + yyyyMM + ".csv";
 
         String csvContent = googlePlayMockClient.fetchInstallReportCsv(publish.getPackageName(), yyyyMM);
 
@@ -363,7 +363,7 @@ public class StoreReportServiceImpl implements StoreReportService {
         }
 
         if (periodKey == null || periodKey.isBlank()) {
-            periodKey = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM")) + "-demo-01";
+            periodKey = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
         }
 
         // Extract target month (YYYYMM) from periodKey
@@ -399,18 +399,14 @@ public class StoreReportServiceImpl implements StoreReportService {
         LocalDate startDate = LocalDate.of(targetYear, Math.min(Math.max(targetMonth, 1), 12), 1);
         LocalDate endDate = startDate.plusMonths(1).minusDays(1);
 
-        Long periodInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(game.getId(), startDate, endDate);
-
-        if (periodInstalls == null || periodInstalls == 0) {
-            try {
-                // Auto-sync installs for the target month from mock Google Play
-                syncDownloadsForGame(externalPublishId, yyyyMM, adminId);
-                periodInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(game.getId(), startDate, endDate);
-            } catch (Exception e) {
-                log.warn("Auto-sync downloads failed for month {} game {}: {}", yyyyMM, game.getTitle(), e.getMessage());
-            }
+        // Auto-sync installs for the target month from mock Google Play first
+        try {
+            syncDownloadsForGame(externalPublishId, yyyyMM, adminId);
+        } catch (Exception e) {
+            log.warn("Auto-sync downloads failed for month {} game {}: {}", yyyyMM, game.getTitle(), e.getMessage());
         }
 
+        Long periodInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(game.getId(), startDate, endDate);
         if (periodInstalls == null || periodInstalls == 0) {
             periodInstalls = 100L; // Fallback 100 installs for demo
         }
@@ -430,10 +426,50 @@ public class StoreReportServiceImpl implements StoreReportService {
         BigDecimal developerEarnings = netStoreProceeds.multiply(developerShareRate).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         BigDecimal platformRetained = netStoreProceeds.subtract(developerEarnings);
 
-        // Check if statement already exists -> Reject duplicate payout to prevent double-crediting
-        Optional<StoreRevenueStatement> existingOpt = storeRevenueStatementRepository.findByExternalPayoutId(externalPayoutId);
+        // Check if statement already exists for this game and periodKey
+        Optional<StoreRevenueStatement> existingOpt = storeRevenueStatementRepository.findByGameIdAndPeriodKey(game.getId(), periodKey);
+        if (!existingOpt.isPresent()) {
+            existingOpt = storeRevenueStatementRepository.findByExternalPayoutId(externalPayoutId);
+        }
+
         if (existingOpt.isPresent()) {
-            throw new RuntimeException("Kỳ thanh toán (Period Key) '" + periodKey + "' đã được hạch toán và chuyển tiền thành công trước đó! Vui lòng nhập Period Key mới (ví dụ: đổi thành đợt tiếp theo như " + periodKey + "-02) để thực hiện Payout.");
+            StoreRevenueStatement existing = existingOpt.get();
+            BigDecimal prevEarnings = existing.getDeveloperEarnings() != null ? existing.getDeveloperEarnings() : BigDecimal.ZERO;
+            BigDecimal earningsDelta = developerEarnings.subtract(prevEarnings);
+
+            // Update statement values with cumulative numbers
+            existing.setGrossRevenue(grossRevenue);
+            existing.setGoogleFeeAmount(googleFeeAmount);
+            existing.setNetStoreProceeds(netStoreProceeds);
+            existing.setDeveloperEarnings(developerEarnings);
+            existing.setPlatformRetainedRevenue(platformRetained);
+            existing.setSettledAt(Instant.now());
+            storeRevenueStatementRepository.save(existing);
+
+            if (earningsDelta.compareTo(BigDecimal.ZERO) > 0) {
+                User developer = game.getCreator();
+                Wallet devWallet = walletService.getOrCreateWallet(developer);
+
+                WalletBalancePolicy.creditSalesRevenue(devWallet, earningsDelta);
+                walletRepository.save(devWallet);
+
+                Transaction devTxn = new Transaction();
+                devTxn.setWallet(devWallet);
+                devTxn.setRelatedUser(userRepository.findById(adminId).orElse(null));
+                devTxn.setGame(game);
+                devTxn.setContract(contract);
+                devTxn.setAmount(earningsDelta);
+                devTxn.setType(TxnType.revenue_share);
+                devTxn.setReferenceId(externalPayoutId + "-DELTA-" + System.currentTimeMillis());
+                devTxn.setDescription("Google Play Mock Revenue Share Delta (" + developerShareRate + "% of Incremental Net Store Proceeds, kỳ " + periodKey + ")");
+                transactionRepository.save(devTxn);
+
+                log.info("[MOCK PAYOUT RE-SETTLED WITH DELTA] Game: {}, Period: {}, Delta Earnings: {}", game.getTitle(), periodKey, earningsDelta);
+            } else {
+                log.info("[MOCK PAYOUT RE-SETTLED NO DELTA] Game: {}, Period: {}, Earnings Unchanged", game.getTitle(), periodKey);
+            }
+
+            return mapToStatementResponse(existing);
         }
 
         StoreRevenueStatement statement = StoreRevenueStatement.builder()
@@ -595,12 +631,21 @@ public class StoreReportServiceImpl implements StoreReportService {
             if (line.isBlank()) continue;
 
             String[] cols = line.split(",");
-            if (cols.length < 4) continue;
+            if (cols.length < 3) continue;
 
             String dateStr = cols[0].trim();
             String packageName = cols[1].trim();
-            String country = cols[2].trim();
-            int installs = Integer.parseInt(cols[3].trim());
+            final String country;
+            int installs;
+
+            if (cols.length == 3) {
+                country = "GLOBAL";
+                installs = Integer.parseInt(cols[2].trim());
+            } else {
+                // Backward compatibility for 4-column CSV with country
+                country = cols[2].trim();
+                installs = Integer.parseInt(cols[3].trim());
+            }
 
             LocalDate metricDate = LocalDate.parse(dateStr);
 

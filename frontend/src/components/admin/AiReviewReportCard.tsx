@@ -270,35 +270,49 @@ const AiReviewReportCard: React.FC<Props> = ({ gameId, itemId }) => {
             <NsfwChip flag={report.nsfwFlag ?? false} />
           </div>
 
-          {/* Khuyến nghị giá (nếu AI có gợi ý) */}
-          {(report.suggestedPrice != null ||
-            report.suggestedRevenueSplit != null) && (
-            <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-2.5 space-y-1.5">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
-                <DollarSign size={12} /> {t("aiReviewCard.pricing.title")}
+          {/* Khuyến nghị chiến lược định giá & hợp đồng (CHỈ HIỂN THỊ DÀNH CHO GAME ĐĂNG KÝ PHÁT HÀNH STORE - gameId) */}
+          {Boolean(gameId) &&
+            (report.suggestedPrice != null ||
+              report.suggestedRevenueSplit != null ||
+              (report.rawOutput as any)?.code?.suggestedContractType ||
+              (report.rawOutput as any)?.code?.suggestedLumpSumAmount) && (
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 space-y-2">
+              <span className="text-[11px] uppercase font-mono tracking-wider text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
+                <DollarSign size={13} /> {t("aiReviewCard.pricing.title")}
               </span>
-              <div className="flex flex-wrap items-center gap-3">
-                {report.suggestedPrice != null && (
-                  <span className="inline-flex items-center gap-1 text-sm font-display font-bold text-amber-600 dark:text-amber-400">
-                    <DollarSign size={14} />
-                    {report.suggestedPrice === 0
-                      ? t("aiReviewCard.pricing.free")
-                      : `$${report.suggestedPrice}`}
+              <div className="flex flex-wrap items-center gap-2">
+                {((report.rawOutput as any)?.code?.suggestedContractType || (report.suggestedRevenueSplit ? "co_publishing" : null)) && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold text-xs font-mono border-amber-500/30">
+                    {(report.rawOutput as any)?.code?.suggestedContractType === "full_acquisition"
+                      ? "Hình thức: Mua đứt (Full Acquisition)"
+                      : "Hình thức: Đồng phát hành (Co-Publishing)"}
                   </span>
                 )}
+
+                {(report.rawOutput as any)?.code?.suggestedLumpSumAmount != null && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold text-xs font-mono border border-emerald-500/30">
+                    Giá mua đứt đề xuất: {Number((report.rawOutput as any).code.suggestedLumpSumAmount).toLocaleString("vi-VN")} VNĐ
+                  </span>
+                )}
+
+                {report.suggestedPrice != null && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-bold text-xs font-mono border border-indigo-500/30">
+                    Giá niêm yết Store đề xuất: {report.suggestedPrice === 0 ? "Miễn phí" : `${Number(report.suggestedPrice).toLocaleString("vi-VN")} VNĐ / lượt tải`}
+                  </span>
+                )}
+
                 {report.suggestedRevenueSplit != null && (
-                  <span className="inline-flex items-center gap-1 text-xs font-mono text-slate-600 dark:text-slate-300">
-                    <Percent size={12} />{" "}
-                    {t("aiReviewCard.pricing.revenueSplit", {
-                      percent: report.suggestedRevenueSplit,
-                    })}
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 font-bold text-xs font-mono border border-blue-500/30">
+                    <Percent size={12} /> Tỷ lệ ăn chia: {report.suggestedRevenueSplit}% Dev / {100 - report.suggestedRevenueSplit}% Platform
                   </span>
                 )}
               </div>
+
               {report.pricingRationale && (
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 italic break-words">
-                  {report.pricingRationale}
-                </p>
+                <div className="text-[11px] text-slate-700 dark:text-slate-300 bg-white/60 dark:bg-slate-950/40 p-2.5 rounded-lg border border-amber-500/20 whitespace-pre-line leading-relaxed">
+                  <span className="font-bold text-amber-700 dark:text-amber-400 block mb-0.5">💡 Phân tích chiến lược thương mại hóa & Lợi nhuận:</span>
+                  {formatReviewText(report.pricingRationale)}
+                </div>
               )}
             </div>
           )}

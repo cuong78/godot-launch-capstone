@@ -25,8 +25,13 @@ export const resolvePostLoginScreen = (
   return "explore";
 };
 
+export const isLocalHost = () =>
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1" ||
+  window.location.hostname.endsWith(".local");
+
 export const isAdminPortalHost = () =>
-  window.location.hostname === new URL(ADMIN_APP_URL).hostname;
+  isLocalHost() || window.location.hostname === new URL(ADMIN_APP_URL).hostname;
 
 /**
  * Moves authenticated users to the hostname that owns their workspace.
@@ -34,6 +39,10 @@ export const isAdminPortalHost = () =>
  * requests or reverse-proxy access logs. The callback removes it immediately.
  */
 export const redirectToRolePortal = (user: User | null | undefined): boolean => {
+  if (isLocalHost()) {
+    return false;
+  }
+
   const role = normalizeUserRole(user);
 
   if (role === "admin" && !isAdminPortalHost()) {

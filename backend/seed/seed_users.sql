@@ -16,6 +16,12 @@ SET client_encoding TO 'UTF8';
 
 INSERT INTO users (role_id, email, password_hash, full_name, status, face_verified)
 VALUES
+    -- ── 1 ADMIN ──────────────────────────────────────────────
+    ((SELECT id FROM roles WHERE name = 'admin'),
+     'admin@godotlaunch.com',
+     '$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lR.yW7f3nJpXmJ9L9hE.oJ7N4z4KO',
+     'Platform Administrator', 'active', TRUE),
+
     -- ── 5 PLAYER ────────────────────────────────────────────
     ((SELECT id FROM roles WHERE name = 'customer'),
      'player1@godotlaunch.test',

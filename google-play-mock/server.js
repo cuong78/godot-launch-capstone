@@ -44,7 +44,7 @@ app.delete('/internal/v1/apps/:packageName', (req, res) => {
 });
 
 // 3. Install CSV Statistics Report
-// GET /internal/v1/reports/installs/:packageName/:yyyyMM?dimension=country
+// GET /internal/v1/reports/installs/:packageName/:yyyyMM
 app.get('/internal/v1/reports/installs/:packageName/:yyyyMM', (req, res) => {
   const { packageName, yyyyMM } = req.params;
 
@@ -57,9 +57,8 @@ app.get('/internal/v1/reports/installs/:packageName/:yyyyMM', (req, res) => {
   const month = parseInt(yyyyMM.substring(4, 6), 10) || 8;
 
   const daysInMonth = new Date(year, month, 0).getDate();
-  const countries = ['VN', 'US', 'JP'];
 
-  let csvLines = ['Date,Package Name,Country,Daily User Installs'];
+  let csvLines = ['Date,Package Name,Daily User Installs'];
 
   // Base seed from packageName + yyyyMM
   let hashSeed = 0;
@@ -72,18 +71,16 @@ app.get('/internal/v1/reports/installs/:packageName/:yyyyMM', (req, res) => {
     const formattedDay = String(day).padStart(2, '0');
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${formattedDay}`;
 
-    countries.forEach((country, cIdx) => {
-      const daySeed = hashSeed + day * 10 + cIdx;
-      // Generate between 1 and 25 installs per country per day
-      const installs = Math.floor(pseudoRandom(daySeed) * 25) + 1;
-      csvLines.push(`${dateStr},${packageName},${country},${installs}`);
-    });
+    const daySeed = hashSeed + day * 10;
+    // Generate between 5 and 75 installs per package per day
+    const installs = Math.floor(pseudoRandom(daySeed) * 70) + 5;
+    csvLines.push(`${dateStr},${packageName},${installs}`);
   }
 
   const csvContent = csvLines.join('\n');
 
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', `attachment; filename="installs_${packageName}_${yyyyMM}_country.csv"`);
+  res.setHeader('Content-Disposition', `attachment; filename="installs_${packageName}_${yyyyMM}.csv"`);
   return res.send(csvContent);
 });
 

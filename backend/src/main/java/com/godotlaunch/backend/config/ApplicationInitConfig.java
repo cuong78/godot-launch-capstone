@@ -61,28 +61,24 @@ public class ApplicationInitConfig {
 
     private void initAdminUser() {
         String adminEmail = "admin@godotlaunch.com";
+        String initialPassword = environment.getProperty("ADMIN_INITIAL_PASSWORD", "admin");
 
-        String initialPassword = environment.getProperty("ADMIN_INITIAL_PASSWORD");
-        if (initialPassword == null || initialPassword.isBlank()) {
-            log.warn("ADMIN_INITIAL_PASSWORD is not configured; admin bootstrap is disabled.");
+        Role adminRole = roleRepository.findByName("admin").orElse(null);
+        if (adminRole == null) {
+            log.warn("Role 'admin' not found in database. Skipping admin initialization.");
             return;
         }
 
         var existingAdmin = userRepository.findByEmail(adminEmail);
         if (existingAdmin.isPresent()) {
             User admin = existingAdmin.get();
-            if (passwordEncoder.matches("admin", admin.getPasswordHash())) {
-                admin.setPasswordHash(passwordEncoder.encode(initialPassword));
-                userRepository.save(admin);
-                log.info("Replaced insecure default admin password from bootstrap configuration.");
-            } else {
-                log.info("Admin user already exists. Skipping initialization.");
-            }
+            admin.setRole(adminRole);
+            admin.setStatus("active");
+            admin.setPasswordHash(passwordEncoder.encode(initialPassword));
+            userRepository.save(admin);
+            log.info("Admin user {} active with password set to initial configuration.", adminEmail);
             return;
         }
-
-        Role adminRole = roleRepository.findByName("admin")
-                .orElseThrow(() -> new RuntimeException("Role 'admin' not found in database. Make sure schema.sql has run."));
 
         User admin = new User();
         admin.setEmail(adminEmail);
@@ -92,6 +88,6 @@ public class ApplicationInitConfig {
         admin.setRole(adminRole);
 
         userRepository.save(admin);
-        log.info("Admin user has been created from bootstrap configuration.");
+        log.info("Admin user {} created successfully.", adminEmail);
     }
 }

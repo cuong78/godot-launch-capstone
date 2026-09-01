@@ -154,7 +154,9 @@ class AiReviewResponse(BaseModel):
     tagsMatchScore: Optional[int] = None
     nsfwFlag: bool = False
     overallRecommendation: str = "review"   # 'approve' | 'review' | 'reject'
-    # khuyến nghị giá (chỉ có với code + DeepSeek bật)
+    # Khuyến nghị chiến lược định giá & hợp đồng thương mại hóa
+    suggestedContractType: Optional[str] = None
+    suggestedLumpSumAmount: Optional[float] = None
     suggestedPrice: Optional[float] = None
     suggestedRevenueSplit: Optional[int] = None
     pricingRationale: Optional[str] = None
@@ -443,6 +445,8 @@ def ai_review(req: AiReviewRequest):
     code_quality = None
     description_match = None
     tags_match_score = None
+    suggested_contract_type = None
+    suggested_lump_sum = None
     suggested_price = None
     revenue_split = None
     pricing_rationale = None
@@ -491,6 +495,8 @@ def ai_review(req: AiReviewRequest):
             raw["code"] = code_res
             code_quality = code_res.get("codeQualityScore")
             description_match = code_res.get("descriptionMatchScore")
+            suggested_contract_type = code_res.get("suggestedContractType")
+            suggested_lump_sum = code_res.get("suggestedLumpSumAmount")
             suggested_price = code_res.get("suggestedPrice")
             revenue_split = code_res.get("suggestedRevenueSplit")
             pricing_rationale = code_res.get("pricingRationale")
@@ -641,6 +647,8 @@ def ai_review(req: AiReviewRequest):
         tagsMatchScore=tags_match_score,
         nsfwFlag=nsfw_flag,
         overallRecommendation=recommendation,
+        suggestedContractType=suggested_contract_type,
+        suggestedLumpSumAmount=suggested_lump_sum,
         suggestedPrice=suggested_price,
         suggestedRevenueSplit=revenue_split,
         pricingRationale=pricing_rationale,
