@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
-  Landmark,
   ReceiptText,
-  ShieldCheck,
   Wallet2,
 } from "lucide-react";
 import { walletApi } from "../../api/walletApi";
@@ -72,60 +70,6 @@ const formatTransactionType = (value?: string | null, fallback = "N/A") => {
     .split("_")
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
-};
-
-const maskAccountNumber = (value?: string | null, fallback = "Not connected") => {
-  if (!value) {
-    return fallback;
-  }
-
-  const normalized = value.trim();
-  if (normalized.length <= 4) {
-    return normalized;
-  }
-
-  return `•••• ${normalized.slice(-4)}`;
-};
-
-const getPayoutStatusMeta = (
-  status?: string | null,
-  labels?: {
-    active: string;
-    enabled: string;
-    pending: string;
-    processing: string;
-    unknown: string;
-  },
-) => {
-  const normalized = status?.toLowerCase();
-
-  if (normalized === "active" || normalized === "enabled") {
-    return {
-      badgeClass:
-        "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400",
-      label:
-        normalized === "enabled"
-          ? labels?.enabled || status || labels?.unknown || "Unknown"
-          : labels?.active || status || labels?.unknown || "Unknown",
-    };
-  }
-
-  if (normalized === "pending" || normalized === "processing") {
-    return {
-      badgeClass:
-        "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400",
-      label:
-        normalized === "processing"
-          ? labels?.processing || status || labels?.unknown || "Unknown"
-          : labels?.pending || status || labels?.unknown || "Unknown",
-    };
-  }
-
-  return {
-    badgeClass:
-      "border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300",
-    label: status || labels?.unknown || "Unknown",
-  };
 };
 
 interface AdminFinanceWalletPanelProps {
@@ -248,13 +192,6 @@ export const AdminFinanceWalletPanel: React.FC<
     onRefreshStateChange,
   ]);
 
-  const payoutStatusMeta = getPayoutStatusMeta(payoutBalance?.status, {
-    active: t("financeWallet.status.active"),
-    enabled: t("financeWallet.status.enabled"),
-    pending: t("financeWallet.status.pending"),
-    processing: t("financeWallet.status.processing"),
-    unknown: t("financeWallet.status.unknown"),
-  });
   const platformWalletBalance = walletInfo
     ? formatMoney(
         walletInfo.balance,
@@ -269,16 +206,6 @@ export const AdminFinanceWalletPanel: React.FC<
     walletInfo && walletInfo.outstandingDebt && walletInfo.outstandingDebt > 0
       ? formatMoney(walletInfo.outstandingDebt, walletInfo.currency, locale, t("withdrawal.na"))
       : null;
-  const payoutBalanceDisplay = isLoadingPayoutBalance
-    ? t("common.loading")
-    : payoutBalance
-      ? formatMoney(
-          payoutBalance.balance,
-          payoutBalance.currency,
-          locale,
-          t("withdrawal.na"),
-        )
-      : t("withdrawal.na");
 
   return (
     <div className="space-y-5">
@@ -302,7 +229,7 @@ export const AdminFinanceWalletPanel: React.FC<
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4">
         <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/80 p-5 shadow-[0_14px_30px_rgba(16,185,129,0.08)] dark:border-emerald-500/20 dark:bg-emerald-500/8 dark:shadow-none">
           <div className="flex items-start gap-3">
             <div className="rounded-2xl bg-emerald-500/12 p-3 text-emerald-600 dark:text-emerald-400">
@@ -328,55 +255,6 @@ export const AdminFinanceWalletPanel: React.FC<
           )}
         </div>
 
-        <div className="rounded-[24px] border border-sky-200 bg-sky-50/80 p-5 shadow-[0_14px_30px_rgba(14,165,233,0.08)] dark:border-sky-500/20 dark:bg-sky-500/8 dark:shadow-none">
-          <div className="flex items-start gap-3">
-            <div className="rounded-2xl bg-sky-500/12 p-3 text-sky-600 dark:text-sky-400">
-              <Landmark size={18} />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-700/70 dark:text-sky-300/70">
-                {t("financeWallet.cards.payoutBalance.title")}
-              </p>
-              <p className="mt-2 font-display text-2xl font-bold text-slate-900 dark:text-white">
-                {payoutBalanceDisplay}
-              </p>
-            </div>
-          </div>
-          <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
-            {t("financeWallet.cards.payoutBalance.description")}
-          </p>
-        </div>
-
-        <div className="rounded-[24px] border border-amber-200 bg-amber-50/80 p-5 shadow-[0_14px_30px_rgba(245,158,11,0.08)] dark:border-amber-500/20 dark:bg-amber-500/8 dark:shadow-none">
-          <div className="flex items-start gap-3">
-            <div className="rounded-2xl bg-amber-500/12 p-3 text-amber-600 dark:text-amber-400">
-              <ShieldCheck size={18} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-700/70 dark:text-amber-300/70">
-                  {t("financeWallet.cards.payoutAccount.title")}
-                </p>
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${payoutStatusMeta.badgeClass}`}
-                >
-                  {payoutStatusMeta.label}
-                </span>
-              </div>
-              <p className="mt-2 text-base font-semibold text-slate-900 dark:text-white">
-                {payoutBalance?.accountName || t("financeWallet.notConnected")}
-              </p>
-              {payoutBalance?.accountNumber && (
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  {maskAccountNumber(payoutBalance.accountNumber)}
-                </p>
-              )}
-            </div>
-          </div>
-          <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
-            {t("financeWallet.cards.payoutAccount.description")}
-          </p>
-        </div>
       </div>
 
       <div className="overflow-hidden rounded-[24px] border border-slate-200/90 bg-white/95 shadow-[0_18px_44px_rgba(148,163,184,0.14)] backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:shadow-none">

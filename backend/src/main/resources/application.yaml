@@ -34,8 +34,10 @@ spring:
         dimensions: 768
   servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 300MB
+      max-request-size: 300MB
+      file-size-threshold: 10MB
+      resolve-lazily: true
 
   data:
     mongodb:
@@ -93,6 +95,8 @@ app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   admin-url: ${ADMIN_URL:http://localhost:3000}
   backend-url: ${BACKEND_URL:http://localhost:8080}
+  ai-service:
+    url: ${AI_SERVICE_URL:http://localhost:8001}
 
   game-version-notifications:
     fixed-delay-ms: ${GAME_VERSION_NOTIFICATION_DELAY_MS:5000}

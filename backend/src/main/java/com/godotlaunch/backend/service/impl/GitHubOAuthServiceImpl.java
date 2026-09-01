@@ -14,6 +14,7 @@ import com.godotlaunch.backend.service.EncryptionService;
 import com.godotlaunch.backend.service.GitHubOAuthService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,6 +31,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class GitHubOAuthServiceImpl implements GitHubOAuthService {
+
+    @Value("${app.backend-url:http://localhost:8080}")
+    private String backendUrl;
 
     private final GitHubOAuthConfig githubConfig;
     private final UserRepository userRepository;
@@ -316,6 +320,9 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
         }
 
         session.setAttribute("github_linking_user_email", email);
-        return "http://localhost:8080/api/v1/auth/github?action=link";
+        String baseUrl = backendUrl == null || backendUrl.isBlank()
+                ? "http://localhost:8080"
+                : backendUrl.replaceAll("/+$", "");
+        return baseUrl + "/api/v1/auth/github?action=link";
     }
 }

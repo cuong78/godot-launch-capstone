@@ -54,14 +54,14 @@ public class UnifiedAssetUploadHelper {
                 throw new IllegalArgumentException("Nội dung file ZIP tài nguyên trùng khớp hoàn toàn với phiên bản hiện tại. Vui lòng thực hiện cập nhật trước khi tải lên.");
             }
 
-            // 1. Tạo thư mục tạm để giải nén
+            // 1. Quét virus ClamAV trên toàn bộ file ZIP nén
+            scanZipFileWithClamAV(rawZipFile);
+
+            // 2. Tạo thư mục tạm để giải nén
             tempDir = Files.createTempDirectory("unified-upload-" + itemId).toFile();
 
-            // 2. Giải nén và thực hiện validate bảo mật (Zip Slip & Zip Bomb)
+            // 3. Giải nén và thực hiện validate bảo mật (Zip Slip & Zip Bomb)
             unzipAndValidate(rawZipFile, tempDir);
-
-            // 2.5. Quét virus ClamAV đệ quy trên TOÀN BỘ các file giải nén trước khi xử lý media/assets
-            scanDirectoryForViruses(tempDir);
 
             // 3. Xác định thư mục gốc thực sự của tài nguyên (Unwrap nếu zip bị bọc bởi 1 thư mục cha)
             File rootDir = tempDir;
@@ -309,6 +309,11 @@ public class UnifiedAssetUploadHelper {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
+        String filesMarker = "/files/";
+        int filesIndex = url.indexOf(filesMarker);
+        if (filesIndex != -1) {
+            return url.substring(filesIndex + filesMarker.length());
+        }
         String seaweedMarker = "/godotlaunch/";
         int seaweedIndex = url.indexOf(seaweedMarker);
         if (seaweedIndex != -1) {
@@ -382,30 +387,19 @@ public class UnifiedAssetUploadHelper {
         }
     }
 
-    private void scanDirectoryForViruses(File tempDir) {
-        log.info("Đang tiến hành quét ClamAV đệ quy toàn bộ tệp tin giải nén trong {}", tempDir.getName());
-        try (var stream = Files.walk(tempDir.toPath())) {
-            java.util.List<Path> filesToScan = stream
-                    .filter(Files::isRegularFile)
-                    .toList();
-
-            log.info("Tìm thấy {} tệp tin giải nén. Bắt đầu quét virus qua ClamAV...", filesToScan.size());
-            for (Path filePath : filesToScan) {
-                try (InputStream is = new FileInputStream(filePath.toFile())) {
-                    boolean isClean = clamAVService.scanStream(is);
-                    if (!isClean) {
-                        String fileName = filePath.getFileName().toString();
-                        String cleanRelPath = tempDir.toPath().relativize(filePath).toString().replace('\\', '/');
-                        log.warn("PHÁT HIỆN MÃ ĐỘC trong tệp tin: {} (Đường dẫn: {})", fileName, cleanRelPath);
-                        throw new SecurityException("Phát hiện mã độc (Virus/Malware) trong tệp tin: " + fileName + ". Tiến hành từ chối và hủy tải lên để bảo vệ an toàn.");
-                    }
-                }
+    private void scanZipFileWithClamAV(File zipFile) {
+        log.info("Đang tiến hành quét virus file ZIP qua ClamAV: {}", zipFile.getName());
+        try (InputStream is = new FileInputStream(zipFile)) {
+            boolean isClean = clamAVService.scanStream(is);
+            if (!isClean) {
+                log.warn("PHÁT HIỆN MÃ ĐỘC trong file ZIP: {}", zipFile.getName());
+                throw new SecurityException("Phát hiện mã độc (Virus/Malware) trong file ZIP tải lên. Tiến hành từ chối và hủy tải lên để bảo vệ an toàn.");
             }
-            log.info("Quét ClamAV đệ quy hoàn tất: AN TOÀN 100% cho {} tệp tin.", filesToScan.size());
+            log.info("Quét ClamAV hoàn tất: File ZIP AN TOÀN 100%.");
         } catch (SecurityException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Lỗi khi duyệt thư mục tạm để quét virus: {}", e.getMessage(), e);
+            log.error("Lỗi khi quét virus qua ClamAV: {}", e.getMessage(), e);
             throw new RuntimeException("Lỗi trong quá trình quét virus: " + e.getMessage(), e);
         }
     }

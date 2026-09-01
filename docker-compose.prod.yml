@@ -102,8 +102,15 @@ services:
       HF_HOME: /models
       INSIGHTFACE_HOME: /models/insightface
       TRANSFORMERS_OFFLINE: "0"
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-vision.json
     volumes:
       - ai-model-cache:/models
+      - type: bind
+        source: ./ai-service/gcp-vision.json
+        target: /run/secrets/gcp-vision.json
+        read_only: true
+        bind:
+          create_host_path: false
     ports:
       - 127.0.0.1:8001:8001
     depends_on:

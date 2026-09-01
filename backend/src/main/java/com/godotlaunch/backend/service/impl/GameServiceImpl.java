@@ -1537,18 +1537,24 @@ public class GameServiceImpl implements GameService {
 
     private String extractObjectKeyFromUrl(String url) {
         if (url == null) return null;
-        
+
+        String filesMarker = "/files/";
+        int filesIndex = url.indexOf(filesMarker);
+        if (filesIndex != -1) {
+            return url.substring(filesIndex + filesMarker.length());
+        }
+
         // SeaweedFS (e.g. http://localhost:8888/godotlaunch/...)
         String seaweedMarker = "/godotlaunch/";
         int seaweedIndex = url.indexOf(seaweedMarker);
         if (seaweedIndex != -1) {
             return url.substring(seaweedIndex + seaweedMarker.length());
         }
-        
+
         if (url.startsWith("http://") || url.startsWith("https://")) {
             return null;
         }
-        
+
         return url;
     }
 
