@@ -1868,7 +1868,10 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                   <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
                     <div className="flex justify-between items-center text-xs font-bold font-mono">
                       <span className="text-sky-500 flex items-center gap-1">
-                        <RefreshCw size={12} className="animate-spin" /> Đang tải file lên máy chủ...
+                        <RefreshCw size={12} className="animate-spin" />
+                        {unifiedUploadProgress >= 100
+                          ? "Đang hoàn tất nhận file và bắt đầu giải nén..."
+                          : "Đang tải file lên máy chủ..."}
                       </span>
                       <span className="text-slate-600 dark:text-slate-400">{unifiedUploadProgress}%</span>
                     </div>

@@ -21,7 +21,7 @@ ENV TRANSFORMERS_OFFLINE=0
 
 # torch CPU-only TRƯỚC (index riêng của PyTorch) — tránh kéo ~3GB NVIDIA/CUDA không dùng.
 # Bản CPU ~190MB thay vì ~2.5GB GPU. Service chạy CPU, không cần CUDA.
-RUN pip install --default-timeout=1000 --retries 10 --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --default-timeout=1000 --retries 10 --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

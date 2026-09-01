@@ -56,6 +56,18 @@ class SeaweedFsServiceTest {
     }
 
     @Test
+    @DisplayName("shouldStripInternalBasePath_WhenExplicitPublicProxyUrlIsConfigured")
+    void shouldStripInternalBasePath_WhenExplicitPublicProxyUrlIsConfigured() {
+        SeaweedFsService productionService = new SeaweedFsService(
+                "seaweedfs-filer", 8888, "localhost", 8888,
+                "https://godotlaunch.shop/files", "/godotlaunch");
+
+        String resolved = productionService.resolvePublicUrl(
+                "http://seaweedfs-filer:8888/godotlaunch/games/game-id/media/image.png");
+        assertThat(resolved).isEqualTo("https://godotlaunch.shop/files/games/game-id/media/image.png");
+    }
+
+    @Test
     @DisplayName("shouldGeneratePresignedUploadUrl_WhenCalled")
     void shouldGeneratePresignedUploadUrl_WhenCalled() {
         when(seaweedAdapter.getPublicUrl("key")).thenReturn("http://public/key");

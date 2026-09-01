@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -140,6 +141,17 @@ class GitHubOAuthServiceImplTest {
         // Assert
         assertThat(linkUrl).isEqualTo("http://localhost:8080/api/v1/auth/github?action=link");
         verify(session, times(1)).setAttribute("github_linking_user_email", "user@example.com");
+    }
+
+    @Test
+    @DisplayName("Should use configured backend URL when preparing GitHub link session")
+    void shouldPrepareLinkSession_UseConfiguredBackendUrl() {
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(mockUser));
+        ReflectionTestUtils.setField(gitHubOAuthService, "backendUrl", "https://godotlaunch.shop/");
+
+        String linkUrl = gitHubOAuthService.prepareLinkSession("user@example.com", session);
+
+        assertThat(linkUrl).isEqualTo("https://godotlaunch.shop/api/v1/auth/github?action=link");
     }
 
     @Test

@@ -54,6 +54,19 @@ public class SeaweedFsService {
             return rawUrl;
         }
         String internalPrefix = "http://" + filerHost + ":" + filerPort;
+        if (!publicUrl.isBlank()) {
+            // Nginx exposes /files/<object-key> and adds basePath itself.
+            // Strip the internal base path to avoid proxying a doubled
+            // /godotlaunch/godotlaunch/... path to SeaweedFS.
+            String configuredObjectPrefix = internalPrefix + basePath;
+            if (rawUrl.startsWith(configuredObjectPrefix)) {
+                return publicUrl + rawUrl.substring(configuredObjectPrefix.length());
+            }
+            String dockerObjectPrefix = "http://seaweedfs-filer:8888" + basePath;
+            if (rawUrl.startsWith(dockerObjectPrefix)) {
+                return publicUrl + rawUrl.substring(dockerObjectPrefix.length());
+            }
+        }
         String publicPrefix = publicUrl.isBlank()
                 ? "http://" + publicHost + ":" + publicPort
                 : publicUrl;
@@ -84,6 +97,13 @@ public class SeaweedFsService {
     public String extractObjectKey(String publicUrl) {
         if (publicUrl == null || publicUrl.isBlank()) {
             return null;
+        }
+        try {
+            String path = URI.create(publicUrl).getPath();
+            if (path != null && path.startsWith("/files/")) {
+                return path.substring("/files/".length());
+            }
+        } catch (Exception ignored) {
         }
         return seaweedAdapter.extractObjectKey(publicUrl);
     }
