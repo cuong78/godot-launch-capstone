@@ -12,4 +12,5 @@ public interface StoreReportImportRepository extends JpaRepository<StoreReportIm
     List<StoreReportImport> findByExternalPublishIdOrderBySyncedAtDesc(UUID externalPublishId);
     List<StoreReportImport> findAllByOrderBySyncedAtDesc();
     List<StoreReportImport> findByExternalPublish_Game_IdOrderBySyncedAtDesc(UUID gameId);
+    java.util.Optional<StoreReportImport> findFirstByExternalPublish_Game_IdOrderBySyncedAtDesc(UUID gameId);
 }

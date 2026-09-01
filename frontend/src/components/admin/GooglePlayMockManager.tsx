@@ -31,67 +31,7 @@ import {
   StoreRevenueSummaryResponse,
 } from '../../types';
 
-interface MonthDropdownProps {
-  currentPeriod: string;
-  monthOptions: { value: string; label: string }[];
-  onSelect: (val: string) => void;
-}
 
-const MonthDropdown: React.FC<MonthDropdownProps> = ({ currentPeriod, monthOptions, onSelect }) => {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const selectedOpt = monthOptions.find((o) => o.value === currentPeriod) || monthOptions[0];
-
-  return (
-    <div className="relative inline-block text-left shrink-0" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
-      >
-        <span className="whitespace-nowrap font-mono">{selectedOpt.label}</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 sm:left-0 mt-1.5 w-max min-w-[210px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-          {monthOptions.map((opt) => {
-            const isSelected = opt.value === currentPeriod;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  onSelect(opt.value);
-                  setOpen(false);
-                }}
-                className={`w-full text-left px-3.5 py-2 text-xs font-medium flex items-center justify-between gap-3 transition cursor-pointer whitespace-nowrap ${
-                  isSelected
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-semibold'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                <span className="whitespace-nowrap font-mono">{opt.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
 
 export const GooglePlayMockManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'imports' | 'statements'>('overview');
@@ -212,52 +152,43 @@ export const GooglePlayMockManager: React.FC = () => {
     }
   };
 
-  const now = new Date();
-  const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const [selectedPeriods, setSelectedPeriods] = useState<Record<string, string>>({});
-
-  const monthOptions = [
-    { value: currentYm, label: `${currentYm} (Tháng hiện tại)` },
-    { value: '2026-08', label: '2026-08' },
-    { value: '2026-07', label: '2026-07' },
-    { value: '2026-06', label: '2026-06' },
-  ];
-
-  const handleSyncDownloads = async (publishId: string, title: string, periodKey?: string) => {
+  const handleSyncDownloads = async (publishId: string, title: string) => {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await storeReportApi.syncDownloads(publishId, periodKey);
+      const res = await storeReportApi.syncDownloads(publishId);
       if (res.success) {
         setMessage({
           type: 'success',
-          text: `Đồng bộ CSV lượt cài đặt thành công cho game ${title} (Kỳ ${res.data.reportMonth})! (${res.data.rowCount} dòng chỉ số cài đặt mới/cập nhật)`,
+          text: `Đồng bộ CSV lượt cài đặt thành công cho game "${title}" (${res.data.reportMonth})! (${res.data.rowCount} dòng chỉ số cài đặt mới)`,
         });
         fetchData();
       }
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data?.message || err.message || 'Đồng bộ thất bại' });
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.message || err.message || 'Đồng bộ thất bại',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExecutePayoutDirect = async (publishId: string, title: string, periodKey: string) => {
+  const handleExecutePayoutDirect = async (publishId: string, title: string) => {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await storeReportApi.executeDemoPayout(publishId, periodKey);
+      const res = await storeReportApi.executeDemoPayout(publishId);
       if (res.success) {
         setMessage({
           type: 'success',
-          text: `HẠCH TOÁN DOANH THU THÀNH CÔNG cho game ${title} (Kỳ ${periodKey})! Doanh thu gộp: ${formatVnd(res.data.grossRevenue)} | Phí CH Play (15%): -${formatVnd(res.data.googleFeeAmount)} | Doanh thu thuần (Net 85%): ${formatVnd(res.data.netStoreProceeds)} | 🟢 Ví Developer: +${formatVnd(res.data.developerEarnings)} | 🟣 Ví Admin Sàn: +${formatVnd(res.data.platformRetainedRevenue)} | 📄 Đã tạo file CSV đợt đối soát mới!`,
+          text: `HẠCH TOÁN DOANH THU THÀNH CÔNG cho game "${title}" (${res.data.periodKey})! Doanh thu gộp: ${formatVnd(res.data.grossRevenue)} | Phí CH Play (15%): -${formatVnd(res.data.googleFeeAmount)} | Doanh thu thuần (Net 85%): ${formatVnd(res.data.netStoreProceeds)} | 🟢 Ví Developer: +${formatVnd(res.data.developerEarnings)} | 🟣 Ví Admin Sàn: +${formatVnd(res.data.platformRetainedRevenue)} | 📄 Đã tạo file CSV đợt đối soát mới!`,
         });
         fetchData();
       }
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || err.message || 'Demo payout thất bại';
       setMessage({ type: 'error', text: errorMsg });
-      alert(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -558,62 +489,44 @@ export const GooglePlayMockManager: React.FC = () => {
                           </td>
                           <td className="p-4 align-middle text-center">
                             <div className="flex items-center justify-center gap-2">
-                              {(() => {
-                                const currentPeriod = selectedPeriods[gameId] || currentYm;
-                                return (
-                                  <>
-                                    {!isMocked ? (
-                                      <button
-                                        onClick={() =>
-                                          setActivateModal({
-                                            open: true,
-                                            publishId: extPubId || gameId,
-                                            isGameId: !extPubId,
-                                            title: title,
-                                            packageName: game.packageName || `com.godotlaunch.${title.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-                                            priceProposed: String(game.priceProposed || (game.contractType === 'full_acquisition' ? 199000 : 99000)),
-                                            contractType: game.contractType,
-                                          })
-                                        }
-                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
-                                      >
-                                        Kích hoạt Mock
-                                      </button>
-                                    ) : (
-                                      <>
-                                         <MonthDropdown
-                                           currentPeriod={currentPeriod}
-                                           monthOptions={monthOptions}
-                                           onSelect={(val) =>
-                                             setSelectedPeriods({
-                                               ...selectedPeriods,
-                                               [gameId]: val,
-                                             })
-                                           }
-                                         />
+                              {!isMocked ? (
+                                <button
+                                  onClick={() =>
+                                    setActivateModal({
+                                      open: true,
+                                      publishId: extPubId || gameId,
+                                      isGameId: !extPubId,
+                                      title: title,
+                                      packageName: game.packageName || `com.godotlaunch.${title.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+                                      priceProposed: String(game.priceProposed || (game.contractType === 'full_acquisition' ? 199000 : 99000)),
+                                      contractType: game.contractType,
+                                    })
+                                  }
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
+                                >
+                                  Kích hoạt Mock
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleSyncDownloads(extPubId || gameId, title)}
+                                    disabled={loading}
+                                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                                  >
+                                    <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+                                    <span className="whitespace-nowrap">Sync Lượt Tải</span>
+                                  </button>
 
-                                        <button
-                                          onClick={() => handleSyncDownloads(extPubId || gameId, title, currentPeriod)}
-                                          disabled={loading}
-                                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
-                                        >
-                                          <RefreshCw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                          <span className="whitespace-nowrap">Sync Lượt Tải</span>
-                                        </button>
-
-                                        <button
-                                          onClick={() => handleExecutePayoutDirect(extPubId || gameId, title, currentPeriod)}
-                                          disabled={loading}
-                                          className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
-                                        >
-                                          <Play className="w-3.5 h-3.5 fill-current shrink-0" />
-                                          <span className="whitespace-nowrap">Demo Payout ({currentPeriod})</span>
-                                        </button>
-                                      </>
-                                    )}
-                                  </>
-                                );
-                              })()}
+                                  <button
+                                    onClick={() => handleExecutePayoutDirect(extPubId || gameId, title)}
+                                    disabled={loading}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                                  >
+                                    <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+                                    <span className="whitespace-nowrap">Demo Payout</span>
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>

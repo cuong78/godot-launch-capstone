@@ -34,6 +34,20 @@ public class GooglePlayMockClient {
         }
     }
 
+    public String fetchInstallReportCsv(String packageName, String startDate, String endDate) {
+        try {
+            String uri = mockServerUrl + "/internal/v1/reports/installs/" + packageName + "?startDate=" + startDate + "&endDate=" + endDate;
+            return webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+        } catch (Exception e) {
+            log.error("Lỗi khi tải CSV report từ Google Play Mock container cho {} (từ {} đến {}): {}", packageName, startDate, endDate, e.getMessage());
+            throw new RuntimeException("Không thể tải report CSV từ Mock container: " + e.getMessage());
+        }
+    }
+
     public String fetchInstallReportCsv(String packageName, String yyyyMM) {
         try {
             return webClient.get()

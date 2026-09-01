@@ -103,6 +103,22 @@ public class StoreReportServiceImpl implements StoreReportService {
                 ExternalPublish pub = publishOpt.orElse(null);
                 Contract c = contractOpt.orElse(null);
 
+                Boolean hasUnsyncedDownloads = null;
+                Instant lastSyncedAt = null;
+
+                if (pub != null && pub.getPackageName() != null) {
+                    Optional<StoreReportImport> latestImpOpt = storeReportImportRepository
+                            .findFirstByExternalPublish_Game_IdOrderBySyncedAtDesc(game.getId());
+                    if (latestImpOpt.isPresent()) {
+                        lastSyncedAt = latestImpOpt.get().getSyncedAt();
+                        LocalDate lastSyncDate = LocalDate.ofInstant(lastSyncedAt, java.time.ZoneId.systemDefault());
+                        LocalDate today = LocalDate.now();
+                        hasUnsyncedDownloads = lastSyncDate.isBefore(today);
+                    } else {
+                        hasUnsyncedDownloads = true;
+                    }
+                }
+
                 result.add(EligibleStoreGameResponse.builder()
                         .gameId(game.getId())
                         .gameTitle(game.getTitle())
@@ -120,6 +136,8 @@ public class StoreReportServiceImpl implements StoreReportService {
                         .hasCoPublishingContract(c != null && c.getContractType() == ContractType.co_publishing)
                         .contractType(c != null && c.getContractType() != null ? c.getContractType().name() : null)
                         .revenueSplit(c != null ? c.getRevenueSplit() : null)
+                        .hasUnsyncedDownloads(hasUnsyncedDownloads)
+                        .lastSyncedAt(lastSyncedAt)
                         .build());
             }
         }
@@ -246,7 +264,7 @@ public class StoreReportServiceImpl implements StoreReportService {
     @Override
     @Transactional
     public StoreReportImportResponse syncDownloadsForGame(UUID externalPublishId, UUID adminId) {
-        return syncDownloadsForGame(externalPublishId, null, adminId);
+        return syncDownloadsForGame(externalPublishId, (String) null, adminId);
     }
 
     @Override
@@ -260,46 +278,45 @@ public class StoreReportServiceImpl implements StoreReportService {
             throw new RuntimeException("Game chưa được cấu hình Package Name để đồng bộ report");
         }
 
-        String yyyyMM = targetYyyyMM != null ? targetYyyyMM.replace("-", "") : null;
-        if (yyyyMM == null || yyyyMM.isBlank() || !yyyyMM.matches("\\d{6}")) {
-            Optional<StoreReportImport> latestOpt = storeReportImportRepository
-                    .findByExternalPublish_Game_IdOrderBySyncedAtDesc(publish.getGame().getId())
-                    .stream()
-                    .filter(imp -> imp.getReportMonth() != null && imp.getReportMonth().matches("\\d{4}-\\d{2}"))
-                    .findFirst();
+        Optional<StoreReportImport> latestImpOpt = storeReportImportRepository
+                .findFirstByExternalPublish_Game_IdOrderBySyncedAtDesc(publish.getGame().getId());
 
-            if (latestOpt.isPresent()) {
-                String[] parts = latestOpt.get().getReportMonth().split("-");
-                int y = Integer.parseInt(parts[0]);
-                int m = Integer.parseInt(parts[1]);
-                YearMonth nextYm = YearMonth.of(y, m).plusMonths(1);
-                yyyyMM = nextYm.format(DateTimeFormatter.ofPattern("yyyyMM"));
-            } else {
-                yyyyMM = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-            }
+        LocalDate today = LocalDate.now();
+        LocalDate startDate;
+
+        if (latestImpOpt.isPresent() && latestImpOpt.get().getSyncedAt() != null) {
+            LocalDate lastSyncDate = LocalDate.ofInstant(latestImpOpt.get().getSyncedAt(), java.time.ZoneId.systemDefault());
+            startDate = lastSyncDate.plusDays(1);
+        } else {
+            Instant pushTime = publish.getPublishedAt() != null ? publish.getPublishedAt() : (publish.getGame().getCreatedAt() != null ? publish.getGame().getCreatedAt() : Instant.now());
+            startDate = LocalDate.ofInstant(pushTime, java.time.ZoneId.systemDefault());
         }
 
-        int year = Integer.parseInt(yyyyMM.substring(0, 4));
-        int month = Integer.parseInt(yyyyMM.substring(4, 6));
-        String reportMonth = String.format("%04d-%02d", year, month);
+        LocalDate endDate = today;
 
-        String sourceObjectPath = "stats/installs/installs_" + publish.getPackageName() + "_" + yyyyMM + ".csv";
+        if (startDate.isAfter(endDate)) {
+            throw new RuntimeException("Không có lượt tải mới nào kể từ lần đồng bộ gần nhất!");
+        }
 
-        String csvContent = googlePlayMockClient.fetchInstallReportCsv(publish.getPackageName(), yyyyMM);
+        String startDateStr = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String endDateStr = endDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String reportPeriod = startDateStr.equals(endDateStr) ? startDateStr : (startDateStr + " ~ " + endDateStr);
+
+        String csvContent = googlePlayMockClient.fetchInstallReportCsv(publish.getPackageName(), startDateStr, endDateStr);
 
         byte[] csvBytes = csvContent.getBytes(StandardCharsets.UTF_8);
         String checksum = calculateSha256(csvBytes);
 
         // Upload raw CSV to SeaweedFS
-        String objectKey = "reports/installs/" + publish.getPackageName() + "/" + yyyyMM + "_" + UUID.randomUUID() + ".csv";
+        String objectKey = "reports/installs/" + publish.getPackageName() + "/" + startDateStr + "_to_" + endDateStr + "_" + UUID.randomUUID() + ".csv";
         String rawFileUrl = seaweedFsService.uploadStream(new ByteArrayInputStream(csvBytes), objectKey, "text/csv");
 
         // Save import history record
         StoreReportImport reportImport = StoreReportImport.builder()
                 .provider("GOOGLE_PLAY_MOCK")
                 .externalPublish(publish)
-                .sourceObjectPath(sourceObjectPath)
-                .reportMonth(reportMonth)
+                .sourceObjectPath("stats/installs/installs_" + publish.getPackageName() + "_" + startDateStr + "_to_" + endDateStr + ".csv")
+                .reportMonth(reportPeriod)
                 .syncedAt(Instant.now())
                 .rawFileUrl(rawFileUrl)
                 .fileChecksum(checksum)
@@ -311,10 +328,15 @@ public class StoreReportServiceImpl implements StoreReportService {
         // Parse CSV & Idempotent Upsert Metrics
         int parsedRows = parseAndUpsertMetrics(csvContent, publish, reportImport);
 
+        if (parsedRows == 0) {
+            storeReportImportRepository.delete(reportImport);
+            throw new RuntimeException("Chưa có lượt tải mới nào để đồng bộ!");
+        }
+
         reportImport.setRowCount(parsedRows);
         reportImport = storeReportImportRepository.save(reportImport);
 
-        log.info("[MOCK SYNC DOWNLOADS] Synced {} rows for game {} package {} month {}", parsedRows, publish.getGame().getTitle(), publish.getPackageName(), reportMonth);
+        log.info("[MOCK SYNC DOWNLOADS] Synced {} rows for game {} package {} period {}", parsedRows, publish.getGame().getTitle(), publish.getPackageName(), reportPeriod);
         return mapToImportResponse(reportImport);
     }
 
@@ -343,7 +365,7 @@ public class StoreReportServiceImpl implements StoreReportService {
 
     @Override
     @Transactional
-    public StoreRevenueStatementResponse executeDemoPayout(UUID externalPublishId, String periodKey, UUID adminId) {
+    public StoreRevenueStatementResponse executeDemoPayout(UUID externalPublishId, String periodKeyInput, UUID adminId) {
         ExternalPublish publish = externalPublishRepository.findById(externalPublishId)
                 .orElseThrow(() -> new RuntimeException("External publish record not found"));
 
@@ -353,16 +375,53 @@ public class StoreReportServiceImpl implements StoreReportService {
 
         Game game = publish.getGame();
 
-        if (periodKey == null || periodKey.isBlank()) {
-            periodKey = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
-        } else if (periodKey.matches("\\d{6}")) {
-            periodKey = periodKey.substring(0, 4) + "-" + periodKey.substring(4, 6);
+        // Sync downloads for latest period if available
+        try {
+            syncDownloadsForGame(externalPublishId, adminId);
+        } catch (Exception e) {
+            log.info("[DEMO PAYOUT] Sync did not produce a new import: {}", e.getMessage());
         }
 
-        // 1. Check if payout statement ALREADY exists for this game and periodKey
-        Optional<StoreRevenueStatement> existingOpt = storeRevenueStatementRepository.findByGameIdAndPeriodKey(game.getId(), periodKey);
-        if (existingOpt.isPresent()) {
-            throw new RuntimeException("Kỳ hạch toán [" + periodKey + "] cho game này đã được hoàn tất thanh toán trước đó!");
+        // Find all imports for this game
+        List<StoreReportImport> allImportsForGame = storeReportImportRepository
+                .findByExternalPublish_Game_IdOrderBySyncedAtDesc(game.getId());
+
+        // Find all import IDs that have already been paid out
+        Set<UUID> paidImportIds = storeRevenueStatementRepository.findAll().stream()
+                .filter(s -> s.getGame().getId().equals(game.getId()) && s.getSourceImport() != null)
+                .map(s -> s.getSourceImport().getId())
+                .collect(Collectors.toSet());
+
+        // Filter imports that have NOT been paid out yet
+        List<StoreReportImport> unpaidImports = allImportsForGame.stream()
+                .filter(imp -> !paidImportIds.contains(imp.getId()))
+                .collect(Collectors.toList());
+
+        if (unpaidImports.isEmpty()) {
+            throw new RuntimeException("Tất cả các đợt đồng bộ lượt tải của game này đã được hoàn tất hạch toán thanh toán trước đó! Vui lòng Sync Lượt Tải mới để tiếp tục.");
+        }
+
+        StoreReportImport reportImport = unpaidImports.get(0);
+        Set<UUID> unpaidImportIds = unpaidImports.stream().map(StoreReportImport::getId).collect(Collectors.toSet());
+
+        // Calculate period installs from DB metrics for ALL unpaid imports
+        Long totalUnpaidInstalls = storeDailyInstallMetricRepository.findAll().stream()
+                .filter(m -> m.getGame().getId().equals(game.getId()) 
+                          && m.getSourceImport() != null 
+                          && unpaidImportIds.contains(m.getSourceImport().getId()))
+                .mapToLong(m -> m.getDailyUserInstalls() != null ? m.getDailyUserInstalls() : 0L)
+                .sum();
+
+        long periodInstalls = (totalUnpaidInstalls != null && totalUnpaidInstalls > 0) ? totalUnpaidInstalls : 100L;
+
+        String periodKey;
+        if (periodKeyInput != null && !periodKeyInput.isBlank()) {
+            periodKey = periodKeyInput;
+        } else if (unpaidImports.size() == 1) {
+            periodKey = reportImport.getReportMonth();
+        } else {
+            StoreReportImport oldestUnpaid = unpaidImports.get(unpaidImports.size() - 1);
+            periodKey = oldestUnpaid.getReportMonth() + " ~ " + reportImport.getReportMonth();
         }
 
         // Validate contract
@@ -380,21 +439,6 @@ public class StoreReportServiceImpl implements StoreReportService {
             unitPrice = new BigDecimal("99000"); // Default 99,000 VND
         }
 
-        // 2. Sync installs for this month (YYYY-MM)
-        StoreReportImportResponse importRes = syncDownloadsForGame(externalPublishId, periodKey, adminId);
-        StoreReportImport reportImport = storeReportImportRepository.findById(importRes.getId()).orElse(null);
-
-        // Calculate period installs from DB metrics for this month
-        String[] parts = periodKey.split("-");
-        int year = Integer.parseInt(parts[0]);
-        int month = Integer.parseInt(parts[1]);
-        YearMonth ym = YearMonth.of(year, month);
-        LocalDate startDate = ym.atDay(1);
-        LocalDate endDate = ym.equals(YearMonth.now()) ? LocalDate.now() : ym.atEndOfMonth();
-
-        Long total = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(game.getId(), startDate, endDate);
-        long periodInstalls = (total != null && total > 0) ? total : 100L;
-
         // Financial Calculation (15% Google Fee, 85% Net Proceeds, Contract Split)
         BigDecimal grossRevenue = unitPrice.multiply(BigDecimal.valueOf(periodInstalls));
         BigDecimal googleFeeRate = new BigDecimal("15.00");
@@ -404,7 +448,7 @@ public class StoreReportServiceImpl implements StoreReportService {
         BigDecimal developerEarnings = netStoreProceeds.multiply(developerShareRate).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         BigDecimal platformRetained = netStoreProceeds.subtract(developerEarnings);
 
-        String externalPayoutId = "MOCK-GP-" + periodKey + "-" + publish.getPackageName();
+        String externalPayoutId = "MOCK-GP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "-" + publish.getPackageName();
 
         StoreRevenueStatement statement = StoreRevenueStatement.builder()
                 .externalPublish(publish)

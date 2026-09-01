@@ -44,15 +44,56 @@ app.delete('/internal/v1/apps/:packageName', (req, res) => {
 });
 
 // 3. Install CSV Statistics Report
+// GET /internal/v1/reports/installs/:packageName?startDate=2026-09-01&endDate=2026-09-05
 // GET /internal/v1/reports/installs/:packageName/:yyyyMM
-app.get('/internal/v1/reports/installs/:packageName/:yyyyMM', (req, res) => {
+const handleInstallReport = (req, res) => {
   const { packageName, yyyyMM } = req.params;
+  const { startDate, endDate } = req.query;
 
   if (!registeredApps.has(packageName)) {
     // If not registered explicitly, register auto for demo smooth workflow
     registeredApps.add(packageName);
   }
 
+  let hashSeed = 0;
+  for (let i = 0; i < packageName.length; i++) {
+    hashSeed += packageName.charCodeAt(i);
+  }
+
+  let csvLines = ['Date,Package Name,Daily User Installs'];
+
+  if (startDate && endDate) {
+    // Handle date range (YYYY-MM-DD to YYYY-MM-DD)
+    const startParts = startDate.split('-').map(Number);
+    const endParts = endDate.split('-').map(Number);
+
+    if (startParts.length === 3 && endParts.length === 3) {
+      let curr = new Date(Date.UTC(startParts[0], startParts[1] - 1, startParts[2]));
+      const end = new Date(Date.UTC(endParts[0], endParts[1] - 1, endParts[2]));
+
+      while (curr <= end) {
+        const yyyy = curr.getUTCFullYear();
+        const mm = String(curr.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(curr.getUTCDate()).padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+
+        const startOfYear = new Date(Date.UTC(yyyy, 0, 0));
+        const dayOfYear = Math.floor((curr - startOfYear) / 86400000);
+        const daySeed = hashSeed + yyyy * 1000 + dayOfYear * 10;
+        const installs = Math.floor(pseudoRandom(daySeed) * 70) + 5;
+
+        csvLines.push(`${dateStr},${packageName},${installs}`);
+        curr.setUTCDate(curr.getUTCDate() + 1);
+      }
+
+      const csvContent = csvLines.join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="installs_${packageName}_${startDate}_to_${endDate}.csv"`);
+      return res.send(csvContent);
+    }
+  }
+
+  // Fallback: Legacy yyyyMM behavior
   let year = 2026;
   let month = 8;
 
@@ -61,19 +102,11 @@ app.get('/internal/v1/reports/installs/:packageName/:yyyyMM', (req, res) => {
     month = parseInt(yyyyMM.substring(4, 6), 10) || 8;
   }
 
-  const daysInMonth = new Date(year, month, 0).getDate();
-
-  let csvLines = ['Date,Package Name,Daily User Installs'];
-
-  // Base seed from packageName + yyyyMM
-  let hashSeed = 0;
-  for (let i = 0; i < packageName.length; i++) {
-    hashSeed += packageName.charCodeAt(i);
-  }
-  for (let i = 0; i < yyyyMM.length; i++) {
+  for (let i = 0; i < (yyyyMM || '').length; i++) {
     hashSeed += yyyyMM.charCodeAt(i) * (i + 1);
   }
 
+  const daysInMonth = new Date(year, month, 0).getDate();
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -91,15 +124,13 @@ app.get('/internal/v1/reports/installs/:packageName/:yyyyMM', (req, res) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${formattedDay}`;
 
     const daySeed = hashSeed + day * 10;
-    // Generate between 5 and 75 installs per package per day
     const installs = Math.floor(pseudoRandom(daySeed) * 70) + 5;
     csvLines.push(`${dateStr},${packageName},${installs}`);
   }
 
   const csvContent = csvLines.join('\n');
-
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', `attachment; filename="installs_${packageName}_${yyyyMM}.csv"`);
+  res.setHeader('Content-Disposition', `attachment; filename="installs_${packageName}_${yyyyMM || 'all'}.csv"`);
   return res.send(csvContent);
 });
 

@@ -129,7 +129,7 @@ class StoreReportServiceImplTest {
     void syncDownloadsForGame_ShouldParseCsvAndUpsertMetrics() {
         when(externalPublishRepository.findById(publishId)).thenReturn(Optional.of(publish));
         String csv = "Date,Package Name,Daily User Installs\n2026-08-28,com.godotlaunch.skyadventure,5";
-        when(googlePlayMockClient.fetchInstallReportCsv(eq("com.godotlaunch.skyadventure"), anyString())).thenReturn(csv);
+        when(googlePlayMockClient.fetchInstallReportCsv(anyString(), anyString(), anyString())).thenReturn(csv);
         when(seaweedFsService.uploadStream(any(InputStream.class), anyString(), eq("text/csv"))).thenReturn("http://seaweedfs/csv");
         when(storeReportImportRepository.save(any(StoreReportImport.class))).thenAnswer(i -> {
             StoreReportImport imp = i.getArgument(0);
@@ -150,13 +150,22 @@ class StoreReportServiceImplTest {
         when(externalPublishRepository.findById(publishId)).thenReturn(Optional.of(publish));
         when(contractRepository.findFirstByGameId(gameId)).thenReturn(Optional.of(contract));
         lenient().when(storeRevenueStatementRepository.findByExternalPayoutId(anyString())).thenReturn(Optional.empty());
-        when(storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(any(), any(), any())).thenReturn(100L);
 
         Map<String, Object> payoutMap = new HashMap<>();
         payoutMap.put("externalPayoutId", "MOCK-GP-202608-com.godotlaunch.skyadventure");
         payoutMap.put("grossRevenue", 1000000);
-        when(googlePlayMockClient.fetchInstallReportCsv(anyString(), anyString())).thenReturn("Date,Package Name,Daily User Installs\n2026-08-01,com.godotlaunch.skyadventure,100");
+        when(googlePlayMockClient.fetchInstallReportCsv(anyString(), anyString(), anyString())).thenReturn("Date,Package Name,Daily User Installs\n2026-08-01,com.godotlaunch.skyadventure,100");
         lenient().when(googlePlayMockClient.fetchPayoutStatement(anyString(), anyString(), anyLong(), any())).thenReturn(payoutMap);
+
+        StoreReportImport existingImport = StoreReportImport.builder()
+                .id(UUID.randomUUID())
+                .externalPublish(publish)
+                .reportMonth("2026-08")
+                .syncedAt(Instant.now())
+                .status("succeeded")
+                .build();
+        when(storeReportImportRepository.findByExternalPublish_Game_IdOrderBySyncedAtDesc(gameId))
+                .thenReturn(List.of(existingImport));
 
         when(storeReportImportRepository.save(any(StoreReportImport.class))).thenAnswer(i -> {
             StoreReportImport imp = i.getArgument(0);

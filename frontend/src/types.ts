@@ -307,6 +307,8 @@ export interface EligibleStoreGameResponse {
   hasCoPublishingContract?: boolean;
   contractType?: string | null;
   revenueSplit?: number | null;
+  hasUnsyncedDownloads?: boolean;
+  lastSyncedAt?: string | null;
 }
 
 export interface GooglePlayMockConfigDto {

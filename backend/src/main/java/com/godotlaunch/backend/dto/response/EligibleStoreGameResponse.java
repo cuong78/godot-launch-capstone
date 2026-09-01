@@ -29,4 +29,6 @@ public class EligibleStoreGameResponse {
     private Boolean hasCoPublishingContract;
     private String contractType;
     private Short revenueSplit;
+    private Boolean hasUnsyncedDownloads;
+    private Instant lastSyncedAt;
 }
