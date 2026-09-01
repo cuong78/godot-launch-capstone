@@ -243,6 +243,7 @@
   "contract.document.section3CoPublishing31Body": "Doanh thu phát sinh từ hoạt động thương mại hóa Trò chơi trên Chợ ứng dụng (Google Play Console) sẽ được đối soát và phân chia giữa hai Bên theo tỷ lệ sau:",
   "contract.document.section3CoPublishingSellerShare": "Bên B (Nhà phát triển) nhận: {{percent}}% Doanh thu thuần.",
   "contract.document.section3CoPublishingBuyerShare": "Bên A (Nền tảng GodotLaunch) nhận: {{percent}}% Doanh thu thuần.",
+  "contract.document.section3CoPublishingUnitPrice": "Giá niêm yết bán/1 lượt tải trên Store: {{price}} / lượt tải.",
   "contract.document.section3CoPublishing32": "3.2. Quy định tính toán doanh thu thuần (Net Proceeds):",
   "contract.document.section3CoPublishing32Body": "Doanh thu thuần làm căn cứ phân chia được xác định bằng Tổng doanh thu bán Trò chơi (Giá bán niêm yết Trò chơi đã thỏa thuận nhân với Tổng số lượt tải) sau khi đã trừ 15% Phí dịch vụ mặc định của Google Play Console (Service Fee).",
   "contract.document.section3CoPublishingFormulaLabel": "Công thức xác định:",

@@ -4,6 +4,7 @@ import com.godotlaunch.backend.entity.enums.ContractStatus;
 import com.godotlaunch.backend.entity.enums.ContractType;
 import lombok.Builder;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -22,6 +23,7 @@ public class ContractResponse {
     private ContractStatus status;
     private Short revenueSplit;
     private String lumpSumAmount;
+    private BigDecimal gamePriceProposed;
     private String disputeResolutionClause;
     private String additionalTerms;
     private String buyerRepresentative;

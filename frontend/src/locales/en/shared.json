@@ -242,6 +242,7 @@
   "contract.document.section3CoPublishingIntro": "The parties agree to jointly operate and share revenue earned from commercializing the Game on Google Play Store. The revenue share for Party B (Developer) is calculated based on the agreed listed selling price multiplied by total downloads, minus 15% Google Play Service Fee; the remaining 85% net store proceeds are split according to the contract ratio as follows:",
   "contract.document.section3CoPublishingSellerShare": "Party B (Developer) share: {{percent}}%",
   "contract.document.section3CoPublishingBuyerShare": "Party A (Platform) share: {{percent}}%",
+  "contract.document.section3CoPublishingUnitPrice": "Store listed price / per download: {{price}} / download.",
   "contract.document.section3CoPublishingPayout": "Party A is responsible for automatically settling Party B's revenue share into Party B's Godot Launch electronic wallet immediately after each successful game sale transaction is completed.",
   "contract.document.section3FullAcquisitionTransfer": "Party B agrees to permanently and irrevocably transfer all copyright, authorship rights, source code, graphic and audio assets, and all commercial rights relating to the Game to Party A from the Effective Date.",
   "contract.document.section3FullAcquisitionPayment": "Party A shall pay Party B a one-time lump-sum amount of {{amount}}. After receiving payment, Party B agrees that it will have no further claims for revenue sharing or copyright arising from the Game.",

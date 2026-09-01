@@ -119,6 +119,7 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
         contractType?: 'full_acquisition' | 'co_publishing';
         revenueSplit?: number | null;
         lumpSumAmount?: string | null;
+        priceProposed?: number | string | null;
       };
     } catch {
       return null;
@@ -129,7 +130,8 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
     previousOffer !== null &&
     (previousOffer.contractType !== contract.contractType ||
       previousOffer.revenueSplit !== (contract.revenueSplit ?? null) ||
-      previousOffer.lumpSumAmount !== (contract.lumpSumAmount ?? null));
+      previousOffer.lumpSumAmount !== (contract.lumpSumAmount ?? null) ||
+      previousOffer.priceProposed !== (contract.gamePriceProposed ?? null));
 
   const previousOfferTypeLabel = (type?: string) =>
     type === 'co_publishing'
@@ -477,6 +479,9 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                     <ul className="list-disc pl-6 font-semibold space-y-0.5 my-1">
                       <li>{t('contract.document.section3CoPublishingSellerShare', { percent: contract.revenueSplit ?? 0 })}</li>
                       <li>{t('contract.document.section3CoPublishingBuyerShare', { percent: 100 - (contract.revenueSplit || 0) })}</li>
+                      {contract.gamePriceProposed !== undefined && contract.gamePriceProposed !== null && (
+                        <li>{t('contract.document.section3CoPublishingUnitPrice', { price: formatCurrencyValue(contract.gamePriceProposed) })}</li>
+                      )}
                     </ul>
                     <p>
                       <strong>{t('contract.document.section3CoPublishing32')}</strong> {t('contract.document.section3CoPublishing32Body')}
@@ -660,12 +665,12 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                     <span className="text-right">
                       <span className="line-through text-slate-400 dark:text-slate-500 mr-1.5">
                         {previousOffer.contractType === 'co_publishing'
-                          ? t('contract.audit.financialRevenue', { percent: previousOffer.revenueSplit ?? 0 })
+                          ? `${t('contract.audit.financialRevenue', { percent: previousOffer.revenueSplit ?? 0 })}${previousOffer.priceProposed ? ` (${formatCurrencyValue(previousOffer.priceProposed)})` : ''}`
                           : formatCurrencyValue(previousOffer.lumpSumAmount)}
                       </span>
                       <span className="font-bold text-amber-600 dark:text-amber-400">
                         {contract.contractType === 'co_publishing'
-                          ? t('contract.audit.financialRevenue', { percent: contract.revenueSplit ?? 0 })
+                          ? `${t('contract.audit.financialRevenue', { percent: contract.revenueSplit ?? 0 })}${contract.gamePriceProposed ? ` (${formatCurrencyValue(contract.gamePriceProposed)})` : ''}`
                           : formatCurrencyValue(contract.lumpSumAmount)}
                       </span>
                     </span>
@@ -694,9 +699,9 @@ export const ContractViewerModal: React.FC<ContractViewerModalProps> = ({
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800/50 pb-2">
                   <span className="text-slate-450 dark:text-slate-500 font-medium">{t('contract.audit.financialLabel')}</span>
-                  <span className="font-bold text-amber-500 dark:text-amber-400 font-mono tracking-wide text-sm">
+                  <span className="font-bold text-amber-500 dark:text-amber-400 font-mono tracking-wide text-sm text-right">
                     {contract.contractType === 'co_publishing' 
-                      ? t('contract.audit.financialRevenue', { percent: contract.revenueSplit ?? 0 })
+                      ? `${t('contract.audit.financialRevenue', { percent: contract.revenueSplit ?? 0 })}${contract.gamePriceProposed !== undefined && contract.gamePriceProposed !== null ? ` • ${formatCurrencyValue(contract.gamePriceProposed)}/tải` : ''}`
                       : t('contract.audit.financialAmount', { amount: formatCurrencyValue(contract.lumpSumAmount) })}
                   </span>
                 </div>

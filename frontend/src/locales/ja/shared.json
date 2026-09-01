@@ -242,6 +242,7 @@
   "contract.document.section3CoPublishingIntro": "両当事者は、発生する税金および第三者決済ゲートウェイ手数料を差し引いた後のゲーム商業化収益を、以下の比率で共同運営および分配することに合意します:",
   "contract.document.section3CoPublishingSellerShare": "B 当事者（開発者）の比率: {{percent}}%",
   "contract.document.section3CoPublishingBuyerShare": "A 当事者（プラットフォーム）の比率: {{percent}}%",
+  "contract.document.section3CoPublishingUnitPrice": "ストア表示価格 / 1ダウンロードあたり: {{price}} / ダウンロード.",
   "contract.document.section3CoPublishingPayout": "A 当事者は、ゲーム販売取引が完了するたびに、B 当事者の収益配分を B 当事者の Godot Launch 電子ウォレットへ自動的に精算する責任を負います。",
   "contract.document.section3FullAcquisitionTransfer": "B 当事者は、ゲームに関するすべての著作権、著作者人格権、ソースコード、グラフィック・音声アセット、および商業上の権利を、効力発生日より A 当事者へ恒久的かつ取消不能に譲渡することに同意します。",
   "contract.document.section3FullAcquisitionPayment": "A 当事者は B 当事者に対し、一括金 {{amount}} を支払います。支払い完了後、B 当事者は本ゲームに関する追加の収益分配請求または著作権請求を行わないことに同意します。",

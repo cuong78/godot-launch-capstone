@@ -270,6 +270,7 @@
         <ul class="bullet-list">
             <li><strong>Bên B (Nhà phát triển) nhận:</strong> <span class="highlight" th:text="${revenueSplit}"></span>% Doanh thu thuần.</li>
             <li><strong>Bên A (Nền tảng GodotLaunch) nhận:</strong> <span class="highlight" th:text="${100 - revenueSplit}"></span>% Doanh thu thuần.</li>
+            <li th:if="${gamePriceProposed != null}"><strong>Giá niêm yết bán/1 lượt tải trên Store:</strong> <span class="highlight" th:text="${#numbers.formatDecimal(gamePriceProposed, 0, 'COMMA', 0, 'POINT')} + ' VNĐ/lượt tải'"></span></li>
         </ul>
         <p>
             <strong>3.2. Quy định tính toán doanh thu thuần (Net Proceeds):</strong> Doanh thu thuần làm căn cứ phân chia được xác định bằng Tổng doanh thu bán Trò chơi (Giá bán niêm yết Trò chơi đã thỏa thuận nhân với Tổng số lượt tải) sau khi đã khấu trừ 15% Phí dịch vụ mặc định của Google Play Console (Service Fee).

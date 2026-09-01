@@ -10,6 +10,7 @@ import com.godotlaunch.backend.entity.User;
 import com.godotlaunch.backend.entity.enums.AiRecommendation;
 import com.godotlaunch.backend.entity.enums.ContractStatus;
 import com.godotlaunch.backend.entity.enums.ContractType;
+import com.godotlaunch.backend.entity.enums.PublishingType;
 import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.NotificationType;
 import com.godotlaunch.backend.repository.ContractRepository;
@@ -123,22 +124,31 @@ public class ContractServiceImpl implements ContractService {
 
         contract.setSeller(game.getCreator());
         contract.setContractType(request.getContractType());
+
+        // Đồng bộ loại hợp đồng mới sang thuộc tính publishingType của Game
+        try {
+            game.setPublishingType(PublishingType.valueOf(request.getContractType().name()));
+        } catch (Exception e) {
+            // ignore
+        }
+
         if (request.getContractType() == ContractType.co_publishing) {
             // Admin luôn được tự chỉnh % qua request.getRevenueSplit(). Nếu để
-            // trống, fallback về % developer đã đề xuất lúc đăng game (tiện lợi,
-            // giống pattern lumpSumAmount ở nhánh full_acquisition bên dưới).
+            // trống, fallback về % developer đã đề xuất lúc đăng game.
             Short revenueSplit = request.getRevenueSplit();
             if (revenueSplit == null) {
                 revenueSplit = game.getRevenueSplitProposed();
             }
             contract.setRevenueSplit(revenueSplit);
             contract.setLumpSumAmount(null);
+            game.setRevenueSplitProposed(revenueSplit);
+
+            // Cập nhật giá niêm yết/1 lượt tải trên Store nếu Admin có nhập
+            if (request.getPriceProposed() != null) {
+                game.setPriceProposed(request.getPriceProposed());
+            }
         } else {
-            // Admin luôn được tự chỉnh giá trọn gói qua request.getLumpSumAmount() —
-            // KHÔNG còn tự động khoá theo game.getPriceProposed() (bug cũ: admin
-            // không có cách nào sửa giá khác với giá developer đề xuất, trừ phi
-            // đang trong luồng thương lượng). Nếu admin để trống, fallback về giá
-            // developer đề xuất cho tiện — không bắt buộc phải nhập lại từ đầu.
+            // Admin luôn được tự chỉnh giá trọn gói qua request.getLumpSumAmount().
             String rawAmount = request.getLumpSumAmount();
             if (rawAmount == null || rawAmount.isBlank()) {
                 if (game.getPriceProposed() != null) {
@@ -159,7 +169,22 @@ public class ContractServiceImpl implements ContractService {
             }
             contract.setLumpSumAmount(rawAmount);
             contract.setRevenueSplit(null);
+            game.setRevenueSplitProposed(null);
+
+            if (request.getPriceProposed() != null) {
+                game.setPriceProposed(request.getPriceProposed());
+            } else if (rawAmount != null && !rawAmount.isBlank()) {
+                try {
+                    String digits = rawAmount.replaceAll("[^0-9]", "");
+                    if (!digits.isEmpty()) {
+                        game.setPriceProposed(new java.math.BigDecimal(digits));
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
         }
+        gameRepository.save(game);
         contract.setSellerRepresentative(request.getSellerRepresentative());
         String reqAddr = request.getSellerAddress();
         if (reqAddr == null || reqAddr.isBlank() || reqAddr.equalsIgnoreCase("(Chưa cập nhật)") || reqAddr.equalsIgnoreCase("Chưa cập nhật")) {
@@ -636,6 +661,7 @@ public class ContractServiceImpl implements ContractService {
                 .status(contract.getStatus())
                 .revenueSplit(contract.getRevenueSplit())
                 .lumpSumAmount(contract.getLumpSumAmount())
+                .gamePriceProposed(contract.getGame() != null ? contract.getGame().getPriceProposed() : null)
                 .disputeResolutionClause(null)
                 .additionalTerms(null)
                 .buyerRepresentative(null)
@@ -666,6 +692,7 @@ public class ContractServiceImpl implements ContractService {
             snapshot.put("contractType", contract.getContractType() != null ? contract.getContractType().name() : null);
             snapshot.put("revenueSplit", contract.getRevenueSplit());
             snapshot.put("lumpSumAmount", contract.getLumpSumAmount());
+            snapshot.put("priceProposed", contract.getGame() != null ? contract.getGame().getPriceProposed() : null);
             snapshot.put("capturedAt", Instant.now().toString());
             return objectMapper.writeValueAsString(snapshot);
         } catch (Exception e) {

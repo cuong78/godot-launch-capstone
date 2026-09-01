@@ -644,6 +644,7 @@ export interface ContractResponse {
     | "re_issued";
   revenueSplit?: number;
   lumpSumAmount?: string;
+  gamePriceProposed?: number;
   disputeResolutionClause?: string;
   additionalTerms?: string;
   buyerRepresentative?: string;

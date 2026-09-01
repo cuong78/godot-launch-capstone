@@ -21,6 +21,7 @@ import {
   Video,
   Image,
   FileText,
+  Handshake,
   PenTool,
   Gamepad2,
   ShoppingBag,
@@ -846,6 +847,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [contractType, setContractType] = useState<
     "full_acquisition" | "co_publishing"
   >("full_acquisition");
+  const [isContractTypeDropdownOpen, setIsContractTypeDropdownOpen] = useState(false);
   const [buyerRepresentative, setBuyerRepresentative] = useState("");
   const [buyerPosition, setBuyerPosition] = useState(
     t("contract.defaultBuyerPosition"),
@@ -855,6 +857,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [sellerTaxCode, setSellerTaxCode] = useState("");
   const [lumpSumAmount, setLumpSumAmount] = useState("");
   const [revenueSplit, setRevenueSplit] = useState(70);
+  const [priceProposed, setPriceProposed] = useState("");
   const [disputeResolutionClause, setDisputeResolutionClause] = useState(
     t("contract.defaultDisputeClause"),
   );
@@ -1341,12 +1344,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
     // Prefill proposed price if present
     if (game.priceProposed !== undefined && game.priceProposed !== null) {
+      setPriceProposed(game.priceProposed.toString());
       if (game.priceProposed === 0) {
         setLumpSumAmount("0 VND");
       } else {
         setLumpSumAmount(game.priceProposed.toLocaleString("vi-VN") + " VND");
       }
     } else {
+      setPriceProposed("");
       setLumpSumAmount("");
     }
 
@@ -1368,6 +1373,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       return;
     }
 
+    const parsedPriceProposed = priceProposed !== "" ? parseFloat(priceProposed) : undefined;
+
     try {
       const res = await contractApi.createOffer({
         gameId: selectedGame.id,
@@ -1376,6 +1383,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           contractType === "co_publishing" ? revenueSplit : undefined,
         lumpSumAmount:
           contractType === "full_acquisition" ? lumpSumAmount : undefined,
+        priceProposed: parsedPriceProposed,
         disputeResolutionClause,
         additionalTerms: additionalTerms || undefined,
         buyerRepresentative,
@@ -4059,40 +4067,132 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                     <label className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">
                       {t("contractComposer.contractTypeLabel")}
                     </label>
-                    <select
-                      value={contractType}
-                      onChange={(e) =>
-                        setContractType(
-                          e.target.value as "full_acquisition" | "co_publishing",
-                        )
-                      }
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-amber-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                    >
-                      <option value="full_acquisition">
-                        {t("contractComposer.contractTypeFullAcquisition")}
-                      </option>
-                      <option value="co_publishing">
-                        {t("contractComposer.contractTypeCoPublishing")}
-                      </option>
-                    </select>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsContractTypeDropdownOpen(!isContractTypeDropdownOpen)}
+                        className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 shadow-sm hover:border-amber-400 dark:hover:border-amber-500/60 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400/20"
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          {contractType === "full_acquisition" ? (
+                            <div className="w-6 h-6 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                              <FileText className="w-3.5 h-3.5" />
+                            </div>
+                          ) : (
+                            <div className="w-6 h-6 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                              <Handshake className="w-3.5 h-3.5" />
+                            </div>
+                          )}
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm truncate">
+                            {contractType === "full_acquisition"
+                              ? t("contractComposer.contractTypeFullAcquisition")
+                              : t("contractComposer.contractTypeCoPublishing")}
+                          </span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${isContractTypeDropdownOpen ? "rotate-180 text-amber-500" : ""}`} />
+                      </button>
+
+                      {isContractTypeDropdownOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setIsContractTypeDropdownOpen(false)}
+                          />
+                          <div className="absolute left-0 right-0 mt-2 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-xl shadow-slate-950/10 dark:shadow-slate-950/50 p-1.5 space-y-1 backdrop-blur-md">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setContractType("full_acquisition");
+                                setIsContractTypeDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all cursor-pointer text-left ${
+                                contractType === "full_acquisition"
+                                  ? "bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 text-amber-900 dark:text-amber-200"
+                                  : "hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                  <FileText className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-xs text-slate-800 dark:text-slate-100">
+                                    {t("contractComposer.contractTypeFullAcquisition")}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Mua đứt tác quyền - Thanh toán trọn gói 1 lần (Lump Sum)
+                                  </div>
+                                </div>
+                              </div>
+                              {contractType === "full_acquisition" && (
+                                <Check className="w-4 h-4 text-amber-500 shrink-0" />
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setContractType("co_publishing");
+                                setIsContractTypeDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all cursor-pointer text-left ${
+                                contractType === "co_publishing"
+                                  ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-200"
+                                  : "hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                                  <Handshake className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-xs text-slate-800 dark:text-slate-100">
+                                    {t("contractComposer.contractTypeCoPublishing")}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Đồng phát hành - Hạch toán ăn chia % doanh thu
+                                  </div>
+                                </div>
+                              </div>
+                              {contractType === "co_publishing" && (
+                                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                              )}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                     <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                       {t("contractComposer.contractTypeHelper")}
                     </p>
                   </div>
 
                   {contractType === "co_publishing" ? (
-                    <Input
-                      label={t("contractComposer.revenueSplitLabel")}
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={revenueSplit}
-                      onChange={(e) =>
-                        setRevenueSplit(parseInt(e.target.value) || 0)
-                      }
-                      helperText={t("contractComposer.revenueSplitHelper")}
-                      required
-                    />
+                    <div className="space-y-4">
+                      <Input
+                        label={t("contractComposer.revenueSplitLabel")}
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={revenueSplit}
+                        onChange={(e) =>
+                          setRevenueSplit(parseInt(e.target.value) || 0)
+                        }
+                        helperText={t("contractComposer.revenueSplitHelper")}
+                        required
+                      />
+                      <Input
+                        label={t("contractComposer.priceProposedLabel")}
+                        placeholder={t("contractComposer.priceProposedPlaceholder")}
+                        type="text"
+                        inputMode="numeric"
+                        prefix="VND"
+                        value={priceProposed}
+                        onChange={(e) => setPriceProposed(e.target.value.replace(/\D/g, ''))}
+                        helperText={t("contractComposer.priceProposedHelper")}
+                        required
+                      />
+                    </div>
                   ) : (
                     <Input
                       label={t("contractComposer.lumpSumLabel")}

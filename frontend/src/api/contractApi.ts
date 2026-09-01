@@ -6,6 +6,7 @@ export interface ContractRequestDto {
   contractType: 'full_acquisition' | 'co_publishing';
   revenueSplit?: number;
   lumpSumAmount?: string;
+  priceProposed?: number;
   disputeResolutionClause?: string;
   additionalTerms?: string;
   buyerRepresentative?: string;

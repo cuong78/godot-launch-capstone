@@ -153,12 +153,21 @@ const formatGameFinancialProposal = (
   game: GameResponse,
   locale: string,
   t: (key: string) => string,
+  contracts?: ContractResponse[],
 ) => {
-  if (game.publishingType === "co_publishing") {
-    return game.revenueSplitProposed === null ||
-      game.revenueSplitProposed === undefined
+  const activeContract = contracts?.slice().reverse().find(
+    (c) => c.gameId === game.id && c.status !== "cancelled"
+  );
+  const publishingType = activeContract?.contractType || game.publishingType;
+
+  if (publishingType === "co_publishing") {
+    const split = activeContract?.revenueSplit ?? game.revenueSplitProposed;
+    return split === null || split === undefined
       ? "—"
-      : `${game.revenueSplitProposed}%`;
+      : `${split}%`;
+  }
+  if (activeContract?.lumpSumAmount) {
+    return activeContract.lumpSumAmount;
   }
   return formatCurrencyValue(game.priceProposed, locale, t);
 };
@@ -969,7 +978,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <th className="p-3 w-48">
                             {t("dashboard:table.headers.publishingType")}
                           </th>
-                          <th className="p-3 w-36">
+                          <th className="p-3 w-36 text-center">
                             {t("dashboard:table.headers.proposedPrice")}
                           </th>
                           <th className="p-3 w-40 text-center">
@@ -1036,22 +1045,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                                   {game.categoryName || t("dashboard:table.unassigned")}
                                 </td>
                                 <td className="p-3 w-48">
-                                  <span
-                                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium font-sans border ${
-                                      game.publishingType === "full_acquisition"
-                                        ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/40"
-                                        : game.publishingType === "co_publishing"
-                                          ? "bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800/40"
-                                          : "bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60"
-                                    }`}
-                                  >
-                                    {game.publishingType
-                                      ? game.publishingType.toUpperCase().replace("_", " ")
-                                      : t("dashboard:table.marketplaceListing")}
-                                  </span>
+                                  {(() => {
+                                    const activeContract = [...contracts].reverse().find((c) => c.gameId === game.id && c.status !== "cancelled");
+                                    const effectiveType = activeContract?.contractType || game.publishingType;
+                                    return (
+                                      <span
+                                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium font-sans border ${
+                                          effectiveType === "full_acquisition"
+                                            ? "bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/40"
+                                            : effectiveType === "co_publishing"
+                                              ? "bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800/40"
+                                              : "bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60"
+                                        }`}
+                                      >
+                                        {effectiveType
+                                          ? effectiveType.toUpperCase().replace("_", " ")
+                                          : t("dashboard:table.marketplaceListing")}
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
-                                <td className="p-3 w-36 font-sans font-semibold dark:text-amber-400">
-                                  {formatGameFinancialProposal(game, locale, t)}
+                                <td className="p-3 w-36 text-center font-sans font-semibold dark:text-amber-400">
+                                  {formatGameFinancialProposal(game, locale, t, contracts)}
                                 </td>
                                 <td className="p-3 w-40 text-center">
                                   <div className="flex flex-col items-center gap-1.5 justify-center">

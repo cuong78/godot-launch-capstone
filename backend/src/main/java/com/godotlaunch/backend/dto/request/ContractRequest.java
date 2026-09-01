@@ -3,6 +3,7 @@ package com.godotlaunch.backend.dto.request;
 import com.godotlaunch.backend.entity.enums.ContractType;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
@@ -16,6 +17,8 @@ public class ContractRequest {
     private Short revenueSplit;
 
     private String lumpSumAmount;
+
+    private BigDecimal priceProposed;
 
     private String disputeResolutionClause;
 

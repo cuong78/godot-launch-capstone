@@ -97,7 +97,7 @@ class ContractServiceImplTest {
         ContractRequest request = new ContractRequest();
         request.setGameId(game.getId());
         request.setContractType(ContractType.co_publishing);
-        request.setLumpSumAmount("1000.00");
+        request.setPriceProposed(new java.math.BigDecimal("50000"));
         request.setSellerRepresentative("Dev Rep");
         request.setSellerAddress("123 Street");
         request.setSellerTaxCode("12345");
@@ -118,6 +118,8 @@ class ContractServiceImplTest {
         assertThat(response.getId()).isEqualTo(contractId);
         assertThat(response.getContractType()).isEqualTo(ContractType.co_publishing);
         verify(contractRepository, times(1)).save(any(Contract.class));
+        verify(gameRepository, times(1)).save(game);
+        assertThat(game.getPriceProposed()).isEqualTo(new java.math.BigDecimal("50000"));
     }
 
     @Test
