@@ -15,7 +15,8 @@ Param(
     [string]$DbUser = "user_godot_launch",
     [string]$DbName = "godot_launch",
     [string]$ContainerName = "godotlaunch-postgres",
-    [string]$BasePath = "godotlaunch"
+    [string]$BasePath = "godotlaunch",
+    [string]$PublicBaseUrl = "https://godotlaunch.shop/files"
 )
 
 Write-Host "==========================================================" -ForegroundColor Cyan
@@ -100,7 +101,7 @@ for ($i = 0; $i -lt $pairCount; $i++) {
 
     try {
         Invoke-RestMethod -Uri $uploadUrl -Method Put -InFile $image.FullName -ContentType "image/jpeg" | Out-Null
-        $publicUrl = "$FilerUrl/$BasePath/$objectKey"
+        $publicUrl = "$PublicBaseUrl/$objectKey"
         Write-Host "   Uploaded to SeaweedFS: $publicUrl" -ForegroundColor Green
 
         $escapedUrl = $publicUrl.Replace("'", "''")

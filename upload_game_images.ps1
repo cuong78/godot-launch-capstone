@@ -5,7 +5,9 @@ Param(
     [string]$SourceFolder = "$PSScriptRoot\resource\media",
     [string]$FilerUrl = "http://localhost:8888",
     [string]$DbUser = "user_godot_launch",
-    [string]$DbName = "godot_launch"
+    [string]$DbName = "godot_launch",
+    [string]$ContainerName = "godotlaunch-postgres",
+    [string]$PublicBaseUrl = "https://godotlaunch.shop/files"
 )
 
 Write-Host "==========================================================" -ForegroundColor Cyan
@@ -32,10 +34,10 @@ if (-not (Test-Path $SourceFolder)) {
 # 3. Retrieve all Assets and Games from the Database
 Write-Host "Retrieving assets and games list from database..." -ForegroundColor Yellow
 
-$queryCmdAssets = "docker exec -i godotlaunch-postgres psql -U $DbUser -d $DbName -t -A -c `"SELECT id, title, 'asset' AS item_type FROM assets;`""
+$queryCmdAssets = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -t -A -c `"SELECT id, title, 'asset' AS item_type FROM assets;`""
 $dbOutputAssets = Invoke-Expression $queryCmdAssets
 
-$queryCmdGames = "docker exec -i godotlaunch-postgres psql -U $DbUser -d $DbName -t -A -c `"SELECT id, title, 'game' AS item_type FROM games;`""
+$queryCmdGames = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -t -A -c `"SELECT id, title, 'game' AS item_type FROM games;`""
 $dbOutputGames = Invoke-Expression $queryCmdGames
 
 $items = @()
@@ -150,22 +152,22 @@ foreach ($item in $items) {
     try {
         # PUT request with raw binary content
         $response = Invoke-RestMethod -Uri $uploadUrl -Method Put -InFile $thumbFile.FullName -ContentType "image/jpeg"
-        $uploadedThumbUrl = "http://localhost:8888/godotlaunch/$objectKey"
+        $uploadedThumbUrl = "$PublicBaseUrl/$objectKey"
         Write-Host "   Uploaded to SeaweedFS successfully." -ForegroundColor Green
         
         # Update asset/game thumbnail in database
         $sql = "UPDATE $tableName SET thumbnail_url = '$uploadedThumbUrl' WHERE id = '$($item.Id)';"
-        $execCmd = "docker exec -i godotlaunch-postgres psql -U $DbUser -d $DbName -c `"$sql`""
+        $execCmd = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -c `"$sql`""
         Invoke-Expression $execCmd | Out-Null
         
         # Delete old thumbnail record in media
         $delSql = "DELETE FROM media WHERE $fkColumn = '$($item.Id)' AND media_type = 'thumbnail';"
-        $execCmd = "docker exec -i godotlaunch-postgres psql -U $DbUser -d $DbName -c `"$delSql`""
+        $execCmd = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -c `"$delSql`""
         Invoke-Expression $execCmd | Out-Null
         
         # Insert new thumbnail record in media
         $insSql = "INSERT INTO media ($fkColumn, media_type, media_url) VALUES ('$($item.Id)', 'thumbnail', '$uploadedThumbUrl');"
-        $execCmd = "docker exec -i godotlaunch-postgres psql -U $DbUser -d $DbName -c `"$insSql`""
+        $execCmd = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -c `"$insSql`""
         Invoke-Expression $execCmd | Out-Null
         
         Write-Host "   Thumbnail linked in Database." -ForegroundColor Green
@@ -177,7 +179,7 @@ foreach ($item in $items) {
     if ($screenshots -and $screenshots.Count -gt 0) {
         Write-Host "Found $($screenshots.Count) screenshots. Clearing old ones from DB..." -ForegroundColor Yellow
         $delSql = "DELETE FROM media WHERE $fkColumn = '$($item.Id)' AND media_type = 'screenshot';"
-        $execCmd = "docker exec -i godotlaunch-postgres psql -U $DbUser -d $DbName -c `"$delSql`""
+        $execCmd = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -c `"$delSql`""
         Invoke-Expression $execCmd | Out-Null
         
         $idx = 1
@@ -188,11 +190,11 @@ foreach ($item in $items) {
             
             try {
                 $response = Invoke-RestMethod -Uri $uploadUrl -Method Put -InFile $shot.FullName -ContentType "image/jpeg"
-                $shotUrl = "http://localhost:8888/godotlaunch/$objectKey"
+                $shotUrl = "$PublicBaseUrl/$objectKey"
                 
                 # Insert screenshot into media table
                 $insSql = "INSERT INTO media ($fkColumn, media_type, media_url) VALUES ('$($item.Id)', 'screenshot', '$shotUrl');"
-                $execCmd = "docker exec -i godotlaunch-postgres psql -U $DbUser -d $DbName -c `"$insSql`""
+                $execCmd = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -c `"$insSql`""
                 Invoke-Expression $execCmd | Out-Null
                 
                 Write-Host "   Screenshot $($idx) uploaded and linked." -ForegroundColor Green
