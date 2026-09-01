@@ -28,6 +28,10 @@ public class StoreRevenueStatement {
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_import_id")
+    private StoreReportImport sourceImport;
+
     @Builder.Default
     @Column(name = "provider", nullable = false, length = 50)
     private String provider = "GOOGLE_PLAY_MOCK";

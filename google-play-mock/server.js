@@ -53,8 +53,13 @@ app.get('/internal/v1/reports/installs/:packageName/:yyyyMM', (req, res) => {
     registeredApps.add(packageName);
   }
 
-  const year = parseInt(yyyyMM.substring(0, 4), 10) || 2026;
-  const month = parseInt(yyyyMM.substring(4, 6), 10) || 8;
+  let year = 2026;
+  let month = 8;
+
+  if (yyyyMM && yyyyMM.length === 6 && !isNaN(yyyyMM)) {
+    year = parseInt(yyyyMM.substring(0, 4), 10) || 2026;
+    month = parseInt(yyyyMM.substring(4, 6), 10) || 8;
+  }
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
@@ -65,9 +70,23 @@ app.get('/internal/v1/reports/installs/:packageName/:yyyyMM', (req, res) => {
   for (let i = 0; i < packageName.length; i++) {
     hashSeed += packageName.charCodeAt(i);
   }
-  hashSeed += year * 100 + month;
+  for (let i = 0; i < yyyyMM.length; i++) {
+    hashSeed += yyyyMM.charCodeAt(i) * (i + 1);
+  }
 
-  for (let day = 1; day <= daysInMonth; day++) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+
+  let maxDay = daysInMonth;
+  if (year > currentYear || (year === currentYear && month > currentMonth)) {
+    maxDay = 0;
+  } else if (year === currentYear && month === currentMonth) {
+    maxDay = Math.min(daysInMonth, currentDay);
+  }
+
+  for (let day = 1; day <= maxDay; day++) {
     const formattedDay = String(day).padStart(2, '0');
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${formattedDay}`;
 

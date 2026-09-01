@@ -361,6 +361,8 @@ export interface StoreRevenueStatementResponse {
   currency: string;
   status: string;
   settledAt: string;
+  sourceImportId?: string;
+  rawCsvUrl?: string;
 }
 
 export interface StoreRevenueSummaryResponse {

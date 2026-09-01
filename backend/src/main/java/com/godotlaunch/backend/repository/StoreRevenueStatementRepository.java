@@ -14,4 +14,5 @@ public interface StoreRevenueStatementRepository extends JpaRepository<StoreReve
     Optional<StoreRevenueStatement> findByGameIdAndPeriodKey(UUID gameId, String periodKey);
     List<StoreRevenueStatement> findByGameIdOrderBySettledAtDesc(UUID gameId);
     List<StoreRevenueStatement> findAllByOrderBySettledAtDesc();
+    long countByGameId(UUID gameId);
 }

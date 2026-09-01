@@ -149,23 +149,35 @@ class StoreReportServiceImplTest {
         game.setPriceProposed(new BigDecimal("10000"));
         when(externalPublishRepository.findById(publishId)).thenReturn(Optional.of(publish));
         when(contractRepository.findFirstByGameId(gameId)).thenReturn(Optional.of(contract));
-        when(storeRevenueStatementRepository.findByExternalPayoutId(anyString())).thenReturn(Optional.empty());
+        lenient().when(storeRevenueStatementRepository.findByExternalPayoutId(anyString())).thenReturn(Optional.empty());
         when(storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(any(), any(), any())).thenReturn(100L);
 
         Map<String, Object> payoutMap = new HashMap<>();
         payoutMap.put("externalPayoutId", "MOCK-GP-202608-com.godotlaunch.skyadventure");
         payoutMap.put("grossRevenue", 1000000);
-        when(googlePlayMockClient.fetchPayoutStatement(anyString(), anyString(), anyLong(), any())).thenReturn(payoutMap);
+        when(googlePlayMockClient.fetchInstallReportCsv(anyString(), anyString())).thenReturn("Date,Package Name,Daily User Installs\n2026-08-01,com.godotlaunch.skyadventure,100");
+        lenient().when(googlePlayMockClient.fetchPayoutStatement(anyString(), anyString(), anyLong(), any())).thenReturn(payoutMap);
 
+        when(storeReportImportRepository.save(any(StoreReportImport.class))).thenAnswer(i -> {
+            StoreReportImport imp = i.getArgument(0);
+            if (imp.getId() == null) imp.setId(UUID.randomUUID());
+            return imp;
+        });
         when(storeRevenueStatementRepository.save(any(StoreRevenueStatement.class))).thenAnswer(i -> i.getArgument(0));
 
-        Wallet wallet = new Wallet();
-        wallet.setBalance(BigDecimal.ZERO);
-        wallet.setWithdrawableBalance(BigDecimal.ZERO);
-        when(walletService.getOrCreateWallet(dev)).thenReturn(wallet);
+        Wallet devWallet = new Wallet();
+        devWallet.setBalance(BigDecimal.ZERO);
+        devWallet.setWithdrawableBalance(BigDecimal.ZERO);
+
+        Wallet adminWallet = new Wallet();
+        adminWallet.setBalance(BigDecimal.ZERO);
+        adminWallet.setWithdrawableBalance(BigDecimal.ZERO);
+
+        when(walletService.getOrCreateWallet(dev)).thenReturn(devWallet);
+        when(walletService.getOrCreateWallet(admin)).thenReturn(adminWallet);
         when(userRepository.findById(adminId)).thenReturn(Optional.of(admin));
 
-        StoreRevenueStatementResponse res = storeReportService.executeDemoPayout(publishId, "2026-08-demo-01", adminId);
+        StoreRevenueStatementResponse res = storeReportService.executeDemoPayout(publishId, "2026-08", adminId);
 
         assertThat(res).isNotNull();
         assertThat(res.getGrossRevenue()).isEqualByComparingTo("1000000.00");
@@ -174,6 +186,6 @@ class StoreReportServiceImplTest {
         assertThat(res.getDeveloperEarnings()).isEqualByComparingTo("680000.00");
         assertThat(res.getPlatformRetainedRevenue()).isEqualByComparingTo("170000.00");
 
-        verify(transactionRepository, times(1)).save(any(Transaction.class));
+        verify(transactionRepository, times(2)).save(any(Transaction.class));
     }
 }

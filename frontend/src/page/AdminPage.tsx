@@ -27,7 +27,6 @@ import {
   Database,
   Play,
   LayoutGrid,
-  Sparkles,
   Loader2,
 } from "lucide-react";
 import { Button } from "../components/Button";
@@ -863,12 +862,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [adminSignatureBase64, setAdminSignatureBase64] = useState<
     string | null
   >(null);
-  const [aiSuggestion, setAiSuggestion] =
-    useState<ContractAiSuggestionResponse | null>(null);
-  const [isLoadingAiSuggestion, setIsLoadingAiSuggestion] = useState(false);
-  const [aiSuggestionError, setAiSuggestionError] = useState<string | null>(
-    null,
-  );
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   const handleDownloadFile = async (fileUrl: string, fileName: string) => {
@@ -1364,51 +1357,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     );
     setAdditionalTerms("");
     setAdminSignatureBase64(null);
-    setAiSuggestion(null);
-    setAiSuggestionError(null);
     setIsContractModalOpen(true);
-  };
-
-  const handleRequestAiSuggestion = async () => {
-    if (!selectedGame) return;
-    setIsLoadingAiSuggestion(true);
-    setAiSuggestionError(null);
-    try {
-      const res = await contractApi.suggestContractTerms(selectedGame.id);
-      if (res.success && res.data) {
-        if (res.data.unavailable) {
-          setAiSuggestionError(
-            res.data.reasoning || t("contractComposer.aiSuggestion.error"),
-          );
-        } else {
-          setAiSuggestion(res.data);
-        }
-      } else {
-        setAiSuggestionError(
-          res.message || t("contractComposer.aiSuggestion.error"),
-        );
-      }
-    } catch (err: any) {
-      setAiSuggestionError(
-        err.response?.data?.message ||
-          err.message ||
-          t("contractComposer.aiSuggestion.error"),
-      );
-    } finally {
-      setIsLoadingAiSuggestion(false);
-    }
-  };
-
-  const handleApplyAiSuggestion = () => {
-    if (!aiSuggestion) return;
-    setContractType(aiSuggestion.suggestedContractType);
-    if (aiSuggestion.suggestedContractType === "co_publishing") {
-      setRevenueSplit(aiSuggestion.suggestedRevenueSplit ?? 70);
-    } else if (aiSuggestion.suggestedLumpSumAmount !== undefined) {
-      setLumpSumAmount(
-        aiSuggestion.suggestedLumpSumAmount.toLocaleString("vi-VN") + " VND",
-      );
-    }
   };
 
   const handleCreateContractOffer = async (e: React.FormEvent) => {
@@ -4079,69 +4028,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               <form onSubmit={handleCreateContractOffer} className="space-y-5">
                 {/* Điều khoản tài chính */}
                 <div className="p-5 bg-white dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
-                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-3 rounded bg-amber-400" />
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
-                        {t("contractComposer.financialTermsTitle")}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleRequestAiSuggestion}
-                      disabled={isLoadingAiSuggestion}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-lg text-[11px] transition-studio disabled:opacity-50 cursor-pointer"
-                    >
-                      {isLoadingAiSuggestion ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <Sparkles size={12} />
-                      )}
-                      {t("contractComposer.aiSuggestion.button")}
-                    </button>
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+                    <span className="w-1.5 h-3 rounded bg-amber-400" />
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-display">
+                      {t("contractComposer.financialTermsTitle")}
+                    </span>
                   </div>
-
-                  {aiSuggestionError && (
-                    <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-600 dark:text-rose-400">
-                      {aiSuggestionError}
-                    </div>
-                  )}
-
-                  {aiSuggestion && (
-                    <div className="p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl space-y-2.5 text-xs">
-                      <span className="flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide font-mono">
-                        <Sparkles size={13} />
-                        {t("contractComposer.aiSuggestion.resultTitle")}
-                      </span>
-                      <p className="text-slate-600 dark:text-slate-300 leading-normal">
-                        {aiSuggestion.reasoning}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
-                        <span className="px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-bold">
-                          {aiSuggestion.suggestedContractType === "co_publishing"
-                            ? t("contractComposer.contractTypeCoPublishing")
-                            : t("contractComposer.contractTypeFullAcquisition")}
-                        </span>
-                        <span className="px-2 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold">
-                          {aiSuggestion.suggestedContractType === "co_publishing"
-                            ? `${aiSuggestion.suggestedRevenueSplit ?? 0}%`
-                            : formatCurrency(
-                                aiSuggestion.suggestedLumpSumAmount ?? 0,
-                                "VND",
-                                locale,
-                                t("withdrawal.na"),
-                              )}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleApplyAiSuggestion}
-                        className="w-full py-2 px-3 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-lg text-[11px] transition-studio cursor-pointer"
-                      >
-                        {t("contractComposer.aiSuggestion.apply")}
-                      </button>
-                    </div>
-                  )}
 
                   {selectedGame.priceProposed !== undefined &&
                     selectedGame.priceProposed !== null && (

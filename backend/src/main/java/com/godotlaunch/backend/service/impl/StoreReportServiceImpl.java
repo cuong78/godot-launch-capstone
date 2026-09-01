@@ -260,7 +260,7 @@ public class StoreReportServiceImpl implements StoreReportService {
             throw new RuntimeException("Game chưa được cấu hình Package Name để đồng bộ report");
         }
 
-        String yyyyMM = targetYyyyMM;
+        String yyyyMM = targetYyyyMM != null ? targetYyyyMM.replace("-", "") : null;
         if (yyyyMM == null || yyyyMM.isBlank() || !yyyyMM.matches("\\d{6}")) {
             Optional<StoreReportImport> latestOpt = storeReportImportRepository
                     .findByExternalPublish_Game_IdOrderBySyncedAtDesc(publish.getGame().getId())
@@ -312,8 +312,9 @@ public class StoreReportServiceImpl implements StoreReportService {
         int parsedRows = parseAndUpsertMetrics(csvContent, publish, reportImport);
 
         reportImport.setRowCount(parsedRows);
-        storeReportImportRepository.save(reportImport);
+        reportImport = storeReportImportRepository.save(reportImport);
 
+        log.info("[MOCK SYNC DOWNLOADS] Synced {} rows for game {} package {} month {}", parsedRows, publish.getGame().getTitle(), publish.getPackageName(), reportMonth);
         return mapToImportResponse(reportImport);
     }
 
@@ -344,8 +345,7 @@ public class StoreReportServiceImpl implements StoreReportService {
     @Transactional
     public StoreRevenueStatementResponse executeDemoPayout(UUID externalPublishId, String periodKey, UUID adminId) {
         ExternalPublish publish = externalPublishRepository.findById(externalPublishId)
-                .orElseGet(() -> externalPublishRepository.findFirstByGame_IdOrderByCreatedAtDesc(externalPublishId)
-                        .orElseThrow(() -> new RuntimeException("Chưa tìm thấy bản ghi xuất bản Google Play cho game này. Vui lòng bấm Kích hoạt Mock trước!")));
+                .orElseThrow(() -> new RuntimeException("External publish record not found"));
 
         if (publish.getPackageName() == null || publish.getPackageName().isBlank()) {
             throw new RuntimeException("Game chưa có Package Name để thực hiện demo payout");
@@ -353,7 +353,19 @@ public class StoreReportServiceImpl implements StoreReportService {
 
         Game game = publish.getGame();
 
-        // Validate contract (Optional for payout calculation)
+        if (periodKey == null || periodKey.isBlank()) {
+            periodKey = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        } else if (periodKey.matches("\\d{6}")) {
+            periodKey = periodKey.substring(0, 4) + "-" + periodKey.substring(4, 6);
+        }
+
+        // 1. Check if payout statement ALREADY exists for this game and periodKey
+        Optional<StoreRevenueStatement> existingOpt = storeRevenueStatementRepository.findByGameIdAndPeriodKey(game.getId(), periodKey);
+        if (existingOpt.isPresent()) {
+            throw new RuntimeException("Kỳ hạch toán [" + periodKey + "] cho game này đã được hoàn tất thanh toán trước đó!");
+        }
+
+        // Validate contract
         Optional<Contract> contractOpt = contractRepository.findFirstByGameId(game.getId());
         Contract contract = contractOpt.orElse(null);
 
@@ -362,63 +374,29 @@ public class StoreReportServiceImpl implements StoreReportService {
             developerShareRate = new BigDecimal(contract.getRevenueSplit());
         }
 
-        if (periodKey == null || periodKey.isBlank()) {
-            periodKey = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
-        }
-
-        // Extract target month (YYYYMM) from periodKey
-        String yyyyMM = null;
-        int targetYear = 0;
-        int targetMonth = 0;
-
-        java.util.regex.Matcher m6 = java.util.regex.Pattern.compile("(\\d{4})(\\d{2})").matcher(periodKey);
-        java.util.regex.Matcher m7 = java.util.regex.Pattern.compile("(\\d{4})-(\\d{2})").matcher(periodKey);
-
-        if (m6.find()) {
-            targetYear = Integer.parseInt(m6.group(1));
-            targetMonth = Integer.parseInt(m6.group(2));
-            yyyyMM = String.format("%04d%02d", targetYear, targetMonth);
-        } else if (m7.find()) {
-            targetYear = Integer.parseInt(m7.group(1));
-            targetMonth = Integer.parseInt(m7.group(2));
-            yyyyMM = String.format("%04d%02d", targetYear, targetMonth);
-        } else {
-            YearMonth ym = YearMonth.now();
-            targetYear = ym.getYear();
-            targetMonth = ym.getMonthValue();
-            yyyyMM = ym.format(DateTimeFormatter.ofPattern("yyyyMM"));
-        }
-
-        // Determine unit price of the game (from priceProposed)
+        // Determine unit price of the game
         BigDecimal unitPrice = game.getPriceProposed();
         if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) <= 0) {
-            unitPrice = new BigDecimal("99000"); // Default 99,000 VND for demo
+            unitPrice = new BigDecimal("99000"); // Default 99,000 VND
         }
 
-        // Calculate installs for this target month
-        LocalDate startDate = LocalDate.of(targetYear, Math.min(Math.max(targetMonth, 1), 12), 1);
-        LocalDate endDate = startDate.plusMonths(1).minusDays(1);
+        // 2. Sync installs for this month (YYYY-MM)
+        StoreReportImportResponse importRes = syncDownloadsForGame(externalPublishId, periodKey, adminId);
+        StoreReportImport reportImport = storeReportImportRepository.findById(importRes.getId()).orElse(null);
 
-        // Auto-sync installs for the target month from mock Google Play first
-        try {
-            syncDownloadsForGame(externalPublishId, yyyyMM, adminId);
-        } catch (Exception e) {
-            log.warn("Auto-sync downloads failed for month {} game {}: {}", yyyyMM, game.getTitle(), e.getMessage());
-        }
+        // Calculate period installs from DB metrics for this month
+        String[] parts = periodKey.split("-");
+        int year = Integer.parseInt(parts[0]);
+        int month = Integer.parseInt(parts[1]);
+        YearMonth ym = YearMonth.of(year, month);
+        LocalDate startDate = ym.atDay(1);
+        LocalDate endDate = ym.equals(YearMonth.now()) ? LocalDate.now() : ym.atEndOfMonth();
 
-        Long periodInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(game.getId(), startDate, endDate);
-        if (periodInstalls == null || periodInstalls == 0) {
-            periodInstalls = 100L; // Fallback 100 installs for demo
-        }
-
-        // Calculate Gross Revenue dynamically for THIS PERIOD = Period Installs * Unit Price
-        BigDecimal grossRevenue = unitPrice.multiply(BigDecimal.valueOf(periodInstalls));
-
-        // Fetch payout statement from mock container with periodInstalls and unitPrice
-        Map<String, Object> payoutStatementMap = googlePlayMockClient.fetchPayoutStatement(publish.getPackageName(), periodKey, periodInstalls, unitPrice);
-        String externalPayoutId = (String) payoutStatementMap.get("externalPayoutId");
+        Long total = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameIdAndDateRange(game.getId(), startDate, endDate);
+        long periodInstalls = (total != null && total > 0) ? total : 100L;
 
         // Financial Calculation (15% Google Fee, 85% Net Proceeds, Contract Split)
+        BigDecimal grossRevenue = unitPrice.multiply(BigDecimal.valueOf(periodInstalls));
         BigDecimal googleFeeRate = new BigDecimal("15.00");
         BigDecimal googleFeeAmount = grossRevenue.multiply(googleFeeRate).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         BigDecimal netStoreProceeds = grossRevenue.subtract(googleFeeAmount);
@@ -426,55 +404,12 @@ public class StoreReportServiceImpl implements StoreReportService {
         BigDecimal developerEarnings = netStoreProceeds.multiply(developerShareRate).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         BigDecimal platformRetained = netStoreProceeds.subtract(developerEarnings);
 
-        // Check if statement already exists for this game and periodKey
-        Optional<StoreRevenueStatement> existingOpt = storeRevenueStatementRepository.findByGameIdAndPeriodKey(game.getId(), periodKey);
-        if (!existingOpt.isPresent()) {
-            existingOpt = storeRevenueStatementRepository.findByExternalPayoutId(externalPayoutId);
-        }
-
-        if (existingOpt.isPresent()) {
-            StoreRevenueStatement existing = existingOpt.get();
-            BigDecimal prevEarnings = existing.getDeveloperEarnings() != null ? existing.getDeveloperEarnings() : BigDecimal.ZERO;
-            BigDecimal earningsDelta = developerEarnings.subtract(prevEarnings);
-
-            // Update statement values with cumulative numbers
-            existing.setGrossRevenue(grossRevenue);
-            existing.setGoogleFeeAmount(googleFeeAmount);
-            existing.setNetStoreProceeds(netStoreProceeds);
-            existing.setDeveloperEarnings(developerEarnings);
-            existing.setPlatformRetainedRevenue(platformRetained);
-            existing.setSettledAt(Instant.now());
-            storeRevenueStatementRepository.save(existing);
-
-            if (earningsDelta.compareTo(BigDecimal.ZERO) > 0) {
-                User developer = game.getCreator();
-                Wallet devWallet = walletService.getOrCreateWallet(developer);
-
-                WalletBalancePolicy.creditSalesRevenue(devWallet, earningsDelta);
-                walletRepository.save(devWallet);
-
-                Transaction devTxn = new Transaction();
-                devTxn.setWallet(devWallet);
-                devTxn.setRelatedUser(userRepository.findById(adminId).orElse(null));
-                devTxn.setGame(game);
-                devTxn.setContract(contract);
-                devTxn.setAmount(earningsDelta);
-                devTxn.setType(TxnType.revenue_share);
-                devTxn.setReferenceId(externalPayoutId + "-DELTA-" + System.currentTimeMillis());
-                devTxn.setDescription("Google Play Mock Revenue Share Delta (" + developerShareRate + "% of Incremental Net Store Proceeds, kỳ " + periodKey + ")");
-                transactionRepository.save(devTxn);
-
-                log.info("[MOCK PAYOUT RE-SETTLED WITH DELTA] Game: {}, Period: {}, Delta Earnings: {}", game.getTitle(), periodKey, earningsDelta);
-            } else {
-                log.info("[MOCK PAYOUT RE-SETTLED NO DELTA] Game: {}, Period: {}, Earnings Unchanged", game.getTitle(), periodKey);
-            }
-
-            return mapToStatementResponse(existing);
-        }
+        String externalPayoutId = "MOCK-GP-" + periodKey + "-" + publish.getPackageName();
 
         StoreRevenueStatement statement = StoreRevenueStatement.builder()
                 .externalPublish(publish)
                 .game(game)
+                .sourceImport(reportImport)
                 .provider("GOOGLE_PLAY_MOCK")
                 .periodKey(periodKey)
                 .externalPayoutId(externalPayoutId)
@@ -491,11 +426,10 @@ public class StoreReportServiceImpl implements StoreReportService {
                 .build();
         statement = storeRevenueStatementRepository.save(statement);
 
-        // Credit Developer Wallet & Record Transaction if developerShareRate > 0
+        // 3. Credit Developer Wallet & Admin Wallet with Transaction records
         if (developerEarnings.compareTo(BigDecimal.ZERO) > 0) {
             User developer = game.getCreator();
             Wallet devWallet = walletService.getOrCreateWallet(developer);
-
             WalletBalancePolicy.creditSalesRevenue(devWallet, developerEarnings);
             walletRepository.save(devWallet);
 
@@ -506,13 +440,33 @@ public class StoreReportServiceImpl implements StoreReportService {
             devTxn.setContract(contract);
             devTxn.setAmount(developerEarnings);
             devTxn.setType(TxnType.revenue_share);
-            devTxn.setReferenceId(externalPayoutId);
-            devTxn.setDescription("Google Play Mock Revenue Share (" + developerShareRate + "% of Net Store Proceeds " + netStoreProceeds + " VND)");
+            devTxn.setReferenceId(externalPayoutId + "-DEV");
+            devTxn.setDescription("Doanh thu CH Play chia sẻ Tác giả (" + developerShareRate + "% Doanh thu thuần, kỳ " + periodKey + ")");
             transactionRepository.save(devTxn);
         }
 
-        log.info("[MOCK PAYOUT SETTLED] Game: {}, Gross: {}, Fee: {}, Net: {}, DevEarnings: {}, PlatformRetained: {}",
-                game.getTitle(), grossRevenue, googleFeeAmount, netStoreProceeds, developerEarnings, platformRetained);
+        if (adminId != null && platformRetained.compareTo(BigDecimal.ZERO) > 0) {
+            User adminUser = userRepository.findById(adminId).orElse(null);
+            if (adminUser != null) {
+                Wallet adminWallet = walletService.getOrCreateWallet(adminUser);
+                WalletBalancePolicy.creditSalesRevenue(adminWallet, platformRetained);
+                walletRepository.save(adminWallet);
+
+                Transaction adminTxn = new Transaction();
+                adminTxn.setWallet(adminWallet);
+                adminTxn.setRelatedUser(game.getCreator());
+                adminTxn.setGame(game);
+                adminTxn.setContract(contract);
+                adminTxn.setAmount(platformRetained);
+                adminTxn.setType(TxnType.revenue_share);
+                adminTxn.setReferenceId(externalPayoutId + "-PLATFORM");
+                adminTxn.setDescription("Phần giữ lại của Sàn từ CH Play (kỳ " + periodKey + ")");
+                transactionRepository.save(adminTxn);
+            }
+        }
+
+        log.info("[MOCK PAYOUT SETTLED] Game: {}, Period: {}, Installs: {}, Gross: {}, Fee: {}, Net: {}, Dev: {}, Platform: {}",
+                game.getTitle(), periodKey, periodInstalls, grossRevenue, googleFeeAmount, netStoreProceeds, developerEarnings, platformRetained);
 
         return mapToStatementResponse(statement);
     }
@@ -788,6 +742,8 @@ public class StoreReportServiceImpl implements StoreReportService {
                 .currency(s.getCurrency())
                 .status(s.getStatus())
                 .settledAt(s.getSettledAt())
+                .sourceImportId(s.getSourceImport() != null ? s.getSourceImport().getId() : null)
+                .rawCsvUrl(s.getSourceImport() != null ? s.getSourceImport().getRawFileUrl() : null)
                 .build();
     }
 }

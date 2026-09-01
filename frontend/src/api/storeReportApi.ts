@@ -43,9 +43,10 @@ export const storeReportApi = {
     return res.data;
   },
 
-  syncDownloads: async (externalPublishId: string): Promise<ApiResponse<StoreReportImportResponse>> => {
+  syncDownloads: async (externalPublishId: string, yyyyMM?: string): Promise<ApiResponse<StoreReportImportResponse>> => {
+    const params = yyyyMM ? `?yyyyMM=${encodeURIComponent(yyyyMM)}` : '';
     const res = await api.post<ApiResponse<StoreReportImportResponse>>(
-      `/api/v1/admin/store-publishes/${externalPublishId}/sync-downloads`
+      `/api/v1/admin/store-publishes/${externalPublishId}/sync-downloads${params}`
     );
     return res.data;
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   RefreshCw,
@@ -18,6 +18,9 @@ import {
   Building,
   Search,
   X,
+  Calendar,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { storeReportApi } from '../../api/storeReportApi';
 import {
@@ -27,6 +30,68 @@ import {
   StoreRevenueStatementResponse,
   StoreRevenueSummaryResponse,
 } from '../../types';
+
+interface MonthDropdownProps {
+  currentPeriod: string;
+  monthOptions: { value: string; label: string }[];
+  onSelect: (val: string) => void;
+}
+
+const MonthDropdown: React.FC<MonthDropdownProps> = ({ currentPeriod, monthOptions, onSelect }) => {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOpt = monthOptions.find((o) => o.value === currentPeriod) || monthOptions[0];
+
+  return (
+    <div className="relative inline-block text-left shrink-0" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
+      >
+        <span className="whitespace-nowrap font-mono">{selectedOpt.label}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 sm:left-0 mt-1.5 w-max min-w-[210px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+          {monthOptions.map((opt) => {
+            const isSelected = opt.value === currentPeriod;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onSelect(opt.value);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-3.5 py-2 text-xs font-medium flex items-center justify-between gap-3 transition cursor-pointer whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-semibold'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <span className="whitespace-nowrap font-mono">{opt.label}</span>
+                {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const GooglePlayMockManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'imports' | 'statements'>('overview');
@@ -147,11 +212,22 @@ export const GooglePlayMockManager: React.FC = () => {
     }
   };
 
-  const handleSyncDownloads = async (publishId: string, title: string) => {
+  const now = new Date();
+  const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const [selectedPeriods, setSelectedPeriods] = useState<Record<string, string>>({});
+
+  const monthOptions = [
+    { value: currentYm, label: `${currentYm} (Tháng hiện tại)` },
+    { value: '2026-08', label: '2026-08' },
+    { value: '2026-07', label: '2026-07' },
+    { value: '2026-06', label: '2026-06' },
+  ];
+
+  const handleSyncDownloads = async (publishId: string, title: string, periodKey?: string) => {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await storeReportApi.syncDownloads(publishId);
+      const res = await storeReportApi.syncDownloads(publishId, periodKey);
       if (res.success) {
         setMessage({
           type: 'success',
@@ -166,21 +242,22 @@ export const GooglePlayMockManager: React.FC = () => {
     }
   };
 
-  const handleDemoPayout = async () => {
+  const handleExecutePayoutDirect = async (publishId: string, title: string, periodKey: string) => {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await storeReportApi.executeDemoPayout(payoutModal.publishId, payoutModal.periodKey);
+      const res = await storeReportApi.executeDemoPayout(publishId, periodKey);
       if (res.success) {
         setMessage({
           type: 'success',
-          text: `HẠCH TOÁN DOANH THU THÀNH CÔNG cho game ${payoutModal.title}! Doanh thu gộp (Gross): ${formatVnd(res.data.grossRevenue)} | Phí CH Play (15%): -${formatVnd(res.data.googleFeeAmount)} | Doanh thu thuần (Net 85%): ${formatVnd(res.data.netStoreProceeds)} | Phần chia Developer: ${formatVnd(res.data.developerEarnings)} | Phần Ví Hệ Thống: ${formatVnd(res.data.platformRetainedRevenue)}`,
+          text: `HẠCH TOÁN DOANH THU THÀNH CÔNG cho game ${title} (Kỳ ${periodKey})! Doanh thu gộp: ${formatVnd(res.data.grossRevenue)} | Phí CH Play (15%): -${formatVnd(res.data.googleFeeAmount)} | Doanh thu thuần (Net 85%): ${formatVnd(res.data.netStoreProceeds)} | 🟢 Ví Developer: +${formatVnd(res.data.developerEarnings)} | 🟣 Ví Admin Sàn: +${formatVnd(res.data.platformRetainedRevenue)} | 📄 Đã tạo file CSV đợt đối soát mới!`,
         });
-        setPayoutModal({ open: false, publishId: '', title: '', periodKey: '' });
         fetchData();
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Demo payout thất bại');
+      const errorMsg = err.response?.data?.message || err.message || 'Demo payout thất bại';
+      setMessage({ type: 'error', text: errorMsg });
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -410,7 +487,7 @@ export const GooglePlayMockManager: React.FC = () => {
                   <th className="p-4">Package Name</th>
                   <th className="p-4">Trạng thái Mock</th>
                   <th className="p-4">Lượt tải Mock</th>
-                  <th className="p-4 text-right">Thao tác Admin</th>
+                  <th className="p-4 text-center">Thao tác Admin</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
@@ -439,28 +516,32 @@ export const GooglePlayMockManager: React.FC = () => {
 
                       return (
                         <tr key={gameId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="p-4 font-medium">
+                          <td className="p-4 align-middle font-medium">
                             <div className="space-y-1">
-                              <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                                <span>{title}</span>
+                              <div className="font-bold text-slate-900 dark:text-white text-sm">
+                                {title}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                Tác giả: <span className="font-medium text-slate-700 dark:text-slate-300">{creatorName}</span>
+                              </div>
+                              <div className="pt-0.5">
                                 {game.contractType === 'full_acquisition' && (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 dark:border-purple-500/30 rounded-full">
-                                    Mua đứt (100% Platform)
+                                  <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 dark:border-purple-500/30 rounded-md inline-block">
+                                    Mua đứt (100% Sàn)
                                   </span>
                                 )}
                                 {game.contractType === 'co_publishing' && (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 dark:border-cyan-500/30 rounded-full">
+                                  <span className="px-2 py-0.5 text-[10px] font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 dark:border-cyan-500/30 rounded-md inline-block">
                                     Co-Publishing ({game.revenueSplit ?? 80}%)
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">Tác giả: {creatorName}</div>
                             </div>
                           </td>
-                          <td className="p-4 font-mono text-xs text-emerald-600 dark:text-emerald-400">
+                          <td className="p-4 align-middle font-mono text-xs text-emerald-600 dark:text-emerald-400">
                             {game.packageName ? game.packageName : <span className="text-slate-400 dark:text-slate-500 italic">Chưa kích hoạt</span>}
                           </td>
-                          <td className="p-4">
+                          <td className="p-4 align-middle">
                             {isMocked ? (
                               <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-semibold flex items-center w-fit gap-1">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -472,58 +553,67 @@ export const GooglePlayMockManager: React.FC = () => {
                               </span>
                             )}
                           </td>
-                          <td className="p-4 font-semibold text-slate-900 dark:text-white">
+                          <td className="p-4 align-middle font-semibold text-slate-900 dark:text-white">
                             {game.totalInstalls || metrics.filter((m) => m.gameId === gameId).reduce((acc, curr) => acc + (curr.dailyUserInstalls || 0), 0)} installs
                           </td>
-                          <td className="p-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() =>
-                                  setActivateModal({
-                                    open: true,
-                                    publishId: extPubId || gameId,
-                                    isGameId: !extPubId,
-                                    title: title,
-                                    packageName: game.packageName || `com.godotlaunch.${title.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-                                    priceProposed: String(game.priceProposed || (game.contractType === 'full_acquisition' ? 199000 : 99000)),
-                                    contractType: game.contractType,
-                                  })
-                                }
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
-                              >
-                                {isMocked
-                                  ? game.contractType === 'full_acquisition'
-                                    ? 'Sửa Giá / Package'
-                                    : 'Sửa Package'
-                                  : 'Kích hoạt Mock'}
-                              </button>
+                          <td className="p-4 align-middle text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {(() => {
+                                const currentPeriod = selectedPeriods[gameId] || currentYm;
+                                return (
+                                  <>
+                                    {!isMocked ? (
+                                      <button
+                                        onClick={() =>
+                                          setActivateModal({
+                                            open: true,
+                                            publishId: extPubId || gameId,
+                                            isGameId: !extPubId,
+                                            title: title,
+                                            packageName: game.packageName || `com.godotlaunch.${title.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+                                            priceProposed: String(game.priceProposed || (game.contractType === 'full_acquisition' ? 199000 : 99000)),
+                                            contractType: game.contractType,
+                                          })
+                                        }
+                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
+                                      >
+                                        Kích hoạt Mock
+                                      </button>
+                                    ) : (
+                                      <>
+                                         <MonthDropdown
+                                           currentPeriod={currentPeriod}
+                                           monthOptions={monthOptions}
+                                           onSelect={(val) =>
+                                             setSelectedPeriods({
+                                               ...selectedPeriods,
+                                               [gameId]: val,
+                                             })
+                                           }
+                                         />
 
-                              <button
-                                onClick={() => handleSyncDownloads(extPubId || gameId, title)}
-                                disabled={loading}
-                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <RefreshCw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span>Sync Lượt Tải</span>
-                              </button>
+                                        <button
+                                          onClick={() => handleSyncDownloads(extPubId || gameId, title, currentPeriod)}
+                                          disabled={loading}
+                                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                                        >
+                                          <RefreshCw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                          <span className="whitespace-nowrap">Sync Lượt Tải</span>
+                                        </button>
 
-                              <button
-                                onClick={() => {
-                                  const now = new Date();
-                                  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                                  setPayoutModal({
-                                    open: true,
-                                    publishId: extPubId || gameId,
-                                    title: title,
-                                    periodKey: currentMonthStr,
-                                  });
-                                }}
-                                disabled={loading}
-                                className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <Play className="w-3.5 h-3.5 fill-current" />
-                                <span>Demo Payout</span>
-                              </button>
+                                        <button
+                                          onClick={() => handleExecutePayoutDirect(extPubId || gameId, title, currentPeriod)}
+                                          disabled={loading}
+                                          className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+                                        >
+                                          <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+                                          <span className="whitespace-nowrap">Demo Payout ({currentPeriod})</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
@@ -673,7 +763,11 @@ export const GooglePlayMockManager: React.FC = () => {
                       <td className="p-4 font-mono text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">
                         {imp.sourceObjectPath}
                       </td>
-                      <td className="p-4 text-xs font-semibold text-slate-800 dark:text-slate-200">{imp.reportMonth}</td>
+                      <td className="p-4 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        {imp.reportMonth?.startsWith('demo-')
+                          ? `Demo Lần ${imp.reportMonth.replace('demo-', '').replace(/^0+/, '')}`
+                          : imp.reportMonth}
+                      </td>
                       <td className="p-4 text-xs font-bold text-slate-900 dark:text-white">{imp.rowCount} dòng</td>
                       <td className="p-4 font-mono text-[10px] text-slate-400 dark:text-slate-500 truncate max-w-[120px]">
                         {imp.fileChecksum}
@@ -711,6 +805,7 @@ export const GooglePlayMockManager: React.FC = () => {
             <table className="w-full text-center border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider">
+                  <th className="py-3.5 px-4 text-center">Đợt Payout</th>
                   <th className="py-3.5 px-4 text-center">External Payout ID</th>
                   <th className="py-3.5 px-4 text-center">Game</th>
                   <th className="py-3.5 px-4 text-center">Gross Revenue</th>
@@ -719,18 +814,24 @@ export const GooglePlayMockManager: React.FC = () => {
                   <th className="py-3.5 px-4 text-center">Developer Earnings</th>
                   <th className="py-3.5 px-4 text-center">Platform Retained</th>
                   <th className="py-3.5 px-4 text-center">Ngày Settle</th>
+                  <th className="py-3.5 px-4 text-center">Chứng Từ (CSV)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                 {statements.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    <td colSpan={10} className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                       Chưa có Payout Statement nào được tạo.
                     </td>
                   </tr>
                 ) : (
                   statements.map((stm) => (
                     <tr key={stm.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-4 text-center align-middle font-bold text-amber-600 dark:text-amber-400 text-xs">
+                        {stm.periodKey?.startsWith('demo-run-')
+                          ? `Demo Lần ${stm.periodKey.replace('demo-run-', '')}`
+                          : stm.periodKey}
+                      </td>
                       <td className="py-3.5 px-4 text-center align-middle">
                         <span className="inline-block px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 font-mono text-xs font-semibold border border-amber-500/20">
                           {stm.externalPayoutId}
@@ -759,6 +860,19 @@ export const GooglePlayMockManager: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4 text-center align-middle text-xs text-slate-500 dark:text-slate-400 font-medium">
                         {new Date(stm.settledAt).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="py-3.5 px-4 text-center align-middle">
+                        {stm.sourceImportId ? (
+                          <button
+                            onClick={() => handleDownloadCsv(stm.sourceImportId!, `installs_${stm.packageName}_${stm.periodKey}.csv`)}
+                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1 cursor-pointer shadow-sm"
+                          >
+                            <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Tải CSV</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-mono">-</span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -865,59 +979,6 @@ export const GooglePlayMockManager: React.FC = () => {
         )}
 
       {/* MODAL: DEMO PAYOUT */}
-      {payoutModal.open &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
-                  <Play className="w-5 h-5 text-amber-500 fill-current" />
-                  Demo Nhận Doanh Thu Google Play
-                </h3>
-                <button
-                  onClick={() => setPayoutModal({ open: false, publishId: '', title: '', periodKey: '' })}
-                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Mô phỏng đợt Google Play thanh toán tiền cho game <strong>{payoutModal.title}</strong>. Hệ thống sẽ tự động trừ 15% Google Fee, hạch toán 85% Net Proceeds và chia % cho Developer theo hợp đồng.
-              </p>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
-                  Period Key (Kỳ thanh toán)
-                </label>
-                <input
-                  type="text"
-                  value={payoutModal.periodKey}
-                  onChange={(e) => setPayoutModal({ ...payoutModal, periodKey: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-amber-700 dark:text-amber-300 font-mono text-sm focus:border-amber-500 focus:outline-none"
-                />
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                  💡 Mô phỏng đợt hạch toán CH Play theo tháng (ví dụ: {payoutModal.periodKey}). Khi ấn Payout, hệ thống sẽ đối soát lượt tải. Nếu có lượt tải mới, tiền chênh lệch sẽ tự động cộng vào ví Developer. Nếu không có lượt tải mới, doanh thu giữ nguyên mà không bị hạch toán trùng.
-                </p>
-              </div>
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => setPayoutModal({ open: false, publishId: '', title: '', periodKey: '' })}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium transition cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleDemoPayout}
-                  disabled={loading}
-                  className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-sm font-semibold shadow-sm transition cursor-pointer"
-                >
-                  Thực hiện Payout
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
     </div>
   );
 };

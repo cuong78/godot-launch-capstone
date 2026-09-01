@@ -32,4 +32,6 @@ public class StoreRevenueStatementResponse {
     private String currency;
     private String status;
     private Instant settledAt;
+    private UUID sourceImportId;
+    private String rawCsvUrl;
 }
