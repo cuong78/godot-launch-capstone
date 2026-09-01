@@ -57,6 +57,7 @@ make run
 ## Tài liệu
 
 - [HUONG_DAN_CAI_DAT.md](HUONG_DAN_CAI_DAT.md) — Cài đặt từ file ZIP và chạy toàn bộ hệ thống
+- [DEPLOYMENT_VPS.md](DEPLOYMENT_VPS.md) — Triển khai production trên VPS mới, DNS/SSL/Nginx, storage và checklist bàn giao
 - [docs/](docs/) — Kiến trúc, luồng nghiệp vụ và hướng dẫn kỹ thuật
 - [backend/RULES.md](backend/RULES.md) — Quy tắc phát triển backend
 

@@ -15,6 +15,7 @@ workspace.xml
 
 # Google Cloud credentials — KHÔNG commit
 *.json
+!google-play-mock/package.json
 !frontend/src/locales/**/*.json
 
 # CodeGraph local runtime data (daemon pid, db, cache) — machine-specific

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#122a4a"/>
+      <stop offset="1" stop-color="#07111f"/>
+    </linearGradient>
+    <linearGradient id="ship" x1="26" y1="13" x2="43" y2="45" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#71c8f1"/>
+      <stop offset="1" stop-color="#2d75b6"/>
+    </linearGradient>
+    <linearGradient id="fire" x1="20" y1="39" x2="12" y2="57" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffd45a"/>
+      <stop offset=".55" stop-color="#ff9418"/>
+      <stop offset="1" stop-color="#f04a19"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+  <path d="M22 42c-4 5-6 10-5 15 5 0 10-3 13-8" fill="url(#fire)" stroke="#ffb224" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M26 38c-5 0-9 2-12 6 5 2 9 2 13 0M37 47c0 4-1 8-4 11-3-4-4-8-2-12" fill="#2d75b6" stroke="#8ed9f7" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M24 43c3-15 11-27 24-35 3 15-1 28-13 39-4 1-8-1-11-4Z" fill="url(#ship)" stroke="#d9f4ff" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="39" cy="25" r="6" fill="#07111f" stroke="#fff" stroke-width="2.5"/>
+  <path d="m26 40 9 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M50 10c-1 6-4 11-8 14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".75"/>
+</svg>
