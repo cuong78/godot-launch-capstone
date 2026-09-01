@@ -36,6 +36,19 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, errorCode.getHttpStatus());
     }
 
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
+        log.warn("Business RuntimeException occurred: {}", ex.getMessage());
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .success(false)
+                .status(HttpStatus.BAD_REQUEST.value())
+                .code(ErrorCode.INVALID_INPUT.name())
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.badRequest().body(response);
+    }
+
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleInsufficientBalance(InsufficientBalanceException ex) {
         ErrorCode errorCode = ex.getErrorCode();

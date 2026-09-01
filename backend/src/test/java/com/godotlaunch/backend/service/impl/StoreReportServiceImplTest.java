@@ -40,6 +40,8 @@ class StoreReportServiceImplTest {
     @Mock
     private ContractRepository contractRepository;
     @Mock
+    private GameRepository gameRepository;
+    @Mock
     private UserRepository userRepository;
     @Mock
     private WalletRepository walletRepository;
@@ -196,5 +198,39 @@ class StoreReportServiceImplTest {
         assertThat(res.getPlatformRetainedRevenue()).isEqualByComparingTo("170000.00");
 
         verify(transactionRepository, times(2)).save(any(Transaction.class));
+    }
+
+    @Test
+    void getEligibleStoreGames_ShouldFilterOutMarketplaceGamesAndRequireSignedContract() {
+        Game storeGame = new Game();
+        storeGame.setId(UUID.randomUUID());
+        storeGame.setTitle("Store Game");
+        storeGame.setPublishingType(com.godotlaunch.backend.entity.enums.PublishingType.co_publishing);
+
+        Game marketGame = new Game();
+        marketGame.setId(UUID.randomUUID());
+        marketGame.setTitle("Marketplace Asset");
+        marketGame.setPublishingType(com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing);
+
+        when(gameRepository.findAll()).thenReturn(List.of(storeGame, marketGame));
+
+        Contract signedContract = new Contract();
+        signedContract.setStatus(com.godotlaunch.backend.entity.enums.ContractStatus.signed);
+
+        lenient().when(contractRepository.findFirstByGameId(storeGame.getId())).thenReturn(Optional.of(signedContract));
+        lenient().when(contractRepository.findFirstByGameId(marketGame.getId())).thenReturn(Optional.empty());
+
+        ExternalPublish storePub = new ExternalPublish();
+        storePub.setId(UUID.randomUUID());
+        storePub.setGame(storeGame);
+        storePub.setStatus(ExtStatus.live);
+        storePub.setPackageName("com.godotlaunch.storegame");
+
+        lenient().when(externalPublishRepository.findFirstByGame_IdOrderByCreatedAtDesc(storeGame.getId())).thenReturn(Optional.of(storePub));
+        lenient().when(externalPublishRepository.findFirstByGame_IdOrderByCreatedAtDesc(marketGame.getId())).thenReturn(Optional.empty());
+
+        List<EligibleStoreGameResponse> list = storeReportService.getEligibleStoreGames();
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).getGameTitle()).isEqualTo("Store Game");
     }
 }

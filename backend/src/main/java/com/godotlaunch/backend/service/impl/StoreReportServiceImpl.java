@@ -91,12 +91,12 @@ public class StoreReportServiceImpl implements StoreReportService {
             Optional<Contract> contractOpt = contractRepository.findFirstByGameId(game.getId());
             Optional<ExternalPublish> publishOpt = externalPublishRepository.findFirstByGame_IdOrderByCreatedAtDesc(game.getId());
 
+            boolean isStorePublishing = game.getPublishingType() != null 
+                    && game.getPublishingType() != com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing;
             boolean hasSignedContract = contractOpt.isPresent() && contractOpt.get().getStatus() == ContractStatus.signed;
-            boolean isEligibleStatus = game.getStatus() == com.godotlaunch.backend.entity.enums.GameStatus.awaiting_store_build 
-                    || game.getStatus() == com.godotlaunch.backend.entity.enums.GameStatus.published 
-                    || game.getStatus() == com.godotlaunch.backend.entity.enums.GameStatus.approved;
 
-            if (hasSignedContract || isEligibleStatus || publishOpt.isPresent()) {
+            // Google Play Mock manager ONLY displays games registered for Store/CH Play publishing AND signed a contract
+            if (isStorePublishing && (hasSignedContract || publishOpt.isPresent())) {
                 Long totalInstalls = storeDailyInstallMetricRepository.sumDailyUserInstallsByGameId(game.getId());
                 if (totalInstalls == null) totalInstalls = 0L;
 
@@ -160,6 +160,18 @@ public class StoreReportServiceImpl implements StoreReportService {
     public ExternalPublishResponse activateMockPublishForGame(UUID gameId, ActivateMockPublishRequest request, UUID adminId) {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found with ID: " + gameId));
+
+        boolean isStorePublishing = game.getPublishingType() != null 
+                && game.getPublishingType() != com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing;
+        if (!isStorePublishing) {
+            throw new RuntimeException("Game bán trên Marketplace không thuộc danh mục phát hành CH Play!");
+        }
+
+        Optional<Contract> contractOpt = contractRepository.findFirstByGameId(gameId);
+        boolean hasSignedContract = contractOpt.isPresent() && contractOpt.get().getStatus() == ContractStatus.signed;
+        if (!hasSignedContract) {
+            throw new RuntimeException("Game phải hoàn tất ký kết hợp đồng phát hành mới có thể kích hoạt Google Play Mock!");
+        }
 
         String packageName = request.getPackageName();
         if (packageName == null || packageName.isBlank()) {

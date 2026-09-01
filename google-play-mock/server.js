@@ -46,7 +46,7 @@ app.delete('/internal/v1/apps/:packageName', (req, res) => {
 // 3. Install CSV Statistics Report
 // GET /internal/v1/reports/installs/:packageName?startDate=2026-09-01&endDate=2026-09-05
 // GET /internal/v1/reports/installs/:packageName/:yyyyMM
-const handleInstallReport = (req, res) => {
+app.get(['/internal/v1/reports/installs/:packageName', '/internal/v1/reports/installs/:packageName/:yyyyMM'], (req, res) => {
   const { packageName, yyyyMM } = req.params;
   const { startDate, endDate } = req.query;
 
