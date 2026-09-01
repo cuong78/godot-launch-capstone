@@ -17,6 +17,7 @@ import com.godotlaunch.backend.entity.enums.GameStatus;
 import com.godotlaunch.backend.entity.enums.PublishingType;
 import com.godotlaunch.backend.exception.AppException;
 import com.godotlaunch.backend.repository.CategoryRepository;
+import com.godotlaunch.backend.repository.ContractRepository;
 import com.godotlaunch.backend.repository.GameRepository;
 import com.godotlaunch.backend.repository.GameVersionRepository;
 import com.godotlaunch.backend.repository.MediaRepository;
@@ -84,6 +85,8 @@ class GameServiceImplTest {
     private SourceProcessingClient sourceProcessingClient;
     @Mock
     private SourceSnapshotRepository sourceSnapshotRepository;
+    @Mock
+    private ContractRepository contractRepository;
     @Mock
     private ObjectMapper objectMapper;
     @Mock

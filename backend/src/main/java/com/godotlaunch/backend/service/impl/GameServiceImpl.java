@@ -474,15 +474,27 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional(readOnly = true)
     public List<GameResponse> getAllGames(GameStatus status, String search) {
+        List<Game> games;
         if (search != null && !search.isBlank()) {
-            return gameRepository.searchGames(status, search.trim()).stream()
-                    .map(this::mapToResponse)
+            games = gameRepository.searchGames(status, search.trim());
+        } else if (status != null) {
+            if (status == GameStatus.pending) {
+                return gameRepository.findPendingGamesAndUpdates().stream()
+                        .map(this::mapToResponse)
+                        .collect(Collectors.toList());
+            }
+            games = gameRepository.findByStatusOrderByCreatedAtDesc(status);
+        } else {
+            games = gameRepository.findAllByOrderByCreatedAtDesc();
+        }
+
+        if (status == GameStatus.published) {
+            games = games.stream()
+                    .filter(g -> g.getPublishingType() == null || g.getPublishingType() == com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing)
                     .collect(Collectors.toList());
         }
-        if (status != null) {
-            return getGamesByStatus(status);
-        }
-        return gameRepository.findAllByOrderByCreatedAtDesc().stream()
+
+        return games.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -490,14 +502,7 @@ public class GameServiceImpl implements GameService {
     @Override
     @Transactional(readOnly = true)
     public List<GameResponse> getGamesByStatus(GameStatus status) {
-        if (status == GameStatus.pending) {
-            return gameRepository.findPendingGamesAndUpdates().stream()
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
-        }
-        return gameRepository.findByStatusOrderByCreatedAtDesc(status).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        return getAllGames(status, null);
     }
 
     @Override

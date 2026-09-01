@@ -34,7 +34,9 @@ public class HomepageServiceImpl implements HomepageService {
         Optional<HomepageResponse> cached = cacheService.get();
         if (cached.isPresent()) return cached.get();
 
-        List<Game> games = gameRepository.findStorefrontGames(GameStatus.published);
+        List<Game> games = gameRepository.findStorefrontGames(GameStatus.published).stream()
+                .filter(g -> g.getPublishingType() == null || g.getPublishingType() == PublishingType.marketplace_listing)
+                .collect(Collectors.toList());
         List<Asset> assets = assetRepository.findStorefrontAssets(ItemStatus.active);
         List<HomepageSectionResponse> sections = sectionRepository.findByActiveTrueOrderByDisplayOrderAsc().stream()
                 .map(section -> buildSection(section, games, assets)).toList();
