@@ -124,6 +124,8 @@ public class HomepageServiceImpl implements HomepageService {
                 .createdAt(game.getCreatedAt())
                 .videoUrl(videoUrl)
                 .screenshots(screenshots)
+                .averageRating(game.getAverageRating())
+                .reviewCount(game.getReviewCount())
                 .build();
     }
 
@@ -155,6 +157,8 @@ public class HomepageServiceImpl implements HomepageService {
                 .createdAt(asset.getCreatedAt())
                 .videoUrl(videoUrl)
                 .screenshots(screenshots)
+                .averageRating(asset.getAverageRating())
+                .reviewCount(asset.getReviewCount())
                 .build();
     }
 }

@@ -22,5 +22,7 @@ public class HomepageProductResponse {
     private Instant createdAt;
     private String videoUrl;
     private List<String> screenshots;
+    private BigDecimal averageRating;
+    private Integer reviewCount;
 }
 

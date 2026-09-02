@@ -304,7 +304,7 @@ export const SteamProductCard: React.FC<SteamProductCardProps> = ({
           <div className="flex items-center gap-1.5 pt-0.5">
             <span className="flex items-center gap-0.5 text-amber-500 font-bold text-[11px]">
               <Star size={11} className="fill-current text-amber-500" />
-              <span>{(item.rating || 5.0).toFixed(1)}</span>
+              <span>{(item.rating ?? 0.0).toFixed(1)}</span>
             </span>
             <span className="text-slate-400 dark:text-slate-500 text-[10px]">
               ({item.reviewedCount || 0} {i18n.language === 'vi' ? 'đánh giá' : 'reviews'})
