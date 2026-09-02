@@ -66,10 +66,10 @@ public class StoreReportServiceImpl implements StoreReportService {
     @Override
     public GooglePlayMockConfigDto updatePublisherConfig(GooglePlayMockConfigDto configDto, UUID adminId) {
         if (configDto.getBucketUri() == null || !configDto.getBucketUri().startsWith("gs://pubsite_prod_rev_") || configDto.getBucketUri().contains(" ")) {
-            throw new RuntimeException("Bucket URI không đúng định dạng Google Play (bắt đầu bằng gs://pubsite_prod_rev_ và không chứa khoảng trắng)");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Bucket URI không đúng định dạng Google Play (bắt đầu bằng gs://pubsite_prod_rev_ và không chứa khoảng trắng)");
         }
         if (configDto.getServiceAccountEmail() == null || !configDto.getServiceAccountEmail().contains("@") || !configDto.getServiceAccountEmail().endsWith(".gserviceaccount.com")) {
-            throw new RuntimeException("Service Account Email không đúng định dạng (...@project.iam.gserviceaccount.com)");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Service Account Email không đúng định dạng (...@project.iam.gserviceaccount.com)");
         }
         publisherConfig = configDto;
         log.info("[MOCK PUBLISHER CONFIG] Updated by admin {}: bucketUri={}", adminId, configDto.getBucketUri());
@@ -159,23 +159,23 @@ public class StoreReportServiceImpl implements StoreReportService {
     @Transactional
     public ExternalPublishResponse activateMockPublishForGame(UUID gameId, ActivateMockPublishRequest request, UUID adminId) {
         Game game = gameRepository.findById(gameId)
-                .orElseThrow(() -> new RuntimeException("Game not found with ID: " + gameId));
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Game not found with ID: " + gameId));
 
         boolean isStorePublishing = game.getPublishingType() != null 
                 && game.getPublishingType() != com.godotlaunch.backend.entity.enums.PublishingType.marketplace_listing;
         if (!isStorePublishing) {
-            throw new RuntimeException("Game bán trên Marketplace không thuộc danh mục phát hành CH Play!");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Game bán trên Marketplace không thuộc danh mục phát hành CH Play!");
         }
 
         Optional<Contract> contractOpt = contractRepository.findFirstByGameId(gameId);
         boolean hasSignedContract = contractOpt.isPresent() && contractOpt.get().getStatus() == ContractStatus.signed;
         if (!hasSignedContract) {
-            throw new RuntimeException("Game phải hoàn tất ký kết hợp đồng phát hành mới có thể kích hoạt Google Play Mock!");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Game phải hoàn tất ký kết hợp đồng phát hành mới có thể kích hoạt Google Play Mock!");
         }
 
         String packageName = request.getPackageName();
         if (packageName == null || packageName.isBlank()) {
-            throw new RuntimeException("Package name là bắt buộc khi kích hoạt Google Play Mock");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Package name là bắt buộc khi kích hoạt Google Play Mock");
         }
 
         // Validate package name uniqueness
@@ -183,7 +183,7 @@ public class StoreReportServiceImpl implements StoreReportService {
                 .filter(p -> packageName.equalsIgnoreCase(p.getPackageName()) && !p.getGame().getId().equals(gameId))
                 .findFirst();
         if (existingWithPkg.isPresent()) {
-            throw new RuntimeException("Package name '" + packageName + "' đã được sử dụng cho một game khác!");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Package name '" + packageName + "' đã được sử dụng cho một game khác!");
         }
 
         // Look up or create ExternalPublish
@@ -234,11 +234,11 @@ public class StoreReportServiceImpl implements StoreReportService {
     @Transactional
     public ExternalPublishResponse activateMockPublish(UUID externalPublishId, ActivateMockPublishRequest request, UUID adminId) {
         ExternalPublish publish = externalPublishRepository.findById(externalPublishId)
-                .orElseThrow(() -> new RuntimeException("External publish record not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "External publish record not found"));
 
         String packageName = request.getPackageName();
         if (packageName == null || packageName.isBlank()) {
-            throw new RuntimeException("Package name là bắt buộc khi kích hoạt Google Play Mock");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Package name là bắt buộc khi kích hoạt Google Play Mock");
         }
 
         // Validate package name uniqueness
@@ -246,7 +246,7 @@ public class StoreReportServiceImpl implements StoreReportService {
                 .filter(p -> packageName.equalsIgnoreCase(p.getPackageName()) && !p.getId().equals(externalPublishId))
                 .findFirst();
         if (existing.isPresent()) {
-            throw new RuntimeException("Package name '" + packageName + "' đã được sử dụng cho một game khác!");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Package name '" + packageName + "' đã được sử dụng cho một game khác!");
         }
 
         // Register package with mock container
@@ -284,10 +284,10 @@ public class StoreReportServiceImpl implements StoreReportService {
     public StoreReportImportResponse syncDownloadsForGame(UUID externalPublishId, String targetYyyyMM, UUID adminId) {
         ExternalPublish publish = externalPublishRepository.findById(externalPublishId)
                 .orElseGet(() -> externalPublishRepository.findFirstByGame_IdOrderByCreatedAtDesc(externalPublishId)
-                        .orElseThrow(() -> new RuntimeException("Chưa tìm thấy bản ghi xuất bản Google Play cho game này. Vui lòng bấm Kích hoạt Mock trước!")));
+                        .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Chưa tìm thấy bản ghi xuất bản Google Play cho game này. Vui lòng bấm Kích hoạt Mock trước!")));
 
         if (publish.getPackageName() == null || publish.getPackageName().isBlank()) {
-            throw new RuntimeException("Game chưa được cấu hình Package Name để đồng bộ report");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Game chưa được cấu hình Package Name để đồng bộ report");
         }
 
         Optional<StoreReportImport> latestImpOpt = storeReportImportRepository
@@ -307,7 +307,7 @@ public class StoreReportServiceImpl implements StoreReportService {
         LocalDate endDate = today;
 
         if (startDate.isAfter(endDate)) {
-            throw new RuntimeException("Không có lượt tải mới nào kể từ lần đồng bộ gần nhất!");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Không có lượt tải mới nào kể từ lần đồng bộ gần nhất!");
         }
 
         String startDateStr = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
@@ -342,7 +342,7 @@ public class StoreReportServiceImpl implements StoreReportService {
 
         if (parsedRows == 0) {
             storeReportImportRepository.delete(reportImport);
-            throw new RuntimeException("Chưa có lượt tải mới nào để đồng bộ!");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Chưa có lượt tải mới nào để đồng bộ!");
         }
 
         reportImport.setRowCount(parsedRows);
@@ -379,10 +379,10 @@ public class StoreReportServiceImpl implements StoreReportService {
     @Transactional
     public StoreRevenueStatementResponse executeDemoPayout(UUID externalPublishId, String periodKeyInput, UUID adminId) {
         ExternalPublish publish = externalPublishRepository.findById(externalPublishId)
-                .orElseThrow(() -> new RuntimeException("External publish record not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "External publish record not found"));
 
         if (publish.getPackageName() == null || publish.getPackageName().isBlank()) {
-            throw new RuntimeException("Game chưa có Package Name để thực hiện demo payout");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Game chưa có Package Name để thực hiện demo payout");
         }
 
         Game game = publish.getGame();
@@ -410,7 +410,7 @@ public class StoreReportServiceImpl implements StoreReportService {
                 .collect(Collectors.toList());
 
         if (unpaidImports.isEmpty()) {
-            throw new RuntimeException("Tất cả các đợt đồng bộ lượt tải của game này đã được hoàn tất hạch toán thanh toán trước đó! Vui lòng Sync Lượt Tải mới để tiếp tục.");
+            throw new AppException(ErrorCode.BAD_REQUEST, "Tất cả các đợt đồng bộ lượt tải của game này đã được hoàn tất hạch toán thanh toán trước đó! Vui lòng Sync Lượt Tải mới để tiếp tục.");
         }
 
         StoreReportImport reportImport = unpaidImports.get(0);
@@ -610,7 +610,7 @@ public class StoreReportServiceImpl implements StoreReportService {
     @Override
     public byte[] getRawReportCsv(UUID importId, UUID userId, boolean isAdmin) {
         StoreReportImport reportImport = storeReportImportRepository.findById(importId)
-                .orElseThrow(() -> new RuntimeException("Import record not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.BAD_REQUEST, "Import record not found"));
 
         if (!isAdmin) {
             verifyGameOwner(reportImport.getExternalPublish().getGame().getId(), userId);
@@ -624,7 +624,7 @@ public class StoreReportServiceImpl implements StoreReportService {
             }
             return seaweedFsService.getObjectStream(objectKey).readAllBytes();
         } catch (Exception e) {
-            throw new RuntimeException("Không thể đọc file CSV thô: " + e.getMessage());
+            throw new AppException(ErrorCode.BAD_REQUEST, "Không thể đọc file CSV thô: " + e.getMessage());
         }
     }
 
@@ -698,7 +698,7 @@ public class StoreReportServiceImpl implements StoreReportService {
                 return;
             }
         }
-        throw new RuntimeException("Bạn không có quyền truy cập dữ liệu báo cáo của game này!");
+        throw new AppException(ErrorCode.BAD_REQUEST, "Bạn không có quyền truy cập dữ liệu báo cáo của game này!");
     }
 
     private String calculateSha256(byte[] data) {
