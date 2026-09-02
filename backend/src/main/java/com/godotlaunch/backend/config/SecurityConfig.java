@@ -71,6 +71,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/banners/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/homepage").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/assets/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/agreements/active").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reviews/**").permitAll()
                 // Web demo phải đăng nhập mới chơi được -> khai báo TRƯỚC rule permitAll chung của /api/v1/games/** bên dưới
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/games/*/web-demo/**").authenticated()
