@@ -1494,31 +1494,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         <div className="space-y-5 animate-fade-in py-1">
           {activeSection === "overview" ? (
             <>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-[24px] border border-slate-200/90 bg-white/96 p-4 shadow-[0_14px_36px_rgba(148,163,184,0.12)] space-y-2.5 dark:border-slate-800/80 dark:bg-slate-900 dark:shadow-none">
-                  <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1">
-                    <DollarSign size={12} className="text-sky-500" />{" "}
-                    {t("overviewCards.payoutWalletBalance")}
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-display font-bold dark:text-white">
-                      {payoutBalanceDisplay}
-                    </span>
-                    {!isLoadingPayoutBalance &&
-                      !payoutBalanceError &&
-                      payoutBalance?.currency && (
-                        <span className="text-[10px] text-emerald-500 font-bold font-mono">
-                          {payoutBalance.currency}
-                        </span>
-                      )}
-                  </div>
-                  <p
-                    className={`text-[9px] leading-tight ${payoutBalanceError ? "text-rose-500" : "text-slate-500 dark:text-slate-400"}`}
-                  >
-                    {payoutBalanceCaption}
-                  </p>
-                </div>
-
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
                 <div className="rounded-[24px] border border-slate-200/90 bg-white/96 p-4 shadow-[0_14px_36px_rgba(148,163,184,0.12)] space-y-2.5 dark:border-slate-800/80 dark:bg-slate-900 dark:shadow-none">
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 font-bold flex items-center gap-1">
                     <Users size={12} className="text-amber-500" />{" "}
