@@ -210,11 +210,82 @@ export const AiChatWidget: React.FC = () => {
   };
 
   const promptSuggestions = [
-    '💡 Hướng dẫn quy trình đăng bán game & rút tiền',
-    '📊 Tựa game nào bán chạy nhất trên hệ thống?',
-    '👛 Số dư ví và lịch sử giao dịch của tôi',
-    '🛡️ Quy định kiểm tra đạo văn code AST',
+    { text: 'Hướng dẫn quy trình đăng bán game & rút tiền', icon: '📖' },
+    { text: 'Tựa game nào bán chạy nhất trên hệ thống?', icon: '📈' },
+    { text: 'Số dư ví và lịch sử giao dịch của tôi', icon: '💳' },
+    { text: 'Quy định kiểm tra đạo văn code AST', icon: '🛡️' },
   ];
+
+  // Định dạng hiển thị tin nhắn, loại bỏ ký hiệu Markdown thô (###, ***, **) thành thẻ HTML sạch đẹp
+  const renderFormattedContent = (content: string) => {
+    if (!content) return null;
+
+    const lines = content.split('\n');
+
+    return (
+      <div className="space-y-1 font-sans text-xs sm:text-sm leading-relaxed">
+        {lines.map((line, lineIdx) => {
+          // Đường phân cách (***, ---, ___)
+          if (/^(\*{3,}|-{3,}|_{3,})$/.test(line.trim())) {
+            return <hr key={lineIdx} className="my-2 border-slate-700/60" />;
+          }
+
+          // Tiêu đề: ###, ##, #
+          let processedLine = line;
+          let isHeader = false;
+          if (/^#{1,6}\s+/.test(processedLine)) {
+            isHeader = true;
+            processedLine = processedLine.replace(/^#{1,6}\s+/, '');
+          }
+
+          // Gạch đầu dòng (* hoặc -)
+          let isBullet = false;
+          if (/^[\*\-]\s+/.test(processedLine)) {
+            isBullet = true;
+            processedLine = processedLine.replace(/^[\*\-]\s+/, '');
+          }
+
+          // Phân tích chữ in đậm **text**
+          const parts = processedLine.split(/(\*\*.*?\*\*)/g);
+
+          const renderedParts = parts.map((part, partIdx) => {
+            if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+              const boldText = part.slice(2, -2);
+              return (
+                <strong key={partIdx} className="font-bold text-white">
+                  {boldText}
+                </strong>
+              );
+            }
+            return part;
+          });
+
+          if (isHeader) {
+            return (
+              <div key={lineIdx} className="font-bold text-indigo-300 text-sm mt-2 mb-1">
+                {renderedParts}
+              </div>
+            );
+          }
+
+          if (isBullet) {
+            return (
+              <div key={lineIdx} className="flex items-start gap-1.5 ml-2 my-0.5">
+                <span className="text-indigo-400 font-bold select-none">•</span>
+                <div>{renderedParts}</div>
+              </div>
+            );
+          }
+
+          if (line.trim() === '') {
+            return <div key={lineIdx} className="h-1.5" />;
+          }
+
+          return <div key={lineIdx}>{renderedParts}</div>;
+        })}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -334,14 +405,17 @@ export const AiChatWidget: React.FC = () => {
 
                 <div className="pt-2 flex flex-col gap-2 text-left">
                   <p className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider px-1">Gợi ý câu hỏi:</p>
-                  {promptSuggestions.map((promptText, idx) => (
+                  {promptSuggestions.map((item, idx) => (
                     <button
                       key={idx}
-                      onClick={() => handleSendMessage(promptText.replace(/^[💡📊👛🛡️]\s*/, ''))}
+                      onClick={() => handleSendMessage(item.text)}
                       className="text-xs py-2 px-3 rounded-xl bg-slate-900/80 hover:bg-indigo-900/40 border border-slate-800 hover:border-indigo-500/40 text-slate-200 hover:text-white transition text-left flex items-center justify-between group"
                     >
-                      <span>{promptText}</span>
-                      <svg className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <span className="flex items-center gap-2">
+                        <span className="text-sm">{item.icon}</span>
+                        <span>{item.text}</span>
+                      </span>
+                      <svg className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 transition shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
@@ -376,10 +450,10 @@ export const AiChatWidget: React.FC = () => {
                       : 'bg-slate-900/90 border border-slate-800 text-slate-100 rounded-bl-none shadow-md'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap font-sans">
-                    {msg.content}
+                  <div>
+                    {renderFormattedContent(msg.content)}
                     {msg.isStreaming && !msg.content && (
-                      <span className="inline-flex items-center gap-1 text-indigo-400 italic text-xs">
+                      <span className="inline-flex items-center gap-1 text-indigo-400 italic text-xs mt-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
                         Đang soạn phản hồi...
                       </span>

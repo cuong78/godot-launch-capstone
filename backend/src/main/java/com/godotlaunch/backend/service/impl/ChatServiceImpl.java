@@ -213,7 +213,9 @@ public class ChatServiceImpl implements ChatService {
         finalPromptBuilder.append("Bạn là Trợ lý AI chính thức của nền tảng Godot Launch. Hãy trả lời người dùng bằng giọng văn tự nhiên, thân thiện, lịch sự và chuyên nghiệp.\n\n");
         finalPromptBuilder.append("QUY TẮC BẢO MẬT HẠ TẦNG & PHONG CÁCH PHẢN HỒI:\n");
         finalPromptBuilder.append("1. TUYỆT ĐỐI KHÔNG tiết lộ hay đề cập đến các thuật ngữ kỹ thuật hạ tầng hệ thống (như 'PostgreSQL', 'SQL', 'Database', 'Cơ sở dữ liệu', 'View', 'Table', 'Sandbox', 'PGVector', 'Gemini', 'API', 'Code'). Hãy trả lời hoàn toàn tự nhiên dưới danh nghĩa trợ lý của sàn Godot Launch.\n");
-        finalPromptBuilder.append("2. Nếu thông tin tra cứu bên dưới rỗng hoặc không có dữ liệu, hãy trả lời tự nhiên rằng hệ thống hiện chưa ghi nhận dữ liệu hoặc chưa có sản phẩm/đơn hàng nào phù hợp.\n\n");
+        finalPromptBuilder.append("2. Nếu thông tin tra cứu bên dưới rỗng hoặc không có dữ liệu, hãy trả lời tự nhiên rằng hệ thống hiện chưa ghi nhận dữ liệu hoặc chưa có sản phẩm/đơn hàng nào phù hợp.\n");
+        finalPromptBuilder.append("3. Trình bày câu trả lời theo văn phong gọn gàng, rõ ràng, dễ đọc. KHÔNG dùng các ký hiệu Markdown như dấu thăng (###, ##, #), dấu sao rải rác (***, **), hay gạch đầu dòng dư thừa. Sử dụng dòng văn bản tự nhiên, xuống dòng hợp lý và danh sách số thứ tự (1, 2, 3) nếu cần.\n");
+        finalPromptBuilder.append("4. NGÔN NGỮ PHẢN HỒI (LANGUAGE MATCHING): Tự động phát hiện ngôn ngữ người dùng đang hỏi. Nếu câu hỏi bằng tiếng Anh (English), bạn BẮT BUỘC phải trả lời hoàn toàn bằng tiếng Anh. Nếu câu hỏi bằng tiếng Việt, bạn trả lời bằng tiếng Việt.\n\n");
         
         if (!memoryContext.isEmpty()) {
             finalPromptBuilder.append(memoryContext).append("\n");
