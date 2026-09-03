@@ -199,7 +199,7 @@ public class GameServiceImpl implements GameService {
                     "Revenue split proposed is required for co-publishing."
             );
         }
-        game.setPriceProposed(isCoPublishing ? null : request.getPriceProposed());
+        game.setPriceProposed(request.getPriceProposed());
         game.setRevenueSplitProposed(isCoPublishing ? request.getRevenueSplitProposed() : null);
         game.setCreator(creator);
         game.setStatus(GameStatus.pending);

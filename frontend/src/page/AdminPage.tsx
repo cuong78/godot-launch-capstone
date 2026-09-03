@@ -1342,13 +1342,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setSellerAddress("");
     setSellerTaxCode("");
 
-    // Prefill proposed price if present
-    if (game.priceProposed !== undefined && game.priceProposed !== null) {
-      setPriceProposed(game.priceProposed.toString());
-      if (game.priceProposed === 0) {
+    // Prefill proposed price if present (with fallback to existing contract)
+    const existingContract = contracts.slice().reverse().find((c) => c.gameId === game.id);
+    const targetPrice =
+      game.priceProposed !== undefined && game.priceProposed !== null
+        ? game.priceProposed
+        : existingContract?.gamePriceProposed;
+
+    if (targetPrice !== undefined && targetPrice !== null) {
+      setPriceProposed(targetPrice.toString());
+      if (targetPrice === 0) {
         setLumpSumAmount("0 VND");
       } else {
-        setLumpSumAmount(game.priceProposed.toLocaleString("vi-VN") + " VND");
+        setLumpSumAmount(targetPrice.toLocaleString("vi-VN") + " VND");
       }
     } else {
       setPriceProposed("");

@@ -1310,9 +1310,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({ setCurrentScreen }) => {
                             type="button"
                             onClick={() => {
                               setPublishingType("co_publishing");
-                              // Hợp đồng ăn chia % — giá bán không áp dụng ở
-                              // bước này, clear để tránh gửi lẫn priceProposed cũ.
-                              priceInput.setValue("");
                               setIsPublishDropdownOpen(false);
                             }}
                             className={`w-full text-left px-3 py-2.5 text-xs rounded-lg transition-colors duration-150 cursor-pointer flex items-center justify-between ${

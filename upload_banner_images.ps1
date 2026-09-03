@@ -1,120 +1,44 @@
-# PowerShell Script to upload local banner images to SeaweedFS and link them
-# to the `banners` table created by the V3__banners.sql migration.
-#
-# Matches files to banners by display_order: the images are sorted
-# alphabetically by filename and assigned to display_order = 1, 2, 3, ...
-# in that order. Run this AFTER the app has started at least once (so the
-# V3 migration has created the default banner rows) and AFTER SeaweedFS is
-# running.
-#
-# Run this script from PowerShell: .\upload_banner_images.ps1
+"Kính thưa Hội đồng, tiếp theo em xin phép demo luồng Publish game lên Google Play Store.
+So với luồng đẩy game lên Marketplace nội bộ của hệ thống, luồng này giữ nguyên các bước nhập thông tin và tải game cơ bản để tối ưu trải nghiệm, nhưng có 2 điểm khác biệt cốt lõi:
 
-Param(
-    [string]$SourceFolder = "$PSScriptRoot\resource\media\banner",
-    [string]$FilerUrl = "http://localhost:8888",
-    [string]$DbUser = "user_godot_launch",
-    [string]$DbName = "godot_launch",
-    [string]$ContainerName = "godotlaunch-postgres",
-    [string]$BasePath = "godotlaunch",
-    [string]$PublicBaseUrl = "https://godotlaunch.shop/files"
-)
+Thứ nhất: Game sẽ không xuất hiện trên Marketplace của nền tảng, mà được đóng gói để phát hành độc lập ra chợ ứng dụng ngoài là Google Play.
 
-Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " GodotLaunch Banner Image Auto-Uploader & DB Linker" -ForegroundColor Cyan
-Write-Host " (Images are matched to banners by display_order, in" -ForegroundColor Cyan
-Write-Host "  alphabetical filename order)" -ForegroundColor Cyan
-Write-Host "==========================================================" -ForegroundColor Cyan
+Thứ hai: Bắt buộc có thêm bước Thiết lập Hợp đồng hợp tác giữa Developer và Hệ thống."
 
-# 1. Check if SeaweedFS Filer is running
-try {
-    Invoke-RestMethod -Uri "$FilerUrl/" -Method Get -TimeoutSec 3 -ErrorAction Stop | Out-Null
-    Write-Host "[OK] Connected to SeaweedFS Filer at $FilerUrl" -ForegroundColor Green
-} catch {
-    Write-Host "[ERROR] Cannot connect to SeaweedFS Filer at $FilerUrl. Make sure docker-compose is running!" -ForegroundColor Red
-    Exit 1
-}
+2. Chọn loại Hợp đồng & Đăng tải
+(Thao tác: Chọn hình thức hợp đồng, điền thông tin và bấm Upload)
 
-# 2. Check if source folder exists
-if (-not (Test-Path $SourceFolder)) {
-    Write-Host "[ERROR] Source folder '$SourceFolder' not found." -ForegroundColor Red
-    Exit 1
-}
+"Tại đây, Developer sẽ lựa chọn một trong hai hình thức:
 
-# 3. Retrieve existing banners ordered by display_order (rows come from V3__banners.sql)
-Write-Host "Retrieving banners list from database..." -ForegroundColor Yellow
+Mua đứt: Hệ thống thanh toán một lần và toàn quyền sở hữu game.
 
-$queryCmd = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -t -A -c `"SELECT id, display_order, title FROM banners ORDER BY display_order ASC, created_at ASC;`""
-$dbOutput = Invoke-Expression $queryCmd
+Đồng sở hữu: Doanh thu sẽ được chia sẻ dựa trên số lượt tải thực tế sau khi trừ đi các chi phí nền tảng.
+Sau khi chọn xong hình thức và điền thông tin, em tiến hành tải mã nguồn lên hệ thống."
 
-$banners = @()
-if ($dbOutput) {
-    foreach ($line in $dbOutput) {
-        if ($line.Contains("|")) {
-            $parts = $line.Split("|")
-            $banners += [PSCustomObject]@{
-                Id           = $parts[0].Trim()
-                DisplayOrder = $parts[1].Trim()
-                Title        = $parts[2].Trim()
-            }
-        }
-    }
-}
+3. AI Review & Đàm phán Hợp đồng
+(Thao tác: Chuyển sang màn hình Admin duyệt, mở pop-up AI Review)
 
-if ($banners.Count -eq 0) {
-    Write-Host "[ERROR] No rows found in the 'banners' table. Has the app run the V3 migration yet?" -ForegroundColor Red
-    Exit 1
-}
+"Tại phía Admin, khâu AI Review ở luồng này cũng được mở rộng so với luồng Marketplace thông thường: bên cạnh việc kiểm duyệt nội dung, mô hình AI còn phân tích chất lượng game để gợi ý loại hợp đồng và mức giá tối ưu cho Admin tham khảo.
+Dựa vào đề xuất của AI và mức giá Developer đưa ra, Admin có toàn quyền chấp thuận, từ chối hoặc đàm phán lại.
+Sau khi thống nhất điều khoản, hai bên tiến hành ký hợp đồng điện tử để kích hoạt tiến trình đóng gói."
 
-Write-Host "Found $($banners.Count) banner row(s) in database." -ForegroundColor Green
+4. Đóng gói & Mock Google Play API
+(Thao tác: Admin kích hoạt Build/Publish, chuyển sang màn hình Mock Container / Service Account)
 
-# 4. Get all valid image files, sorted alphabetically by filename
-$imageFiles = Get-ChildItem -Path $SourceFolder -File | Where-Object {
-    $_.Extension -match "\.(jpg|jpeg|png|webp|gif)"
-} | Sort-Object Name
+"Sau khi ký kết, Admin sẽ đóng gói mã nguồn sang đúng chuẩn định dạng của Google Play.
+Vì Google Play đối soát doanh thu định kỳ vào ngày 15 hằng tháng, nhóm đã dựng một Mock Service chạy trên Docker để mô phỏng chính xác kiến trúc tích hợp thực tế với Google Cloud:
 
-if ($imageFiles.Count -eq 0) {
-    Write-Host "[ERROR] No image files (.jpg, .jpeg, .png, .webp, .gif) found in '$SourceFolder'." -ForegroundColor Red
-    Exit 1
-}
+GCS Bucket URI: Đường dẫn lưu trữ báo cáo tài chính (.csv) định kỳ.
 
-Write-Host "Found $($imageFiles.Count) image file(s) in '$SourceFolder':" -ForegroundColor Green
-foreach ($f in $imageFiles) { Write-Host "  - $($f.Name)" -ForegroundColor DarkGray }
+GCP Service Account: Định danh ủy quyền giúp hệ thống tự động đọc dữ liệu báo cáo mà không cần can thiệp thủ công."
 
-if ($imageFiles.Count -ne $banners.Count) {
-    Write-Host "[WARN] Image count ($($imageFiles.Count)) does not match banner row count ($($banners.Count))." -ForegroundColor Yellow
-    Write-Host "        Extra banners will be left untouched; extra images will be skipped." -ForegroundColor Yellow
-}
+5. Đồng bộ & Đối soát Doanh thu
+(Thao tác: Bấm nút Sync lượt tải / Random mock data để giao diện hiển thị bảng số liệu)
 
-# 5. Upload each image and link it to the banner at the matching position
-$pairCount = [Math]::Min($imageFiles.Count, $banners.Count)
+"Để Hội đồng thấy rõ luồng tiền của hệ thống, em sử dụng tính năng Đồng bộ dữ liệu từ Mock Server:
 
-for ($i = 0; $i -lt $pairCount; $i++) {
-    $image = $imageFiles[$i]
-    $banner = $banners[$i]
+Hệ thống ghi nhận lượt tải thực tế và tính ra Tổng doanh thu.
 
-    Write-Host "`n----------------------------------------------------------" -ForegroundColor Gray
-    Write-Host "Banner display_order=$($banner.DisplayOrder) '$($banner.Title)' <- $($image.Name)" -ForegroundColor White
-    Write-Host "Banner ID: $($banner.Id)" -ForegroundColor DarkGray
+Tiếp theo, hệ thống tự động khấu trừ phí sàn của Google Play.
 
-    $objectKey = "banners/$($banner.Id)$($image.Extension)"
-    $uploadUrl = "$FilerUrl/$BasePath/$objectKey"
-
-    try {
-        Invoke-RestMethod -Uri $uploadUrl -Method Put -InFile $image.FullName -ContentType "image/jpeg" | Out-Null
-        $publicUrl = "$PublicBaseUrl/$objectKey"
-        Write-Host "   Uploaded to SeaweedFS: $publicUrl" -ForegroundColor Green
-
-        $escapedUrl = $publicUrl.Replace("'", "''")
-        $sql = "UPDATE banners SET image_url = '$escapedUrl', updated_at = now() WHERE id = '$($banner.Id)';"
-        $execCmd = "docker exec -i $ContainerName psql -U $DbUser -d $DbName -c `"$sql`""
-        Invoke-Expression $execCmd | Out-Null
-
-        Write-Host "   Banner row updated in database." -ForegroundColor Green
-    } catch {
-        Write-Host "   [ERROR] Failed to upload/link '$($image.Name)': $_" -ForegroundColor Red
-    }
-}
-
-Write-Host "`n==========================================================" -ForegroundColor Cyan
-Write-Host " Banner Upload Process Completed!" -ForegroundColor Green
-Write-Host "==========================================================" -ForegroundColor Cyan
+Phần doanh thu ròng còn lại sẽ được phân bổ tự động: chuyển về cho Developer theo đúng tỷ lệ phần trăm đã ký kết, và phần còn lại là lợi nhuận của hệ thống."
