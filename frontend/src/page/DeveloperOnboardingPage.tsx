@@ -117,11 +117,13 @@ export const DeveloperOnboardingPage: React.FC<DeveloperOnboardingPageProps> = (
 
       if (githubRes.status === 'rejected') {
         const err = githubRes.reason;
-        setError(
-          err?.response?.data?.message ||
-            err?.message ||
-            t('onboarding.errors.loadStatus'),
-        );
+        if (err?.response?.status !== 401 && err?.response?.status !== 403) {
+          setError(
+            err?.response?.data?.message ||
+              err?.message ||
+              t('onboarding.errors.loadStatus'),
+          );
+        }
       }
     } finally {
       setIsLoadingStatus(false);
