@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS store_report_imports (
     provider VARCHAR(50) NOT NULL DEFAULT 'GOOGLE_PLAY_MOCK',
     external_publish_id UUID NOT NULL REFERENCES external_publishes(id) ON DELETE CASCADE,
     source_object_path TEXT,
-    report_month VARCHAR(7),
+    report_month VARCHAR(50),
     synced_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     raw_file_url TEXT,
     file_checksum VARCHAR(64),
