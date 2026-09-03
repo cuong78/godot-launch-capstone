@@ -29,7 +29,7 @@ public class StoreReportImport {
     @Column(name = "source_object_path", columnDefinition = "TEXT")
     private String sourceObjectPath;
 
-    @Column(name = "report_month", length = 7)
+    @Column(name = "report_month", length = 50)
     private String reportMonth;
 
     @Column(name = "synced_at", nullable = false)
