@@ -79,7 +79,6 @@ public class KycController {
     @Operation(summary = "Lấy trạng thái KYC của developer hiện tại")
     public ResponseEntity<ApiResponse<KycStatusResponse>> getKycStatus(Principal principal) {
         User user = findUser(principal);
-        requireGithubLinkedOrDeveloper(user);
         return ResponseEntity.ok(ApiResponse.success(toStatusResponse(user), "KYC status retrieved"));
     }
 

@@ -214,14 +214,10 @@ public class DisputeServiceImpl implements DisputeService {
                 long sellerFaultCount = disputeRepository.countByReportedSellerIdAndStatus(
                         dispute.getReportedSeller().getId(), DisputeStatus.resolved_seller_fault);
                 int disputeBanThreshold = platformSettingsService.getDisputeBanThreshold();
-                if (request.isBanUser() || sellerFaultCount >= disputeBanThreshold) {
-                    banSeller(dispute.getReportedSeller(), "copyright_theft");
-                } else {
-                    lockSellerForRefund(dispute.getReportedSeller(), dispute);
-                }
+                boolean sellerAutoBanned = request.isBanUser() || sellerFaultCount >= disputeBanThreshold;
 
                 // 1. Hoàn B,C (auto-refund buyer trong N ngày gần nhất — creditRestricted)
-                BigDecimal totalRefundedToBuyers = autoRefundRecentBuyers(dispute, admin);
+                BuyerRefundSummary buyerRefundSummary = autoRefundRecentBuyers(dispute, admin);
 
                 // 2. Bồi thường D — lấy số admin đã xác nhận từ request hoặc tự động tính theo công thức gợi ý
                 BigDecimal reporterCompensation = request.getRefundAmount();
@@ -296,21 +292,16 @@ public class DisputeServiceImpl implements DisputeService {
 
                 dispute.setRefundAmount(reporterCompensation);
 
-                // Calculate total debt owed by A to platform
-                BigDecimal totalRequired = totalRefundedToBuyers.add(reporterCompensation);
-                // Balance remaining in seller wallet vs total required
-                // Total seller debited = total required minus platform advance
-                // Platform advance for buyers = (totalRefundedToBuyers - sellerDebitForBuyers)
-                // Platform advance for D = platformAdvanceForD
-                // Compute debt directly:
-                BigDecimal sellerOutstandingDebt = totalRequired.subtract(sellerBalance.subtract(WalletBalancePolicy.balance(lockedSeller)));
-                if (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) < 0) {
-                    sellerOutstandingDebt = BigDecimal.ZERO;
-                }
-
+                // Nợ thực tế của seller là phần platform phải ứng trước (khi ví seller không đủ trừ)
+                BigDecimal sellerOutstandingDebt = buyerRefundSummary.sellerShortfallForBuyers().add(platformAdvanceForD);
                 dispute.setSellerOutstandingDebt(sellerOutstandingDebt);
 
-                if (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) > 0) {
+                if (sellerAutoBanned) {
+                    banSeller(dispute.getReportedSeller(), "copyright_theft");
+                    dispute.setRefundDeadline(null);
+                    dispute.setRefundConfirmedAt(null);
+                } else if (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) > 0) {
+                    lockSellerForRefund(dispute.getReportedSeller(), dispute);
                     dispute.setRefundDeadline(Instant.now().plus(
                             platformSettingsService.getRefundDeadlineDays(), java.time.temporal.ChronoUnit.DAYS));
                     dispute.setRefundConfirmedAt(null);
@@ -323,7 +314,6 @@ public class DisputeServiceImpl implements DisputeService {
                 }
 
                 // Notify seller (A)
-                boolean sellerAutoBanned = request.isBanUser() || sellerFaultCount >= disputeBanThreshold;
                 notificationService.createAndSendNotification(
                         dispute.getReportedSeller(),
                         admin,
@@ -333,7 +323,7 @@ public class DisputeServiceImpl implements DisputeService {
                                 ? "Tài khoản của bạn đã bị cấm" + (sellerFaultCount >= disputeBanThreshold ? " do vi phạm bản quyền quá " + disputeBanThreshold + " lần." : ".")
                                 : (sellerOutstandingDebt.compareTo(BigDecimal.ZERO) > 0
                                         ? "Khoản nợ platform chưa trả là " + sellerOutstandingDebt + " VND. Vui lòng thanh toán qua PayOS trước hạn."
-                                        : "Toàn bộ số tiền hoàn trả đã được khấu trừ thành công.")),
+                                        : "Toàn bộ số tiền hoàn trả đã được khấu trừ thành công từ ví.")),
                         dispute.getId().toString()
                 );
                 // Notify reporter (D)
@@ -415,13 +405,16 @@ public class DisputeServiceImpl implements DisputeService {
         return toResponse(disputeRepository.save(dispute));
     }
 
-    private BigDecimal autoRefundRecentBuyers(Dispute dispute, User admin) {
+    private record BuyerRefundSummary(BigDecimal totalRefundedToBuyers, BigDecimal sellerShortfallForBuyers) {}
+
+    private BuyerRefundSummary autoRefundRecentBuyers(Dispute dispute, User admin) {
         List<Order> orders = orderRepository.findByGameId(dispute.getGame().getId());
         if (orders.isEmpty()) {
-            return BigDecimal.ZERO;
+            return new BuyerRefundSummary(BigDecimal.ZERO, BigDecimal.ZERO);
         }
 
         BigDecimal totalRefunded = BigDecimal.ZERO;
+        BigDecimal totalSellerShortfall = BigDecimal.ZERO;
         User platformAdmin = userRepository.findByEmail("admin@godotlaunch.com")
                 .orElseGet(() -> userRepository.findAdminsOrderByCreatedAtAsc(org.springframework.data.domain.PageRequest.of(0, 1)).stream()
                         .findFirst()
@@ -459,6 +452,11 @@ public class DisputeServiceImpl implements DisputeService {
                 BigDecimal sellerDebit = sellerRevenue.min(lockedSeller.getBalance());
                 if (sellerDebit.compareTo(BigDecimal.ZERO) > 0) {
                     WalletBalancePolicy.debitSellerRefund(lockedSeller, sellerDebit);
+                }
+
+                BigDecimal sellerShortfall = sellerRevenue.subtract(sellerDebit);
+                if (sellerShortfall.compareTo(BigDecimal.ZERO) > 0) {
+                    totalSellerShortfall = totalSellerShortfall.add(sellerShortfall);
                 }
 
                 BigDecimal platformDebit = price.subtract(sellerDebit);
@@ -530,7 +528,7 @@ public class DisputeServiceImpl implements DisputeService {
                 log.error("Lỗi khi tự động hoàn tiền cho đơn hàng {}: {}", order.getId(), e.getMessage(), e);
             }
         }
-        return totalRefunded;
+        return new BuyerRefundSummary(totalRefunded, totalSellerShortfall);
     }
 
     @Override

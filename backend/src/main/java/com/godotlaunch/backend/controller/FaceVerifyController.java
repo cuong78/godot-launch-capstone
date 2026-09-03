@@ -41,7 +41,6 @@ public class FaceVerifyController {
         // user.getRole() sau đó (open-in-view=false nên session đóng ngay sau khi trả về).
         User user = userRepository.findWithRoleByEmail(principal.getName())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        requireGithubLinkedOrDeveloper(user);
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of("faceVerified", user.isFaceVerified()),
                 "Face verification status retrieved"
