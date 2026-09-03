@@ -328,17 +328,19 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
+                <div className="min-w-0">
                   <label className="mb-1.5 block font-mono text-xs uppercase text-slate-600 dark:text-slate-400">{t('view.fullDeveloperName')}</label>
-                  <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-50/90 dark:bg-slate-800/25 border border-slate-200/80 dark:border-slate-700/20 rounded-xl px-4 py-3">
+                  <p className="text-sm sm:text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-50/90 dark:bg-slate-800/25 border border-slate-200/80 dark:border-slate-700/20 rounded-xl px-4 py-3 truncate" title={currentUser.fullName || ''}>
                     {currentUser.fullName || <span className="text-slate-500 italic">{t('view.notSpecified')}</span>}
                   </p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="mb-1.5 block font-mono text-xs uppercase text-slate-600 dark:text-slate-400">{t('view.registeredEmailNode')}</label>
-                  <p className="text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-50/90 dark:bg-slate-800/25 border border-slate-200/80 dark:border-slate-700/20 rounded-xl px-4 py-3 flex items-center gap-2">
+                  <p className="text-sm sm:text-base text-slate-800 dark:text-slate-200 font-semibold bg-slate-50/90 dark:bg-slate-800/25 border border-slate-200/80 dark:border-slate-700/20 rounded-xl px-4 py-3 flex items-center gap-2 min-w-0 overflow-hidden">
                     <Mail size={16} className="text-slate-400 shrink-0" />
-                    {currentUser.email}
+                    <span className="truncate min-w-0" title={currentUser.email}>
+                      {currentUser.email}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -364,13 +366,16 @@ export function ProfilePage({ setCurrentScreen }: ProfilePageProps) {
                     <Globe size={16} className="text-amber-400" /> {t('github.title')}
                   </h4>
                   {githubStatus?.linked ? (
-                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="text-left">
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+                      <div className="text-left min-w-0">
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 mb-1">
                           {t('github.connected')}
                         </span>
-                        <p className="text-sm text-slate-600 dark:text-slate-300 font-semibold">
-                          {t('github.linkedGithub')} <span className="text-slate-950 dark:text-white font-mono">@{githubStatus.githubUsername}</span>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 font-semibold truncate">
+                          {t('github.linkedGithub')}{' '}
+                          <span className="text-slate-950 dark:text-white font-mono inline-block max-w-full truncate align-bottom" title={`@${githubStatus.githubUsername}`}>
+                            @{githubStatus.githubUsername}
+                          </span>
                         </p>
                         {githubStatus.githubLinkedAt && (
                           <p className="text-[10px] text-slate-500 font-mono mt-0.5">
